@@ -1,207 +1,259 @@
-# GitLab Engineering Analytics
+# gitlab-analytics
 
-Internal backend service for analyzing developer activity in GitLab repositories.
-Provides engineering process insights — not performance scores.
+Internal engineering analytics backend. Connects to a self-hosted GitLab instance, syncs merge request data, and calculates per-developer contribution metrics for a given team and time period.
 
-## Quick Start
+**Not a performance scoring tool.** Metrics are engineering signals for retrospectives and team self-improvement — not ratings or KPIs.
+
+---
+
+## What it does
+
+- Registers GitLab instances and projects to track
+- Syncs MR data (merge requests, commits with diff stats, discussions, approvals) into a local PostgreSQL database
+- Calculates contribution metrics per developer over a custom or preset period
+- Returns a structured JSON report with raw metrics, normalized values, and team percentile comparisons
+
+---
+
+## Quick start
 
 ### Prerequisites
 
 - Java 21
-- Docker & Docker Compose
+- Docker
 
-### Run with Docker Compose
-
-```bash
-# Build the JAR first
-./gradlew bootJar
-
-# Start the stack (app + PostgreSQL)
-API_TOKEN=your-secret-token docker-compose up --build
-```
-
-The API is available at `http://localhost:8080`.
-Swagger UI: `http://localhost:8080/swagger-ui.html`
-
-### Run locally (against Docker PostgreSQL)
+### 1. Start PostgreSQL
 
 ```bash
-# Start only the database
-docker-compose up postgres -d
-
-# Run the application
-./gradlew bootRun --args='--spring.profiles.active=local'
+docker run -d --name gitlab-analytics-pg \
+  -e POSTGRES_DB=gitlab_analytics \
+  -e POSTGRES_USER=analytics \
+  -e POSTGRES_PASSWORD=analytics \
+  -p 5432:5432 \
+  postgres:16-alpine
 ```
+
+### 2. Run the app
+
+```bash
+API_TOKEN=your-secret-token \
+DB_URL=jdbc:postgresql://localhost:5432/gitlab_analytics \
+DB_USERNAME=analytics \
+DB_PASSWORD=analytics \
+./gradlew bootRun -x test -x checkstyleMain -x pmdMain -x spotbugsMain
+```
+
+App starts on `http://localhost:8080`. Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+All API requests require the header: `Authorization: Bearer your-secret-token`
+
+---
 
 ## Configuration
 
-| Env Variable  | Default                                             | Description                      |
-|---------------|-----------------------------------------------------|----------------------------------|
-| `DB_URL`      | `jdbc:postgresql://localhost:5432/gitlab_analytics` | PostgreSQL JDBC URL              |
-| `DB_USERNAME` | `analytics`                                         | Database username                |
-| `DB_PASSWORD` | `analytics`                                         | Database password                |
-| `API_TOKEN`   | `changeme-in-production`                            | Static bearer token for API auth |
+| Variable | Default | Description |
+|---|---|---|
+| `API_TOKEN` | `changeme-in-production` | Static bearer token for all API calls |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/gitlab_analytics` | PostgreSQL JDBC URL |
+| `DB_USERNAME` | `analytics` | Database username |
+| `DB_PASSWORD` | `analytics` | Database password |
 
-All API requests must include `Authorization: Bearer <API_TOKEN>`.
+---
 
-## Typical Usage Flow
+## Setup guide
 
-### 1. Register a GitLab source
+### Step 1 — Register a GitLab source
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/sources/gitlab \
-  -H "Authorization: Bearer your-token" \
+  -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Our GitLab","baseUrl":"https://git.example.com","token":"glpat-xxx"}'
+  -d '{
+    "name": "my-gitlab",
+    "baseUrl": "https://git.example.com",
+    "token": "glpat-xxxxxxxxxxxx"
+  }'
+# → { "id": 1, ... }
 ```
 
-### 2. Test connectivity
+The GitLab token needs `read_api` scope. Test connectivity:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/sources/gitlab/1/test \
-  -H "Authorization: Bearer your-token"
+  -H "Authorization: Bearer your-secret-token"
+# → { "status": "ok", "username": "...", "gitlabUserId": 123 }
 ```
 
-### 3. Register tracked projects
+### Step 2 — Register a project
+
+You need the numeric GitLab project ID (visible in project Settings or via
+`GET /api/v4/projects/<url-encoded-path>`).
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/projects \
-  -H "Authorization: Bearer your-token" \
+  -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
-  -d '{"gitSourceId":1,"gitlabProjectId":123,"pathWithNamespace":"team/backend","name":"backend"}'
+  -d '{
+    "gitSourceId": 1,
+    "gitlabProjectId": 1538,
+    "pathWithNamespace": "group/subgroup/project-name",
+    "name": "project-name"
+  }'
+# → { "id": 1, ... }
 ```
 
-### 4. Register tracked users with aliases
+### Step 3 — Register tracked users
+
+Each team member needs a `TrackedUser` record and at least one `TrackedUserAlias` linking their GitLab account.
 
 ```bash
 # Create user
 curl -X POST http://localhost:8080/api/v1/users \
-  -H "Authorization: Bearer your-token" \
+  -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
-  -d '{"displayName":"Alice","email":"alice@example.com"}'
+  -d '{"displayName": "Jane Smith", "email": "jane@example.com"}'
+# → { "id": 2, ... }
 
-# Add GitLab alias (gitlabUserId from GitLab user profile)
-curl -X POST http://localhost:8080/api/v1/users/1/aliases \
-  -H "Authorization: Bearer your-token" \
+# Add GitLab alias — gitlabUserId is the numeric ID from GitLab
+curl -X POST http://localhost:8080/api/v1/users/2/aliases \
+  -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
-  -d '{"gitlabUserId":456,"username":"alice.dev","email":"alice@example.com","name":"Alice Dev"}'
+  -d '{
+    "gitlabUserId": 1234,
+    "username": "j.smith",
+    "name": "Jane Smith",
+    "email": "jane@example.com"
+  }'
 ```
 
-### 5. Run a manual sync
+> **Important**: The `email` in the alias must match the `author_email` field in git commits.
+> This is how commits are attributed to tracked users.
+> Verify with: `git log --format='%ae' | sort -u`
+> Commit emails and GitLab account emails often differ.
+
+### Step 4 — Run a sync
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/sync/manual \
-  -H "Authorization: Bearer your-token" \
+  -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "projectIds": [1, 2],
-    "dateFrom": "2024-01-01T00:00:00Z",
-    "dateTo": "2024-01-31T23:59:59Z",
+    "projectIds": [1],
+    "dateFrom": "2026-01-01T00:00:00Z",
+    "dateTo": "2026-04-16T23:59:59Z",
     "fetchNotes": true,
     "fetchApprovals": true,
     "fetchCommits": true
   }'
-# Returns: {"jobId": 1, "status": "STARTED", ...}
+# → { "jobId": 1, "status": "STARTED", ... }
 ```
 
-### 6. Poll sync status
+Check status:
 
 ```bash
 curl http://localhost:8080/api/v1/sync/jobs/1 \
-  -H "Authorization: Bearer your-token"
-# Returns: {"jobId":1,"status":"COMPLETED",...}
+  -H "Authorization: Bearer your-secret-token"
+# → { "status": "COMPLETED", ... }
 ```
 
-### 7. Get contribution report
+> `fetchCommits: true` makes one extra GitLab API call per commit to fetch diff stats
+> (`additions`, `deletions`). For large projects this takes a few extra minutes.
+> Commits are not re-fetched on subsequent syncs if already in the database.
+
+### Step 5 — Get the report
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/reports/contributions \
-  -H "Authorization: Bearer your-token" \
+  -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
   -d '{
-    "projectIds": [1, 2],
-    "userIds": [1, 2, 3],
+    "projectIds": [1],
+    "userIds": [2, 3, 4],
     "periodPreset": "LAST_30_DAYS",
     "groupBy": "USER",
-    "reportMode": "CREATED_IN_PERIOD",
-    "metrics": ["mr_merged_count","review_comments_written_count","avg_time_to_first_review_minutes"]
+    "reportMode": "MERGED_IN_PERIOD",
+    "metrics": null
   }'
 ```
 
-## Available Metrics
+**`periodPreset`** values: `LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `LAST_180_DAYS`, `CUSTOM`
+
+For `CUSTOM`, add `"dateFrom": "...", "dateTo": "..."` (ISO-8601 with `Z`).
+
+**`reportMode`**:
+- `MERGED_IN_PERIOD` — MRs merged within the period (recommended)
+- `CREATED_IN_PERIOD` — MRs created within the period
+
+**`metrics`**: array of metric keys to include, or `null` for all.
+
+---
+
+## Metrics reference
 
 ### Delivery
 
-| Metric                       | Description                      |
-|------------------------------|----------------------------------|
-| `mr_opened_count`            | MRs created by user in period    |
-| `mr_merged_count`            | MRs merged in period             |
-| `active_days_count`          | Unique days with any event       |
-| `repositories_touched_count` | Distinct repos with authored MRs |
-| `commits_in_mr_count`        | Commits in authored MRs          |
+| Metric | How it's calculated | How to read |
+|---|---|---|
+| `mr_opened_count` | Count of MRs authored in the period | Raw output volume |
+| `mr_merged_count` | Authored MRs with non-null `merged_at` in the period | Completed deliveries |
+| `commits_in_mr_count` | Commits in authored MRs where `author_email` matches the user | Attributed by commit email |
+| `active_days_count` | Unique calendar days with a commit, note, or approval | Reflects actual working days |
+| `repositories_touched_count` | Distinct tracked projects with authored MRs | Cross-project activity |
 
-### Change Volume
+### Change volume
 
-| Metric                 | Description                     |
-|------------------------|---------------------------------|
-| `lines_added`          | Total additions in authored MRs |
-| `lines_deleted`        | Total deletions in authored MRs |
-| `avg_mr_size_lines`    | Average MR size (add + del)     |
-| `median_mr_size_lines` | Median MR size                  |
+| Metric | How it's calculated | How to read |
+|---|---|---|
+| `lines_added` | Sum of `additions` across the user's own commits | Raw code output |
+| `lines_deleted` | Sum of `deletions` across the user's own commits | High deletions = refactoring or cleanup |
+| `lines_changed` | `lines_added + lines_deleted` | Total churn |
+| `avg_mr_size_lines` | Average of (total additions + deletions per MR across all commits in that MR) | High values = hard-to-review MRs |
+| `median_mr_size_lines` | Median of the same — less skewed by outliers | Compare to avg: large gap means a few giant MRs |
+| `avg_mr_size_files` | Average `changes_count` per authored MR (from GitLab MR metadata) | |
+| `files_changed` | Sum of `files_changed_count` per user commit | Currently 0 if not populated |
 
-### Review Contribution
+### Review contribution
 
-| Metric                          | Description                          |
-|---------------------------------|--------------------------------------|
-| `review_comments_written_count` | Non-system notes left in others' MRs |
-| `mrs_reviewed_count`            | Unique foreign MRs reviewed          |
-| `approvals_given_count`         | Approvals given to others' MRs       |
-| `review_threads_started_count`  | Discussions initiated                |
+| Metric | How it's calculated | How to read |
+|---|---|---|
+| `review_comments_written_count` | Non-system notes left in **other people's** MRs | Core review engagement |
+| `review_threads_started_count` | Notes that are the earliest in their discussion thread in a foreign MR | Initiating feedback vs replying |
+| `mrs_reviewed_count` | Unique foreign MRs with at least one note or approval from the user | Breadth of review |
+| `approvals_given_count` | Approvals on foreign MRs | |
 
-### Flow
+### Flow metrics (authored MRs only)
 
-| Metric                                | Description                                                 |
-|---------------------------------------|-------------------------------------------------------------|
-| `avg_time_to_first_review_minutes`    | Avg minutes from MR creation to first external review event |
-| `median_time_to_first_review_minutes` | Median of above                                             |
-| `avg_time_to_merge_minutes`           | Avg minutes from creation to merge                          |
-| `rework_mr_count`                     | MRs with author commits after first review                  |
-| `rework_ratio`                        | rework_mr_count / mr_merged_count                           |
-| `self_merge_count`                    | MRs merged by the author themselves                         |
-| `self_merge_ratio`                    | self_merge_count / mr_merged_count                          |
+| Metric | How it's calculated | How to read |
+|---|---|---|
+| `avg_time_to_first_review_minutes` | Avg minutes from MR `created_at` to first external note or approval | Long = MRs sit unreviewed |
+| `median_time_to_first_review_minutes` | Median of the same | Preferred for skewed data |
+| `avg_time_to_merge_minutes` | Avg minutes from `created_at` to `merged_at` | End-to-end cycle time |
+| `median_time_to_merge_minutes` | Median of the same | |
+| `rework_mr_count` | Authored MRs with at least one commit by the user after first external review | |
+| `rework_ratio` | `rework_mr_count / mr_merged_count` | 0.2 = 20% of MRs had post-review iterations; not inherently bad |
+| `self_merge_count` | MRs where `merged_by` gitlab user ID matches the author | |
+| `self_merge_ratio` | `self_merge_count / mr_merged_count` | High ratio may indicate bypassed review |
 
 ### Normalized
 
-| Metric                     | Description                     |
-|----------------------------|---------------------------------|
-| `mr_merged_per_active_day` | Throughput relative to activity |
-| `comments_per_reviewed_mr` | Review depth                    |
+| Metric | How it's calculated | How to read |
+|---|---|---|
+| `mr_merged_per_active_day` | `mr_merged_count / active_days_count` | Throughput relative to working days |
+| `comments_per_reviewed_mr` | `review_comments_written_count / mrs_reviewed_count` | < 1 = mostly approvals; > 2 = substantive feedback |
 
-## Development
+### Team comparison (`teamComparison` field)
+
+For `mr_merged_count`, `review_comments_written_count`, `approvals_given_count`, and
+`mrs_reviewed_count` the response includes a `_percentile` value showing where this user
+ranks within the current report's cohort. `100.0` = highest, `0.0` = lowest.
+
+---
+
+## Build
 
 ```bash
-# Run tests (requires Docker for Testcontainers)
-./gradlew test
-
-# Run with hot reload
-./gradlew bootRun
-
-# Build JAR
-./gradlew bootJar
+./gradlew build           # full build + tests + static analysis
+./gradlew build -x test   # skip tests
+./gradlew test            # tests only (requires Docker for Testcontainers)
+./gradlew check -x test   # static analysis only
 ```
-
-## Architecture Notes
-
-```
-api/           REST controllers + request/response DTOs
-sync/          Async sync orchestration + job lifecycle
-metrics/       On-the-fly metric calculation
-gitlab/        GitLab API client + DTOs + mapper
-domain/        JPA entities + Spring Data repositories
-encryption/    Token encryption abstraction (replace NoOp with Vault/KMS)
-config/        Spring configuration (security, webclient, openapi, async)
-```
-
-**Security**: Replace `NoOpEncryptionService` with a Vault/KMS-backed implementation before production.
-The static API token should come from a secrets manager, not application.yml.
-# gitlab-analytics

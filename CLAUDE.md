@@ -71,10 +71,13 @@ Controller → Service → Repository → Model
 
 **jsonb columns**: Use `@JdbcTypeCode(SqlTypes.JSON)` on `String` fields mapped to `jsonb` PostgreSQL columns. Without it Hibernate 6 throws a type mismatch error.
 
-**Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy
-self-invocations.
+**Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy self-invocations.
 
 **Encryption**: `NoOpEncryptionService` stores tokens as plaintext. Set `app.encryption.enabled=true` and provide a real `EncryptionService` bean for production.
+
+**Commit stats**: The GitLab MR list and single-MR endpoints do not return `additions`/`deletions` on this GitLab instance. Stats are fetched individually via `GET /repository/commits/:sha` (one call per new commit during sync). `MetricCalculationService` computes `lines_added/deleted` from commit-level stats, not MR-level.
+
+**Commit attribution**: `isUserCommit` matches commits by email. It checks both `TrackedUser.email` and all `TrackedUserAlias.email` values (lowercased). Commit emails often differ from GitLab account emails — always register the correct commit email in the alias.
 
 ## Database
 
@@ -108,8 +111,7 @@ All integration tests extend `BaseIT`:
 
 Test naming: `*Test` (not `*IT`), even for integration tests.
 
-**`DatabaseStructureTest`** — pg-index-health checks using `pg-index-health-test-starter:0.20.3` (last version compatible with Spring Boot 3.3.x). Runs only static checks; skips
-`flyway_schema_history` via `SkipFlywayTablesPredicate.ofDefault()`.
+**`DatabaseStructureTest`** — pg-index-health checks using `pg-index-health-test-starter:0.20.3` (last version compatible with Spring Boot 3.3.x). Runs only static checks; skips `flyway_schema_history` via `SkipFlywayTablesPredicate.ofDefault()`.
 
 ## Key Configuration
 
