@@ -24,6 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Code Quality
 
 Static analysis runs automatically during build:
+
 - **Checkstyle 10.17.0**: `config/checkstyle/checkstyle.xml`
 - **PMD 7.4.0**: `config/pmd/pmd-rules.xml`
 - **SpotBugs 4.8.6**: `config/spotbugs/spotbugs-exclude.xml`
@@ -70,13 +71,15 @@ Controller → Service → Repository → Model
 
 **jsonb columns**: Use `@JdbcTypeCode(SqlTypes.JSON)` on `String` fields mapped to `jsonb` PostgreSQL columns. Without it Hibernate 6 throws a type mismatch error.
 
-**Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy self-invocations.
+**Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy
+self-invocations.
 
 **Encryption**: `NoOpEncryptionService` stores tokens as plaintext. Set `app.encryption.enabled=true` and provide a real `EncryptionService` bean for production.
 
 ## Database
 
 PostgreSQL + Flyway. Migrations in `src/main/resources/db/migration/`:
+
 - `V1__initial_schema.sql` — full schema
 - `V2__fix_indexes.sql` — index fixes (redundant indexes dropped, partial indexes on nullable FK columns)
 
@@ -84,17 +87,18 @@ Hibernate DDL is set to `validate` — all schema changes must go through Flyway
 
 ### Index Conventions
 
-| Type | Pattern |
-|---|---|
-| Index | `idx_<table>_<column>` |
+| Type              | Pattern                    |
+|-------------------|----------------------------|
+| Index             | `idx_<table>_<column>`     |
 | Unique constraint | `uq_<table>_<col1>_<col2>` |
-| Foreign key | `fk_<table>_<column>` |
+| Foreign key       | `fk_<table>_<column>`      |
 
 Partial indexes (`WHERE col IS NOT NULL`) are required for nullable columns to avoid flagging by pg-index-health.
 
 ## Testing
 
 All integration tests extend `BaseIT`:
+
 - `@SpringBootTest(webEnvironment = RANDOM_PORT)`
 - `@ActiveProfiles("test")`
 - Testcontainers `PostgreSQLContainer` with `@ServiceConnection`
@@ -104,7 +108,8 @@ All integration tests extend `BaseIT`:
 
 Test naming: `*Test` (not `*IT`), even for integration tests.
 
-**`DatabaseStructureTest`** — pg-index-health checks using `pg-index-health-test-starter:0.20.3` (last version compatible with Spring Boot 3.3.x). Runs only static checks; skips `flyway_schema_history` via `SkipFlywayTablesPredicate.ofDefault()`.
+**`DatabaseStructureTest`** — pg-index-health checks using `pg-index-health-test-starter:0.20.3` (last version compatible with Spring Boot 3.3.x). Runs only static checks; skips
+`flyway_schema_history` via `SkipFlywayTablesPredicate.ofDefault()`.
 
 ## Key Configuration
 
@@ -112,6 +117,7 @@ Test naming: `*Test` (not `*IT`), even for integration tests.
 `src/test/resources/application-test.yml` — test overrides.
 
 Environment variables:
+
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` — database connection
 - `API_TOKEN` — bearer token for API authentication
 
@@ -120,6 +126,7 @@ Environment variables:
 Spring Boot 3.3.4, Java 21, Gradle Kotlin DSL.
 
 Notable non-BOM dependencies (pin versions manually):
+
 - `springdoc-openapi-starter-webmvc-ui:2.6.0`
 - `pg-index-health-test-starter:0.20.3`
 - `spotbugs-annotations:4.8.6`
