@@ -79,12 +79,26 @@ class MetricCalculationServiceTest {
         MergeRequest mr1 = mergedMr(1L, 101L, now.minus(20, ChronoUnit.DAYS));
         MergeRequest mr2 = mergedMr(2L, 102L, now.minus(10, ChronoUnit.DAYS));
 
+        // Commits are the source of lines_added/deleted (not MR-level additions/deletions)
+        MergeRequestCommit commit1 = MergeRequestCommit.builder()
+            .id(1L).mergeRequestId(1L).gitlabCommitSha("sha1")
+            .authorEmail("alice@example.com")
+            .authoredDate(now.minus(19, ChronoUnit.DAYS))
+            .additions(50).deletions(10).totalChanges(60)
+            .build();
+        MergeRequestCommit commit2 = MergeRequestCommit.builder()
+            .id(2L).mergeRequestId(2L).gitlabCommitSha("sha2")
+            .authorEmail("alice@example.com")
+            .authoredDate(now.minus(9, ChronoUnit.DAYS))
+            .additions(50).deletions(10).totalChanges(60)
+            .build();
+
         when(trackedUserRepository.findById(TRACKED_USER_ID)).thenReturn(Optional.of(user));
         when(aliasRepository.findByTrackedUserIdIn(anyList())).thenReturn(List.of(alias));
         when(mrRepository.findCreatedInPeriod(anyList(), any(), any())).thenReturn(List.of(mr1, mr2));
         when(noteRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(approvalRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
-        when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
+        when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of(commit1, commit2));
 
         Map<Long, UserMetrics> result = service.calculate(
             List.of(PROJECT_ID), List.of(TRACKED_USER_ID),
@@ -95,8 +109,8 @@ class MetricCalculationServiceTest {
         UserMetrics metrics = result.get(TRACKED_USER_ID);
         assertThat(metrics.getMrOpenedCount()).isEqualTo(2);
         assertThat(metrics.getMrMergedCount()).isEqualTo(2);
-        assertThat(metrics.getLinesAdded()).isEqualTo(100); // 50 per MR
-        assertThat(metrics.getLinesDeleted()).isEqualTo(20); // 10 per MR
+        assertThat(metrics.getLinesAdded()).isEqualTo(100);
+        assertThat(metrics.getLinesDeleted()).isEqualTo(20);
     }
 
     @Test

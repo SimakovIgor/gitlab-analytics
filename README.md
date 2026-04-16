@@ -2,16 +2,7 @@
 
 Internal engineering analytics backend. Connects to a self-hosted GitLab instance, syncs merge request data, and calculates per-developer contribution metrics for a given team and time period.
 
-**Not a performance scoring tool.** Metrics are engineering signals for retrospectives and team self-improvement — not ratings or KPIs.
-
----
-
-## What it does
-
-- Registers GitLab instances and projects to track
-- Syncs MR data (merge requests, commits with diff stats, discussions, approvals) into a local PostgreSQL database
-- Calculates contribution metrics per developer over a custom or preset period
-- Returns a structured JSON report with raw metrics, normalized values, and team percentile comparisons
+**Не инструмент оценки.** Метрики — это инженерные сигналы для ретроспектив и командного самоанализа, не рейтинги и не KPI.
 
 ---
 
@@ -45,7 +36,7 @@ DB_PASSWORD=analytics \
 
 App starts on `http://localhost:8080`. Swagger UI: `http://localhost:8080/swagger-ui.html`
 
-All API requests require the header: `Authorization: Bearer your-secret-token`
+All API requests require: `Authorization: Bearer your-secret-token`
 
 ---
 
@@ -73,21 +64,13 @@ curl -X POST http://localhost:8080/api/v1/sources/gitlab \
     "baseUrl": "https://git.example.com",
     "token": "glpat-xxxxxxxxxxxx"
   }'
-# → { "id": 1, ... }
 ```
 
-The GitLab token needs `read_api` scope. Test connectivity:
-
-```bash
-curl -X POST http://localhost:8080/api/v1/sources/gitlab/1/test \
-  -H "Authorization: Bearer your-secret-token"
-# → { "status": "ok", "username": "...", "gitlabUserId": 123 }
-```
+Token needs `read_api` scope. Test connectivity: `POST /api/v1/sources/gitlab/1/test`
 
 ### Step 2 — Register a project
 
-You need the numeric GitLab project ID (visible in project Settings or via
-`GET /api/v4/projects/<url-encoded-path>`).
+GitLab project ID is visible in Settings or via `GET /api/v4/projects/<url-encoded-path>`.
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/projects \
@@ -99,22 +82,18 @@ curl -X POST http://localhost:8080/api/v1/projects \
     "pathWithNamespace": "group/subgroup/project-name",
     "name": "project-name"
   }'
-# → { "id": 1, ... }
 ```
 
 ### Step 3 — Register tracked users
 
-Each team member needs a `TrackedUser` record and at least one `TrackedUserAlias` linking their GitLab account.
+Each team member needs a `TrackedUser` and at least one `TrackedUserAlias` linking their GitLab account.
 
 ```bash
-# Create user
 curl -X POST http://localhost:8080/api/v1/users \
   -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
   -d '{"displayName": "Jane Smith", "email": "jane@example.com"}'
-# → { "id": 2, ... }
 
-# Add GitLab alias — gitlabUserId is the numeric ID from GitLab
 curl -X POST http://localhost:8080/api/v1/users/2/aliases \
   -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
@@ -126,10 +105,7 @@ curl -X POST http://localhost:8080/api/v1/users/2/aliases \
   }'
 ```
 
-> **Important**: The `email` in the alias must match the `author_email` field in git commits.
-> This is how commits are attributed to tracked users.
-> Verify with: `git log --format='%ae' | sort -u`
-> Commit emails and GitLab account emails often differ.
+> **Important**: The `email` in the alias must match `author_email` in git commits — this is how commits are attributed. Verify with: `git log --format='%ae' | sort -u`. Commit emails and GitLab account emails often differ.
 
 ### Step 4 — Run a sync
 
@@ -145,20 +121,11 @@ curl -X POST http://localhost:8080/api/v1/sync/manual \
     "fetchApprovals": true,
     "fetchCommits": true
   }'
-# → { "jobId": 1, "status": "STARTED", ... }
 ```
 
-Check status:
+Poll status: `GET /api/v1/sync/jobs/{jobId}` until `status` is `COMPLETED` or `FAILED`.
 
-```bash
-curl http://localhost:8080/api/v1/sync/jobs/1 \
-  -H "Authorization: Bearer your-secret-token"
-# → { "status": "COMPLETED", ... }
-```
-
-> `fetchCommits: true` makes one extra GitLab API call per commit to fetch diff stats
-> (`additions`, `deletions`). For large projects this takes a few extra minutes.
-> Commits are not re-fetched on subsequent syncs if already in the database.
+> `fetchCommits: true` — один дополнительный вызов GitLab API на каждый коммит для получения diff-статистики. Уже загруженные коммиты повторно не запрашиваются.
 
 ### Step 5 — Get the report
 
@@ -176,76 +143,71 @@ curl -X POST http://localhost:8080/api/v1/reports/contributions \
   }'
 ```
 
-**`periodPreset`** values: `LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `LAST_180_DAYS`, `CUSTOM`
+`periodPreset`: `LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `LAST_180_DAYS`, `CUSTOM`
+Для `CUSTOM` добавить `"dateFrom"` и `"dateTo"` в формате ISO-8601 (`Z`).
 
-For `CUSTOM`, add `"dateFrom": "...", "dateTo": "..."` (ISO-8601 with `Z`).
+`reportMode`:
+- `MERGED_IN_PERIOD` — MR-ы, смёрженные в период (рекомендуется)
+- `CREATED_IN_PERIOD` — MR-ы, открытые в период
 
-**`reportMode`**:
-- `MERGED_IN_PERIOD` — MRs merged within the period (recommended)
-- `CREATED_IN_PERIOD` — MRs created within the period
-
-**`metrics`**: array of metric keys to include, or `null` for all.
+`metrics`: массив ключей метрик для включения, или `null` — все.
 
 ---
 
 ## Metrics reference
 
-### Delivery
+### Доставка
 
-| Metric | How it's calculated | How to read |
+| Метрика | Как считается | Как читать |
 |---|---|---|
-| `mr_opened_count` | Count of MRs authored in the period | Raw output volume |
-| `mr_merged_count` | Authored MRs with non-null `merged_at` in the period | Completed deliveries |
-| `commits_in_mr_count` | Commits in authored MRs where `author_email` matches the user | Attributed by commit email |
-| `active_days_count` | Unique calendar days with a commit, note, or approval | Reflects actual working days |
-| `repositories_touched_count` | Distinct tracked projects with authored MRs | Cross-project activity |
+| `mr_merged_count` | Авторские MR с непустым `merged_at` в периоде | Завершённые доставки |
+| `mr_opened_count` | Авторские MR, открытые в периоде | Объём открытых задач |
+| `commits_in_mr_count` | Коммиты в авторских MR, где `author_email` совпадает с пользователем | Атрибуция по email коммита, не по GitLab-аккаунту |
+| `active_days_count` | Уникальные календарные дни с коммитом, заметкой или апрувом | Реальные рабочие дни |
+| `repositories_touched_count` | Уникальные проекты с авторскими MR | Кросс-проектная активность |
 
-### Change volume
+### Объём изменений
 
-| Metric | How it's calculated | How to read |
+| Метрика | Как считается | Как читать |
 |---|---|---|
-| `lines_added` | Sum of `additions` across the user's own commits | Raw code output |
-| `lines_deleted` | Sum of `deletions` across the user's own commits | High deletions = refactoring or cleanup |
-| `lines_changed` | `lines_added + lines_deleted` | Total churn |
-| `avg_mr_size_lines` | Average of (total additions + deletions per MR across all commits in that MR) | High values = hard-to-review MRs |
-| `median_mr_size_lines` | Median of the same — less skewed by outliers | Compare to avg: large gap means a few giant MRs |
-| `avg_mr_size_files` | Average `changes_count` per authored MR (from GitLab MR metadata) | |
-| `files_changed` | Sum of `files_changed_count` per user commit | Currently 0 if not populated |
+| `lines_added` | Сумма `additions` по собственным коммитам | Сырой объём добавленного кода |
+| `lines_deleted` | Сумма `deletions` по собственным коммитам | Высокие значения — рефакторинг или удаление легаси |
+| `lines_changed` | `lines_added + lines_deleted` | Общий churn |
+| `avg_mr_size_lines` | Среднее суммы (additions + deletions) по коммитам внутри каждого MR | Высокие значения — MR трудно ревьюировать |
+| `median_mr_size_lines` | Медиана того же — менее чувствительна к выбросам | Большой разрыв с avg означает несколько гигантских MR |
 
-### Review contribution
+### Ревью
 
-| Metric | How it's calculated | How to read |
+| Метрика | Как считается | Как читать |
 |---|---|---|
-| `review_comments_written_count` | Non-system notes left in **other people's** MRs | Core review engagement |
-| `review_threads_started_count` | Notes that are the earliest in their discussion thread in a foreign MR | Initiating feedback vs replying |
-| `mrs_reviewed_count` | Unique foreign MRs with at least one note or approval from the user | Breadth of review |
-| `approvals_given_count` | Approvals on foreign MRs | |
+| `review_comments_written_count` | Несистемные заметки в **чужих** MR | Основная вовлечённость в ревью |
+| `review_threads_started_count` | Заметки, первые в своём треде в чужом MR | Инициирование обсуждений, а не ответы на них |
+| `mrs_reviewed_count` | Уникальные чужие MR хотя бы с одной заметкой или апрувом от пользователя | Охват ревью |
+| `approvals_given_count` | Апрувы на чужие MR | — |
 
-### Flow metrics (authored MRs only)
+### Flow-метрики (только авторские MR)
 
-| Metric | How it's calculated | How to read |
+| Метрика | Как считается | Как читать |
 |---|---|---|
-| `avg_time_to_first_review_minutes` | Avg minutes from MR `created_at` to first external note or approval | Long = MRs sit unreviewed |
-| `median_time_to_first_review_minutes` | Median of the same | Preferred for skewed data |
-| `avg_time_to_merge_minutes` | Avg minutes from `created_at` to `merged_at` | End-to-end cycle time |
-| `median_time_to_merge_minutes` | Median of the same | |
-| `rework_mr_count` | Authored MRs with at least one commit by the user after first external review | |
-| `rework_ratio` | `rework_mr_count / mr_merged_count` | 0.2 = 20% of MRs had post-review iterations; not inherently bad |
-| `self_merge_count` | MRs where `merged_by` gitlab user ID matches the author | |
-| `self_merge_ratio` | `self_merge_count / mr_merged_count` | High ratio may indicate bypassed review |
+| `median_time_to_first_review_minutes` | Медиана минут от `created_at` MR до первой внешней заметки или апрува | Долгое значение — MR-ы подолгу ждут внимания ревьюера |
+| `avg_time_to_first_review_minutes` | Среднее того же | Чувствительно к выбросам |
+| `median_time_to_merge_minutes` | Медиана минут от `created_at` до `merged_at` | End-to-end цикл |
+| `avg_time_to_merge_minutes` | Среднее того же | — |
+| `rework_ratio` | `rework_mr_count / mr_merged_count` | 0.2 = 20% MR-ов получили коммиты после первого ревью; само по себе не плохо |
+| `rework_mr_count` | Авторские MR с хотя бы одним коммитом автора после первого внешнего ревью | — |
+| `self_merge_ratio` | `self_merge_count / mr_merged_count` | Высокое значение означает, что ревью формально не блокирует мерж |
+| `self_merge_count` | MR-ы, где `merged_by` совпадает с автором | — |
 
-### Normalized
+### Нормализованные
 
-| Metric | How it's calculated | How to read |
+| Метрика | Как считается | Как читать |
 |---|---|---|
-| `mr_merged_per_active_day` | `mr_merged_count / active_days_count` | Throughput relative to working days |
-| `comments_per_reviewed_mr` | `review_comments_written_count / mrs_reviewed_count` | < 1 = mostly approvals; > 2 = substantive feedback |
+| `mr_merged_per_active_day` | `mr_merged_count / active_days_count` | Пропускная способность относительно рабочих дней |
+| `comments_per_reviewed_mr` | `review_comments_written_count / mrs_reviewed_count` | < 1 — в основном апрувы без комментариев; > 2 — содержательная обратная связь |
 
-### Team comparison (`teamComparison` field)
+### Сравнение в команде (`teamComparison`)
 
-For `mr_merged_count`, `review_comments_written_count`, `approvals_given_count`, and
-`mrs_reviewed_count` the response includes a `_percentile` value showing where this user
-ranks within the current report's cohort. `100.0` = highest, `0.0` = lowest.
+Для `mr_merged_count`, `review_comments_written_count`, `approvals_given_count`, `mrs_reviewed_count` — поле `_percentile`: место пользователя среди участников текущего отчёта. `100.0` = наивысшее значение, `0.0` = наименьшее.
 
 ---
 

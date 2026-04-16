@@ -405,10 +405,8 @@ public class MetricCalculationService {
             return false;
         }
         String email = commit.getAuthorEmail().toLowerCase(Locale.ROOT);
-        if (user.getEmail() != null && user.getEmail().equalsIgnoreCase(email)) {
-            return true;
-        }
-        return aliasEmails.contains(email);
+        return user.getEmail() != null && user.getEmail().equalsIgnoreCase(email)
+            || aliasEmails.contains(email);
     }
 
     private Map<Long, Set<Long>> resolveGitlabIds(List<Long> userIds) {
