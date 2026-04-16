@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -86,8 +87,9 @@ public class MetricCalculationService {
         Map<Long, List<MergeRequestCommit>> commitsByMrId = commitRepository.findByMergeRequestIdIn(mrIds)
             .stream().collect(Collectors.groupingBy(MergeRequestCommit::getMergeRequestId));
 
-        // Resolve each tracked user's GitLab user IDs
+        // Resolve each tracked user's GitLab user IDs and commit emails
         Map<Long, Set<Long>> gitlabIdsByTrackedUser = resolveGitlabIds(userIds);
+        Map<Long, Set<String>> aliasEmailsByTrackedUser = resolveAliasEmails(userIds);
 
         Map<Long, UserMetrics> results = new LinkedHashMap<>();
         for (Long userId : userIds) {
@@ -101,7 +103,8 @@ public class MetricCalculationService {
                 log.warn("TrackedUser {} has no GitLab aliases — metrics will be empty", userId);
             }
 
-            UserMetrics metrics = calculateForUser(user, gitlabIds, allMrs,
+            Set<String> aliasEmails = aliasEmailsByTrackedUser.getOrDefault(userId, Collections.emptySet());
+            UserMetrics metrics = calculateForUser(user, gitlabIds, aliasEmails, allMrs,
                 notesByMrId, approvalsByMrId, commitsByMrId);
             results.put(userId, metrics);
         }
@@ -117,6 +120,7 @@ public class MetricCalculationService {
         "PMD.CognitiveComplexity"})
     private UserMetrics calculateForUser(TrackedUser user,
                                          Set<Long> gitlabIds,
+                                         Set<String> aliasEmails,
                                          List<MergeRequest> allMrs,
                                          Map<Long, List<MergeRequestNote>> notesByMrId,
                                          Map<Long, List<MergeRequestApproval>> approvalsByMrId,
@@ -138,13 +142,25 @@ public class MetricCalculationService {
             .map(MergeRequest::getTrackedProjectId)
             .collect(Collectors.toSet());
 
-        // --- Change volume ---
-        int linesAdded = authoredMrs.stream().mapToInt(MergeRequest::getAdditions).sum();
-        int linesDeleted = authoredMrs.stream().mapToInt(MergeRequest::getDeletions).sum();
+        // --- Commits in authored MRs (resolved first — needed for lines/size metrics below) ---
+        List<MergeRequestCommit> userCommits = commitsByMrId.entrySet().stream()
+            .filter(e -> authoredMrIds.contains(e.getKey()))
+            .flatMap(e -> e.getValue().stream())
+            .filter(c -> isUserCommit(c, gitlabIds, user, aliasEmails))
+            .toList();
+        int commitsInMrCount = userCommits.size();
+        int filesChanged = userCommits.stream().mapToInt(MergeRequestCommit::getFilesChangedCount).sum();
+
+        // --- Change volume (from commit stats — MR-level additions/deletions are not provided by this GitLab) ---
+        int linesAdded = userCommits.stream().mapToInt(MergeRequestCommit::getAdditions).sum();
+        int linesDeleted = userCommits.stream().mapToInt(MergeRequestCommit::getDeletions).sum();
         int linesChanged = linesAdded + linesDeleted;
 
-        List<Integer> mrSizesLines = authoredMrs.stream()
-            .map(mr -> mr.getAdditions() + mr.getDeletions())
+        // MR size = total lines across all commits in each authored MR (not just user's commits)
+        List<Integer> mrSizesLines = authoredMrIds.stream()
+            .map(mrId -> commitsByMrId.getOrDefault(mrId, List.of()).stream()
+                .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
+            .filter(size -> size > 0)
             .sorted()
             .collect(Collectors.toList());
         double avgMrSizeLines = mrSizesLines.isEmpty()
@@ -161,15 +177,6 @@ public class MetricCalculationService {
         double avgMrSizeFiles = mrSizesFiles.isEmpty()
             ? 0
             : mean(mrSizesFiles);
-
-        // --- Commits in MR ---
-        List<MergeRequestCommit> userCommits = commitsByMrId.entrySet().stream()
-            .filter(e -> authoredMrIds.contains(e.getKey()))
-            .flatMap(e -> e.getValue().stream())
-            .filter(c -> isUserCommit(c, gitlabIds, user))
-            .toList();
-        int commitsInMrCount = userCommits.size();
-        int filesChanged = userCommits.stream().mapToInt(MergeRequestCommit::getFilesChangedCount).sum();
 
         // Active days: unique calendar days with any event (commit authored, note created, approval)
         Set<String> activeDays = new HashSet<>();
@@ -266,7 +273,7 @@ public class MetricCalculationService {
             // Rework: author pushed a commit AFTER first external review
             if (firstExternalReview.isPresent()) {
                 boolean hasRework = mrCommits.stream()
-                    .filter(c -> isUserCommit(c, gitlabIds, user))
+                    .filter(c -> isUserCommit(c, gitlabIds, user, aliasEmails))
                     .anyMatch(c -> c.getAuthoredDate() != null
                         && c.getAuthoredDate().isAfter(firstExternalReview.get()));
                 if (hasRework) {
@@ -389,19 +396,19 @@ public class MetricCalculationService {
             .count();
     }
 
-    @SuppressWarnings({"PMD.UnusedFormalParameter", "PMD.SimplifyBooleanReturns"})
+    @SuppressWarnings("PMD.UnusedFormalParameter")
     private boolean isUserCommit(MergeRequestCommit commit,
                                  Set<Long> gitlabIds,
-                                 TrackedUser user) {
+                                 TrackedUser user,
+                                 Set<String> aliasEmails) {
         if (commit.getAuthorEmail() == null) {
             return false;
         }
-        // Match by email if user has one configured; fall back to always include if no email set
-        if (user.getEmail() != null) {
-            return user.getEmail().equalsIgnoreCase(commit.getAuthorEmail());
+        String email = commit.getAuthorEmail().toLowerCase(Locale.ROOT);
+        if (user.getEmail() != null && user.getEmail().equalsIgnoreCase(email)) {
+            return true;
         }
-        // Without an email to match on, we can't reliably attribute commits — return false
-        return false;
+        return aliasEmails.contains(email);
     }
 
     private Map<Long, Set<Long>> resolveGitlabIds(List<Long> userIds) {
@@ -410,6 +417,15 @@ public class MetricCalculationService {
             .collect(Collectors.groupingBy(
                 TrackedUserAlias::getTrackedUserId,
                 Collectors.mapping(TrackedUserAlias::getGitlabUserId, Collectors.toSet())
+            ));
+    }
+
+    private Map<Long, Set<String>> resolveAliasEmails(List<Long> userIds) {
+        return aliasRepository.findByTrackedUserIdIn(userIds).stream()
+            .filter(a -> a.getEmail() != null)
+            .collect(Collectors.groupingBy(
+                TrackedUserAlias::getTrackedUserId,
+                Collectors.mapping(a -> a.getEmail().toLowerCase(Locale.ROOT), Collectors.toSet())
             ));
     }
 

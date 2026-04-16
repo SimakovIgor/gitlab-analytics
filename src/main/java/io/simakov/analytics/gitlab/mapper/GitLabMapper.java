@@ -70,6 +70,12 @@ public class GitLabMapper {
 
     public MergeRequestCommit toCommit(GitLabCommitDto dto,
                                        Long mergeRequestId) {
+        int additions = dto.stats() != null
+            ? dto.stats().additions()
+            : 0;
+        int deletions = dto.stats() != null
+            ? dto.stats().deletions()
+            : 0;
         return MergeRequestCommit.builder()
             .mergeRequestId(mergeRequestId)
             .gitlabCommitSha(dto.id())
@@ -77,6 +83,9 @@ public class GitLabMapper {
             .authorEmail(dto.authorEmail())
             .authoredDate(dto.authoredDate())
             .committedDate(dto.committedDate())
+            .additions(additions)
+            .deletions(deletions)
+            .totalChanges(additions + deletions)
             .build();
     }
 

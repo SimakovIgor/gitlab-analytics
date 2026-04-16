@@ -134,8 +134,13 @@ public class SyncOrchestrator {
                              Long mrId) {
         List<GitLabCommitDto> commits = gitLabApiClient.getMergeRequestCommits(baseUrl, token, gitlabProjectId, mrIid);
         for (GitLabCommitDto dto : commits) {
-            commitRepository.findByMergeRequestIdAndGitlabCommitSha(mrId, dto.id())
-                .orElseGet(() -> commitRepository.save(gitLabMapper.toCommit(dto, mrId)));
+            boolean exists = commitRepository
+                .findByMergeRequestIdAndGitlabCommitSha(mrId, dto.id()).isPresent();
+            if (!exists) {
+                GitLabCommitDto withStats = gitLabApiClient
+                    .getCommitWithStats(baseUrl, token, gitlabProjectId, dto.id());
+                commitRepository.save(gitLabMapper.toCommit(withStats, mrId));
+            }
         }
     }
 

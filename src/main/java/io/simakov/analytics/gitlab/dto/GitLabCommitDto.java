@@ -12,7 +12,14 @@ public record GitLabCommitDto(
     @JsonProperty("author_name") String authorName,
     @JsonProperty("author_email") String authorEmail,
     @JsonProperty("authored_date") Instant authoredDate,
-    @JsonProperty("committed_date") Instant committedDate
+    @JsonProperty("committed_date") Instant committedDate,
+    CommitStats stats
 ) {
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CommitStats(
+        int additions,
+        int deletions,
+        int total
+    ) {}
 }

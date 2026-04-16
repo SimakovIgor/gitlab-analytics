@@ -93,6 +93,28 @@ public class GitLabApiClient {
     }
 
     /**
+     * Fetch a single commit with diff statistics (additions, deletions).
+     * The MR commits list endpoint does not include stats — this per-commit call is required.
+     */
+    public GitLabCommitDto getCommitWithStats(String baseUrl,
+                                              String token,
+                                              Long gitlabProjectId,
+                                              String sha) {
+        String url = baseUrl + "/api/v4/projects/" + gitlabProjectId + "/repository/commits/" + sha;
+        log.debug("Fetching commit stats: GET {}", url);
+        return webClient.get()
+            .uri(url)
+            .header(PRIVATE_TOKEN_HEADER, token)
+            .retrieve()
+            .onStatus(HttpStatusCode::isError, response ->
+                response.bodyToMono(String.class)
+                    .map(body -> new GitLabApiException("Commit stats error " + response.statusCode(), response.statusCode())))
+            .bodyToMono(GitLabCommitDto.class)
+            .retryWhen(retrySpec())
+            .block(readTimeout());
+    }
+
+    /**
      * Fetch approvals for an MR.
      * GitLab approvals API may return 403 if not available on the plan — callers should handle gracefully.
      */
