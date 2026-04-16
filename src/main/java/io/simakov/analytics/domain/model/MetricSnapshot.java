@@ -16,6 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -58,6 +60,7 @@ public class MetricSnapshot {
             length = 50)
     private ScopeType scopeType;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metrics_json",
             nullable = false,
             columnDefinition = "jsonb")
