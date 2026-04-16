@@ -1,0 +1,40 @@
+<!-- SpotBugs filter for gitlab-analytics.
+     Format: https://spotbugs.readthedocs.io/en/latest/filter.html
+     Bug codes: https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html
+-->
+<FindBugsFilter>
+    <!-- Collections / arrays returned from getters expose internal state;
+         acceptable in this project's data-transfer records and JPA entities. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE,BC_UNCONFIRMED_CAST_OF_RETURN_VALUE"/>
+    </Match>
+    <Match>
+        <Bug pattern="EQ_CHECK_FOR_OPERAND_NOT_COMPATIBLE_WITH_THIS"/>
+    </Match>
+    <!-- MapStruct-generated mappers produce code that SpotBugs false-positives on -->
+    <Match>
+        <Bug
+            pattern="NP_NULL_ON_SOME_PATH,NP_BOOLEAN_RETURN_NULL,NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE,NP_NULL_PARAM_DEREF,RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+        <Class name="~.*\.impl\..*MapperImpl"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NONNULL_PARAM_VIOLATION"/>
+        <Or>
+            <Class name="~.*IT"/>
+            <Class name="~.*Test"/>
+            <Class name="~.*\.impl\..*MapperImpl"/>
+        </Or>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+        <Or>
+            <Class name="~.*IT"/>
+            <Class name="~.*Test"/>
+            <Class name="io.simakov.analytics.gitlab.client.GitLabApiClient"/>
+        </Or>
+    </Match>
+    <!-- Deprecated in Java 17+ -->
+    <Match>
+        <Bug pattern="DP_DO_INSIDE_DO_PRIVILEGED"/>
+    </Match>
+</FindBugsFilter>

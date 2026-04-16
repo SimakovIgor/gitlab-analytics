@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+app:
+  security:
+    api-token: test-token
+  encryption:
+    enabled: false
+  gitlab:
+    connect-timeout-seconds: 5
+    read-timeout-seconds: 10
+    max-retries: 1
