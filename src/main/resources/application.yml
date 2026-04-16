@@ -60,5 +60,5 @@ springdoc:
 
 logging:
   level:
-    io.ozoom.analytics: INFO
+    io.simakov.analytics: INFO
     org.flywaydb: INFO
