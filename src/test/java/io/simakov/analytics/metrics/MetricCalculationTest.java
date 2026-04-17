@@ -85,7 +85,6 @@ class MetricCalculationTest extends BaseIT {
         GitSource source = gitSourceRepository.save(GitSource.builder()
             .name("test-gitlab")
             .baseUrl("https://git.test")
-            .tokenEncrypted("tok")
             .build());
         gitSourceId = source.getId();
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
@@ -93,6 +92,7 @@ class MetricCalculationTest extends BaseIT {
             .gitlabProjectId(42L)
             .pathWithNamespace("team/repo")
             .name("repo")
+            .tokenEncrypted("tok")
             .enabled(true)
             .build());
         projectId = project.getId();
@@ -191,7 +191,8 @@ class MetricCalculationTest extends BaseIT {
     void repositoriesTouchedCountAcrossMultipleProjects() {
         TrackedProject project2 = trackedProjectRepository.save(TrackedProject.builder()
             .gitSourceId(gitSourceId)
-            .gitlabProjectId(99L).pathWithNamespace("team/repo2").name("repo2").enabled(true)
+            .gitlabProjectId(99L).pathWithNamespace("team/repo2").name("repo2")
+            .tokenEncrypted("tok").enabled(true)
             .build());
         saveMergedMrByAlice(T);
         long id = seqNext();

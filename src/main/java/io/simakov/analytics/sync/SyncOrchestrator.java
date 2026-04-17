@@ -24,10 +24,15 @@ import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import io.simakov.analytics.gitlab.mapper.GitLabMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -48,6 +53,9 @@ public class SyncOrchestrator {
 
     private final SyncJobService syncJobService;
 
+    @Qualifier("mrProcessingExecutor")
+    private final Executor mrProcessingExecutor;
+
     @Async("syncTaskExecutor")
     @SuppressWarnings("checkstyle:IllegalCatch")
     public void orchestrateAsync(Long jobId,
@@ -65,7 +73,7 @@ public class SyncOrchestrator {
         }
     }
 
-    @SuppressWarnings("checkstyle:IllegalCatch")
+    @SuppressWarnings({"checkstyle:IllegalCatch", "PMD.AvoidInstantiatingObjectsInLoops"})
     private void syncProject(Long jobId,
                              Long trackedProjectId,
                              ManualSyncRequest request) {
@@ -77,26 +85,34 @@ public class SyncOrchestrator {
 
         String token = encryptionService.decrypt(project.getTokenEncrypted());
         String baseUrl = source.getBaseUrl();
+        String projectPath = project.getPathWithNamespace();
 
-        log.info("Syncing project '{}' (gitlabId={})", project.getPathWithNamespace(), project.getGitlabProjectId());
+        log.info("Syncing project '{}' (gitlabId={})", projectPath, project.getGitlabProjectId());
 
         List<GitLabMergeRequestDto> mrDtos = gitLabApiClient.getMergeRequests(
             baseUrl, token, project.getGitlabProjectId(), request.dateFrom(), request.dateTo());
 
         int total = mrDtos.size();
-        log.info("Fetched {} MRs for project '{}'", total, project.getPathWithNamespace());
+        log.info("Fetched {} MRs for project '{}'", total, projectPath);
         syncJobService.updateProgress(jobId, 0, total);
 
-        int processed = 0;
+        AtomicInteger processed = new AtomicInteger(0);
+        List<CompletableFuture<Void>> futures = new ArrayList<>(total);
+
         for (GitLabMergeRequestDto mrDto : mrDtos) {
-            try {
-                syncMergeRequest(mrDto, trackedProjectId, baseUrl, token, request);
-            } catch (Exception e) {
-                log.warn("Failed to sync MR iid={} in project {}: {}",
-                    mrDto.iid(), project.getPathWithNamespace(), e.getMessage());
-            }
-            syncJobService.updateProgress(jobId, ++processed, total);
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    syncMergeRequest(mrDto, trackedProjectId, baseUrl, token, request);
+                } catch (Exception e) {
+                    log.warn("Failed to sync MR iid={} in project {}: {}",
+                        mrDto.iid(), projectPath, e.getMessage());
+                }
+                syncJobService.updateProgress(jobId, processed.incrementAndGet(), total);
+            }, mrProcessingExecutor);
+            futures.add(future);
         }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 
     private void syncMergeRequest(GitLabMergeRequestDto mrDto,

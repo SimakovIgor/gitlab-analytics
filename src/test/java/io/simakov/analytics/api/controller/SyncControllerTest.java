@@ -144,7 +144,6 @@ class SyncControllerTest extends BaseIT {
         GitSource source = gitSourceRepository.save(GitSource.builder()
             .name("test-source")
             .baseUrl("https://git.example.com")
-            .tokenEncrypted("test-token")
             .build());
 
         return trackedProjectRepository.save(TrackedProject.builder()
@@ -152,6 +151,7 @@ class SyncControllerTest extends BaseIT {
             .gitlabProjectId(42L)
             .pathWithNamespace("team/repo")
             .name("repo")
+            .tokenEncrypted("test-token")
             .enabled(true)
             .build());
     }

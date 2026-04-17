@@ -10,7 +10,6 @@ import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
-import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +64,6 @@ class SettingsControllerTest extends BaseIT {
         savedSource = gitSourceRepository.save(GitSource.builder()
             .name("prod-gitlab")
             .baseUrl("https://git.example.com")
-            .tokenEncrypted("tok")
             .build());
 
         // Prevent NPE in the async backfill task triggered by some tests
@@ -82,7 +80,7 @@ class SettingsControllerTest extends BaseIT {
         mockMvc.perform(post("/settings/sources")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"corp-gl\",\"baseUrl\":\"https://gl.corp.com\",\"token\":\"glpat-abc\"}"))
+                .content("{\"name\":\"corp-gl\",\"baseUrl\":\"https://gl.corp.com\"}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").isNumber())
             .andExpect(jsonPath("$.name").value("corp-gl"))
@@ -97,7 +95,7 @@ class SettingsControllerTest extends BaseIT {
         mockMvc.perform(post("/settings/sources")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"\",\"baseUrl\":\"https://gl.corp.com\",\"token\":\"tok\"}"))
+                .content("{\"name\":\"\",\"baseUrl\":\"https://gl.corp.com\"}"))
             .andExpect(status().isBadRequest());
     }
 
@@ -127,6 +125,7 @@ class SettingsControllerTest extends BaseIT {
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
             .name("repo")
+            .tokenEncrypted("tok")
             .enabled(true)
             .build());
 
@@ -140,20 +139,6 @@ class SettingsControllerTest extends BaseIT {
 
     @Test
     @WithMockUser
-    void testSourceReturns200WithMockedGitLabUser() throws Exception {
-        when(gitLabApiClient.getCurrentUser(anyString(), anyString()))
-            .thenReturn(new GitLabUserDto(42L, "alice", "Alice Smith", null, null));
-
-        mockMvc.perform(post("/settings/sources/" + savedSource.getId() + "/test")
-                .with(csrf()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("ok"))
-            .andExpect(jsonPath("$.username").value("alice"))
-            .andExpect(jsonPath("$.name").value("Alice Smith"));
-    }
-
-    @Test
-    @WithMockUser
     void searchProjectsReturnsMockedGitLabResults() throws Exception {
         when(gitLabApiClient.searchProjects(anyString(), anyString(), anyString()))
             .thenReturn(List.of(
@@ -162,7 +147,8 @@ class SettingsControllerTest extends BaseIT {
             ));
 
         mockMvc.perform(get("/settings/sources/" + savedSource.getId() + "/projects/search")
-                .param("q", "back"))
+                .param("q", "back")
+                .param("token", "glpat-test"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].name").value("backend"))
@@ -173,7 +159,8 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void searchProjectsReturns404WhenSourceNotFound() throws Exception {
         mockMvc.perform(get("/settings/sources/99999/projects/search")
-                .param("q", "repo"))
+                .param("q", "repo")
+                .param("token", "glpat-test"))
             .andExpect(status().isNotFound());
     }
 
@@ -186,7 +173,8 @@ class SettingsControllerTest extends BaseIT {
             "gitSourceId", savedSource.getId(),
             "gitlabProjectId", 99L,
             "pathWithNamespace", "org/myrepo",
-            "name", "myrepo"
+            "name", "myrepo",
+            "token", "glpat-test"
         ));
 
         mockMvc.perform(post("/settings/projects")
@@ -210,7 +198,8 @@ class SettingsControllerTest extends BaseIT {
             "gitSourceId", 99_999L,
             "gitlabProjectId", 1L,
             "pathWithNamespace", "org/repo",
-            "name", "repo"
+            "name", "repo",
+            "token", "glpat-test"
         ));
 
         mockMvc.perform(post("/settings/projects")
@@ -230,6 +219,7 @@ class SettingsControllerTest extends BaseIT {
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
             .name("repo")
+            .tokenEncrypted("tok")
             .enabled(true)
             .build());
 
@@ -256,6 +246,7 @@ class SettingsControllerTest extends BaseIT {
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
             .name("repo")
+            .tokenEncrypted("tok")
             .enabled(true)
             .build());
 
@@ -353,6 +344,7 @@ class SettingsControllerTest extends BaseIT {
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
             .name("repo")
+            .tokenEncrypted("tok")
             .enabled(true)
             .build());
 
@@ -389,7 +381,7 @@ class SettingsControllerTest extends BaseIT {
         mockMvc.perform(post("/settings/sources")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"x\",\"baseUrl\":\"https://x.com\",\"token\":\"t\"}"))
+                .content("{\"name\":\"x\",\"baseUrl\":\"https://x.com\"}"))
             .andExpect(status().is3xxRedirection());
 
         mockMvc.perform(delete("/settings/users/1")

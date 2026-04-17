@@ -37,11 +37,6 @@ public class GitSource {
             length = 512)
     private String baseUrl;
 
-    @Column(name = "token_encrypted",
-            nullable = false,
-            columnDefinition = "TEXT")
-    private String tokenEncrypted;
-
     @CreationTimestamp
     @Column(name = "created_at",
             nullable = false,

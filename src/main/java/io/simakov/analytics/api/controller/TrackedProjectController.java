@@ -8,6 +8,7 @@ import io.simakov.analytics.api.mapper.TrackedProjectMapper;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.encryption.EncryptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -34,6 +35,7 @@ public class TrackedProjectController {
     private final TrackedProjectRepository trackedProjectRepository;
     private final GitSourceRepository gitSourceRepository;
     private final TrackedProjectMapper trackedProjectMapper;
+    private final EncryptionService encryptionService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -42,8 +44,9 @@ public class TrackedProjectController {
         if (!gitSourceRepository.existsById(request.gitSourceId())) {
             throw new ResourceNotFoundException("GitSource", request.gitSourceId());
         }
-        TrackedProject saved = trackedProjectRepository.save(trackedProjectMapper.toEntity(request));
-        return trackedProjectMapper.toResponse(saved);
+        TrackedProject project = trackedProjectMapper.toEntity(request);
+        project.setTokenEncrypted(encryptionService.encrypt(request.token()));
+        return trackedProjectMapper.toResponse(trackedProjectRepository.save(project));
     }
 
     @GetMapping

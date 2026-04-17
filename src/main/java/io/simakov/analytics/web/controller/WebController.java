@@ -60,6 +60,7 @@ public class WebController {
         model.addAttribute("usersActive", users.stream().filter(TrackedUser::isEnabled).count());
         model.addAttribute("projectsTotal", projects.size());
         model.addAttribute("projectsActive", projects.stream().filter(TrackedProject::isEnabled).count());
+        model.addAttribute("needsOnboarding", projects.isEmpty() && users.isEmpty());
 
         return "dashboard";
     }

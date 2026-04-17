@@ -547,16 +547,13 @@ function refreshOnboarding() {
                 : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
     );
 
-    setObStep('ob-step-3', s.hasUsers, s.hasSources, s.hasUsers ? '✓' : '3',
-        s.hasUsers
-            ? '<span class="ob-done-badge">Добавлено ✓</span>'
-            : s.hasSources
-                ? '<button class="btn-primary" onclick="openModal(\'modal-user\')">+ Добавить сотрудника</button>'
-                : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
-    );
-
-    const step4 = document.getElementById('ob-step-4');
-    if (step4) step4.classList.toggle('hidden', !s.hasProjects);
+    // Шаг 3 управляется через ob-sync-section / ob-select-section, только обновляем класс и номер
+    const step3 = document.getElementById('ob-step-3');
+    if (step3) {
+        step3.className = 'ob-step ' + (s.hasUsers ? 'ob-step-done' : s.hasProjects ? 'ob-step-active' : 'ob-step-locked');
+        const numEl = step3.querySelector('.ob-step-num');
+        if (numEl) numEl.textContent = s.hasUsers ? '✓' : '3';
+    }
 
     const cta = document.getElementById('ob-cta');
     if (cta) cta.classList.toggle('hidden', !(s.hasProjects && s.hasUsers));

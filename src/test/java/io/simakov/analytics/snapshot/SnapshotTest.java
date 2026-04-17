@@ -59,10 +59,10 @@ class SnapshotTest extends BaseIT {
     @BeforeEach
     void setUp() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
-            .name("gl").baseUrl("https://git.test").tokenEncrypted("tok").build());
+            .name("gl").baseUrl("https://git.test").build());
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
             .gitSourceId(source.getId()).gitlabProjectId(1L)
-            .pathWithNamespace("team/repo").name("repo").enabled(true).build());
+            .pathWithNamespace("team/repo").name("repo").tokenEncrypted("tok").enabled(true).build());
         projectId = project.getId();
 
         TrackedUser alice = trackedUserRepository.save(TrackedUser.builder()

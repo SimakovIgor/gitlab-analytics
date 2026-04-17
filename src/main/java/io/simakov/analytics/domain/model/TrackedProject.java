@@ -45,6 +45,11 @@ public class TrackedProject {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "token_encrypted",
+            nullable = false,
+            columnDefinition = "TEXT")
+    private String tokenEncrypted;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean enabled = true;

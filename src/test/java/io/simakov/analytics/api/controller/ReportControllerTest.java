@@ -48,7 +48,6 @@ class ReportControllerTest extends BaseIT {
         GitSource source = gitSourceRepository.save(GitSource.builder()
             .name("test-source")
             .baseUrl("https://git.example.com")
-            .tokenEncrypted("token")
             .build());
 
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
@@ -56,6 +55,7 @@ class ReportControllerTest extends BaseIT {
             .gitlabProjectId(42L)
             .pathWithNamespace("team/repo")
             .name("repo")
+            .tokenEncrypted("tok")
             .enabled(true)
             .build());
         projectId = project.getId();

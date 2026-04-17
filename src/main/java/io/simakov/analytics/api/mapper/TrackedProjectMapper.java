@@ -17,6 +17,8 @@ public interface TrackedProjectMapper {
              ignore = true)
     @Mapping(target = "enabled",
              expression = "java(true)")
+    @Mapping(target = "tokenEncrypted",
+             ignore = true)
     TrackedProject toEntity(CreateTrackedProjectRequest request);
 
     TrackedProjectResponse toResponse(TrackedProject project);

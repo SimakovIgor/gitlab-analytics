@@ -41,8 +41,39 @@
 
 <main class="main-content">
 
+    <!-- Онбординг: система не настроена -->
+    <div th:if="${needsOnboarding}" class="onboarding-welcome">
+        <div class="onboarding-welcome-icon">
+            <svg viewBox="0 0 380 380" fill="none" xmlns="http://www.w3.org/2000/svg" width="56" height="56">
+                <path d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
+                      fill="#FC6D26"/>
+            </svg>
+        </div>
+        <h2 class="onboarding-welcome-title">Добро пожаловать в GitLab Analytics</h2>
+        <p class="onboarding-welcome-subtitle">
+            Система ещё не настроена. Пройдите быструю настройку — это займёт пару минут.
+        </p>
+        <div class="onboarding-preview-steps">
+            <div class="ob-preview-step">
+                <span class="ob-preview-num">1</span>
+                <span>Подключите GitLab</span>
+            </div>
+            <span class="ob-preview-arrow">→</span>
+            <div class="ob-preview-step">
+                <span class="ob-preview-num">2</span>
+                <span>Добавьте репозитории</span>
+            </div>
+            <span class="ob-preview-arrow">→</span>
+            <div class="ob-preview-step">
+                <span class="ob-preview-num">3</span>
+                <span>Добавьте сотрудников</span>
+            </div>
+        </div>
+        <a href="/settings" class="btn-primary onboarding-welcome-btn">Начать настройку →</a>
+    </div>
+
     <!-- Сводные карточки -->
-    <div class="card-grid">
+    <div th:unless="${needsOnboarding}" class="card-grid">
         <div class="card">
             <div class="card-label">Сотрудников</div>
             <div class="card-value" th:text="${usersTotal}">0</div>
@@ -60,6 +91,10 @@
             <div class="card-value" th:text="${projectsActive}">0</div>
         </div>
     </div>
+
+    </div>
+
+    <div th:unless="${needsOnboarding}">
 
     <!-- Сотрудники -->
     <div class="section-title">Сотрудники</div>
@@ -120,6 +155,8 @@
     <div th:if="${projects.isEmpty()}" class="empty-state">
         Нет отслеживаемых репозиториев
     </div>
+
+    </div><!-- /th:unless needsOnboarding -->
 
 </main>
 
