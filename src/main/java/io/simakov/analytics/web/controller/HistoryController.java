@@ -52,7 +52,7 @@ public class HistoryController {
     @GetMapping("/history")
     public String history(OAuth2AuthenticationToken authentication,
                           @RequestParam(defaultValue = "mr_merged_count") String metric,
-                          @RequestParam(defaultValue = "3") int months,
+                          @RequestParam(defaultValue = "30") int days,
                           Model model) {
         if (authentication != null) {
             model.addAttribute("currentUser", resolveUser(authentication));
@@ -62,7 +62,7 @@ public class HistoryController {
             .stream().filter(TrackedUser::isEnabled).toList();
 
         LocalDate dateTo = DateTimeUtils.currentDateUtc();
-        LocalDate dateFrom = dateTo.minusMonths(months);
+        LocalDate dateFrom = dateTo.minusDays(days);
 
         String chartJson = "{}";
         if (!users.isEmpty()) {
@@ -73,7 +73,7 @@ public class HistoryController {
 
         model.addAttribute("chartData", chartJson);
         model.addAttribute("selectedMetric", metric);
-        model.addAttribute("selectedMonths", months);
+        model.addAttribute("selectedDays", days);
         model.addAttribute("metricLabel", METRIC_OPTIONS.getOrDefault(metric, metric));
         model.addAttribute("metricOptions", METRIC_OPTIONS);
 

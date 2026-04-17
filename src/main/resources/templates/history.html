@@ -44,37 +44,49 @@
     <div class="page-subtitle">Сравнение показателей всех сотрудников за выбранный период</div>
 
     <!-- Фильтры -->
-    <div class="filter-form">
+    <form method="get" action="/history" class="filter-form">
 
         <div class="filter-group">
-            <span class="filter-label">Период</span>
+            <label class="filter-label">Период</label>
             <div class="period-buttons">
-                <a th:href="@{/history(months=1, metric=${selectedMetric})}"
-                   th:class="${selectedMonths == 1} ? 'period-btn period-btn-active' : 'period-btn'">1 мес</a>
-                <a th:href="@{/history(months=3, metric=${selectedMetric})}"
-                   th:class="${selectedMonths == 3} ? 'period-btn period-btn-active' : 'period-btn'">3 мес</a>
-                <a th:href="@{/history(months=6, metric=${selectedMetric})}"
-                   th:class="${selectedMonths == 6} ? 'period-btn period-btn-active' : 'period-btn'">6 мес</a>
-                <a th:href="@{/history(months=12, metric=${selectedMetric})}"
-                   th:class="${selectedMonths == 12} ? 'period-btn period-btn-active' : 'period-btn'">12 мес</a>
+                <button type="submit" name="days" value="7"
+                        th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'">
+                    7 дней
+                </button>
+                <button type="submit" name="days" value="30"
+                        th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'">
+                    30 дней
+                </button>
+                <button type="submit" name="days" value="90"
+                        th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'">
+                    90 дней
+                </button>
+                <button type="submit" name="days" value="180"
+                        th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'">
+                    180 дней
+                </button>
+                <button type="submit" name="days" value="360"
+                        th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'">
+                    360 дней
+                </button>
             </div>
         </div>
 
         <div class="filter-group">
             <label class="filter-label" for="metricSelect">Метрика</label>
-            <form method="get" action="/history" id="metricForm">
-                <input type="hidden" name="months" th:value="${selectedMonths}">
-                <select id="metricSelect" name="metric" class="metric-select" onchange="document.getElementById('metricForm').submit()">
-                    <option th:each="entry : ${metricOptions}"
-                            th:value="${entry.key}"
-                            th:text="${entry.value}"
-                            th:selected="${entry.key == selectedMetric}">
-                    </option>
-                </select>
-            </form>
+            <select id="metricSelect" name="metric" class="metric-select" onchange="this.form.submit()">
+                <option th:each="entry : ${metricOptions}"
+                        th:value="${entry.key}"
+                        th:text="${entry.value}"
+                        th:selected="${entry.key == selectedMetric}">
+                </option>
+            </select>
         </div>
 
-    </div>
+        <!-- Сохраняем days при смене метрики через select -->
+        <input type="hidden" id="daysHidden" name="days" th:value="${selectedDays}">
+
+    </form>
 
     <!-- График -->
     <div class="chart-card">
@@ -87,6 +99,13 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('daysHidden').disabled = true;
+        });
+    });
+</script>
 <script th:inline="javascript">
     /*<![CDATA[*/
     const chartData = JSON.parse([[${chartData}]]);
