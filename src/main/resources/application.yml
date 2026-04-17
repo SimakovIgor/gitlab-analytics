@@ -32,20 +32,34 @@ spring:
 
 app:
   security:
-    # Override with API_TOKEN env variable in production
+    # Bearer-токен для аутентификации API-запросов.
+    # В production переопределить через переменную окружения API_TOKEN.
     api-token: ${API_TOKEN:changeme-in-production}
+
   encryption:
-    # WARNING: NoOpEncryptionService stores tokens as plaintext.
-    # Set to true and provide a real EncryptionService bean for production.
+    # Шифрование токенов GitLab в базе данных.
+    # false — токены хранятся в открытом виде (NoOpEncryptionService).
+    # Для production установить true и предоставить реальный бин EncryptionService.
     enabled: false
+
   gitlab:
+    # Таймаут установки соединения с GitLab API (секунды)
     connect-timeout-seconds: 10
+    # Таймаут ожидания ответа от GitLab API (секунды).
+    # Увеличить при работе с медленными инстансами GitLab.
     read-timeout-seconds: 30
+    # Количество повторных попыток при временных ошибках сети
     max-retries: 3
+    # Размер страницы при пагинации GitLab API (max 100)
     per-page: 100
+
   snapshot:
-    # Daily at 02:00 UTC. Set to '-' to disable.
+    # Cron-расписание автоматического снапшота метрик (UTC).
+    # Формат: сек мин час день месяц день_недели
+    # Значение '-' отключает задачу.
     cron: "0 0 2 * * *"
+    # Скользящее окно расчёта метрик по умолчанию (дней).
+    # Используется, если в запросе не передан параметр windowDays.
     window-days: 30
 
 management:
