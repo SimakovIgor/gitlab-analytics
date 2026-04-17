@@ -9,7 +9,6 @@ import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.GroupBy;
 import io.simakov.analytics.domain.model.enums.PeriodType;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
@@ -85,7 +84,6 @@ class ReportControllerTest extends BaseIT {
             null,
             null,
             GroupBy.USER,
-            ReportMode.CREATED_IN_PERIOD,
             null
         );
 
@@ -113,7 +111,6 @@ class ReportControllerTest extends BaseIT {
             PeriodType.LAST_30_DAYS,
             null, null,
             GroupBy.USER,
-            ReportMode.CREATED_IN_PERIOD,
             null
         );
 
@@ -134,7 +131,6 @@ class ReportControllerTest extends BaseIT {
             PeriodType.CUSTOM,
             null, null, // missing dateFrom/dateTo
             GroupBy.USER,
-            ReportMode.CREATED_IN_PERIOD,
             null
         );
 
@@ -156,7 +152,6 @@ class ReportControllerTest extends BaseIT {
             PeriodType.LAST_30_DAYS,
             null, null,
             GroupBy.USER,
-            ReportMode.CREATED_IN_PERIOD,
             null
         );
 

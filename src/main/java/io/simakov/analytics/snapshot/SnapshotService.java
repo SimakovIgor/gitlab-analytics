@@ -9,7 +9,6 @@ import io.simakov.analytics.domain.model.MetricSnapshot;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.enums.PeriodType;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.model.enums.ScopeType;
 import io.simakov.analytics.domain.repository.MetricSnapshotRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
@@ -34,8 +33,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class SnapshotService {
-
-    private static final ReportMode SNAPSHOT_MODE = ReportMode.MERGED_IN_PERIOD;
 
     private final MetricCalculationService metricCalculationService;
     private final MetricSnapshotRepository snapshotRepository;
@@ -72,7 +69,7 @@ public class SnapshotService {
         Instant dateFrom = dateTo.minus(windowDays, ChronoUnit.DAYS);
 
         Map<Long, UserMetrics> metrics = metricCalculationService.calculate(
-            resolvedProjectIds, resolvedUserIds, dateFrom, dateTo, SNAPSHOT_MODE);
+            resolvedProjectIds, resolvedUserIds, dateFrom, dateTo);
 
         int saved = 0;
         for (Map.Entry<Long, UserMetrics> entry : metrics.entrySet()) {
@@ -97,7 +94,7 @@ public class SnapshotService {
             String json = objectMapper.writeValueAsString(allMetrics);
 
             MetricSnapshot snapshot = snapshotRepository
-                .findByTrackedUserIdAndSnapshotDateAndReportMode(userId, snapshotDate, SNAPSHOT_MODE)
+                .findByTrackedUserIdAndSnapshotDate(userId, snapshotDate)
                 .orElseGet(MetricSnapshot::new);
 
             snapshot.setTrackedUserId(userId);
@@ -105,7 +102,6 @@ public class SnapshotService {
             snapshot.setDateFrom(dateFrom);
             snapshot.setDateTo(dateTo);
             snapshot.setWindowDays(windowDays);
-            snapshot.setReportMode(SNAPSHOT_MODE);
             snapshot.setPeriodType(PeriodType.CUSTOM);
             snapshot.setScopeType(ScopeType.USER);
             snapshot.setMetricsJson(json);

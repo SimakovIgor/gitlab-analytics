@@ -12,4 +12,5 @@ public record TrackedProjectResponse(
     Instant createdAt,
     Instant updatedAt
 ) {
+
 }

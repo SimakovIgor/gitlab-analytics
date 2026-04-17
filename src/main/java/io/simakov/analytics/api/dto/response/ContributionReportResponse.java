@@ -1,7 +1,6 @@
 package io.simakov.analytics.api.dto.response;
 
 import io.simakov.analytics.domain.model.enums.PeriodType;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 
 import java.time.Instant;
 import java.util.List;
@@ -16,8 +15,7 @@ public record ContributionReportResponse(
     public record PeriodInfo(
         Instant from,
         Instant to,
-        PeriodType preset,
-        ReportMode reportMode
+        PeriodType preset
     ) {
 
     }

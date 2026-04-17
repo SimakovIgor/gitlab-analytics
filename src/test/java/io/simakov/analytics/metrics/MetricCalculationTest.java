@@ -16,7 +16,6 @@ import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.GroupBy;
 import io.simakov.analytics.domain.model.enums.MrState;
 import io.simakov.analytics.domain.model.enums.PeriodType;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestApprovalRepository;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
@@ -205,8 +204,7 @@ class MetricCalculationTest extends BaseIT {
             .mergedByGitlabUserId(ALICE_GITLAB_ID)
             .build());
 
-        ContributionResult result = aliceReport(ReportMode.MERGED_IN_PERIOD,
-            List.of(projectId, project2.getId()));
+        ContributionResult result = aliceReport(List.of(projectId, project2.getId()));
         assertThat(intMetric(result, "repositories_touched_count")).isEqualTo(2);
     }
 
@@ -639,27 +637,6 @@ class MetricCalculationTest extends BaseIT {
     }
 
     // =========================================================================
-    // REPORT MODE
-    // =========================================================================
-
-    @Test
-    void reportModeCreatedInPeriodIncludesOpenMrs() {
-        saveOpenMrByAlice();
-
-        ContributionResult result = aliceReport(ReportMode.CREATED_IN_PERIOD);
-        assertThat(intMetric(result, "mr_opened_count")).isEqualTo(1);
-        assertThat(intMetric(result, "mr_merged_count")).isZero();
-    }
-
-    @Test
-    void reportModeMergedInPeriodExcludesOpenMrs() {
-        saveOpenMrByAlice(); // not merged — must not appear
-
-        ContributionResult result = aliceReport(ReportMode.MERGED_IN_PERIOD);
-        assertThat(intMetric(result, "mr_opened_count")).isZero();
-    }
-
-    // =========================================================================
     // EDGE CASES
     // =========================================================================
 
@@ -670,8 +647,7 @@ class MetricCalculationTest extends BaseIT {
             .build());
         saveMergedMrByAlice(T);
 
-        ContributionResult result = requestReport(
-            ReportMode.MERGED_IN_PERIOD, List.of(projectId), List.of(noAlias.getId()));
+        ContributionResult result = requestReport(List.of(projectId), List.of(noAlias.getId()));
         assertThat(intMetric(result, "mr_merged_count")).isZero();
         assertThat(intMetric(result, "commits_in_mr_count")).isZero();
         assertThat(intMetric(result, "review_comments_written_count")).isZero();
@@ -696,7 +672,7 @@ class MetricCalculationTest extends BaseIT {
         ContributionReportRequest req = new ContributionReportRequest(
             List.of(projectId), List.of(aliceId, bob.getId()),
             PeriodType.CUSTOM, PERIOD_START, PERIOD_END,
-            GroupBy.USER, ReportMode.MERGED_IN_PERIOD, null
+            GroupBy.USER, null
         );
         ResponseEntity<ContributionReportResponse> resp = restTemplate.exchange(
             "/api/v1/reports/contributions",
@@ -725,25 +701,19 @@ class MetricCalculationTest extends BaseIT {
     // =========================================================================
 
     private ContributionResult aliceReport() {
-        return requestReport(ReportMode.MERGED_IN_PERIOD, List.of(projectId), List.of(aliceId));
+        return requestReport(List.of(projectId), List.of(aliceId));
     }
 
-    private ContributionResult aliceReport(ReportMode mode) {
-        return requestReport(mode, List.of(projectId), List.of(aliceId));
+    private ContributionResult aliceReport(List<Long> projectIds) {
+        return requestReport(projectIds, List.of(aliceId));
     }
 
-    private ContributionResult aliceReport(ReportMode mode,
-                                           List<Long> projectIds) {
-        return requestReport(mode, projectIds, List.of(aliceId));
-    }
-
-    private ContributionResult requestReport(ReportMode mode,
-                                             List<Long> projectIds,
+    private ContributionResult requestReport(List<Long> projectIds,
                                              List<Long> userIds) {
         ContributionReportRequest req = new ContributionReportRequest(
             projectIds, userIds,
             PeriodType.CUSTOM, PERIOD_START, PERIOD_END,
-            GroupBy.USER, mode, null
+            GroupBy.USER, null
         );
         ResponseEntity<ContributionReportResponse> resp = restTemplate.exchange(
             "/api/v1/reports/contributions",
@@ -799,17 +769,6 @@ class MetricCalculationTest extends BaseIT {
             .authorGitlabUserId(ALICE_GITLAB_ID).authorUsername("alice")
             .createdAtGitlab(createdAt).mergedAtGitlab(mergedAt)
             .mergedByGitlabUserId(ALICE_GITLAB_ID)
-            .build());
-    }
-
-    private MergeRequest saveOpenMrByAlice() {
-        long id = seqNext();
-        return mrRepository.save(MergeRequest.builder()
-            .trackedProjectId(projectId)
-            .gitlabMrId(id).gitlabMrIid(id)
-            .state(MrState.OPENED)
-            .authorGitlabUserId(ALICE_GITLAB_ID).authorUsername("alice")
-            .createdAtGitlab(T)
             .build());
     }
 

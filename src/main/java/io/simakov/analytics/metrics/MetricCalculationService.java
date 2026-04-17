@@ -6,7 +6,6 @@ import io.simakov.analytics.domain.model.MergeRequestCommit;
 import io.simakov.analytics.domain.model.MergeRequestNote;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.repository.MergeRequestApprovalRepository;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.MergeRequestNoteRepository;
@@ -55,7 +54,6 @@ public class MetricCalculationService {
      * @param userIds    tracked user IDs to calculate metrics for
      * @param dateFrom   start of period (inclusive)
      * @param dateTo     end of period (inclusive)
-     * @param reportMode filter MRs by created_at or merged_at
      * @return map of trackedUserId → UserMetrics
      */
     @Transactional(readOnly = true)
@@ -63,13 +61,8 @@ public class MetricCalculationService {
     public Map<Long, UserMetrics> calculate(List<Long> projectIds,
                                             List<Long> userIds,
                                             Instant dateFrom,
-                                            Instant dateTo,
-                                            ReportMode reportMode) {
-        // Load all relevant MRs for the period
-        List<MergeRequest> allMrs = switch (reportMode) {
-            case CREATED_IN_PERIOD -> mrRepository.findCreatedInPeriod(projectIds, dateFrom, dateTo);
-            case MERGED_IN_PERIOD -> mrRepository.findMergedInPeriod(projectIds, dateFrom, dateTo);
-        };
+                                            Instant dateTo) {
+        List<MergeRequest> allMrs = mrRepository.findMergedInPeriod(projectIds, dateFrom, dateTo);
 
         if (allMrs.isEmpty()) {
             log.info("No MRs found for projects {} in period {} - {}", projectIds, dateFrom, dateTo);

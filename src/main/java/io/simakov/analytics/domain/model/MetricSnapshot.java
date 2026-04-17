@@ -1,7 +1,6 @@
 package io.simakov.analytics.domain.model;
 
 import io.simakov.analytics.domain.model.enums.PeriodType;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.model.enums.ScopeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -65,12 +64,6 @@ public class MetricSnapshot {
     @Column(name = "snapshot_date",
             nullable = false)
     private LocalDate snapshotDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "report_mode",
-            nullable = false,
-            length = 50)
-    private ReportMode reportMode;
 
     @Column(name = "window_days",
             nullable = false)

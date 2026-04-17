@@ -6,7 +6,6 @@ import io.simakov.analytics.domain.model.MergeRequestNote;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.MrState;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.repository.MergeRequestApprovalRepository;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.MergeRequestNoteRepository;
@@ -95,15 +94,14 @@ class MetricCalculationServiceTest {
 
         when(trackedUserRepository.findById(TRACKED_USER_ID)).thenReturn(Optional.of(user));
         when(aliasRepository.findByTrackedUserIdIn(anyList())).thenReturn(List.of(alias));
-        when(mrRepository.findCreatedInPeriod(anyList(), any(), any())).thenReturn(List.of(mr1, mr2));
+        when(mrRepository.findMergedInPeriod(anyList(), any(), any())).thenReturn(List.of(mr1, mr2));
         when(noteRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(approvalRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of(commit1, commit2));
 
         Map<Long, UserMetrics> result = service.calculate(
             List.of(PROJECT_ID), List.of(TRACKED_USER_ID),
-            now.minus(30, ChronoUnit.DAYS), now,
-            ReportMode.CREATED_IN_PERIOD);
+            now.minus(30, ChronoUnit.DAYS), now);
 
         assertThat(result).containsKey(TRACKED_USER_ID);
         UserMetrics metrics = result.get(TRACKED_USER_ID);
@@ -132,15 +130,14 @@ class MetricCalculationServiceTest {
 
         when(trackedUserRepository.findById(TRACKED_USER_ID)).thenReturn(Optional.of(user));
         when(aliasRepository.findByTrackedUserIdIn(anyList())).thenReturn(List.of(alias));
-        when(mrRepository.findCreatedInPeriod(anyList(), any(), any())).thenReturn(List.of(foreignMr));
+        when(mrRepository.findMergedInPeriod(anyList(), any(), any())).thenReturn(List.of(foreignMr));
         when(noteRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of(reviewNote));
         when(approvalRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
 
         Map<Long, UserMetrics> result = service.calculate(
             List.of(PROJECT_ID), List.of(TRACKED_USER_ID),
-            now.minus(30, ChronoUnit.DAYS), now,
-            ReportMode.CREATED_IN_PERIOD);
+            now.minus(30, ChronoUnit.DAYS), now);
 
         UserMetrics metrics = result.get(TRACKED_USER_ID);
         assertThat(metrics.getReviewCommentsWrittenCount()).isEqualTo(1);
@@ -165,15 +162,14 @@ class MetricCalculationServiceTest {
 
         when(trackedUserRepository.findById(TRACKED_USER_ID)).thenReturn(Optional.of(user));
         when(aliasRepository.findByTrackedUserIdIn(anyList())).thenReturn(List.of(alias));
-        when(mrRepository.findCreatedInPeriod(anyList(), any(), any())).thenReturn(List.of(foreignMr));
+        when(mrRepository.findMergedInPeriod(anyList(), any(), any())).thenReturn(List.of(foreignMr));
         when(noteRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of(systemNote));
         when(approvalRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
 
         Map<Long, UserMetrics> result = service.calculate(
             List.of(PROJECT_ID), List.of(TRACKED_USER_ID),
-            now.minus(30, ChronoUnit.DAYS), now,
-            ReportMode.CREATED_IN_PERIOD);
+            now.minus(30, ChronoUnit.DAYS), now);
 
         UserMetrics metrics = result.get(TRACKED_USER_ID);
         assertThat(metrics.getReviewCommentsWrittenCount()).isEqualTo(0);
@@ -206,15 +202,14 @@ class MetricCalculationServiceTest {
 
         when(trackedUserRepository.findById(TRACKED_USER_ID)).thenReturn(Optional.of(user));
         when(aliasRepository.findByTrackedUserIdIn(anyList())).thenReturn(List.of(alias));
-        when(mrRepository.findCreatedInPeriod(anyList(), any(), any())).thenReturn(List.of(mr));
+        when(mrRepository.findMergedInPeriod(anyList(), any(), any())).thenReturn(List.of(mr));
         when(noteRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of(reviewNote));
         when(approvalRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of(reworkCommit));
 
         Map<Long, UserMetrics> result = service.calculate(
             List.of(PROJECT_ID), List.of(TRACKED_USER_ID),
-            now.minus(30, ChronoUnit.DAYS), now,
-            ReportMode.CREATED_IN_PERIOD);
+            now.minus(30, ChronoUnit.DAYS), now);
 
         UserMetrics metrics = result.get(TRACKED_USER_ID);
         assertThat(metrics.getReworkMrCount()).isEqualTo(1);
@@ -238,15 +233,14 @@ class MetricCalculationServiceTest {
 
         when(trackedUserRepository.findById(TRACKED_USER_ID)).thenReturn(Optional.of(user));
         when(aliasRepository.findByTrackedUserIdIn(anyList())).thenReturn(List.of(alias));
-        when(mrRepository.findCreatedInPeriod(anyList(), any(), any())).thenReturn(List.of(mr));
+        when(mrRepository.findMergedInPeriod(anyList(), any(), any())).thenReturn(List.of(mr));
         when(noteRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of(reviewNote));
         when(approvalRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
 
         Map<Long, UserMetrics> result = service.calculate(
             List.of(PROJECT_ID), List.of(TRACKED_USER_ID),
-            now.minus(30, ChronoUnit.DAYS), now,
-            ReportMode.CREATED_IN_PERIOD);
+            now.minus(30, ChronoUnit.DAYS), now);
 
         UserMetrics metrics = result.get(TRACKED_USER_ID);
         assertThat(metrics.getAvgTimeToFirstReviewMinutes()).isNotNull();
@@ -258,15 +252,14 @@ class MetricCalculationServiceTest {
     void shouldReturnEmptyMetricsForUserWithNoAliases() {
         when(trackedUserRepository.findById(TRACKED_USER_ID)).thenReturn(Optional.of(user));
         when(aliasRepository.findByTrackedUserIdIn(anyList())).thenReturn(List.of()); // no aliases
-        when(mrRepository.findCreatedInPeriod(anyList(), any(), any())).thenReturn(List.of());
+        when(mrRepository.findMergedInPeriod(anyList(), any(), any())).thenReturn(List.of());
         when(noteRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(approvalRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
         when(commitRepository.findByMergeRequestIdIn(anyList())).thenReturn(List.of());
 
         Map<Long, UserMetrics> result = service.calculate(
             List.of(PROJECT_ID), List.of(TRACKED_USER_ID),
-            now.minus(30, ChronoUnit.DAYS), now,
-            ReportMode.CREATED_IN_PERIOD);
+            now.minus(30, ChronoUnit.DAYS), now);
 
         UserMetrics metrics = result.get(TRACKED_USER_ID);
         assertThat(metrics.getMrOpenedCount()).isEqualTo(0);

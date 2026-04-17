@@ -16,6 +16,7 @@ public record AppProperties(
     public record Security(
         @NotBlank String apiToken
     ) {
+
     }
 
     public record Gitlab(
@@ -24,11 +25,13 @@ public record AppProperties(
         int maxRetries,
         @Min(1) int perPage
     ) {
+
     }
 
     public record Snapshot(
         String cron,
         @Min(1) int windowDays
     ) {
+
     }
 }

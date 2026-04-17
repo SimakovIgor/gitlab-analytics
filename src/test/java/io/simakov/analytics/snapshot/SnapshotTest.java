@@ -11,7 +11,6 @@ import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.PeriodType;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.model.enums.ScopeType;
 import io.simakov.analytics.domain.model.enums.TimeGroupBy;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
@@ -126,10 +125,9 @@ class SnapshotTest extends BaseIT {
         post("/api/v1/snapshots/run", req, RunSnapshotResponse.class);
 
         MetricSnapshot saved = snapshotRepository
-            .findByTrackedUserIdAndSnapshotDateAndReportMode(aliceId, TODAY, ReportMode.MERGED_IN_PERIOD)
+            .findByTrackedUserIdAndSnapshotDate(aliceId, TODAY)
             .orElseThrow();
         assertThat(saved.getWindowDays()).isEqualTo(90);
-        assertThat(saved.getReportMode()).isEqualTo(ReportMode.MERGED_IN_PERIOD);
         assertThat(saved.getSnapshotDate()).isEqualTo(TODAY);
         assertThat(saved.getMetricsJson()).isNotBlank();
     }
@@ -290,7 +288,6 @@ class SnapshotTest extends BaseIT {
             .dateFrom(date.minusDays(30).atStartOfDay().toInstant(java.time.ZoneOffset.UTC))
             .dateTo(date.atStartOfDay().toInstant(java.time.ZoneOffset.UTC))
             .windowDays(30)
-            .reportMode(ReportMode.MERGED_IN_PERIOD)
             .periodType(PeriodType.CUSTOM)
             .scopeType(ScopeType.USER)
             .metricsJson(metricsJson)

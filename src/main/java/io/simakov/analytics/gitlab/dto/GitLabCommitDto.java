@@ -22,5 +22,6 @@ public record GitLabCommitDto(
         int deletions,
         int total
     ) {
+
     }
 }

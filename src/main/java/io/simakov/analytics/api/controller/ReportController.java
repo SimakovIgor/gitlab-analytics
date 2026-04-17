@@ -47,7 +47,7 @@ public class ReportController {
             request.userIds().size(), request.projectIds().size(), dateFrom, dateTo);
 
         Map<Long, UserMetrics> metricsByUser = metricCalculationService.calculate(
-            request.projectIds(), request.userIds(), dateFrom, dateTo, request.reportMode());
+            request.projectIds(), request.userIds(), dateFrom, dateTo);
 
         // Build results
         List<ContributionReportResponse.ContributionResult> results = new ArrayList<>();
@@ -77,7 +77,7 @@ public class ReportController {
             .mapToInt(r -> toInt(r.metrics().get("approvals_given_count"))).sum();
 
         return new ContributionReportResponse(
-            new ContributionReportResponse.PeriodInfo(dateFrom, dateTo, request.periodPreset(), request.reportMode()),
+            new ContributionReportResponse.PeriodInfo(dateFrom, dateTo, request.periodPreset()),
             new ContributionReportResponse.SummaryInfo(totalMerged, totalComments, totalApprovals, results.size()),
             results
         );

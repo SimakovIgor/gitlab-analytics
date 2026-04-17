@@ -17,6 +17,18 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class WebClientConfig {
 
+    private static ExchangeFilterFunction gitLabLoggingFilter() {
+        return (request, next) -> {
+            long startMs = System.currentTimeMillis();
+            log.debug("→ {} {}", request.method(), request.url());
+            return next.exchange(request)
+                .doOnNext(response -> log.debug(
+                    "← {} {} ({} ms)", response.statusCode(), request.url(), System.currentTimeMillis() - startMs))
+                .doOnError(ex -> log.warn(
+                    "← ERROR {} {} ({} ms): {}", request.method(), request.url(), System.currentTimeMillis() - startMs, ex.getMessage()));
+        };
+    }
+
     @Bean
     public WebClient gitLabWebClient(AppProperties props) {
         AppProperties.Gitlab gitlab = props.gitlab();
@@ -34,17 +46,5 @@ public class WebClientConfig {
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
             .filter(gitLabLoggingFilter())
             .build();
-    }
-
-    private static ExchangeFilterFunction gitLabLoggingFilter() {
-        return (request, next) -> {
-            long startMs = System.currentTimeMillis();
-            log.debug("→ {} {}", request.method(), request.url());
-            return next.exchange(request)
-                .doOnNext(response -> log.debug(
-                    "← {} {} ({} ms)", response.statusCode(), request.url(), System.currentTimeMillis() - startMs))
-                .doOnError(ex -> log.warn(
-                    "← ERROR {} {} ({} ms): {}", request.method(), request.url(), System.currentTimeMillis() - startMs, ex.getMessage()));
-        };
     }
 }

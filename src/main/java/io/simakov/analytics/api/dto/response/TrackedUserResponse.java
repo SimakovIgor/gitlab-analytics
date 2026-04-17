@@ -19,5 +19,6 @@ public record TrackedUserResponse(
         String email,
         String name
     ) {
+
     }
 }
