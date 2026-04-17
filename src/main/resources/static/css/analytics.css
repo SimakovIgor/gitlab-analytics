@@ -642,3 +642,406 @@ body {
     color: var(--color-muted);
     font-size: 13px;
 }
+
+/* ── Settings tabs ────────────────────────────────────────── */
+
+.settings-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    padding: 8px 20px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    background: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+    color: var(--color-text);
+}
+
+.tab-btn-active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+.tab-content {
+    animation: fadeIn 0.15s ease;
+}
+
+.tab-content.hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.tab-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+
+.btn-primary {
+    padding: 8px 18px;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.btn-primary:hover {
+    opacity: 0.88;
+}
+
+.btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    padding: 6px 14px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.btn-secondary:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.btn-danger {
+    padding: 6px 14px;
+    background: var(--color-surface);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-danger:hover {
+    background: var(--color-danger);
+    color: #fff;
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.btn-success {
+    color: var(--color-success) !important;
+    border-color: var(--color-success) !important;
+}
+
+.btn-danger-text {
+    color: var(--color-danger) !important;
+    border-color: var(--color-danger) !important;
+}
+
+.actions-cell {
+    white-space: nowrap;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* ── Modal ────────────────────────────────────────────────── */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.1s ease;
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: var(--color-muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.modal-close:hover {
+    background: var(--color-bg);
+}
+
+.modal-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--color-border);
+}
+
+.modal-error {
+    background: #fce8e4;
+    color: var(--color-danger);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+}
+
+.modal-error.hidden {
+    display: none;
+}
+
+/* ── Form elements ────────────────────────────────────────── */
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+}
+
+.form-input,
+.form-select {
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--color-text);
+    background: var(--color-surface);
+    width: 100%;
+    transition: border-color 0.15s;
+}
+
+.form-input:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.form-hint {
+    font-size: 11px;
+    color: var(--color-muted);
+}
+
+/* ── Search results ───────────────────────────────────────── */
+
+.search-results {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: var(--shadow);
+}
+
+.search-results.hidden {
+    display: none;
+}
+
+.search-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border);
+    transition: background 0.1s;
+}
+
+.search-item:last-child {
+    border-bottom: none;
+}
+
+.search-item:hover {
+    background: var(--color-bg);
+}
+
+.search-item-name {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.search-item-path {
+    font-size: 11px;
+    color: var(--color-muted);
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    margin-top: 2px;
+}
+
+.search-loading,
+.search-empty {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--color-muted);
+    text-align: center;
+}
+
+.selected-project {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.selected-project.hidden {
+    display: none;
+}
+
+.selected-project-card {
+    background: #e9f8ef;
+    border: 1px solid #b3e6c8;
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.selected-project-card span:first-child {
+    font-weight: 500;
+    font-size: 13px;
+}
+
+/* ── Sync banners ─────────────────────────────────────────── */
+
+#sync-banners {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.sync-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    border: 1px solid;
+}
+
+.sync-banner-running {
+    background: #fff8e1;
+    border-color: #ffe082;
+    color: #7a5c00;
+}
+
+.sync-banner-done {
+    background: #e9f8ef;
+    border-color: #b3e6c8;
+    color: #1a6b3a;
+}
+
+.sync-banner-error {
+    background: #fce8e4;
+    border-color: #f5b4aa;
+    color: var(--color-danger);
+}
+
+.sync-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(122, 92, 0, 0.3);
+    border-top-color: #7a5c00;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+.sync-duration {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Alias chips ──────────────────────────────────────────── */
+
+.alias-chip {
+    display: inline-block;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--color-muted);
+    margin: 2px 2px 2px 0;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+}
+
+.alias-empty {
+    font-size: 12px;
+    color: var(--color-border);
+    font-style: italic;
+}

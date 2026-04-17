@@ -6,6 +6,7 @@ import io.simakov.analytics.gitlab.dto.GitLabApprovalsDto;
 import io.simakov.analytics.gitlab.dto.GitLabCommitDto;
 import io.simakov.analytics.gitlab.dto.GitLabDiscussionDto;
 import io.simakov.analytics.gitlab.dto.GitLabMergeRequestDto;
+import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -47,6 +50,18 @@ public class GitLabApiClient {
                     .map(body -> new GitLabApiException("GitLab API error " + response.statusCode(), response.statusCode())))
             .bodyToMono(GitLabUserDto.class)
             .block(readTimeout());
+    }
+
+    /**
+     * Search GitLab projects accessible to the token owner.
+     * Results are filtered to projects the token has membership in.
+     */
+    public List<GitLabProjectDto> searchProjects(String baseUrl,
+                                                 String token,
+                                                 String query) {
+        String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8);
+        String extraParams = "&search=" + encoded + "&membership=true&order_by=last_activity_at&sort=desc";
+        return fetchAllPages(baseUrl, token, "/api/v4/projects", GitLabProjectDto[].class, extraParams);
     }
 
     /**
