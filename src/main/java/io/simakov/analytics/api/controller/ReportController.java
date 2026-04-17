@@ -6,6 +6,7 @@ import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
+import io.simakov.analytics.util.DateTimeUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -84,7 +84,7 @@ public class ReportController {
     }
 
     private Instant[] resolvePeriod(ContributionReportRequest request) {
-        Instant now = Instant.now();
+        Instant now = DateTimeUtils.now();
         if (request.periodPreset() == PeriodType.CUSTOM) {
             if (request.dateFrom() == null || request.dateTo() == null) {
                 throw new IllegalArgumentException("dateFrom and dateTo are required for CUSTOM period");
@@ -98,7 +98,7 @@ public class ReportController {
             case LAST_180_DAYS -> 180;
             default -> 30;
         };
-        return new Instant[]{now.minus(days, ChronoUnit.DAYS), now};
+        return new Instant[]{DateTimeUtils.minusDays(now, days), now};
     }
 
     private Map<String, Object> filterMetrics(Map<String, Object> all,

@@ -17,8 +17,12 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     /**
      * MRs created within the given period for the given projects
      */
-    @Query("SELECT mr FROM MergeRequest mr WHERE mr.trackedProjectId IN :projectIds "
-        + "AND mr.createdAtGitlab >= :dateFrom AND mr.createdAtGitlab <= :dateTo")
+    @Query("""
+        SELECT mr FROM MergeRequest mr
+        WHERE mr.trackedProjectId IN :projectIds
+        AND mr.createdAtGitlab >= :dateFrom
+        AND mr.createdAtGitlab <= :dateTo
+        """)
     List<MergeRequest> findCreatedInPeriod(@Param("projectIds") List<Long> projectIds,
                                            @Param("dateFrom") Instant dateFrom,
                                            @Param("dateTo") Instant dateTo);
@@ -26,8 +30,12 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     /**
      * MRs merged within the given period for the given projects
      */
-    @Query("SELECT mr FROM MergeRequest mr WHERE mr.trackedProjectId IN :projectIds "
-        + "AND mr.mergedAtGitlab >= :dateFrom AND mr.mergedAtGitlab <= :dateTo")
+    @Query("""
+        SELECT mr FROM MergeRequest mr
+        WHERE mr.trackedProjectId IN :projectIds
+        AND mr.mergedAtGitlab >= :dateFrom
+        AND mr.mergedAtGitlab <= :dateTo
+        """)
     List<MergeRequest> findMergedInPeriod(@Param("projectIds") List<Long> projectIds,
                                           @Param("dateFrom") Instant dateFrom,
                                           @Param("dateTo") Instant dateTo);

@@ -15,6 +15,7 @@ import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
+import io.simakov.analytics.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,8 +23,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +43,12 @@ public class SnapshotService {
     @Scheduled(cron = "${app.snapshot.cron:0 0 2 * * *}")
     public void runDailySnapshot() {
         log.info("Running daily metric snapshot");
-        run(null, null, appProperties.snapshot().windowDays(), LocalDate.now(ZoneOffset.UTC));
+        run(null, null, appProperties.snapshot().windowDays(), DateTimeUtils.currentDateUtc());
     }
 
     public RunSnapshotResponse runSnapshot(RunSnapshotRequest request) {
         int windowDays = Objects.requireNonNullElse(request.windowDays(), appProperties.snapshot().windowDays());
-        LocalDate snapshotDate = Objects.requireNonNullElse(request.snapshotDate(), LocalDate.now(ZoneOffset.UTC));
+        LocalDate snapshotDate = Objects.requireNonNullElse(request.snapshotDate(), DateTimeUtils.currentDateUtc());
         return run(request.userIds(), request.projectIds(), windowDays, snapshotDate);
     }
 
@@ -65,8 +64,8 @@ public class SnapshotService {
             return new RunSnapshotResponse(0, snapshotDate);
         }
 
-        Instant dateTo = snapshotDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant dateFrom = dateTo.minus(windowDays, ChronoUnit.DAYS);
+        Instant dateTo = DateTimeUtils.startOfDayUtc(snapshotDate);
+        Instant dateFrom = DateTimeUtils.minusDays(dateTo, windowDays);
 
         Map<Long, UserMetrics> metrics = metricCalculationService.calculate(
             resolvedProjectIds, resolvedUserIds, dateFrom, dateTo);

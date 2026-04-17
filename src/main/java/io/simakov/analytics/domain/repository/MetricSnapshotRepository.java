@@ -14,11 +14,13 @@ public interface MetricSnapshotRepository extends JpaRepository<MetricSnapshot, 
     Optional<MetricSnapshot> findByTrackedUserIdAndSnapshotDate(Long trackedUserId,
                                                                 LocalDate snapshotDate);
 
-    @Query("SELECT s FROM MetricSnapshot s "
-        + "WHERE s.trackedUserId IN :userIds "
-        + "AND s.snapshotDate >= :from "
-        + "AND s.snapshotDate <= :to "
-        + "ORDER BY s.snapshotDate ASC")
+    @Query("""
+        SELECT s FROM MetricSnapshot s
+        WHERE s.trackedUserId IN :userIds
+        AND s.snapshotDate >= :from
+        AND s.snapshotDate <= :to
+        ORDER BY s.snapshotDate ASC
+        """)
     List<MetricSnapshot> findHistory(@Param("userIds") List<Long> userIds,
                                      @Param("from") LocalDate from,
                                      @Param("to") LocalDate to);

@@ -13,13 +13,13 @@ import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.model.UserMetrics;
+import io.simakov.analytics.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -183,17 +183,17 @@ public class MetricCalculationService {
             .approvalsGivenCount(approvalsGivenCount)
             .reviewThreadsStartedCount((int) countReviewThreadsStarted(reviewNotes, notesByMrId))
             // Flow
-            .avgTimeToFirstReviewMinutes(MetricsMath.optMean(flow.timeToFirstReview()))
-            .medianTimeToFirstReviewMinutes(MetricsMath.optMedian(flow.timeToFirstReview()))
-            .avgTimeToMergeMinutes(MetricsMath.optMean(flow.timeToMerge()))
-            .medianTimeToMergeMinutes(MetricsMath.optMedian(flow.timeToMerge()))
+            .avgTimeToFirstReviewMinutes(MetricsMathUtils.optMean(flow.timeToFirstReview()))
+            .medianTimeToFirstReviewMinutes(MetricsMathUtils.optMedian(flow.timeToFirstReview()))
+            .avgTimeToMergeMinutes(MetricsMathUtils.optMean(flow.timeToMerge()))
+            .medianTimeToMergeMinutes(MetricsMathUtils.optMedian(flow.timeToMerge()))
             .reworkMrCount(flow.reworkMrCount())
-            .reworkRatio(MetricsMath.round2(reworkRatio))
+            .reworkRatio(MetricsMathUtils.round2(reworkRatio))
             .selfMergeCount(flow.selfMergeCount())
-            .selfMergeRatio(MetricsMath.round2(selfMergeRatio))
+            .selfMergeRatio(MetricsMathUtils.round2(selfMergeRatio))
             // Normalized
-            .mrMergedPerActiveDay(MetricsMath.round2(mrMergedPerActiveDay))
-            .commentsPerReviewedMr(MetricsMath.round2(commentsPerReviewedMr))
+            .mrMergedPerActiveDay(MetricsMathUtils.round2(mrMergedPerActiveDay))
+            .commentsPerReviewedMr(MetricsMathUtils.round2(commentsPerReviewedMr))
             .build();
     }
 
@@ -221,9 +221,15 @@ public class MetricCalculationService {
 
         return new ChangeVolume(
             linesAdded, linesDeleted, filesChanged,
-            MetricsMath.round2(mrSizesLines.isEmpty() ? 0 : MetricsMath.mean(mrSizesLines)),
-            MetricsMath.round2(mrSizesLines.isEmpty() ? 0 : MetricsMath.median(mrSizesLines)),
-            MetricsMath.round2(mrSizesFiles.isEmpty() ? 0 : MetricsMath.mean(mrSizesFiles))
+            MetricsMathUtils.round2(mrSizesLines.isEmpty()
+                ? 0
+                : MetricsMathUtils.mean(mrSizesLines)),
+            MetricsMathUtils.round2(mrSizesLines.isEmpty()
+                ? 0
+                : MetricsMathUtils.median(mrSizesLines)),
+            MetricsMathUtils.round2(mrSizesFiles.isEmpty()
+                ? 0
+                : MetricsMathUtils.mean(mrSizesFiles))
         );
     }
 
@@ -232,11 +238,11 @@ public class MetricCalculationService {
                                           List<MergeRequestApproval> userApprovals) {
         Set<String> activeDays = new HashSet<>();
         userCommits.stream().map(MergeRequestCommit::getAuthoredDate)
-            .filter(Objects::nonNull).map(MetricsMath::toDateString).forEach(activeDays::add);
+            .filter(Objects::nonNull).map(DateTimeUtils::toDateString).forEach(activeDays::add);
         userNotes.stream().map(MergeRequestNote::getCreatedAtGitlab)
-            .filter(Objects::nonNull).map(MetricsMath::toDateString).forEach(activeDays::add);
+            .filter(Objects::nonNull).map(DateTimeUtils::toDateString).forEach(activeDays::add);
         userApprovals.stream().map(MergeRequestApproval::getApprovedAtGitlab)
-            .filter(Objects::nonNull).map(MetricsMath::toDateString).forEach(activeDays::add);
+            .filter(Objects::nonNull).map(DateTimeUtils::toDateString).forEach(activeDays::add);
         return activeDays;
     }
 
@@ -260,7 +266,7 @@ public class MetricCalculationService {
             Optional<Instant> firstExternalReview = findFirstExternalReviewEvent(gitlabIds, mrNotes, mrApprovals);
 
             if (firstExternalReview.isPresent()) {
-                long minutes = ChronoUnit.MINUTES.between(mr.getCreatedAtGitlab(), firstExternalReview.get());
+                long minutes = DateTimeUtils.minutesBetween(mr.getCreatedAtGitlab(), firstExternalReview.get());
                 if (minutes >= 0) {
                     timeToFirstReview.add(minutes);
                 }
@@ -384,7 +390,7 @@ public class MetricCalculationService {
         if (mr.getMergedAtGitlab() == null) {
             return;
         }
-        long minutes = ChronoUnit.MINUTES.between(mr.getCreatedAtGitlab(), mr.getMergedAtGitlab());
+        long minutes = DateTimeUtils.minutesBetween(mr.getCreatedAtGitlab(), mr.getMergedAtGitlab());
         if (minutes >= 0) {
             timeToMerge.add(minutes);
         }
