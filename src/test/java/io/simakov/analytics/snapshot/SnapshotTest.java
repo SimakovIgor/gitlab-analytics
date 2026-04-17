@@ -295,11 +295,14 @@ class SnapshotTest extends BaseIT {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private void saveSnapshot(Long userId, LocalDate date) {
+    private void saveSnapshot(Long userId,
+                              LocalDate date) {
         saveSnapshot(userId, date, METRICS_JSON);
     }
 
-    private void saveSnapshot(Long userId, LocalDate date, String metricsJson) {
+    private void saveSnapshot(Long userId,
+                              LocalDate date,
+                              String metricsJson) {
         snapshotRepository.save(MetricSnapshot.builder()
             .trackedUserId(userId)
             .snapshotDate(date)
@@ -313,8 +316,10 @@ class SnapshotTest extends BaseIT {
             .build());
     }
 
-    private SnapshotHistoryResponse history(List<Long> userIds, LocalDate from, LocalDate to,
-                                             TimeGroupBy groupBy) {
+    private SnapshotHistoryResponse history(List<Long> userIds,
+                                            LocalDate from,
+                                            LocalDate to,
+                                            TimeGroupBy groupBy) {
         SnapshotHistoryRequest req = new SnapshotHistoryRequest(
             userIds, from, to, groupBy, ReportMode.MERGED_IN_PERIOD);
         ResponseEntity<SnapshotHistoryResponse> resp = post(
@@ -324,7 +329,9 @@ class SnapshotTest extends BaseIT {
         return resp.getBody();
     }
 
-    private <T> ResponseEntity<T> post(String path, Object body, Class<T> responseType) {
+    private <T> ResponseEntity<T> post(String path,
+                                       Object body,
+                                       Class<T> responseType) {
         return restTemplate.exchange(
             "http://localhost:" + port + path,
             HttpMethod.POST,

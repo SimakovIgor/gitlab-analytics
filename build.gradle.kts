@@ -62,6 +62,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql")
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.apache.httpcomponents.client5:httpclient5")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
 }

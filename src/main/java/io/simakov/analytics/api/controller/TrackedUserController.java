@@ -2,6 +2,7 @@ package io.simakov.analytics.api.controller;
 
 import io.simakov.analytics.api.dto.request.AddUserAliasRequest;
 import io.simakov.analytics.api.dto.request.CreateTrackedUserRequest;
+import io.simakov.analytics.api.dto.request.UpdateTrackedUserRequest;
 import io.simakov.analytics.api.dto.response.TrackedUserResponse;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.TrackedUser;
@@ -14,6 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,6 +57,30 @@ public class TrackedUserController {
                 return TrackedUserResponse.from(user, aliases);
             })
             .toList();
+    }
+
+    @PatchMapping("/{id}")
+    @Operation(summary = "Update a tracked user",
+               description = "Partial update — only provided fields are changed. "
+                   + "Use enabled=false to disable a user without deleting them.")
+    public TrackedUserResponse update(@PathVariable Long id,
+                                      @RequestBody UpdateTrackedUserRequest request) {
+        TrackedUser user = trackedUserRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", id));
+
+        if (request.displayName() != null) {
+            user.setDisplayName(request.displayName());
+        }
+        if (request.email() != null) {
+            user.setEmail(request.email());
+        }
+        if (request.enabled() != null) {
+            user.setEnabled(request.enabled());
+        }
+
+        trackedUserRepository.save(user);
+        List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserId(id);
+        return TrackedUserResponse.from(user, aliases);
     }
 
     @PostMapping("/{id}/aliases")
