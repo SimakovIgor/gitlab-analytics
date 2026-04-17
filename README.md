@@ -1,8 +1,20 @@
 # gitlab-analytics
 
-Internal engineering analytics backend. Connects to a self-hosted GitLab instance, syncs merge request data, and calculates per-developer contribution metrics for a given team and time period.
+Internal engineering analytics tool. Connects to a self-hosted GitLab instance, syncs merge request data, calculates per-developer contribution metrics, and visualises them in a web UI.
 
 **Не инструмент оценки.** Метрики — это инженерные сигналы для ретроспектив и командного самоанализа, не рейтинги и не KPI.
+
+---
+
+## What's inside
+
+| Page | URL | Description |
+|---|---|---|
+| Login | `/login` | GitHub OAuth2 sign-in |
+| Dashboard | `/dashboard` | Team overview — tracked users and projects |
+| Report | `/report` | Metrics table per person, period filter, delta vs previous period |
+| History | `/history` | Line chart — team dynamics over time, any metric |
+| Swagger UI | `/swagger-ui.html` | REST API docs |
 
 ---
 
@@ -12,6 +24,7 @@ Internal engineering analytics backend. Connects to a self-hosted GitLab instanc
 
 - Java 21
 - Docker
+- GitHub OAuth App ([create one](https://github.com/settings/applications/new), callback URL: `http://localhost:8080/login/oauth2/code/github`)
 
 ### 1. Start PostgreSQL
 
@@ -28,15 +41,15 @@ docker run -d --name gitlab-analytics-pg \
 
 ```bash
 API_TOKEN=your-secret-token \
+GITHUB_CLIENT_ID=your-github-client-id \
+GITHUB_CLIENT_SECRET=your-github-client-secret \
 DB_URL=jdbc:postgresql://localhost:5432/gitlab_analytics \
 DB_USERNAME=analytics \
 DB_PASSWORD=analytics \
 ./gradlew bootRun -x test -x checkstyleMain -x pmdMain -x spotbugsMain
 ```
 
-App starts on `http://localhost:8080`. Swagger UI: `http://localhost:8080/swagger-ui.html`
-
-All API requests require: `Authorization: Bearer your-secret-token`
+Open `http://localhost:8080` — sign in with GitHub. REST API requires `Authorization: Bearer your-secret-token`.
 
 ---
 
@@ -44,7 +57,9 @@ All API requests require: `Authorization: Bearer your-secret-token`
 
 | Variable | Default | Description |
 |---|---|---|
-| `API_TOKEN` | `changeme-in-production` | Static bearer token for all API calls |
+| `API_TOKEN` | `changeme-in-production` | Static bearer token for all REST API calls |
+| `GITHUB_CLIENT_ID` | — | GitHub OAuth App client ID (web UI login) |
+| `GITHUB_CLIENT_SECRET` | — | GitHub OAuth App client secret (web UI login) |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/gitlab_analytics` | PostgreSQL JDBC URL |
 | `DB_USERNAME` | `analytics` | Database username |
 | `DB_PASSWORD` | `analytics` | Database password |
@@ -115,8 +130,8 @@ curl -X POST http://localhost:8080/api/v1/sync/manual \
   -H "Content-Type: application/json" \
   -d '{
     "projectIds": [1],
-    "dateFrom": "2026-01-01T00:00:00Z",
-    "dateTo": "2026-04-16T23:59:59Z",
+    "dateFrom": "2025-10-01T00:00:00Z",
+    "dateTo": "2026-04-17T23:59:59Z",
     "fetchNotes": true,
     "fetchApprovals": true,
     "fetchCommits": true
@@ -127,7 +142,21 @@ Poll status: `GET /api/v1/sync/jobs/{jobId}` until `status` is `COMPLETED` or `F
 
 > `fetchCommits: true` — один дополнительный вызов GitLab API на каждый коммит для получения diff-статистики. Уже загруженные коммиты повторно не запрашиваются.
 
-### Step 5 — Get the report
+### Step 5 — Generate metric snapshots (for History chart)
+
+Snapshots are created automatically every day at 02:00 UTC. To backfill historical data manually:
+
+```bash
+# One snapshot per past date (repeat for each desired date)
+curl -X POST http://localhost:8080/api/v1/snapshots/run \
+  -H "Authorization: Bearer your-secret-token" \
+  -H "Content-Type: application/json" \
+  -d '{"snapshotDate": "2025-11-01", "windowDays": 30}'
+```
+
+The History chart shows one data point per snapshot date. Run snapshots every 1–2 weeks to get a smooth trend line.
+
+### Step 6 — Get an API report
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/reports/contributions \
@@ -137,20 +166,14 @@ curl -X POST http://localhost:8080/api/v1/reports/contributions \
     "projectIds": [1],
     "userIds": [2, 3, 4],
     "periodPreset": "LAST_30_DAYS",
-    "groupBy": "USER",
-    "reportMode": "MERGED_IN_PERIOD",
     "metrics": null
   }'
 ```
 
-`periodPreset`: `LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `LAST_180_DAYS`, `CUSTOM`
-Для `CUSTOM` добавить `"dateFrom"` и `"dateTo"` в формате ISO-8601 (`Z`).
+`periodPreset`: `LAST_7_DAYS` · `LAST_30_DAYS` · `LAST_90_DAYS` · `LAST_180_DAYS` · `LAST_360_DAYS` · `CUSTOM`
+For `CUSTOM` add `"dateFrom"` and `"dateTo"` in ISO-8601 format (`Z`).
 
-`reportMode`:
-- `MERGED_IN_PERIOD` — MR-ы, смёрженные в период (рекомендуется)
-- `CREATED_IN_PERIOD` — MR-ы, открытые в период
-
-`metrics`: массив ключей метрик для включения, или `null` — все.
+`metrics`: array of metric keys to include, or `null` for all.
 
 ---
 
@@ -189,14 +212,12 @@ curl -X POST http://localhost:8080/api/v1/reports/contributions \
 
 | Метрика | Как считается | Как читать |
 |---|---|---|
-| `median_time_to_first_review_minutes` | Медиана минут от `created_at` MR до первой внешней заметки или апрува | Долгое значение — MR-ы подолгу ждут внимания ревьюера |
-| `avg_time_to_first_review_minutes` | Среднее того же | Чувствительно к выбросам |
-| `median_time_to_merge_minutes` | Медиана минут от `created_at` до `merged_at` | End-to-end цикл |
-| `avg_time_to_merge_minutes` | Среднее того же | — |
-| `rework_ratio` | `rework_mr_count / mr_merged_count` | 0.2 = 20% MR-ов получили коммиты после первого ревью; само по себе не плохо |
+| `avg_time_to_first_review_minutes` | Среднее минут от `created_at` MR до первой внешней заметки или апрува | Долгое значение — MR-ы подолгу ждут внимания ревьюера |
+| `median_time_to_first_review_minutes` | Медиана того же | Менее чувствительна к выбросам |
+| `avg_time_to_merge_minutes` | Среднее минут от `created_at` до `merged_at` | End-to-end цикл |
+| `median_time_to_merge_minutes` | Медиана того же | — |
+| `rework_ratio` | `rework_mr_count / mr_merged_count` | 0.2 = 20% MR-ов получили коммиты после первого ревью |
 | `rework_mr_count` | Авторские MR с хотя бы одним коммитом автора после первого внешнего ревью | — |
-| `self_merge_ratio` | `self_merge_count / mr_merged_count` | Высокое значение означает, что ревью формально не блокирует мерж |
-| `self_merge_count` | MR-ы, где `merged_by` совпадает с автором | — |
 
 ### Нормализованные
 
@@ -218,4 +239,5 @@ curl -X POST http://localhost:8080/api/v1/reports/contributions \
 ./gradlew build -x test   # skip tests
 ./gradlew test            # tests only (requires Docker for Testcontainers)
 ./gradlew check -x test   # static analysis only
+./gradlew clean build     # use when Flyway migration conflicts appear in tests
 ```
