@@ -42,10 +42,12 @@ app:
     connect-timeout-seconds: 10
     read-timeout-seconds: 30
     max-retries: 3
+    per-page: 100
   snapshot:
     # Daily at 02:00 UTC. Set to '-' to disable.
     cron: "0 0 2 * * *"
     window-days: 30
+    default-report-mode: MERGED_IN_PERIOD
 
 management:
   endpoints:

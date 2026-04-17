@@ -76,8 +76,8 @@ public class SnapshotHistoryService {
                     ? a
                     : b));
 
-        List<UserSnapshotMetrics> users = latestPerUser.entrySet().stream()
-            .map(e -> toUserMetrics(e.getValue(), userNames))
+        List<UserSnapshotMetrics> users = latestPerUser.values().stream()
+            .map(metricSnapshot -> toUserMetrics(metricSnapshot, userNames))
             .toList();
 
         return new SnapshotPoint(label, users);

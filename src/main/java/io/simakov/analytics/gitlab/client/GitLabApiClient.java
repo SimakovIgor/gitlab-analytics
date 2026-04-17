@@ -28,7 +28,6 @@ import java.util.List;
 public class GitLabApiClient {
 
     private static final String PRIVATE_TOKEN_HEADER = "PRIVATE-TOKEN";
-    private static final int PER_PAGE = 100;
 
     private final WebClient webClient;
     private final AppProperties appProperties;
@@ -150,7 +149,7 @@ public class GitLabApiClient {
         int page = 1;
 
         while (true) {
-            String url = baseUrl + path + "?page=" + page + "&per_page=" + PER_PAGE + extraParams;
+            String url = baseUrl + path + "?page=" + page + "&per_page=" + appProperties.gitlab().perPage() + extraParams;
             log.debug("GET {}", url);
 
             ResponseEntity<T[]> response = webClient.get()

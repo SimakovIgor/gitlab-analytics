@@ -30,7 +30,7 @@ public class SnapshotController {
                description = "Calculates metrics for all enabled users and saves a snapshot. "
                    + "All request fields are optional — defaults: windowDays=30, "
                    + "reportMode=MERGED_IN_PERIOD, snapshotDate=today.")
-    public RunSnapshotResponse run(@RequestBody(required = false) RunSnapshotRequest request) {
+    public RunSnapshotResponse run(@RequestBody @Valid RunSnapshotRequest request) {
         return snapshotService.runSnapshot(request);
     }
 

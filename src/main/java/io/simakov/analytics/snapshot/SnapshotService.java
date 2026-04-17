@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.api.dto.request.RunSnapshotRequest;
 import io.simakov.analytics.api.dto.response.RunSnapshotResponse;
+import io.simakov.analytics.config.AppProperties;
 import io.simakov.analytics.domain.model.MetricSnapshot;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
@@ -27,45 +28,33 @@ import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SnapshotService {
 
-    static final int DEFAULT_WINDOW_DAYS = 30;
-    private static final ReportMode DEFAULT_REPORT_MODE = ReportMode.MERGED_IN_PERIOD;
-
     private final MetricCalculationService metricCalculationService;
     private final MetricSnapshotRepository snapshotRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedProjectRepository trackedProjectRepository;
     private final ObjectMapper objectMapper;
+    private final AppProperties appProperties;
 
     @Scheduled(cron = "${app.snapshot.cron:0 0 2 * * *}")
     public void runDailySnapshot() {
         log.info("Running daily metric snapshot");
-        run(null, null, DEFAULT_WINDOW_DAYS, DEFAULT_REPORT_MODE, LocalDate.now(ZoneOffset.UTC));
+        AppProperties.Snapshot cfg = appProperties.snapshot();
+        run(null, null, cfg.windowDays(), cfg.defaultReportMode(), LocalDate.now(ZoneOffset.UTC));
     }
 
     public RunSnapshotResponse runSnapshot(RunSnapshotRequest request) {
-        int windowDays = request != null && request.windowDays() != null
-            ? request.windowDays()
-            : DEFAULT_WINDOW_DAYS;
-        ReportMode reportMode = request != null && request.reportMode() != null
-            ? request.reportMode()
-            : DEFAULT_REPORT_MODE;
-        LocalDate snapshotDate = request != null && request.snapshotDate() != null
-            ? request.snapshotDate()
-            : LocalDate.now(ZoneOffset.UTC);
-        List<Long> userIds = request != null
-            ? request.userIds()
-            : null;
-        List<Long> projectIds = request != null
-            ? request.projectIds()
-            : null;
-
-        return run(userIds, projectIds, windowDays, reportMode, snapshotDate);
+        AppProperties.Snapshot cfg = appProperties.snapshot();
+        int windowDays = Objects.requireNonNullElse(request.windowDays(), cfg.windowDays());
+        ReportMode reportMode = Objects.requireNonNullElse(request.reportMode(), cfg.defaultReportMode());
+        LocalDate snapshotDate = Objects.requireNonNullElse(request.snapshotDate(), LocalDate.now(ZoneOffset.UTC));
+        return run(request.userIds(), request.projectIds(), windowDays, reportMode, snapshotDate);
     }
 
     private RunSnapshotResponse run(List<Long> userIds,
