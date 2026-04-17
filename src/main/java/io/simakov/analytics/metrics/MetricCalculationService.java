@@ -23,7 +23,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -57,13 +56,11 @@ public class MetricCalculationService {
      * @return map of trackedUserId → UserMetrics
      */
     @Transactional(readOnly = true)
-    @SuppressWarnings({"CyclomaticComplexity", "JavaNCSS", "NPathComplexity"})
     public Map<Long, UserMetrics> calculate(List<Long> projectIds,
                                             List<Long> userIds,
                                             Instant dateFrom,
                                             Instant dateTo) {
         List<MergeRequest> allMrs = mrRepository.findMergedInPeriod(projectIds, dateFrom, dateTo);
-
         if (allMrs.isEmpty()) {
             log.info("No MRs found for projects {} in period {} - {}", projectIds, dateFrom, dateTo);
         }
@@ -73,16 +70,12 @@ public class MetricCalculationService {
         // Load all related data in bulk to avoid N+1
         Map<Long, List<MergeRequestNote>> notesByMrId = noteRepository.findByMergeRequestIdIn(mrIds)
             .stream().collect(Collectors.groupingBy(MergeRequestNote::getMergeRequestId));
-
         Map<Long, List<MergeRequestApproval>> approvalsByMrId = approvalRepository.findByMergeRequestIdIn(mrIds)
             .stream().collect(Collectors.groupingBy(MergeRequestApproval::getMergeRequestId));
-
         Map<Long, List<MergeRequestCommit>> commitsByMrId = commitRepository.findByMergeRequestIdIn(mrIds)
             .stream().collect(Collectors.groupingBy(MergeRequestCommit::getMergeRequestId));
 
-        // Resolve each tracked user's GitLab user IDs and commit emails
-        Map<Long, Set<Long>> gitlabIdsByTrackedUser = resolveGitlabIds(userIds);
-        Map<Long, Set<String>> aliasEmailsByTrackedUser = resolveAliasEmails(userIds);
+        Map<Long, AliasData> aliasDataByUser = resolveAliasData(userIds);
 
         Map<Long, UserMetrics> results = new LinkedHashMap<>();
         for (Long userId : userIds) {
@@ -90,150 +83,164 @@ public class MetricCalculationService {
             if (user == null) {
                 continue;
             }
-
-            Set<Long> gitlabIds = gitlabIdsByTrackedUser.getOrDefault(userId, Collections.emptySet());
-            if (gitlabIds.isEmpty()) {
+            AliasData alias = aliasDataByUser.getOrDefault(userId, AliasData.empty());
+            if (alias.gitlabIds().isEmpty()) {
                 log.warn("TrackedUser {} has no GitLab aliases — metrics will be empty", userId);
             }
-
-            Set<String> aliasEmails = aliasEmailsByTrackedUser.getOrDefault(userId, Collections.emptySet());
-            UserMetrics metrics = calculateForUser(user, gitlabIds, aliasEmails, allMrs,
-                notesByMrId, approvalsByMrId, commitsByMrId);
-            results.put(userId, metrics);
+            results.put(userId, calculateForUser(user, alias, allMrs, notesByMrId, approvalsByMrId, commitsByMrId));
         }
-
         return results;
     }
 
-    @SuppressWarnings({
-        "MethodLength",
-        "PMD.CyclomaticComplexity",
-        "JavaNCSS",
-        "PMD.NPathComplexity",
-        "PMD.CognitiveComplexity"})
     private UserMetrics calculateForUser(TrackedUser user,
-                                         Set<Long> gitlabIds,
-                                         Set<String> aliasEmails,
+                                         AliasData alias,
                                          List<MergeRequest> allMrs,
                                          Map<Long, List<MergeRequestNote>> notesByMrId,
                                          Map<Long, List<MergeRequestApproval>> approvalsByMrId,
                                          Map<Long, List<MergeRequestCommit>> commitsByMrId) {
+        Set<Long> gitlabIds = alias.gitlabIds();
+        Set<String> aliasEmails = alias.emails();
 
-        // MRs authored by this user
+        // --- Authored MRs ---
         List<MergeRequest> authoredMrs = allMrs.stream()
             .filter(mr -> gitlabIds.contains(mr.getAuthorGitlabUserId()))
             .toList();
-
-        // --- Delivery ---
-        int mrOpenedCount = authoredMrs.size();
-        int mrMergedCount = (int) authoredMrs.stream()
-            .filter(mr -> mr.getMergedAtGitlab() != null)
-            .count();
-
+        int mrMergedCount = (int) authoredMrs.stream().filter(mr -> mr.getMergedAtGitlab() != null).count();
         Set<Long> authoredMrIds = authoredMrs.stream().map(MergeRequest::getId).collect(Collectors.toSet());
         Set<Long> projectsTouched = authoredMrs.stream()
-            .map(MergeRequest::getTrackedProjectId)
-            .collect(Collectors.toSet());
+            .map(MergeRequest::getTrackedProjectId).collect(Collectors.toSet());
 
-        // --- Commits in authored MRs (resolved first — needed for lines/size metrics below) ---
+        // --- Commits & volume ---
         List<MergeRequestCommit> userCommits = commitsByMrId.entrySet().stream()
             .filter(e -> authoredMrIds.contains(e.getKey()))
             .flatMap(e -> e.getValue().stream())
-            .filter(c -> isUserCommit(c, gitlabIds, user, aliasEmails))
+            .filter(c -> isUserCommit(c, user, aliasEmails))
             .toList();
-        int commitsInMrCount = userCommits.size();
-        int filesChanged = userCommits.stream().mapToInt(MergeRequestCommit::getFilesChangedCount).sum();
+        ChangeVolume volume = computeChangeVolume(userCommits, authoredMrs, commitsByMrId);
 
-        // --- Change volume (from commit stats — MR-level additions/deletions are not provided by this GitLab) ---
-        int linesAdded = userCommits.stream().mapToInt(MergeRequestCommit::getAdditions).sum();
-        int linesDeleted = userCommits.stream().mapToInt(MergeRequestCommit::getDeletions).sum();
-        int linesChanged = linesAdded + linesDeleted;
-
-        // MR size = total lines across all commits in each authored MR (not just user's commits)
-        List<Integer> mrSizesLines = authoredMrIds.stream()
-            .map(mrId -> commitsByMrId.getOrDefault(mrId, List.of()).stream()
-                .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
-            .filter(size -> size > 0)
-            .sorted()
-            .collect(Collectors.toList());
-        double avgMrSizeLines = mrSizesLines.isEmpty()
-            ? 0
-            : mean(mrSizesLines);
-        double medianMrSizeLines = mrSizesLines.isEmpty()
-            ? 0
-            : median(mrSizesLines);
-
-        List<Integer> mrSizesFiles = authoredMrs.stream()
-            .map(MergeRequest::getFilesChangedCount)
-            .sorted()
-            .collect(Collectors.toList());
-        double avgMrSizeFiles = mrSizesFiles.isEmpty()
-            ? 0
-            : mean(mrSizesFiles);
-
-        // Active days: unique calendar days with any event (commit authored, note created, approval)
-        Set<String> activeDays = new HashSet<>();
-        userCommits.forEach(c -> {
-            if (c.getAuthoredDate() != null) {
-                activeDays.add(toDateString(c.getAuthoredDate()));
-            }
-        });
-
-        // Notes authored by user (all MRs, not just authored ones)
+        // --- Notes & approvals ---
         List<MergeRequestNote> userNotes = notesByMrId.values().stream()
             .flatMap(Collection::stream)
             .filter(n -> gitlabIds.contains(n.getAuthorGitlabUserId()))
             .toList();
-        userNotes.forEach(n -> {
-            if (n.getCreatedAtGitlab() != null) {
-                activeDays.add(toDateString(n.getCreatedAtGitlab()));
-            }
-        });
-
-        // Approvals given by user
         List<MergeRequestApproval> userApprovals = approvalsByMrId.values().stream()
             .flatMap(Collection::stream)
             .filter(a -> gitlabIds.contains(a.getApprovedByGitlabUserId()))
             .toList();
-        userApprovals.forEach(a -> {
-            if (a.getApprovedAtGitlab() != null) {
-                activeDays.add(toDateString(a.getApprovedAtGitlab()));
-            }
-        });
 
-        int activeDaysCount = activeDays.size();
+        int activeDaysCount = collectActiveDays(userCommits, userNotes, userApprovals).size();
 
         // --- Review contribution ---
-        // Notes written in OTHER people's MRs (non-system only)
-        List<MergeRequestNote> reviewNotesWritten = userNotes.stream()
+        List<MergeRequestNote> reviewNotes = userNotes.stream()
             .filter(n -> !n.isSystem() && !authoredMrIds.contains(n.getMergeRequestId()))
             .toList();
-        int reviewCommentsWrittenCount = reviewNotesWritten.size();
-
-        // Review threads started = first note of a discussion in a foreign MR
-        long reviewThreadsStarted = countReviewThreadsStarted(reviewNotesWritten, notesByMrId);
-
-        // MRs reviewed = unique foreign MRs where user left at least one non-system note OR approved
-        Set<Long> reviewedByNote = reviewNotesWritten.stream()
+        Set<Long> reviewedMrIds = reviewNotes.stream()
             .map(MergeRequestNote::getMergeRequestId)
-            .collect(Collectors.toSet());
-        Set<Long> approvedMrIds = userApprovals.stream()
+            .collect(Collectors.toCollection(HashSet::new));
+        userApprovals.stream()
             .map(MergeRequestApproval::getMergeRequestId)
-            .collect(Collectors.toSet());
-        // Only count foreign MRs as reviewed
-        Set<Long> foreignApprovedMrIds = approvedMrIds.stream()
             .filter(id -> !authoredMrIds.contains(id))
-            .collect(Collectors.toSet());
-
-        Set<Long> reviewedMrIds = new HashSet<>(reviewedByNote);
-        reviewedMrIds.addAll(foreignApprovedMrIds);
+            .forEach(reviewedMrIds::add);
         int mrsReviewedCount = reviewedMrIds.size();
-
         int approvalsGivenCount = (int) userApprovals.stream()
-            .filter(a -> !authoredMrIds.contains(a.getMergeRequestId()))
-            .count();
+            .filter(a -> !authoredMrIds.contains(a.getMergeRequestId())).count();
 
-        // --- Flow metrics on authored MRs ---
+        // --- Flow ---
+        FlowResult flow = computeFlowMetrics(authoredMrs, gitlabIds, user, aliasEmails,
+            notesByMrId, approvalsByMrId, commitsByMrId);
+
+        double reworkRatio = mrMergedCount > 0 ? (double) flow.reworkMrCount() / mrMergedCount : 0.0;
+        double selfMergeRatio = mrMergedCount > 0 ? (double) flow.selfMergeCount() / mrMergedCount : 0.0;
+        double mrMergedPerActiveDay = activeDaysCount > 0 ? (double) mrMergedCount / activeDaysCount : 0.0;
+        double commentsPerReviewedMr = mrsReviewedCount > 0
+            ? (double) reviewNotes.size() / mrsReviewedCount : 0.0;
+
+        return UserMetrics.builder()
+            .trackedUserId(user.getId())
+            .displayName(user.getDisplayName())
+            // Delivery
+            .mrOpenedCount(authoredMrs.size())
+            .mrMergedCount(mrMergedCount)
+            .activeDaysCount(activeDaysCount)
+            .repositoriesTouchedCount(projectsTouched.size())
+            .commitsInMrCount(userCommits.size())
+            // Change volume
+            .linesAdded(volume.linesAdded())
+            .linesDeleted(volume.linesDeleted())
+            .linesChanged(volume.linesAdded() + volume.linesDeleted())
+            .filesChanged(volume.filesChanged())
+            .avgMrSizeLines(volume.avgMrSizeLines())
+            .medianMrSizeLines(volume.medianMrSizeLines())
+            .avgMrSizeFiles(volume.avgMrSizeFiles())
+            // Review
+            .reviewCommentsWrittenCount(reviewNotes.size())
+            .mrsReviewedCount(mrsReviewedCount)
+            .approvalsGivenCount(approvalsGivenCount)
+            .reviewThreadsStartedCount((int) countReviewThreadsStarted(reviewNotes, notesByMrId))
+            // Flow
+            .avgTimeToFirstReviewMinutes(optMean(flow.timeToFirstReview()))
+            .medianTimeToFirstReviewMinutes(optMedian(flow.timeToFirstReview()))
+            .avgTimeToMergeMinutes(optMean(flow.timeToMerge()))
+            .medianTimeToMergeMinutes(optMedian(flow.timeToMerge()))
+            .reworkMrCount(flow.reworkMrCount())
+            .reworkRatio(round2(reworkRatio))
+            .selfMergeCount(flow.selfMergeCount())
+            .selfMergeRatio(round2(selfMergeRatio))
+            // Normalized
+            .mrMergedPerActiveDay(round2(mrMergedPerActiveDay))
+            .commentsPerReviewedMr(round2(commentsPerReviewedMr))
+            .build();
+    }
+
+    private ChangeVolume computeChangeVolume(List<MergeRequestCommit> userCommits,
+                                             List<MergeRequest> authoredMrs,
+                                             Map<Long, List<MergeRequestCommit>> commitsByMrId) {
+        int linesAdded = userCommits.stream().mapToInt(MergeRequestCommit::getAdditions).sum();
+        int linesDeleted = userCommits.stream().mapToInt(MergeRequestCommit::getDeletions).sum();
+        int filesChanged = userCommits.stream().mapToInt(MergeRequestCommit::getFilesChangedCount).sum();
+
+        // MR size in lines = all commits in the MR (not just user's), filtered for non-zero
+        List<Integer> mrSizesLines = authoredMrs.stream()
+            .map(mr -> commitsByMrId.getOrDefault(mr.getId(), List.of()).stream()
+                .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
+            .filter(size -> size > 0)
+            .sorted()
+            .toList();
+
+        // MR size in files = from MR entity (GitLab provides this directly)
+        List<Integer> mrSizesFiles = authoredMrs.stream()
+            .map(MergeRequest::getFilesChangedCount)
+            .sorted()
+            .toList();
+
+        return new ChangeVolume(
+            linesAdded, linesDeleted, filesChanged,
+            round2(mrSizesLines.isEmpty() ? 0 : mean(mrSizesLines)),
+            round2(mrSizesLines.isEmpty() ? 0 : median(mrSizesLines)),
+            round2(mrSizesFiles.isEmpty() ? 0 : mean(mrSizesFiles))
+        );
+    }
+
+    private Set<String> collectActiveDays(List<MergeRequestCommit> userCommits,
+                                          List<MergeRequestNote> userNotes,
+                                          List<MergeRequestApproval> userApprovals) {
+        Set<String> activeDays = new HashSet<>();
+        userCommits.stream().map(MergeRequestCommit::getAuthoredDate)
+            .filter(Objects::nonNull).map(this::toDateString).forEach(activeDays::add);
+        userNotes.stream().map(MergeRequestNote::getCreatedAtGitlab)
+            .filter(Objects::nonNull).map(this::toDateString).forEach(activeDays::add);
+        userApprovals.stream().map(MergeRequestApproval::getApprovedAtGitlab)
+            .filter(Objects::nonNull).map(this::toDateString).forEach(activeDays::add);
+        return activeDays;
+    }
+
+    private FlowResult computeFlowMetrics(List<MergeRequest> authoredMrs,
+                                          Set<Long> gitlabIds,
+                                          TrackedUser user,
+                                          Set<String> aliasEmails,
+                                          Map<Long, List<MergeRequestNote>> notesByMrId,
+                                          Map<Long, List<MergeRequestApproval>> approvalsByMrId,
+                                          Map<Long, List<MergeRequestCommit>> commitsByMrId) {
         List<Long> timeToFirstReview = new ArrayList<>();
         List<Long> timeToMerge = new ArrayList<>();
         int reworkMrCount = 0;
@@ -244,108 +251,31 @@ public class MetricCalculationService {
             List<MergeRequestApproval> mrApprovals = approvalsByMrId.getOrDefault(mr.getId(), List.of());
             List<MergeRequestCommit> mrCommits = commitsByMrId.getOrDefault(mr.getId(), List.of());
 
-            // First external review event timestamp
-            Optional<Instant> firstExternalReview = findFirstExternalReviewEvent(
-                mr, gitlabIds, mrNotes, mrApprovals);
+            Optional<Instant> firstExternalReview = findFirstExternalReviewEvent(gitlabIds, mrNotes, mrApprovals);
 
-            firstExternalReview.ifPresent(reviewAt -> {
-                long minutes = ChronoUnit.MINUTES.between(mr.getCreatedAtGitlab(), reviewAt);
+            if (firstExternalReview.isPresent()) {
+                long minutes = ChronoUnit.MINUTES.between(mr.getCreatedAtGitlab(), firstExternalReview.get());
                 if (minutes >= 0) {
                     timeToFirstReview.add(minutes);
                 }
-            });
-
-            // Time to merge
-            if (mr.getMergedAtGitlab() != null) {
-                long minutes = ChronoUnit.MINUTES.between(mr.getCreatedAtGitlab(), mr.getMergedAtGitlab());
-                if (minutes >= 0) {
-                    timeToMerge.add(minutes);
-                }
-            }
-
-            // Rework: author pushed a commit AFTER first external review
-            if (firstExternalReview.isPresent()) {
-                boolean hasRework = mrCommits.stream()
-                    .filter(c -> isUserCommit(c, gitlabIds, user, aliasEmails))
-                    .anyMatch(c -> c.getAuthoredDate() != null
-                        && c.getAuthoredDate().isAfter(firstExternalReview.get()));
-                if (hasRework) {
+                if (isReworked(mrCommits, user, aliasEmails, firstExternalReview.get())) {
                     reworkMrCount++;
                 }
             }
 
-            // Self-merge
+            collectTimeToMerge(mr, timeToMerge);
+
             if (mr.getMergedByGitlabUserId() != null && gitlabIds.contains(mr.getMergedByGitlabUserId())) {
                 selfMergeCount++;
             }
         }
 
-        double reworkRatio = mrMergedCount > 0
-            ? (double) reworkMrCount / mrMergedCount
-            : 0.0;
-        double selfMergeRatio = mrMergedCount > 0
-            ? (double) selfMergeCount / mrMergedCount
-            : 0.0;
-
-        // --- Normalized ---
-        double mrMergedPerActiveDay = activeDaysCount > 0
-            ? (double) mrMergedCount / activeDaysCount
-            : 0.0;
-        double commentsPerReviewedMr = mrsReviewedCount > 0
-            ? (double) reviewCommentsWrittenCount / mrsReviewedCount
-            : 0.0;
-
-        return UserMetrics.builder()
-            .trackedUserId(user.getId())
-            .displayName(user.getDisplayName())
-            // Delivery
-            .mrOpenedCount(mrOpenedCount)
-            .mrMergedCount(mrMergedCount)
-            .activeDaysCount(activeDaysCount)
-            .repositoriesTouchedCount(projectsTouched.size())
-            .commitsInMrCount(commitsInMrCount)
-            // Change volume
-            .linesAdded(linesAdded)
-            .linesDeleted(linesDeleted)
-            .linesChanged(linesChanged)
-            .filesChanged(filesChanged)
-            .avgMrSizeLines(round2(avgMrSizeLines))
-            .medianMrSizeLines(round2(medianMrSizeLines))
-            .avgMrSizeFiles(round2(avgMrSizeFiles))
-            // Review
-            .reviewCommentsWrittenCount(reviewCommentsWrittenCount)
-            .mrsReviewedCount(mrsReviewedCount)
-            .approvalsGivenCount(approvalsGivenCount)
-            .reviewThreadsStartedCount((int) reviewThreadsStarted)
-            // Flow
-            .avgTimeToFirstReviewMinutes(timeToFirstReview.isEmpty()
-                ? null
-                : round2(mean(timeToFirstReview)))
-            .medianTimeToFirstReviewMinutes(timeToFirstReview.isEmpty()
-                ? null
-                : round2(median(timeToFirstReview)))
-            .avgTimeToMergeMinutes(timeToMerge.isEmpty()
-                ? null
-                : round2(mean(timeToMerge)))
-            .medianTimeToMergeMinutes(timeToMerge.isEmpty()
-                ? null
-                : round2(median(timeToMerge)))
-            .reworkMrCount(reworkMrCount)
-            .reworkRatio(round2(reworkRatio))
-            .selfMergeCount(selfMergeCount)
-            .selfMergeRatio(round2(selfMergeRatio))
-            // Normalized
-            .mrMergedPerActiveDay(round2(mrMergedPerActiveDay))
-            .commentsPerReviewedMr(round2(commentsPerReviewedMr))
-            .build();
+        return new FlowResult(timeToFirstReview, timeToMerge, reworkMrCount, selfMergeCount);
     }
 
-    @SuppressWarnings("PMD.UnusedFormalParameter")
-    private Optional<Instant> findFirstExternalReviewEvent(MergeRequest mr,
-                                                           Set<Long> authorGitlabIds,
+    private Optional<Instant> findFirstExternalReviewEvent(Set<Long> authorGitlabIds,
                                                            List<MergeRequestNote> notes,
                                                            List<MergeRequestApproval> approvals) {
-        // First non-system note by someone who is NOT the MR author
         Optional<Instant> firstNote = notes.stream()
             .filter(n -> !n.isSystem())
             .filter(n -> n.getAuthorGitlabUserId() != null
@@ -354,7 +284,6 @@ public class MetricCalculationService {
             .filter(Objects::nonNull)
             .min(Instant::compareTo);
 
-        // First approval by someone who is NOT the MR author
         Optional<Instant> firstApproval = approvals.stream()
             .filter(a -> a.getApprovedByGitlabUserId() != null
                 && !authorGitlabIds.contains(a.getApprovedByGitlabUserId()))
@@ -365,9 +294,8 @@ public class MetricCalculationService {
         if (firstNote.isEmpty()) {
             return firstApproval;
         }
-        return firstApproval.map(instant -> firstNote.get().isBefore(instant)
-                ? firstNote.get()
-                : instant)
+        return firstApproval
+            .map(instant -> firstNote.get().isBefore(instant) ? firstNote.get() : instant)
             .or(() -> firstNote);
     }
 
@@ -379,9 +307,7 @@ public class MetricCalculationService {
             .flatMap(Collection::stream)
             .filter(n -> n.getDiscussionId() != null && n.getCreatedAtGitlab() != null)
             .forEach(n -> firstNoteByDiscussion.merge(n.getDiscussionId(), n.getCreatedAtGitlab(),
-                (a, b) -> a.isBefore(b)
-                    ? a
-                    : b));
+                (a, b) -> a.isBefore(b) ? a : b));
 
         return reviewNotes.stream()
             .filter(n -> n.getDiscussionId() != null && n.getCreatedAtGitlab() != null)
@@ -389,11 +315,7 @@ public class MetricCalculationService {
             .count();
     }
 
-    @SuppressWarnings("PMD.UnusedFormalParameter")
-    private boolean isUserCommit(MergeRequestCommit commit,
-                                 Set<Long> gitlabIds,
-                                 TrackedUser user,
-                                 Set<String> aliasEmails) {
+    private boolean isUserCommit(MergeRequestCommit commit, TrackedUser user, Set<String> aliasEmails) {
         if (commit.getAuthorEmail() == null) {
             return false;
         }
@@ -402,27 +324,62 @@ public class MetricCalculationService {
             || aliasEmails.contains(email);
     }
 
-    private Map<Long, Set<Long>> resolveGitlabIds(List<Long> userIds) {
-        return aliasRepository.findByTrackedUserIdIn(userIds).stream()
+    private Map<Long, AliasData> resolveAliasData(List<Long> userIds) {
+        List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserIdIn(userIds);
+
+        Map<Long, Set<Long>> gitlabIdsByUser = aliases.stream()
             .filter(a -> a.getGitlabUserId() != null)
             .collect(Collectors.groupingBy(
                 TrackedUserAlias::getTrackedUserId,
                 Collectors.mapping(TrackedUserAlias::getGitlabUserId, Collectors.toSet())
             ));
-    }
-
-    private Map<Long, Set<String>> resolveAliasEmails(List<Long> userIds) {
-        return aliasRepository.findByTrackedUserIdIn(userIds).stream()
+        Map<Long, Set<String>> emailsByUser = aliases.stream()
             .filter(a -> a.getEmail() != null)
             .collect(Collectors.groupingBy(
                 TrackedUserAlias::getTrackedUserId,
                 Collectors.mapping(a -> a.getEmail().toLowerCase(Locale.ROOT), Collectors.toSet())
             ));
+
+        return userIds.stream().collect(Collectors.toMap(
+            id -> id,
+            id -> new AliasData(
+                gitlabIdsByUser.getOrDefault(id, Set.of()),
+                emailsByUser.getOrDefault(id, Set.of())
+            )
+        ));
+    }
+
+    private void collectTimeToMerge(MergeRequest mr, List<Long> timeToMerge) {
+        if (mr.getMergedAtGitlab() == null) {
+            return;
+        }
+        long minutes = ChronoUnit.MINUTES.between(mr.getCreatedAtGitlab(), mr.getMergedAtGitlab());
+        if (minutes >= 0) {
+            timeToMerge.add(minutes);
+        }
+    }
+
+    private boolean isReworked(List<MergeRequestCommit> mrCommits,
+                               TrackedUser user,
+                               Set<String> aliasEmails,
+                               Instant firstExternalReview) {
+        return mrCommits.stream()
+            .filter(c -> isUserCommit(c, user, aliasEmails))
+            .filter(c -> c.getAuthoredDate() != null)
+            .anyMatch(c -> c.getAuthoredDate().isAfter(firstExternalReview));
     }
 
     // -----------------------------------------------------------------------
     // Math helpers
     // -----------------------------------------------------------------------
+
+    private Double optMean(List<Long> values) {
+        return values.isEmpty() ? null : round2(mean(values));
+    }
+
+    private Double optMedian(List<Long> values) {
+        return values.isEmpty() ? null : round2(median(values));
+    }
 
     private double mean(List<? extends Number> values) {
         if (values.isEmpty()) {
@@ -438,9 +395,8 @@ public class MetricCalculationService {
         int size = sorted.size();
         if (size % 2 == 1) {
             return sorted.get(size / 2).doubleValue();
-        } else {
-            return (sorted.get(size / 2 - 1).doubleValue() + sorted.get(size / 2).doubleValue()) / 2.0;
         }
+        return (sorted.get(size / 2 - 1).doubleValue() + sorted.get(size / 2).doubleValue()) / 2.0;
     }
 
     private double round2(double value) {
@@ -449,5 +405,29 @@ public class MetricCalculationService {
 
     private String toDateString(Instant instant) {
         return instant.atOffset(ZoneOffset.UTC).toLocalDate().toString();
+    }
+
+    // -----------------------------------------------------------------------
+    // Inner types
+    // -----------------------------------------------------------------------
+
+    private record AliasData(Set<Long> gitlabIds, Set<String> emails) {
+        static AliasData empty() {
+            return new AliasData(Set.of(), Set.of());
+        }
+    }
+
+    private record ChangeVolume(int linesAdded,
+                                int linesDeleted,
+                                int filesChanged,
+                                double avgMrSizeLines,
+                                double medianMrSizeLines,
+                                double avgMrSizeFiles) {
+    }
+
+    private record FlowResult(List<Long> timeToFirstReview,
+                              List<Long> timeToMerge,
+                              int reworkMrCount,
+                              int selfMergeCount) {
     }
 }
