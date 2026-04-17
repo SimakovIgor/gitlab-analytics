@@ -52,7 +52,7 @@ public class HistoryController {
     @GetMapping("/history")
     public String history(OAuth2AuthenticationToken authentication,
                           @RequestParam(defaultValue = "mr_merged_count") String metric,
-                          @RequestParam(defaultValue = "30") int days,
+                          @RequestParam(defaultValue = "360") int days,
                           Model model) {
         if (authentication != null) {
             model.addAttribute("currentUser", resolveUser(authentication));
