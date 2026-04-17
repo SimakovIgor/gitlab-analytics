@@ -8,6 +8,7 @@ import io.simakov.analytics.gitlab.dto.GitLabDiscussionDto;
 import io.simakov.analytics.gitlab.dto.GitLabMergeRequestDto;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserDto;
+import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
@@ -62,6 +63,18 @@ public class GitLabApiClient {
         String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8);
         String extraParams = "&search=" + encoded + "&membership=true&order_by=last_activity_at&sort=desc";
         return fetchAllPages(baseUrl, token, "/api/v4/projects", GitLabProjectDto[].class, extraParams);
+    }
+
+    /**
+     * Search GitLab users by name or username.
+     * Returns up to one page of results. public_email is populated only if the user has set it.
+     */
+    public List<GitLabUserSearchDto> searchUsers(String baseUrl,
+                                                 String token,
+                                                 String query) {
+        String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8);
+        return fetchAllPages(baseUrl, token, "/api/v4/users",
+            GitLabUserSearchDto[].class, "&search=" + encoded + "&active=true");
     }
 
     /**

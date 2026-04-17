@@ -56,7 +56,7 @@ public class SyncOrchestrator {
             jobId, request.projectIds(), request.dateFrom(), request.dateTo());
         try {
             for (Long projectId : request.projectIds()) {
-                syncProject(projectId, request);
+                syncProject(jobId, projectId, request);
             }
             syncJobService.complete(jobId);
         } catch (Exception e) {
@@ -66,7 +66,8 @@ public class SyncOrchestrator {
     }
 
     @SuppressWarnings("checkstyle:IllegalCatch")
-    private void syncProject(Long trackedProjectId,
+    private void syncProject(Long jobId,
+                             Long trackedProjectId,
                              ManualSyncRequest request) {
         TrackedProject project = trackedProjectRepository.findById(trackedProjectId)
             .orElseThrow(() -> new IllegalArgumentException("TrackedProject not found: " + trackedProjectId));
@@ -74,7 +75,7 @@ public class SyncOrchestrator {
         GitSource source = gitSourceRepository.findById(project.getGitSourceId())
             .orElseThrow(() -> new IllegalArgumentException("GitSource not found: " + project.getGitSourceId()));
 
-        String token = encryptionService.decrypt(source.getTokenEncrypted());
+        String token = encryptionService.decrypt(project.getTokenEncrypted());
         String baseUrl = source.getBaseUrl();
 
         log.info("Syncing project '{}' (gitlabId={})", project.getPathWithNamespace(), project.getGitlabProjectId());
@@ -82,8 +83,11 @@ public class SyncOrchestrator {
         List<GitLabMergeRequestDto> mrDtos = gitLabApiClient.getMergeRequests(
             baseUrl, token, project.getGitlabProjectId(), request.dateFrom(), request.dateTo());
 
-        log.info("Fetched {} MRs for project '{}'", mrDtos.size(), project.getPathWithNamespace());
+        int total = mrDtos.size();
+        log.info("Fetched {} MRs for project '{}'", total, project.getPathWithNamespace());
+        syncJobService.updateProgress(jobId, 0, total);
 
+        int processed = 0;
         for (GitLabMergeRequestDto mrDto : mrDtos) {
             try {
                 syncMergeRequest(mrDto, trackedProjectId, baseUrl, token, request);
@@ -91,6 +95,7 @@ public class SyncOrchestrator {
                 log.warn("Failed to sync MR iid={} in project {}: {}",
                     mrDto.iid(), project.getPathWithNamespace(), e.getMessage());
             }
+            syncJobService.updateProgress(jobId, ++processed, total);
         }
     }
 

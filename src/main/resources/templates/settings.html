@@ -49,11 +49,119 @@
     <!-- Баннеры синхронизации -->
     <div id="sync-banners"></div>
 
+    <!-- ── Онбординг-визард ───────────────────────────────────────────────── -->
+    <div th:if="${onboardingMode}" id="onboarding-wizard" class="onboarding-wizard">
+        <div class="ob-wizard-header">
+            <h2 class="ob-wizard-title">Настройка за 3 шага</h2>
+            <p class="ob-wizard-subtitle">После добавления репозитория система автоматически загрузит данные GitLab за последние 360 дней</p>
+        </div>
+
+        <div class="ob-steps">
+
+            <!-- Шаг 1: GitLab источник -->
+            <div id="ob-step-1" th:class="${hasSources} ? 'ob-step ob-step-done' : 'ob-step ob-step-active'">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasSources} ? '✓' : '1'">1</div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Подключите GitLab</div>
+                    <div class="ob-step-desc">Укажите URL вашего инстанса GitLab</div>
+                    <div class="ob-step-action">
+                        <span th:if="${hasSources}" class="ob-done-badge">Добавлено ✓</span>
+                        <button th:unless="${hasSources}" class="btn-primary" onclick="openModal('modal-source')">
+                            + Добавить источник
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Шаг 2: Репозитории -->
+            <div id="ob-step-2"
+                 th:class="${hasProjects} ? 'ob-step ob-step-done' : (${hasSources} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasProjects} ? '✓' : '2'">2</div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Добавьте репозитории</div>
+                    <div class="ob-step-desc">
+                        Выберите репозитории, за активностью которых нужно следить.
+                        Данные за 360 дней загрузятся сразу после добавления.
+                    </div>
+                    <div class="ob-step-action">
+                        <span th:if="${hasProjects}" class="ob-done-badge">Добавлено ✓</span>
+                        <button th:if="${!hasProjects and hasSources}" class="btn-primary"
+                                onclick="openModal('modal-project')">
+                            + Добавить репозиторий
+                        </button>
+                        <span th:if="${!hasProjects and !hasSources}" class="ob-locked-hint">
+                            Сначала добавьте GitLab источник
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Шаг 3: Синхронизация → Сотрудники -->
+            <div id="ob-step-3"
+                 th:class="${hasUsers} ? 'ob-step ob-step-done' : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '3'">3</div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Выберите сотрудников</div>
+
+                    <!-- Синк выполняется -->
+                    <div id="ob-sync-section"
+                         th:class="${hasProjects and !activeJobIds.isEmpty() and !hasUsers} ? 'ob-sync-section' : 'ob-sync-section hidden'">
+                        <div class="ob-sync-desc">Идёт загрузка MR, коммитов и ревью за 360 дней. Первая синхронизация может занять 10–30 минут в зависимости от размера репозитория.</div>
+                        <div id="sync-banners-ob"></div>
+                    </div>
+
+                    <!-- После синка: выбор из репозитория (или пока не запускали) -->
+                    <div id="ob-select-section"
+                         th:class="${hasProjects and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
+                        <div class="ob-step-desc" style="margin-bottom:12px">
+                            Отметьте участников из репозитория — по email система сопоставит коммиты и MR с конкретным человеком. По умолчанию выбраны все.
+                        </div>
+                        <div id="ob-discovery-loading" class="discovery-loading hidden">
+                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+                            Ищем участников в синхронизированных данных...
+                        </div>
+                        <div id="ob-discovery-list" class="discovery-list" style="max-height:320px;overflow-y:auto"></div>
+                        <div id="ob-discovery-actions" class="discovery-actions hidden" style="margin-top:12px">
+                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
+                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
+                            <button id="ob-btn-add" class="btn-sm btn-primary" onclick="addSelectedOb()">
+                                Добавить выбранных
+                            </button>
+                            <button class="btn-sm btn-secondary" onclick="openModal('modal-user')">+ Вручную</button>
+                        </div>
+                    </div>
+
+                    <span th:if="${hasUsers}" class="ob-done-badge">Добавлено ✓</span>
+                    <span th:if="${!hasProjects}" class="ob-locked-hint">Сначала добавьте репозиторий</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- CTA: перейти к дашборду -->
+        <div id="ob-cta" th:class="${hasProjects and hasUsers} ? 'ob-footer' : 'ob-footer hidden'">
+            <div class="ob-cta-text">Всё настроено! Пока идёт синхронизация, можно посмотреть дашборд.</div>
+            <a href="/dashboard" class="btn-primary ob-cta-btn">Перейти к дашборду →</a>
+        </div>
+    </div>
+
     <!-- Вкладки -->
     <div class="settings-tabs">
         <button class="tab-btn tab-btn-active" onclick="switchTab('sources')">GitLab Sources</button>
         <button class="tab-btn" onclick="switchTab('projects')">Репозитории</button>
         <button class="tab-btn" onclick="switchTab('users')">Сотрудники</button>
+        <button class="tab-btn" onclick="switchTab('jobs')">
+            Синхронизация
+            <span th:if="${!activeJobIds.isEmpty()}" class="tab-badge-running" th:text="${activeJobIds.size()}">0</span>
+        </button>
     </div>
 
     <!-- ── GitLab Sources ─────────────────────────────────────────────────── -->
@@ -78,12 +186,10 @@
                     <td><span class="repo-path" th:text="${source.baseUrl}">—</span></td>
                     <td th:text="${#strings.substring(source.createdAt.toString(), 0, 10)}">—</td>
                     <td class="actions-cell">
-                        <button class="btn-sm btn-secondary"
-                                th:onclick="'testSource(' + ${source.id} + ', this)'">
-                            Проверить
-                        </button>
                         <button class="btn-sm btn-danger"
-                                th:onclick="'deleteSource(' + ${source.id} + ', \'' + ${source.name} + '\')'">
+                                th:data-id="${source.id}"
+                                th:data-name="${source.name}"
+                                onclick="deleteSource(this.dataset.id, this.dataset.name)">
                             Удалить
                         </button>
                     </td>
@@ -123,11 +229,15 @@
                     </td>
                     <td class="actions-cell">
                         <button class="btn-sm btn-secondary"
-                                th:onclick="'triggerBackfill(' + ${project.id} + ', \'' + ${project.name} + '\')'">
+                                th:data-id="${project.id}"
+                                th:data-name="${project.name}"
+                                onclick="triggerBackfill(this.dataset.id, this.dataset.name)">
                             Синк
                         </button>
                         <button class="btn-sm btn-danger"
-                                th:onclick="'deleteProject(' + ${project.id} + ', \'' + ${project.name} + '\')'">
+                                th:data-id="${project.id}"
+                                th:data-name="${project.name}"
+                                onclick="deleteProject(this.dataset.id, this.dataset.name)">
                             Удалить
                         </button>
                     </td>
@@ -143,7 +253,30 @@
     <div id="tab-users" class="tab-content hidden">
         <div class="tab-toolbar">
             <span class="section-title" style="margin-bottom:0">Сотрудники</span>
-            <button class="btn-primary" onclick="openModal('modal-user')">+ Добавить сотрудника</button>
+            <button class="btn-primary" onclick="openModal('modal-user')">+ Добавить вручную</button>
+        </div>
+
+        <!-- Панель обнаружения контрибьютеров -->
+        <div id="discovery-panel" class="discovery-panel hidden">
+            <div class="discovery-header">
+                <div class="discovery-title">
+                    <span class="discovery-icon">👥</span>
+                    Обнаружены участники из синхронизированных репозиториев
+                </div>
+                <div class="discovery-actions">
+                    <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(false)">Снять все</button>
+                    <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(true)">Выбрать всех</button>
+                    <button id="btn-add-discovered" class="btn-sm btn-primary" onclick="addSelectedDiscovered()" disabled>
+                        Добавить выбранных
+                    </button>
+                </div>
+            </div>
+            <div id="discovery-list" class="discovery-list"></div>
+        </div>
+
+        <div id="discovery-loading" class="discovery-loading hidden">
+            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+            Ищем участников в синхронизированных данных...
         </div>
 
         <table class="data-table" th:if="${!usersWithAliases.isEmpty()}" id="users-table">
@@ -181,7 +314,9 @@
                     </td>
                     <td class="actions-cell">
                         <button class="btn-sm btn-danger"
-                                th:onclick="'deleteUser(' + ${entry.user.id} + ', \'' + ${entry.user.displayName} + '\')'">
+                                th:data-id="${entry.user.id}"
+                                th:data-name="${entry.user.displayName}"
+                                onclick="deleteUser(this.dataset.id, this.dataset.name)">
                             Удалить
                         </button>
                     </td>
@@ -190,6 +325,58 @@
         </table>
         <div th:if="${usersWithAliases.isEmpty()}" class="empty-state" id="users-empty">
             Нет отслеживаемых сотрудников. Добавьте первого.
+        </div>
+    </div>
+
+    <!-- ── Синхронизация ──────────────────────────────────────────────────── -->
+    <div id="tab-jobs" class="tab-content hidden">
+        <div class="tab-toolbar">
+            <span class="section-title" style="margin-bottom:0">История синхронизаций</span>
+            <span class="section-subtitle">Последние 30 запусков · время в UTC</span>
+        </div>
+
+        <table class="data-table" th:if="${!recentJobs.isEmpty()}">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Статус</th>
+                    <th>Запущена</th>
+                    <th>Завершена</th>
+                    <th>Длительность</th>
+                    <th>Ошибка</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="job : ${recentJobs}" th:id="'job-row-' + ${job.id}"
+                    th:class="${job.status == 'STARTED'} ? 'job-row-running' : ''">
+                    <td class="job-id-cell" th:text="${job.id}">—</td>
+                    <td>
+                        <span th:if="${job.status == 'COMPLETED'}" class="job-status job-status-ok">✓ Выполнен</span>
+                        <span th:if="${job.status == 'FAILED'}"    class="job-status job-status-err">✕ Ошибка</span>
+                        <span th:if="${job.status == 'STARTED'}"   class="job-status job-status-run">
+                            <span class="sync-spinner-sm"></span> Выполняется
+                        </span>
+                    </td>
+                    <td class="job-time-cell" th:text="${job.startedAt}">—</td>
+                    <td class="job-time-cell" th:text="${job.finishedAt ?: '—'}">—</td>
+                    <td th:text="${job.duration}">—</td>
+                    <td class="job-error-cell"
+                        th:text="${job.status != 'COMPLETED' ? (job.errorMessage ?: '') : ''}"></td>
+                    <td class="actions-cell">
+                        <button th:if="${job.canRetry}"
+                                class="btn-sm btn-secondary"
+                                th:data-job-id="${job.id}"
+                                onclick="retryJob(this.dataset.jobId)"
+                                title="Запустить повтор с теми же параметрами. Уже загруженные коммиты и ревью будут пропущены.">
+                            ↺ Повторить
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div th:if="${recentJobs.isEmpty()}" class="empty-state">
+            Синхронизаций ещё не было. Добавьте репозиторий, чтобы запустить первую.
         </div>
     </div>
 
@@ -213,11 +400,6 @@
             <div class="form-group">
                 <label class="form-label">Base URL</label>
                 <input id="source-url" class="form-input" type="url" placeholder="https://gitlab.example.com">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Personal Access Token</label>
-                <input id="source-token" class="form-input" type="password" placeholder="glpat-...">
-                <div class="form-hint">Нужны права: api, read_api, read_user</div>
             </div>
         </div>
         <div class="modal-footer">
@@ -246,10 +428,21 @@
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Поиск репозитория</label>
-                <input id="project-search" class="form-input" type="text"
-                       placeholder="Введите название репозитория..."
-                       oninput="debounceSearch(this.value)">
+                <label class="form-label">Project Access Token</label>
+                <input id="project-token" class="form-input" type="password"
+                       placeholder="glpat-..." oninput="clearProjectSearch()">
+                <div class="form-hint">Токен привязан к репозиторию (Settings → Access Tokens). Нужны права: api, read_api</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Репозиторий</label>
+                <div class="search-input-wrap">
+                    <span class="search-input-icon">🔍</span>
+                    <input id="project-search" class="form-input search-input-with-icon" type="search"
+                           placeholder="Начните вводить название..."
+                           autocomplete="off"
+                           oninput="debounceSearch(this.value)">
+                </div>
+                <div class="form-hint">Введите 2+ символа — результаты появятся автоматически</div>
             </div>
             <div id="project-search-results" class="search-results hidden"></div>
             <div id="project-selected" class="selected-project hidden">
@@ -276,14 +469,41 @@
         </div>
         <div class="modal-body">
             <div id="user-error" class="modal-error hidden"></div>
+
+            <!-- Поиск по GitLab (только если добавлены проекты) -->
+            <div class="form-group" th:if="${hasProjects}">
+                <label class="form-label">Найти в GitLab</label>
+                <div class="form-group-row">
+                    <select id="user-search-source" class="form-input form-input-sm">
+                        <option th:each="source : ${sources}"
+                                th:value="${source.id}"
+                                th:text="${source.name}">Источник</option>
+                    </select>
+                    <div class="search-input-wrap" style="flex:1">
+                        <span class="search-input-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </span>
+                        <input id="user-gl-search" class="form-input search-input-with-icon" type="search"
+                               placeholder="Начните вводить имя или username..."
+                               autocomplete="off"
+                               oninput="debounceUserSearch(this.value)">
+                    </div>
+                </div>
+                <div id="user-search-results" class="search-results hidden"></div>
+                <div class="form-hint">Выберите — имя и email (публичный) подтянутся автоматически</div>
+            </div>
+
             <div class="form-group">
-                <label class="form-label">Имя</label>
+                <label class="form-label">Имя <span class="form-required">*</span></label>
                 <input id="user-name" class="form-input" type="text" placeholder="Иван Иванов">
             </div>
             <div class="form-group">
-                <label class="form-label">Email (для атрибуции коммитов)</label>
+                <label class="form-label">Email (для атрибуции коммитов) <span class="form-required">*</span></label>
                 <input id="user-email" class="form-input" type="email" placeholder="ivan@example.com">
-                <div class="form-hint">Должен совпадать с email в Git-коммитах</div>
+                <div class="form-hint user-email-hint">
+                    Должен совпадать с email в git-коммитах — может отличаться от email GitLab-аккаунта.<br>
+                    Узнать точный: откройте любой коммит сотрудника в GitLab → строка <strong>«Authored by»</strong>.
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -298,6 +518,57 @@
 
 const CSRF_TOKEN  = document.querySelector('meta[name="_csrf"]').content;
 const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
+
+// ── Онбординг ─────────────────────────────────────────────────────────────
+
+const ONBOARDING_MODE = /*[[${onboardingMode}]]*/ false;
+const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+const OB_STATE = {
+    hasSources:  /*[[${hasSources}]]*/ false,
+    hasProjects: /*[[${hasProjects}]]*/ false,
+    hasUsers:    /*[[${hasUsers}]]*/ false
+};
+
+function refreshOnboarding() {
+    if (!ONBOARDING_MODE) return;
+    const s = OB_STATE;
+
+    setObStep('ob-step-1', s.hasSources, true, s.hasSources ? '✓' : '1',
+        s.hasSources
+            ? '<span class="ob-done-badge">Добавлено ✓</span>'
+            : '<button class="btn-primary" onclick="openModal(\'modal-source\')">+ Добавить источник</button>'
+    );
+
+    setObStep('ob-step-2', s.hasProjects, s.hasSources, s.hasProjects ? '✓' : '2',
+        s.hasProjects
+            ? '<span class="ob-done-badge">Добавлено ✓</span>'
+            : s.hasSources
+                ? '<button class="btn-primary" onclick="openModal(\'modal-project\')">+ Добавить репозиторий</button>'
+                : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
+    );
+
+    setObStep('ob-step-3', s.hasUsers, s.hasSources, s.hasUsers ? '✓' : '3',
+        s.hasUsers
+            ? '<span class="ob-done-badge">Добавлено ✓</span>'
+            : s.hasSources
+                ? '<button class="btn-primary" onclick="openModal(\'modal-user\')">+ Добавить сотрудника</button>'
+                : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
+    );
+
+    const step4 = document.getElementById('ob-step-4');
+    if (step4) step4.classList.toggle('hidden', !s.hasProjects);
+
+    const cta = document.getElementById('ob-cta');
+    if (cta) cta.classList.toggle('hidden', !(s.hasProjects && s.hasUsers));
+}
+
+function setObStep(stepId, done, active, numText, actionHtml) {
+    const el = document.getElementById(stepId);
+    if (!el) return;
+    el.className = 'ob-step ' + (done ? 'ob-step-done' : active ? 'ob-step-active' : 'ob-step-locked');
+    el.querySelector('.ob-step-num').textContent = numText;
+    el.querySelector('.ob-step-action').innerHTML = actionHtml;
+}
 
 // ── Утилиты ──────────────────────────────────────────────────────────────
 
@@ -324,14 +595,24 @@ function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-btn-active'));
     document.getElementById('tab-' + name).classList.remove('hidden');
     const buttons = document.querySelectorAll('.tab-btn');
-    const map = {sources: 0, projects: 1, users: 2};
+    const map = {sources: 0, projects: 1, users: 2, jobs: 3};
     if (map[name] !== undefined) buttons[map[name]].classList.add('tab-btn-active');
     sessionStorage.setItem(TAB_STORAGE_KEY, name);
+    if (name === 'users') loadDiscoveredContributors();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const saved = sessionStorage.getItem(TAB_STORAGE_KEY) || 'sources';
-    switchTab(saved);
+    const defaultTab = (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers)
+        ? 'users'
+        : (sessionStorage.getItem(TAB_STORAGE_KEY) || 'sources');
+    switchTab(defaultTab);
+
+    ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
+
+    // Если онбординг: проекты есть, синк уже завершён, пользователей нет → сразу грузим discovery в визард
+    if (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && ACTIVE_JOB_IDS.length === 0) {
+        loadObDiscovery();
+    }
 });
 
 // ── Модалки ───────────────────────────────────────────────────────────────
@@ -362,47 +643,200 @@ function clearModalError(errorId) {
 
 // ── Баннеры синхронизации ─────────────────────────────────────────────────
 
-function showSyncBanner(jobId, projectName) {
-    const banners = document.getElementById('sync-banners');
+function buildBannerHtml(jobId, descHtml) {
+    return `
+        <span class="sync-spinner"></span>
+        <div class="sync-main">
+            <span class="sync-text">${descHtml}</span>
+            <div class="sync-progress-row">
+                <div class="sync-progress-bar">
+                    <div class="sync-progress-fill" id="sync-fill-${jobId}" style="width:0%"></div>
+                </div>
+                <span class="sync-progress-label" id="sync-plabel-${jobId}">получение списка MR...</span>
+            </div>
+        </div>
+        <span class="sync-duration" id="sync-duration-${jobId}"></span>
+    `;
+}
+
+function showSyncBanner(jobId, projectName, isRetry) {
+    const banners = ONBOARDING_MODE
+        ? document.getElementById('sync-banners-ob')
+        : document.getElementById('sync-banners');
     const id = 'sync-banner-' + jobId;
     const div = document.createElement('div');
     div.id = id;
     div.className = 'sync-banner sync-banner-running';
-    div.innerHTML = `
-        <span class="sync-spinner"></span>
-        <span class="sync-text">
-            Синхронизация <strong>${escHtml(projectName)}</strong>
-            — загружаем данные за 360 дней...
-        </span>
-        <span class="sync-duration" id="sync-duration-${jobId}"></span>
-    `;
+    const desc = isRetry
+        ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
+        : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем данные за 360 дней`;
+    div.innerHTML = buildBannerHtml(jobId, desc);
     banners.prepend(div);
-    const startedAt = Date.now();
-    const durationEl = document.getElementById('sync-duration-' + jobId);
-    const durationTimer = setInterval(() => {
-        const sec = Math.floor((Date.now() - startedAt) / 1000);
-        durationEl.textContent = sec + 'с';
-    }, 1000);
-    pollSyncJob(jobId, id, durationTimer);
+    startBannerTimers(jobId, id, Date.now());
 }
 
-function pollSyncJob(jobId, bannerId, durationTimer) {
+function restoreSyncBanner(jobId) {
+    const banners = ONBOARDING_MODE
+        ? document.getElementById('sync-banners-ob')
+        : document.getElementById('sync-banners');
+    if (!banners) return;
+    const id = 'sync-banner-' + jobId;
+    if (document.getElementById(id)) return;
+    const div = document.createElement('div');
+    div.id = id;
+    div.className = 'sync-banner sync-banner-running';
+    div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...');
+    banners.prepend(div);
+    if (ONBOARDING_MODE) {
+        const step4 = document.getElementById('ob-step-4');
+        if (step4) step4.classList.remove('hidden');
+    }
+    // startedAt уточним из первого ответа сервера
+    startBannerTimers(jobId, id, null);
+}
+
+function startBannerTimers(jobId, bannerId, localStartMs) {
+    let serverStartMs = localStartMs;
+    const durationEl = document.getElementById('sync-duration-' + jobId);
+    const durationTimer = setInterval(() => {
+        if (!serverStartMs) return;
+        const sec = Math.floor((Date.now() - serverStartMs) / 1000);
+        durationEl.textContent = formatSec(sec);
+    }, 1000);
+    pollSyncJob(jobId, bannerId, durationTimer, (startedAt) => {
+        if (!serverStartMs) {
+            serverStartMs = new Date(startedAt).getTime();
+        }
+    });
+}
+
+function formatSec(sec) {
+    if (sec < 60) return sec + ' с';
+    return Math.floor(sec / 60) + ' м ' + (sec % 60) + ' с';
+}
+
+function formatEta(sec) {
+    if (sec < 10) return 'почти готово';
+    if (sec < 60) return '~' + sec + ' с';
+    const m = Math.round(sec / 60);
+    return '~' + m + ' мин';
+}
+
+function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
+    const fillEl = () => document.getElementById('sync-fill-' + jobId);
+    const labelEl = () => document.getElementById('sync-plabel-' + jobId);
+    let prevProcessed = 0;
+    let prevElapsedSec = 1;
+
     const interval = setInterval(async () => {
         try {
             const job = await api('GET', '/settings/sync/' + jobId);
+
+            if (onStartedAt && job.startedAt) {
+                onStartedAt(job.startedAt);
+            }
+
+            // обновляем прогресс-бар пока выполняется
+            if (job.status === 'STARTED' && job.totalMrs > 0) {
+                const pct = Math.round(job.processedMrs / job.totalMrs * 100);
+                if (fillEl()) fillEl().style.width = pct + '%';
+
+                const serverStartMs = new Date(job.startedAt).getTime();
+                const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
+                let label = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
+
+                if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
+                    const rate = job.processedMrs / elapsedSec; // MR/с
+                    const remaining = job.totalMrs - job.processedMrs;
+                    const etaSec = Math.round(remaining / rate);
+                    label += ' • ETA ' + formatEta(etaSec);
+                }
+                if (labelEl()) labelEl().textContent = label;
+
+                prevProcessed = job.processedMrs;
+                prevElapsedSec = elapsedSec;
+            } else if (job.status === 'STARTED' && job.totalMrs === 0) {
+                if (labelEl()) labelEl().textContent = 'получение списка MR...';
+            }
+
             if (job.status === 'COMPLETED') {
                 clearInterval(interval);
                 clearInterval(durationTimer);
+                if (fillEl()) fillEl().style.width = '100%';
+                if (labelEl()) labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
                 updateBanner(bannerId, 'ok', 'Синхронизация завершена');
+                updateJobRow(jobId, 'COMPLETED', null);
             } else if (job.status === 'FAILED') {
                 clearInterval(interval);
                 clearInterval(durationTimer);
                 updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
+                updateJobRow(jobId, 'FAILED', job.errorMessage);
             }
         } catch (e) {
             // продолжаем поллинг при сетевой ошибке
         }
     }, 3000);
+}
+
+function prependJobRow(jobId) {
+    const table = document.querySelector('#tab-jobs .data-table');
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const timeStr = pad(now.getUTCDate()) + '.' + pad(now.getUTCMonth() + 1) + '.' + now.getUTCFullYear()
+        + ' ' + pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes());
+    const tr = document.createElement('tr');
+    tr.id = 'job-row-' + jobId;
+    tr.className = 'job-row-running';
+    tr.innerHTML = `
+        <td class="job-id-cell">${jobId}</td>
+        <td><span class="job-status job-status-run"><span class="sync-spinner-sm"></span> Выполняется</span></td>
+        <td class="job-time-cell">${timeStr}</td>
+        <td class="job-time-cell">—</td>
+        <td>в процессе</td>
+        <td class="job-error-cell"></td>
+    `;
+    if (table) {
+        table.querySelector('tbody').prepend(tr);
+        document.querySelector('#tab-jobs .empty-state')?.remove();
+    }
+}
+
+async function retryJob(jobId) {
+    try {
+        const job = await api('POST', '/settings/sync/' + jobId + '/retry');
+        const origRow = document.getElementById('job-row-' + jobId);
+        if (origRow) {
+            origRow.querySelector('.btn-sm')?.remove();
+        }
+        prependJobRow(job.jobId);
+        showSyncBanner(job.jobId, 'повтор', true);
+    } catch (e) {
+        alert('Не удалось запустить повтор: ' + e.message);
+    }
+}
+
+function updateJobRow(jobId, status, errorMessage) {
+    const row = document.getElementById('job-row-' + jobId);
+    if (!row) return;
+    row.classList.remove('job-row-running');
+    const statusCell = row.cells[1];
+    if (status === 'COMPLETED') {
+        statusCell.innerHTML = '<span class="job-status job-status-ok">✓ Выполнен</span>';
+    } else {
+        statusCell.innerHTML = '<span class="job-status job-status-err">✕ Ошибка</span>';
+    }
+    if (errorMessage) {
+        row.cells[5].textContent = errorMessage;
+    }
+    const badge = document.querySelector('.tab-badge-running');
+    if (badge) {
+        const count = parseInt(badge.textContent, 10) - 1;
+        if (count <= 0) {
+            badge.remove();
+        } else {
+            badge.textContent = count;
+        }
+    }
 }
 
 function updateBanner(bannerId, type, message) {
@@ -412,6 +846,116 @@ function updateBanner(bannerId, type, message) {
     el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
     if (type === 'ok') {
         setTimeout(() => el.remove(), 5000);
+        if (ONBOARDING_MODE && !OB_STATE.hasUsers) {
+            onSyncCompletedInOnboarding();
+        }
+    }
+}
+
+function onSyncCompletedInOnboarding() {
+    const syncSection   = document.getElementById('ob-sync-section');
+    const selectSection = document.getElementById('ob-select-section');
+    if (syncSection)   syncSection.classList.add('hidden');
+    if (selectSection) selectSection.classList.remove('hidden');
+    loadObDiscovery();
+}
+
+async function loadObDiscovery() {
+    const loading = document.getElementById('ob-discovery-loading');
+    const listEl  = document.getElementById('ob-discovery-list');
+    const actions = document.getElementById('ob-discovery-actions');
+    if (!listEl) return;
+    if (loading) loading.classList.remove('hidden');
+    try {
+        const contributors = await api('GET', '/settings/users/discovered');
+        if (loading) loading.classList.add('hidden');
+        const untracked = contributors.filter(c => !c.alreadyTracked);
+        if (untracked.length === 0) {
+            listEl.innerHTML = '<div class="empty-state" style="padding:16px">Все участники уже отслеживаются</div>';
+            return;
+        }
+        listEl.innerHTML = contributors.map(c => renderObRow(c)).join('');
+        updateObBtn();
+        if (actions) actions.classList.remove('hidden');
+    } catch (e) {
+        if (loading) loading.classList.add('hidden');
+        console.error('Ошибка загрузки контрибьютеров в онбординге:', e);
+    }
+}
+
+function renderObRow(c) {
+    const letter  = (c.primaryName || c.email)[0].toUpperCase();
+    const repos   = (c.repoNames || []).map(r => `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
+    const merged  = (c.mergedEmails || []).length > 0
+        ? `<span class="discovery-alt-names" title="Объединённые email: ${escHtml((c.mergedEmails||[]).join(', '))}">+${c.mergedEmails.length} email</span>`
+        : '';
+    if (c.alreadyTracked) {
+        return `<div class="discovery-row discovery-row-tracked">
+            <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+            <div class="discovery-info">
+                <span class="discovery-name">${escHtml(c.primaryName)}</span>
+                <span class="discovery-email">${escHtml(c.email)}</span>
+                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
+            </div>
+            <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+        </div>`;
+    }
+    const mergedData = c.mergedEmails && c.mergedEmails.length > 0
+        ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
+    return `<label class="discovery-row discovery-row-selectable">
+        <input type="checkbox" class="ob-check" value="${escHtml(c.email)}"
+               data-name="${escHtml(c.primaryName)}" ${mergedData}
+               onchange="updateObBtn()" checked>
+        <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+        <div class="discovery-info">
+            <span class="discovery-name">${escHtml(c.primaryName)}</span>${merged}
+            <span class="discovery-email">${escHtml(c.email)}</span>
+            <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
+        </div>
+    </label>`;
+}
+
+function updateObBtn() {
+    const count = document.querySelectorAll('.ob-check:checked').length;
+    const btn   = document.getElementById('ob-btn-add');
+    if (btn) btn.textContent = count > 0 ? `Добавить выбранных (${count})` : 'Добавить выбранных';
+}
+
+function toggleAllOb(checked) {
+    document.querySelectorAll('.ob-check').forEach(cb => cb.checked = checked);
+    updateObBtn();
+}
+
+async function addSelectedOb() {
+    const checked = [...document.querySelectorAll('.ob-check:checked')];
+    if (checked.length === 0) return;
+    const requests = checked.map(cb => ({
+        displayName: cb.dataset.name || cb.value,
+        email:       cb.value,
+        aliasEmails: cb.dataset.merged ? JSON.parse(cb.dataset.merged) : []
+    }));
+    try {
+        await api('POST', '/settings/users/bulk', requests);
+        checked.forEach(cb => {
+            const row = cb.closest('.discovery-row');
+            if (row) {
+                const letter = (cb.dataset.name || cb.value)[0].toUpperCase();
+                row.outerHTML = `<div class="discovery-row discovery-row-tracked">
+                    <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+                    <div class="discovery-info">
+                        <span class="discovery-name">${escHtml(cb.dataset.name)}</span>
+                        <span class="discovery-email">${escHtml(cb.value)}</span>
+                    </div>
+                    <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+                </div>`;
+            }
+        });
+        OB_STATE.hasUsers = true;
+        refreshOnboarding();
+        discoveryLoaded = false;
+        loadDiscoveredContributors();
+    } catch (e) {
+        alert('Не удалось добавить: ' + e.message);
     }
 }
 
@@ -423,28 +967,37 @@ function escHtml(str) {
 // ── GitLab Sources ────────────────────────────────────────────────────────
 
 async function createSource() {
-    const name  = document.getElementById('source-name').value.trim();
-    const url   = document.getElementById('source-url').value.trim();
-    const token = document.getElementById('source-token').value.trim();
-    if (!name || !url || !token) {
+    const name = document.getElementById('source-name').value.trim();
+    const url  = document.getElementById('source-url').value.trim();
+    if (!name || !url) {
         showError('source-error', 'Заполните все поля');
         return;
     }
     try {
-        const source = await api('POST', '/settings/sources', {name, baseUrl: url, token});
+        const source = await api('POST', '/settings/sources', {name, baseUrl: url});
         closeModal('modal-source');
         addSourceRow(source);
         document.getElementById('source-name').value = '';
         document.getElementById('source-url').value  = '';
-        document.getElementById('source-token').value = '';
+        OB_STATE.hasSources = true;
+        refreshOnboarding();
     } catch (e) {
         showError('source-error', e.message);
     }
 }
 
 function addSourceRow(source) {
-    const tbody = document.getElementById('sources-table-body');
     document.getElementById('sources-empty')?.remove();
+    let tbody = document.getElementById('sources-table-body');
+    if (!tbody) {
+        const table = document.createElement('table');
+        table.className = 'data-table';
+        table.innerHTML = `<thead><tr>
+            <th>Название</th><th>URL</th><th>Добавлен</th><th>Действия</th>
+        </tr></thead><tbody id="sources-table-body"></tbody>`;
+        document.getElementById('tab-sources').querySelector('.tab-toolbar').after(table);
+        tbody = document.getElementById('sources-table-body');
+    }
     const tr = document.createElement('tr');
     tr.id = 'source-row-' + source.id;
     tr.innerHTML = `
@@ -452,7 +1005,6 @@ function addSourceRow(source) {
         <td><span class="repo-path">${escHtml(source.baseUrl)}</span></td>
         <td>${new Date().toISOString().slice(0,10)}</td>
         <td class="actions-cell">
-            <button class="btn-sm btn-secondary" onclick="testSource(${source.id}, this)">Проверить</button>
             <button class="btn-sm btn-danger" onclick="deleteSource(${source.id}, '${escHtml(source.name)}')">Удалить</button>
         </td>`;
     tbody.appendChild(tr);
@@ -462,21 +1014,6 @@ function addSourceRow(source) {
     opt.value = source.id;
     opt.textContent = source.name;
     sel.appendChild(opt);
-}
-
-async function testSource(id, btn) {
-    btn.disabled = true;
-    btn.textContent = '...';
-    try {
-        const result = await api('POST', '/settings/sources/' + id + '/test');
-        btn.textContent = '✓ ' + result.username;
-        btn.classList.add('btn-success');
-        setTimeout(() => { btn.textContent = 'Проверить'; btn.disabled = false; btn.classList.remove('btn-success'); }, 4000);
-    } catch (e) {
-        btn.textContent = '✕ Ошибка';
-        btn.classList.add('btn-danger-text');
-        setTimeout(() => { btn.textContent = 'Проверить'; btn.disabled = false; btn.classList.remove('btn-danger-text'); }, 4000);
-    }
 }
 
 async function deleteSource(id, name) {
@@ -496,7 +1033,8 @@ let selectedProject = null;
 let searchDebounceTimer = null;
 
 function clearProjectSearch() {
-    document.getElementById('project-search').value = '';
+    const searchEl = document.getElementById('project-search');
+    if (searchEl) searchEl.value = '';
     document.getElementById('project-search-results').innerHTML = '';
     document.getElementById('project-search-results').classList.add('hidden');
     selectedProject = null;
@@ -515,8 +1053,13 @@ function debounceSearch(q) {
 
 async function searchProjects(q) {
     const sourceId = document.getElementById('project-source-id').value;
+    const token    = document.getElementById('project-token').value.trim();
     if (!sourceId) {
         showError('project-error', 'Сначала выберите GitLab Source');
+        return;
+    }
+    if (!token) {
+        showError('project-error', 'Введите Project Access Token');
         return;
     }
     clearModalError('project-error');
@@ -524,15 +1067,17 @@ async function searchProjects(q) {
     resultsEl.innerHTML = '<div class="search-loading">Поиск...</div>';
     resultsEl.classList.remove('hidden');
     try {
-        const projects = await api('GET', '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q));
+        const projects = await api('GET',
+            '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q)
+            + '&token=' + encodeURIComponent(token));
         if (!projects.length) {
             resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
             return;
         }
         resultsEl.innerHTML = projects.slice(0, 20).map(p => `
-            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.pathWithNamespace)}')">
+            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
                 <div class="search-item-name">${escHtml(p.name)}</div>
-                <div class="search-item-path">${escHtml(p.pathWithNamespace)}</div>
+                <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
             </div>`).join('');
     } catch (e) {
         resultsEl.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
@@ -555,6 +1100,11 @@ async function addProject() {
         showError('project-error', 'Выберите GitLab Source');
         return;
     }
+    const token = document.getElementById('project-token').value.trim();
+    if (!token) {
+        showError('project-error', 'Введите Project Access Token');
+        return;
+    }
     const btn = document.getElementById('btn-add-project');
     btn.disabled = true;
     btn.textContent = 'Добавление...';
@@ -563,13 +1113,18 @@ async function addProject() {
             gitSourceId: parseInt(sourceId),
             gitlabProjectId: selectedProject.id,
             pathWithNamespace: selectedProject.path,
-            name: selectedProject.name
+            name: selectedProject.name,
+            token
         });
         closeModal('modal-project');
         addProjectRow(result);
         showSyncBanner(result.jobId, result.name);
-        switchTab('projects');
+        prependJobRow(result.jobId);
+        if (!ONBOARDING_MODE) switchTab('projects');
         clearProjectSearch();
+        document.getElementById('project-token').value = '';
+        OB_STATE.hasProjects = true;
+        refreshOnboarding();
     } catch (e) {
         showError('project-error', e.message);
         btn.disabled = false;
@@ -609,6 +1164,7 @@ async function triggerBackfill(id, name) {
     try {
         const job = await api('POST', '/settings/projects/' + id + '/backfill');
         showSyncBanner(job.jobId, name);
+        prependJobRow(job.jobId);
     } catch (e) {
         alert('Ошибка запуска синхронизации: ' + e.message);
     }
@@ -621,6 +1177,170 @@ async function deleteProject(id, name) {
         document.getElementById('project-row-' + id)?.remove();
     } catch (e) {
         alert('Ошибка удаления: ' + e.message);
+    }
+}
+
+// ── Обнаружение контрибьютеров ────────────────────────────────────────────
+
+let discoveryLoaded = false;
+
+async function loadDiscoveredContributors() {
+    if (discoveryLoaded) return;
+    const loading = document.getElementById('discovery-loading');
+    const panel   = document.getElementById('discovery-panel');
+    loading.classList.remove('hidden');
+    try {
+        const contributors = await api('GET', '/settings/users/discovered');
+        discoveryLoaded = true;
+        loading.classList.add('hidden');
+        const untracked = contributors.filter(c => !c.alreadyTracked);
+        if (untracked.length === 0) return;
+        renderDiscoveryList(contributors);
+        panel.classList.remove('hidden');
+    } catch (e) {
+        loading.classList.add('hidden');
+        console.error('Ошибка загрузки контрибьютеров:', e);
+    }
+}
+
+function renderDiscoveryList(contributors) {
+    const list = document.getElementById('discovery-list');
+    list.innerHTML = contributors.map(c => {
+        const letter   = (c.primaryName || c.email)[0].toUpperCase();
+        const repos    = (c.repoNames || []).map(r => `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
+        const altNames = (c.allNames || []).length
+            ? `<span class="discovery-alt-names" title="${escHtml(c.allNames.join(', '))}">+${c.allNames.length} имя</span>`
+            : '';
+        const merged = (c.mergedEmails || []).length > 0
+            ? `<span class="discovery-alt-names discovery-merged-badge"
+                     title="Объединённые email: ${escHtml((c.mergedEmails||[]).join(', '))}">
+                     ↔ +${c.mergedEmails.length} email</span>`
+            : '';
+        if (c.alreadyTracked) {
+            return `
+            <div class="discovery-row discovery-row-tracked">
+                <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+                <div class="discovery-info">
+                    <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}
+                    <span class="discovery-email">${escHtml(c.email)}</span>
+                    <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
+                </div>
+                <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+            </div>`;
+        }
+        const mergedData = c.mergedEmails && c.mergedEmails.length > 0
+            ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
+        return `
+        <label class="discovery-row discovery-row-selectable">
+            <input type="checkbox" class="discovery-check" value="${escHtml(c.email)}"
+                   data-name="${escHtml(c.primaryName)}" ${mergedData}
+                   onchange="updateAddBtn()" checked>
+            <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+            <div class="discovery-info">
+                <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}
+                <span class="discovery-email">${escHtml(c.email)}</span>
+                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
+            </div>
+        </label>`;
+    }).join('');
+    updateAddBtn();
+}
+
+function updateAddBtn() {
+    const count = document.querySelectorAll('.discovery-check:checked').length;
+    const btn   = document.getElementById('btn-add-discovered');
+    btn.disabled = count === 0;
+    btn.textContent = count > 0
+        ? `Добавить выбранных (${count})`
+        : 'Добавить выбранных';
+}
+
+function toggleAllDiscovered(checked) {
+    document.querySelectorAll('.discovery-check').forEach(cb => cb.checked = checked);
+    updateAddBtn();
+}
+
+async function addSelectedDiscovered() {
+    const checked = [...document.querySelectorAll('.discovery-check:checked')];
+    if (checked.length === 0) return;
+    const requests = checked.map(cb => ({
+        displayName:  cb.dataset.name || cb.value,
+        email:        cb.value,
+        aliasEmails:  cb.dataset.merged ? JSON.parse(cb.dataset.merged) : []
+    }));
+    try {
+        const resp = await api('POST', '/settings/users/bulk', requests);
+        resp.created.forEach(user => addUserRow(user));
+        checked.forEach(cb => {
+            const row = cb.closest('.discovery-row');
+            if (!row) return;
+            const letter = (cb.dataset.name || cb.value)[0].toUpperCase();
+            row.outerHTML = `
+            <div class="discovery-row discovery-row-tracked">
+                <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+                <div class="discovery-info">
+                    <span class="discovery-name">${escHtml(cb.dataset.name)}</span>
+                    <span class="discovery-email">${escHtml(cb.value)}</span>
+                </div>
+                <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+            </div>`;
+        });
+        OB_STATE.hasUsers = true;
+        refreshOnboarding();
+        updateAddBtn();
+    } catch (e) {
+        alert('Ошибка добавления: ' + e.message);
+    }
+}
+
+// ── Сотрудники: поиск в GitLab ────────────────────────────────────────────
+
+let userSearchTimer = null;
+
+function debounceUserSearch(q) {
+    clearTimeout(userSearchTimer);
+    if (q.length < 2) {
+        document.getElementById('user-search-results').classList.add('hidden');
+        return;
+    }
+    userSearchTimer = setTimeout(() => doUserSearch(q), 350);
+}
+
+async function doUserSearch(q) {
+    const sourceId = document.getElementById('user-search-source')?.value;
+    if (!sourceId) return;
+    const results = document.getElementById('user-search-results');
+    results.innerHTML = '<div class="search-loading">Поиск...</div>';
+    results.classList.remove('hidden');
+    try {
+        const users = await api('GET', `/settings/sources/${sourceId}/users/search?q=${encodeURIComponent(q)}`);
+        if (users.length === 0) {
+            results.innerHTML = '<div class="search-empty">Пользователи не найдены</div>';
+            return;
+        }
+        results.innerHTML = users.slice(0, 10).map(u => `
+            <div class="search-result-item" onclick="selectGitLabUser(${JSON.stringify(u).replace(/"/g, '&quot;')})">
+                <img src="${escHtml(u.avatar_url || '')}" class="search-result-avatar" onerror="this.style.display='none'">
+                <div class="search-result-info">
+                    <div class="search-result-name">${escHtml(u.name)}</div>
+                    <div class="search-result-sub">@${escHtml(u.username)}${u.public_email ? ' · ' + escHtml(u.public_email) : ''}</div>
+                </div>
+                ${u.public_email ? '<span class="search-result-email-badge">email ✓</span>' : ''}
+            </div>
+        `).join('');
+    } catch (e) {
+        results.innerHTML = '<div class="search-empty">Ошибка поиска: ' + escHtml(e.message) + '</div>';
+    }
+}
+
+function selectGitLabUser(user) {
+    document.getElementById('user-name').value  = user.name || '';
+    document.getElementById('user-email').value = user.public_email || '';
+    document.getElementById('user-search-results').classList.add('hidden');
+    document.getElementById('user-gl-search').value = '';
+    if (user.public_email) {
+        const hint = document.querySelector('.user-email-hint');
+        if (hint) hint.innerHTML = '✓ Email подтянут из публичного профиля GitLab. Убедитесь, что он совпадает с email в git-коммитах.';
     }
 }
 
@@ -639,6 +1359,10 @@ async function createUser() {
         addUserRow(user);
         document.getElementById('user-name').value  = '';
         document.getElementById('user-email').value = '';
+        discoveryLoaded = false;
+        loadDiscoveredContributors();
+        OB_STATE.hasUsers = true;
+        refreshOnboarding();
     } catch (e) {
         showError('user-error', e.message);
     }

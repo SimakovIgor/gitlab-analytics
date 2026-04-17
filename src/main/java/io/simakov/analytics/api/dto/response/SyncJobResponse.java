@@ -12,11 +12,14 @@ public record SyncJobResponse(
     Instant finishedAt,
     Instant dateFrom,
     Instant dateTo,
-    String errorMessage
+    String errorMessage,
+    int totalMrs,
+    int processedMrs
 ) {
 
     public static SyncJobResponse from(SyncJob job) {
         return new SyncJobResponse(job.getId(), job.getStatus(), job.getStartedAt(),
-            job.getFinishedAt(), job.getDateFrom(), job.getDateTo(), job.getErrorMessage());
+            job.getFinishedAt(), job.getDateFrom(), job.getDateTo(), job.getErrorMessage(),
+            job.getTotalMrs(), job.getProcessedMrs());
     }
 }

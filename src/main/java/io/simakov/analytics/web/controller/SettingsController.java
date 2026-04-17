@@ -6,23 +6,28 @@ import io.simakov.analytics.api.dto.request.CreateTrackedUserRequest;
 import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.api.dto.response.SyncJobResponse;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
-import io.simakov.analytics.api.mapper.GitSourceMapper;
 import io.simakov.analytics.api.mapper.TrackedProjectMapper;
 import io.simakov.analytics.api.mapper.TrackedUserMapper;
 import io.simakov.analytics.domain.model.GitSource;
+import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
+import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
+import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
+import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
 import io.simakov.analytics.util.DateTimeUtils;
+import io.simakov.analytics.web.ContributorDiscoveryService;
+import io.simakov.analytics.web.dto.DiscoveredContributor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -40,9 +45,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Controller
@@ -51,6 +60,8 @@ import java.util.Map;
 public class SettingsController {
 
     private static final int BACKFILL_DAYS = 360;
+    private static final DateTimeFormatter JOB_TIME_FMT =
+        DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneOffset.UTC);
 
     private final GitSourceRepository gitSourceRepository;
     private final TrackedProjectRepository trackedProjectRepository;
@@ -58,11 +69,12 @@ public class SettingsController {
     private final TrackedUserAliasRepository aliasRepository;
     private final EncryptionService encryptionService;
     private final GitLabApiClient gitLabApiClient;
-    private final GitSourceMapper gitSourceMapper;
     private final TrackedProjectMapper trackedProjectMapper;
     private final TrackedUserMapper trackedUserMapper;
     private final SyncJobService syncJobService;
     private final SyncOrchestrator syncOrchestrator;
+    private final SyncJobRepository syncJobRepository;
+    private final ContributorDiscoveryService contributorDiscoveryService;
 
     @GetMapping
     public String settings(OAuth2AuthenticationToken authentication,
@@ -90,10 +102,48 @@ public class SettingsController {
             })
             .toList();
 
+        boolean hasSources = !sources.isEmpty();
+        boolean hasProjects = !projects.isEmpty();
+        boolean hasUsers = !users.isEmpty();
+
         model.addAttribute("sources", sources);
         model.addAttribute("projects", projects);
         model.addAttribute("sourceNames", sourceNames);
         model.addAttribute("usersWithAliases", usersWithAliases);
+        List<Long> activeJobIds = syncJobRepository.findByStatusOrderByStartedAtDesc(SyncStatus.STARTED)
+            .stream().map(SyncJob::getId).toList();
+
+        List<SyncJob> rawJobs = syncJobRepository.findTop30ByOrderByStartedAtDesc();
+
+        // Largest ID among non-failed jobs — any FAILED job with a smaller ID cannot retry.
+        long maxNonFailedId = rawJobs.stream()
+            .filter(j -> j.getStatus() != SyncStatus.FAILED)
+            .mapToLong(SyncJob::getId)
+            .max()
+            .orElse(-1L);
+
+        List<Map<String, Object>> recentJobs = rawJobs.stream()
+            .map(job -> {
+                Map<String, Object> row = new HashMap<>();
+                row.put("id", job.getId());
+                row.put("status", job.getStatus().name());
+                row.put("startedAt", JOB_TIME_FMT.format(job.getStartedAt()));
+                row.put("finishedAt", job.getFinishedAt() != null
+                    ? JOB_TIME_FMT.format(job.getFinishedAt()) : null);
+                row.put("duration", formatDuration(job.getStartedAt(), job.getFinishedAt()));
+                row.put("errorMessage", job.getErrorMessage());
+                row.put("canRetry", job.getStatus() == SyncStatus.FAILED
+                    && job.getId() > maxNonFailedId);
+                return row;
+            })
+            .toList();
+
+        model.addAttribute("onboardingMode", !hasProjects || !hasUsers);
+        model.addAttribute("hasSources", hasSources);
+        model.addAttribute("hasProjects", hasProjects);
+        model.addAttribute("hasUsers", hasUsers);
+        model.addAttribute("activeJobIds", activeJobIds);
+        model.addAttribute("recentJobs", recentJobs);
         return "settings";
     }
 
@@ -105,7 +155,6 @@ public class SettingsController {
         GitSource source = GitSource.builder()
             .name(request.name())
             .baseUrl(request.baseUrl().stripTrailing())
-            .tokenEncrypted(encryptionService.encrypt(request.token()))
             .build();
         source = gitSourceRepository.save(source);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
@@ -125,27 +174,13 @@ public class SettingsController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/sources/{id}/test")
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> testSource(@PathVariable Long id) {
-        GitSource source = gitSourceRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("GitSource", id));
-        String token = encryptionService.decrypt(source.getTokenEncrypted());
-        var user = gitLabApiClient.getCurrentUser(source.getBaseUrl(), token);
-        return ResponseEntity.ok(Map.of(
-            "status", "ok",
-            "username", user.username(),
-            "name", user.name()
-        ));
-    }
-
     @GetMapping("/sources/{id}/projects/search")
     @ResponseBody
     public List<GitLabProjectDto> searchProjects(@PathVariable Long id,
-                                                 @RequestParam String q) {
+                                                 @RequestParam String q,
+                                                 @RequestParam String token) {
         GitSource source = gitSourceRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", id));
-        String token = encryptionService.decrypt(source.getTokenEncrypted());
         return gitLabApiClient.searchProjects(source.getBaseUrl(), token, q);
     }
 
@@ -157,7 +192,9 @@ public class SettingsController {
         if (!gitSourceRepository.existsById(request.gitSourceId())) {
             throw new ResourceNotFoundException("GitSource", request.gitSourceId());
         }
-        TrackedProject saved = trackedProjectRepository.save(trackedProjectMapper.toEntity(request));
+        TrackedProject project = trackedProjectMapper.toEntity(request);
+        project.setTokenEncrypted(encryptionService.encrypt(request.token()));
+        TrackedProject saved = trackedProjectRepository.save(project);
 
         SyncJobResponse job = triggerBackfill(saved.getId());
 
@@ -187,6 +224,52 @@ public class SettingsController {
             throw new ResourceNotFoundException("TrackedProject", id);
         }
         return triggerBackfill(id);
+    }
+
+    @GetMapping("/sources/{id}/users/search")
+    @ResponseBody
+    public List<GitLabUserSearchDto> searchUsers(@PathVariable Long id,
+                                                 @RequestParam String q) {
+        GitSource source = gitSourceRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("GitSource", id));
+        TrackedProject project = trackedProjectRepository.findFirstByGitSourceId(id)
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedProject for GitSource", id));
+        String token = encryptionService.decrypt(project.getTokenEncrypted());
+        return gitLabApiClient.searchUsers(source.getBaseUrl(), token, q);
+    }
+
+    // ── Contributor discovery ────────────────────────────────────────────────
+
+    @GetMapping("/users/discovered")
+    @ResponseBody
+    public List<DiscoveredContributor> discoverContributors() {
+        return contributorDiscoveryService.discover();
+    }
+
+    @PostMapping("/users/bulk")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> createUsersBulk(
+            @RequestBody List<CreateTrackedUserRequest> requests) {
+        List<Map<String, Object>> created = new ArrayList<>();
+        for (CreateTrackedUserRequest req : requests) {
+            TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(req));
+            if (req.aliasEmails() != null) {
+                for (String aliasEmail : req.aliasEmails()) {
+                    if (aliasEmail != null && !aliasEmail.isBlank()) {
+                        aliasRepository.save(TrackedUserAlias.builder()
+                            .trackedUserId(saved.getId())
+                            .email(aliasEmail.toLowerCase(Locale.ROOT).strip())
+                            .build());
+                    }
+                }
+            }
+            created.add(Map.of(
+                "id", saved.getId(),
+                "displayName", saved.getDisplayName(),
+                "email", saved.getEmail() != null ? saved.getEmail() : ""
+            ));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("created", created));
     }
 
     // ── Tracked Users ────────────────────────────────────────────────────────
@@ -221,6 +304,15 @@ public class SettingsController {
         return SyncJobResponse.from(syncJobService.findById(jobId));
     }
 
+    @PostMapping("/sync/{jobId}/retry")
+    @ResponseBody
+    public SyncJobResponse retrySync(@PathVariable Long jobId) {
+        ManualSyncRequest request = syncJobService.getPayload(jobId);
+        SyncJob newJob = syncJobService.create(request);
+        syncOrchestrator.orchestrateAsync(newJob.getId(), request);
+        return SyncJobResponse.from(newJob);
+    }
+
     // ── Internal helpers ─────────────────────────────────────────────────────
 
     private SyncJobResponse triggerBackfill(Long trackedProjectId) {
@@ -232,6 +324,17 @@ public class SettingsController {
         var job = syncJobService.create(request);
         syncOrchestrator.orchestrateAsync(job.getId(), request);
         return SyncJobResponse.from(job);
+    }
+
+    private static String formatDuration(Instant start, Instant end) {
+        if (end == null) {
+            return "в процессе";
+        }
+        long secs = ChronoUnit.SECONDS.between(start, end);
+        if (secs < 60) {
+            return secs + " с";
+        }
+        return (secs / 60) + " м " + (secs % 60) + " с";
     }
 
     private Map<String, Object> resolveUser(OAuth2AuthenticationToken authentication) {

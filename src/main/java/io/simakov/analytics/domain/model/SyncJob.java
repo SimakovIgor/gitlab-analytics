@@ -67,4 +67,12 @@ public class SyncJob {
     @Column(name = "error_message",
             columnDefinition = "TEXT")
     private String errorMessage;
+
+    @Column(name = "total_mrs",
+            nullable = false)
+    private int totalMrs;
+
+    @Column(name = "processed_mrs",
+            nullable = false)
+    private int processedMrs;
 }
