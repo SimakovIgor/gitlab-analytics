@@ -78,6 +78,23 @@ public class GitLabApiClient {
     }
 
     /**
+     * Find a GitLab user ID by exact username match.
+     * Uses {@code GET /api/v4/users?username=...} which returns only exact matches.
+     * Returns empty if no user with that username exists.
+     */
+    public java.util.Optional<Long> findUserIdByUsername(String baseUrl,
+                                                         String token,
+                                                         String username) {
+        String encoded = URLEncoder.encode(username, StandardCharsets.UTF_8);
+        List<GitLabUserSearchDto> users = fetchAllPages(baseUrl, token, "/api/v4/users",
+            GitLabUserSearchDto[].class, "&username=" + encoded);
+        return users.stream()
+            .filter(u -> username.equalsIgnoreCase(u.username()))
+            .map(GitLabUserSearchDto::id)
+            .findFirst();
+    }
+
+    /**
      * Fetch all merge requests for a project updated after the given date.
      * Uses updated_after to capture MRs with activity in the window, even if created earlier.
      */

@@ -15,7 +15,6 @@ import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
-import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
@@ -28,6 +27,7 @@ import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.ContributorDiscoveryService;
+import io.simakov.analytics.web.UserAliasService;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +52,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @Controller
@@ -68,7 +67,6 @@ public class SettingsController {
     private final TrackedProjectRepository trackedProjectRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
-    private final MergeRequestRepository mergeRequestRepository;
     private final EncryptionService encryptionService;
     private final GitLabApiClient gitLabApiClient;
     private final TrackedProjectMapper trackedProjectMapper;
@@ -77,6 +75,7 @@ public class SettingsController {
     private final SyncOrchestrator syncOrchestrator;
     private final SyncJobRepository syncJobRepository;
     private final ContributorDiscoveryService contributorDiscoveryService;
+    private final UserAliasService userAliasService;
 
     @GetMapping
     public String settings(OAuth2AuthenticationToken authentication,
@@ -255,8 +254,8 @@ public class SettingsController {
         List<Map<String, Object>> created = new ArrayList<>();
         for (CreateTrackedUserRequest req : requests) {
             TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(req));
-            saveAliasEmail(saved.getId(), req.email());
-            saveAliasEmails(saved.getId(), req.aliasEmails());
+            userAliasService.saveAlias(saved.getId(), req.email());
+            userAliasService.saveAliases(saved.getId(), req.aliasEmails());
             created.add(Map.of(
                 "id", saved.getId(),
                 "displayName", saved.getDisplayName(),
@@ -264,42 +263,6 @@ public class SettingsController {
             ));
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("created", created));
-    }
-
-    private void saveAliasEmail(Long userId, String email) {
-        if (email == null || email.isBlank()) {
-            return;
-        }
-        String normalizedEmail = email.toLowerCase(Locale.ROOT).strip();
-        if (!aliasRepository.existsByTrackedUserIdAndEmail(userId, normalizedEmail)) {
-            List<Long> gitlabUserIds = mergeRequestRepository.findAuthorGitlabUserIdByCommitEmail(normalizedEmail);
-            Long gitlabUserId = gitlabUserIds.isEmpty() ? null : gitlabUserIds.get(0);
-            aliasRepository.save(TrackedUserAlias.builder()
-                .trackedUserId(userId)
-                .email(normalizedEmail)
-                .gitlabUserId(gitlabUserId)
-                .build());
-        }
-    }
-
-    private void saveAliasEmails(Long userId, List<String> aliasEmails) {
-        if (aliasEmails == null) {
-            return;
-        }
-        for (String aliasEmail : aliasEmails) {
-            if (aliasEmail == null || aliasEmail.isBlank()) {
-                continue;
-            }
-            String normalizedEmail = aliasEmail.toLowerCase(Locale.ROOT).strip();
-            List<Long> gitlabUserIds = mergeRequestRepository
-                .findAuthorGitlabUserIdByCommitEmail(normalizedEmail);
-            Long gitlabUserId = gitlabUserIds.isEmpty() ? null : gitlabUserIds.get(0);
-            aliasRepository.save(TrackedUserAlias.builder()
-                .trackedUserId(userId)
-                .email(normalizedEmail)
-                .gitlabUserId(gitlabUserId)
-                .build());
-        }
     }
 
     // ── Tracked Users ────────────────────────────────────────────────────────
