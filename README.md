@@ -1,32 +1,32 @@
 # gitlab-analytics
 
-Internal engineering analytics tool. Connects to a self-hosted GitLab instance, syncs merge request data, calculates per-developer contribution metrics, and visualises them in a web UI.
+Внутренний инструмент инженерной аналитики. Подключается к self-hosted GitLab, синхронизирует данные по merge request-ам, вычисляет метрики вклада каждого разработчика и отображает их в веб-интерфейсе.
 
 **Не инструмент оценки.** Метрики — это инженерные сигналы для ретроспектив и командного самоанализа, не рейтинги и не KPI.
 
 ---
 
-## What's inside
+## Страницы
 
-| Page | URL | Description |
+| Страница | URL | Описание |
 |---|---|---|
-| Login | `/login` | GitHub OAuth2 sign-in |
-| Dashboard | `/dashboard` | Team overview — tracked users and projects |
-| Report | `/report` | Metrics table per person, period filter, delta vs previous period |
-| History | `/history` | Line chart — team dynamics over time, any metric |
-| Swagger UI | `/swagger-ui.html` | REST API docs |
+| Вход | `/login` | Авторизация через GitHub OAuth2 |
+| Дашборд | `/dashboard` | Обзор команды — отслеживаемые сотрудники и проекты |
+| Настройки | `/settings` | GitLab источники, репозитории, сотрудники |
+| Отчёт | `/report` | Таблица метрик по каждому сотруднику, фильтр по периоду, дельта к предыдущему периоду |
+| История | `/history` | Линейный график командной динамики по любой метрике |
 
 ---
 
-## Quick start
+## Быстрый старт
 
-### Prerequisites
+### Требования
 
 - Java 21
 - Docker
-- GitHub OAuth App ([create one](https://github.com/settings/applications/new), callback URL: `http://localhost:8080/login/oauth2/code/github`)
+- GitHub OAuth App ([создать](https://github.com/settings/applications/new), callback URL: `http://localhost:8080/login/oauth2/code/github`)
 
-### 1. Start PostgreSQL
+### 1. Запустить PostgreSQL
 
 ```bash
 docker run -d --name gitlab-analytics-pg \
@@ -37,10 +37,9 @@ docker run -d --name gitlab-analytics-pg \
   postgres:16-alpine
 ```
 
-### 2. Run the app
+### 2. Запустить приложение
 
 ```bash
-API_TOKEN=your-secret-token \
 GITHUB_CLIENT_ID=your-github-client-id \
 GITHUB_CLIENT_SECRET=your-github-client-secret \
 DB_URL=jdbc:postgresql://localhost:5432/gitlab_analytics \
@@ -49,135 +48,85 @@ DB_PASSWORD=analytics \
 ./gradlew bootRun -x test -x checkstyleMain -x pmdMain -x spotbugsMain
 ```
 
-Open `http://localhost:8080` — sign in with GitHub. REST API requires `Authorization: Bearer your-secret-token`.
+Открыть `http://localhost:8080` — войти через GitHub.
 
 ---
 
-## Configuration
+## Конфигурация
 
-| Variable | Default | Description |
+| Переменная | По умолчанию | Описание |
 |---|---|---|
-| `API_TOKEN` | `changeme-in-production` | Static bearer token for all REST API calls |
-| `GITHUB_CLIENT_ID` | — | GitHub OAuth App client ID (web UI login) |
-| `GITHUB_CLIENT_SECRET` | — | GitHub OAuth App client secret (web UI login) |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/gitlab_analytics` | PostgreSQL JDBC URL |
-| `DB_USERNAME` | `analytics` | Database username |
-| `DB_PASSWORD` | `analytics` | Database password |
+| `GITHUB_CLIENT_ID` | — | Client ID GitHub OAuth App |
+| `GITHUB_CLIENT_SECRET` | — | Client Secret GitHub OAuth App |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/gitlab_analytics` | JDBC URL PostgreSQL |
+| `DB_USERNAME` | `analytics` | Пользователь БД |
+| `DB_PASSWORD` | `analytics` | Пароль БД |
 
 ---
 
-## Setup guide
+## Первоначальная настройка
 
-### Step 1 — Register a GitLab source
+После первого входа через GitHub откроется Дашборд. Все настройки — в разделе **Настройки** (`/settings`), который состоит из трёх вкладок.
 
-```bash
-curl -X POST http://localhost:8080/api/v1/sources/gitlab \
-  -H "Authorization: Bearer your-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "my-gitlab",
-    "baseUrl": "https://git.example.com",
-    "token": "glpat-xxxxxxxxxxxx"
-  }'
-```
+### Шаг 1 — Добавить GitLab источник
 
-Token needs `read_api` scope. Test connectivity: `POST /api/v1/sources/gitlab/1/test`
+Перейдите в **Настройки → GitLab Sources** и нажмите **+ Добавить источник**.
 
-### Step 2 — Register a project
+Заполните форму:
 
-GitLab project ID is visible in Settings or via `GET /api/v4/projects/<url-encoded-path>`.
+| Поле | Пример |
+|---|---|
+| Название | Production GitLab |
+| Base URL | `https://gitlab.example.com` |
+| Personal Access Token | `glpat-xxxxxxxxxxxx` |
 
-```bash
-curl -X POST http://localhost:8080/api/v1/projects \
-  -H "Authorization: Bearer your-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "gitSourceId": 1,
-    "gitlabProjectId": 1538,
-    "pathWithNamespace": "group/subgroup/project-name",
-    "name": "project-name"
-  }'
-```
+Токен должен иметь права: `api`, `read_api`, `read_user`.
 
-### Step 3 — Register tracked users
+После сохранения нажмите **Проверить** — приложение проверит подключение и отобразит имя пользователя из GitLab.
 
-Each team member needs a `TrackedUser` and at least one `TrackedUserAlias` linking their GitLab account.
+### Шаг 2 — Добавить репозитории
 
-```bash
-curl -X POST http://localhost:8080/api/v1/users \
-  -H "Authorization: Bearer your-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{"displayName": "Jane Smith", "email": "jane@example.com"}'
+Перейдите на вкладку **Репозитории** и нажмите **+ Добавить репозиторий**.
 
-curl -X POST http://localhost:8080/api/v1/users/2/aliases \
-  -H "Authorization: Bearer your-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "gitlabUserId": 1234,
-    "username": "j.smith",
-    "name": "Jane Smith",
-    "email": "jane@example.com"
-  }'
-```
+1. Выберите GitLab источник из списка.
+2. Начните вводить название репозитория — появится поиск по GitLab.
+3. Выберите нужный репозиторий из результатов.
+4. Нажмите **Добавить и синхронизировать**.
 
-> **Important**: The `email` in the alias must match `author_email` in git commits — this is how commits are attributed. Verify with: `git log --format='%ae' | sort -u`. Commit emails and GitLab account emails often differ.
+Синхронизация запустится автоматически — загружаются данные за последние 360 дней. Прогресс отображается баннером вверху страницы.
 
-### Step 4 — Run a sync
+Для повторной синхронизации — кнопка **Синк** рядом с репозиторием.
 
-```bash
-curl -X POST http://localhost:8080/api/v1/sync/manual \
-  -H "Authorization: Bearer your-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "projectIds": [1],
-    "dateFrom": "2025-10-01T00:00:00Z",
-    "dateTo": "2026-04-17T23:59:59Z",
-    "fetchNotes": true,
-    "fetchApprovals": true,
-    "fetchCommits": true
-  }'
-```
+### Шаг 3 — Добавить сотрудников
 
-Poll status: `GET /api/v1/sync/jobs/{jobId}` until `status` is `COMPLETED` or `FAILED`.
+Перейдите на вкладку **Сотрудники** и нажмите **+ Добавить сотрудника**.
 
-> `fetchCommits: true` — один дополнительный вызов GitLab API на каждый коммит для получения diff-статистики. Уже загруженные коммиты повторно не запрашиваются.
+| Поле | Описание |
+|---|---|
+| Имя | Отображаемое имя в отчётах |
+| Email | Email из Git-коммитов — по нему происходит атрибуция |
 
-### Step 5 — Generate metric snapshots (for History chart)
+> **Важно**: Email должен совпадать с `author_email` в git-коммитах, а не с email GitLab-аккаунта. Проверьте командой:
+> ```bash
+> git log --format='%ae' | sort -u
+> ```
+> Email в GitLab-аккаунте и в коммитах часто отличаются.
 
-Snapshots are created automatically every day at 02:00 UTC. To backfill historical data manually:
+После добавления сотрудника GitLab-алиас привязывается автоматически в процессе синхронизации (по совпадению email). Алиасы отображаются в таблице как `@username`.
 
-```bash
-# One snapshot per past date (repeat for each desired date)
-curl -X POST http://localhost:8080/api/v1/snapshots/run \
-  -H "Authorization: Bearer your-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{"snapshotDate": "2025-11-01", "windowDays": 30}'
-```
+### Шаг 4 — Открыть отчёт
 
-The History chart shows one data point per snapshot date. Run snapshots every 1–2 weeks to get a smooth trend line.
+Перейдите в **Отчёт** (`/report`). Выберите нужные проекты, сотрудников и период (7 / 30 / 90 / 180 / 360 дней). Таблица показывает метрики по каждому сотруднику и дельту относительно предыдущего аналогичного периода.
 
-### Step 6 — Get an API report
+### Шаг 5 — Открыть историю
 
-```bash
-curl -X POST http://localhost:8080/api/v1/reports/contributions \
-  -H "Authorization: Bearer your-secret-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "projectIds": [1],
-    "userIds": [2, 3, 4],
-    "periodPreset": "LAST_30_DAYS",
-    "metrics": null
-  }'
-```
+Перейдите в **История** (`/history`). Выберите метрику и период — отображается линейный график командной динамики во времени.
 
-`periodPreset`: `LAST_7_DAYS` · `LAST_30_DAYS` · `LAST_90_DAYS` · `LAST_180_DAYS` · `LAST_360_DAYS` · `CUSTOM`
-For `CUSTOM` add `"dateFrom"` and `"dateTo"` in ISO-8601 format (`Z`).
-
-`metrics`: array of metric keys to include, or `null` for all.
+График строится на основе снапшотов, которые создаются автоматически каждый день в 02:00 UTC. После первой синхронизации данные на графике появятся на следующий день.
 
 ---
 
-## Metrics reference
+## Справочник метрик
 
 ### Доставка
 
@@ -226,18 +175,14 @@ For `CUSTOM` add `"dateFrom"` and `"dateTo"` in ISO-8601 format (`Z`).
 | `mr_merged_per_active_day` | `mr_merged_count / active_days_count` | Пропускная способность относительно рабочих дней |
 | `comments_per_reviewed_mr` | `review_comments_written_count / mrs_reviewed_count` | < 1 — в основном апрувы без комментариев; > 2 — содержательная обратная связь |
 
-### Сравнение в команде (`teamComparison`)
-
-Для `mr_merged_count`, `review_comments_written_count`, `approvals_given_count`, `mrs_reviewed_count` — поле `_percentile`: место пользователя среди участников текущего отчёта. `100.0` = наивысшее значение, `0.0` = наименьшее.
-
 ---
 
-## Build
+## Сборка
 
 ```bash
-./gradlew build           # full build + tests + static analysis
-./gradlew build -x test   # skip tests
-./gradlew test            # tests only (requires Docker for Testcontainers)
-./gradlew check -x test   # static analysis only
-./gradlew clean build     # use when Flyway migration conflicts appear in tests
+./gradlew build           # полная сборка + тесты + статический анализ
+./gradlew build -x test   # без тестов
+./gradlew test            # только тесты (требуется Docker для Testcontainers)
+./gradlew check -x test   # только статический анализ
+./gradlew clean build     # при конфликтах Flyway-миграций в тестах
 ```
