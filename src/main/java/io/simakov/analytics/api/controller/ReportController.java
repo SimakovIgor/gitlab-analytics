@@ -92,14 +92,7 @@ public class ReportController {
             }
             return new Instant[]{request.dateFrom(), request.dateTo()};
         }
-        int days = switch (request.periodPreset()) {
-            case LAST_7_DAYS -> 7;
-            case LAST_30_DAYS -> 30;
-            case LAST_90_DAYS -> 90;
-            case LAST_180_DAYS -> 180;
-            default -> 30;
-        };
-        return new Instant[]{DateTimeUtils.minusDays(now, days), now};
+        return new Instant[]{DateTimeUtils.minusDays(now, request.periodPreset().toDays()), now};
     }
 
     private Map<String, Object> filterMetrics(Map<String, Object> all,

@@ -62,6 +62,10 @@
                         th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'">
                     180 дней
                 </button>
+                <button type="submit" name="period" value="LAST_360_DAYS"
+                        th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'">
+                    360 дней
+                </button>
             </div>
         </div>
 

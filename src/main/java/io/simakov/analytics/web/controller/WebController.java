@@ -2,6 +2,7 @@ package io.simakov.analytics.web.controller;
 
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
@@ -153,12 +154,11 @@ public class WebController {
     }
 
     private int periodToDays(String period) {
-        return switch (period) {
-            case "LAST_7_DAYS" -> 7;
-            case "LAST_90_DAYS" -> 90;
-            case "LAST_180_DAYS" -> 180;
-            default -> 30;
-        };
+        try {
+            return PeriodType.valueOf(period).toDays();
+        } catch (IllegalArgumentException e) {
+            return PeriodType.LAST_30_DAYS.toDays();
+        }
     }
 
     /**
