@@ -15,6 +15,7 @@ import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
+import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
@@ -67,6 +68,7 @@ public class SettingsController {
     private final TrackedProjectRepository trackedProjectRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
+    private final MergeRequestRepository mergeRequestRepository;
     private final EncryptionService encryptionService;
     private final GitLabApiClient gitLabApiClient;
     private final TrackedProjectMapper trackedProjectMapper;
@@ -256,9 +258,14 @@ public class SettingsController {
             if (req.aliasEmails() != null) {
                 for (String aliasEmail : req.aliasEmails()) {
                     if (aliasEmail != null && !aliasEmail.isBlank()) {
+                        String normalizedEmail = aliasEmail.toLowerCase(Locale.ROOT).strip();
+                        List<Long> gitlabUserIds = mergeRequestRepository
+                            .findAuthorGitlabUserIdByCommitEmail(normalizedEmail);
+                        Long gitlabUserId = gitlabUserIds.isEmpty() ? null : gitlabUserIds.get(0);
                         aliasRepository.save(TrackedUserAlias.builder()
                             .trackedUserId(saved.getId())
-                            .email(aliasEmail.toLowerCase(Locale.ROOT).strip())
+                            .email(normalizedEmail)
+                            .gitlabUserId(gitlabUserId)
                             .build());
                     }
                 }

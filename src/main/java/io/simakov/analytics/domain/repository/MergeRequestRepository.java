@@ -39,4 +39,16 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     List<MergeRequest> findMergedInPeriod(@Param("projectIds") List<Long> projectIds,
                                           @Param("dateFrom") Instant dateFrom,
                                           @Param("dateTo") Instant dateTo);
+
+    /**
+     * Finds the GitLab user ID of MR authors who have commits with the given email.
+     * Used to populate gitlabUserId in TrackedUserAlias when adding users via email-based discovery.
+     */
+    @Query("""
+        SELECT DISTINCT mr.authorGitlabUserId FROM MergeRequest mr
+        JOIN MergeRequestCommit c ON c.mergeRequestId = mr.id
+        WHERE LOWER(c.authorEmail) = LOWER(:email)
+        AND mr.authorGitlabUserId IS NOT NULL
+        """)
+    List<Long> findAuthorGitlabUserIdByCommitEmail(@Param("email") String email);
 }
