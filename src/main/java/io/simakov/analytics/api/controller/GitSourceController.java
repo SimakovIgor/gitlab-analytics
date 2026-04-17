@@ -3,6 +3,7 @@ package io.simakov.analytics.api.controller;
 import io.simakov.analytics.api.dto.request.CreateGitSourceRequest;
 import io.simakov.analytics.api.dto.response.GitSourceResponse;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
+import io.simakov.analytics.api.mapper.GitSourceMapper;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.encryption.EncryptionService;
@@ -31,6 +32,7 @@ public class GitSourceController {
     private final GitSourceRepository gitSourceRepository;
     private final EncryptionService encryptionService;
     private final GitLabApiClient gitLabApiClient;
+    private final GitSourceMapper gitSourceMapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -41,7 +43,7 @@ public class GitSourceController {
             .baseUrl(request.baseUrl().stripTrailing())
             .tokenEncrypted(encryptionService.encrypt(request.token()))
             .build();
-        return GitSourceResponse.from(gitSourceRepository.save(source));
+        return gitSourceMapper.toResponse(gitSourceRepository.save(source));
     }
 
     @PostMapping("/{id}/test")

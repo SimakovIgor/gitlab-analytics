@@ -4,6 +4,7 @@ import io.simakov.analytics.api.dto.request.CreateTrackedProjectRequest;
 import io.simakov.analytics.api.dto.request.EnableProjectRequest;
 import io.simakov.analytics.api.dto.response.TrackedProjectResponse;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
+import io.simakov.analytics.api.mapper.TrackedProjectMapper;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
@@ -32,6 +33,7 @@ public class TrackedProjectController {
 
     private final TrackedProjectRepository trackedProjectRepository;
     private final GitSourceRepository gitSourceRepository;
+    private final TrackedProjectMapper trackedProjectMapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -40,21 +42,15 @@ public class TrackedProjectController {
         if (!gitSourceRepository.existsById(request.gitSourceId())) {
             throw new ResourceNotFoundException("GitSource", request.gitSourceId());
         }
-        TrackedProject project = TrackedProject.builder()
-            .gitSourceId(request.gitSourceId())
-            .gitlabProjectId(request.gitlabProjectId())
-            .pathWithNamespace(request.pathWithNamespace())
-            .name(request.name())
-            .enabled(true)
-            .build();
-        return TrackedProjectResponse.from(trackedProjectRepository.save(project));
+        TrackedProject saved = trackedProjectRepository.save(trackedProjectMapper.toEntity(request));
+        return trackedProjectMapper.toResponse(saved);
     }
 
     @GetMapping
     @Operation(summary = "List all tracked projects")
     public List<TrackedProjectResponse> list() {
         return trackedProjectRepository.findAll().stream()
-            .map(TrackedProjectResponse::from)
+            .map(trackedProjectMapper::toResponse)
             .toList();
     }
 
@@ -65,6 +61,6 @@ public class TrackedProjectController {
         TrackedProject project = trackedProjectRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("TrackedProject", id));
         project.setEnabled(request.enabled());
-        return TrackedProjectResponse.from(trackedProjectRepository.save(project));
+        return trackedProjectMapper.toResponse(trackedProjectRepository.save(project));
     }
 }

@@ -50,6 +50,11 @@ dependencies {
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
 
+    // MapStruct (annotation processor must be declared after lombok for correct ordering)
+    implementation("org.mapstruct:mapstruct:1.6.3")
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
+
     // Jackson extras
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 

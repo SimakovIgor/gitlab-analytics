@@ -1,9 +1,12 @@
 package io.simakov.analytics.api.dto.request;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
+
 public record AddUserAliasRequest(
-    Long gitlabUserId,
+    @NotNull Long gitlabUserId,
     String username,
-    String email,
+    @Email String email,
     String name
 ) {
 
