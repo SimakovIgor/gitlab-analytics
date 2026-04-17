@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -111,11 +112,8 @@ public class MetricCalculationService {
             .map(MergeRequest::getTrackedProjectId).collect(Collectors.toSet());
 
         // --- Commits & volume ---
-        List<MergeRequestCommit> userCommits = commitsByMrId.entrySet().stream()
-            .filter(e -> finalAuthoredMrIds.contains(e.getKey()))
-            .flatMap(e -> e.getValue().stream())
-            .filter(c -> isUserCommit(c, user, aliasEmails))
-            .toList();
+        List<MergeRequestCommit> userCommits =
+            collectUserCommits(finalAuthoredMrIds, commitsByMrId, user, aliasEmails);
         ChangeVolume volume = computeChangeVolume(userCommits, authoredMrs, commitsByMrId);
         // --- Notes & approvals ---
         List<MergeRequestNote> userNotes = notesByMrId.values().stream()
@@ -194,7 +192,29 @@ public class MetricCalculationService {
     }
 
     /**
-     * MR считается авторским если пользователь сделал хотя бы один коммит в нём (по email).
+     * Возвращает дедуплицированный (по SHA) список коммитов пользователя в его MR.
+     * Один коммит может присутствовать в нескольких MR (dev→stage→master цепочки) —
+     * без дедупликации строки и счётчик коммитов были бы задвоены/затроены.
+     */
+    private List<MergeRequestCommit> collectUserCommits(Set<Long> authoredMrIds,
+                                                        Map<Long, List<MergeRequestCommit>> commitsByMrId,
+                                                        TrackedUser user,
+                                                        Set<String> aliasEmails) {
+        return commitsByMrId.entrySet().stream()
+            .filter(e -> authoredMrIds.contains(e.getKey()))
+            .flatMap(e -> e.getValue().stream())
+            .filter(c -> isUserCommit(c, user, aliasEmails))
+            .collect(Collectors.toMap(
+                MergeRequestCommit::getGitlabCommitSha,
+                c -> c,
+                (a, b) -> a
+            ))
+            .values().stream().toList();
+    }
+
+    /**
+     * MR считается авторским если ПЕРВЫЙ коммит (по authored_date) в нём сделан пользователем.
+     * Это исключает MR, в которых пользователь оставил лишь правку или merge-коммит.
      * Fallback на gitlabUserId если email-алиасов нет или коммитов не нашлось.
      */
     private Set<Long> resolveAuthoredMrIds(Set<String> aliasEmails,
@@ -202,9 +222,15 @@ public class MetricCalculationService {
                                            List<MergeRequest> allMrs,
                                            Map<Long, List<MergeRequestCommit>> commitsByMrId) {
         Set<Long> byEmail = commitsByMrId.entrySet().stream()
-            .filter(e -> e.getValue().stream()
-                .anyMatch(c -> c.getAuthorEmail() != null
-                    && aliasEmails.contains(c.getAuthorEmail().toLowerCase(Locale.ROOT))))
+            .filter(e -> {
+                MergeRequestCommit first = e.getValue().stream()
+                    .filter(c -> c.getAuthoredDate() != null)
+                    .min(Comparator.comparing(MergeRequestCommit::getAuthoredDate))
+                    .orElse(null);
+                return first != null
+                    && first.getAuthorEmail() != null
+                    && aliasEmails.contains(first.getAuthorEmail().toLowerCase(Locale.ROOT));
+            })
             .map(Map.Entry::getKey)
             .collect(Collectors.toSet());
         if (!byEmail.isEmpty() || gitlabIds.isEmpty()) {
