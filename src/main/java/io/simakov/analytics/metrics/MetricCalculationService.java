@@ -213,15 +213,22 @@ public class MetricCalculationService {
     }
 
     /**
-     * MR считается авторским если ПЕРВЫЙ коммит (по authored_date) в нём сделан пользователем.
-     * Это исключает MR, в которых пользователь оставил лишь правку или merge-коммит.
-     * Fallback на gitlabUserId если email-алиасов нет или коммитов не нашлось.
+     * MR считается авторским по полю author_gitlab_user_id — это явный атрибут GitLab,
+     * точнее любых эвристик по коммитам. Email используется только для подсчёта строк.
+     * Fallback на email-эвристику (первый коммит) если gitlabIds не заданы.
      */
     private Set<Long> resolveAuthoredMrIds(Set<String> aliasEmails,
                                            Set<Long> gitlabIds,
                                            List<MergeRequest> allMrs,
                                            Map<Long, List<MergeRequestCommit>> commitsByMrId) {
-        Set<Long> byEmail = commitsByMrId.entrySet().stream()
+        if (!gitlabIds.isEmpty()) {
+            return allMrs.stream()
+                .filter(mr -> gitlabIds.contains(mr.getAuthorGitlabUserId()))
+                .map(MergeRequest::getId)
+                .collect(Collectors.toSet());
+        }
+        // Fallback: gitlabUserId не задан — ищем по первому коммиту в MR
+        return commitsByMrId.entrySet().stream()
             .filter(e -> {
                 MergeRequestCommit first = e.getValue().stream()
                     .filter(c -> c.getAuthoredDate() != null)
@@ -232,13 +239,6 @@ public class MetricCalculationService {
                     && aliasEmails.contains(first.getAuthorEmail().toLowerCase(Locale.ROOT));
             })
             .map(Map.Entry::getKey)
-            .collect(Collectors.toSet());
-        if (!byEmail.isEmpty() || gitlabIds.isEmpty()) {
-            return byEmail;
-        }
-        return allMrs.stream()
-            .filter(mr -> gitlabIds.contains(mr.getAuthorGitlabUserId()))
-            .map(MergeRequest::getId)
             .collect(Collectors.toSet());
     }
 
