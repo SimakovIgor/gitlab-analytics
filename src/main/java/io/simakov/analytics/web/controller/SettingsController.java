@@ -255,6 +255,7 @@ public class SettingsController {
         List<Map<String, Object>> created = new ArrayList<>();
         for (CreateTrackedUserRequest req : requests) {
             TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(req));
+            saveAliasEmail(saved.getId(), req.email());
             saveAliasEmails(saved.getId(), req.aliasEmails());
             created.add(Map.of(
                 "id", saved.getId(),
@@ -263,6 +264,22 @@ public class SettingsController {
             ));
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("created", created));
+    }
+
+    private void saveAliasEmail(Long userId, String email) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String normalizedEmail = email.toLowerCase(Locale.ROOT).strip();
+        if (!aliasRepository.existsByTrackedUserIdAndEmail(userId, normalizedEmail)) {
+            List<Long> gitlabUserIds = mergeRequestRepository.findAuthorGitlabUserIdByCommitEmail(normalizedEmail);
+            Long gitlabUserId = gitlabUserIds.isEmpty() ? null : gitlabUserIds.get(0);
+            aliasRepository.save(TrackedUserAlias.builder()
+                .trackedUserId(userId)
+                .email(normalizedEmail)
+                .gitlabUserId(gitlabUserId)
+                .build());
+        }
     }
 
     private void saveAliasEmails(Long userId, List<String> aliasEmails) {

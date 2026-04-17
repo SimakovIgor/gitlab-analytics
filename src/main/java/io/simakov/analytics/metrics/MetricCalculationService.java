@@ -83,8 +83,8 @@ public class MetricCalculationService {
                 continue;
             }
             AliasData alias = aliasDataByUser.getOrDefault(userId, AliasData.empty());
-            if (alias.gitlabIds().isEmpty()) {
-                log.warn("TrackedUser {} has no GitLab aliases — metrics will be empty", userId);
+            if (alias.gitlabIds().isEmpty() && alias.emails().isEmpty()) {
+                log.warn("TrackedUser {} has no aliases — metrics will be empty", userId);
             }
             results.put(userId, calculateForUser(user, alias, allMrs, notesByMrId, approvalsByMrId, commitsByMrId));
         }
@@ -101,17 +101,18 @@ public class MetricCalculationService {
         Set<String> aliasEmails = alias.emails();
 
         // --- Authored MRs ---
+        final Set<Long> finalAuthoredMrIds = resolveAuthoredMrIds(
+            aliasEmails, gitlabIds, allMrs, commitsByMrId);
         List<MergeRequest> authoredMrs = allMrs.stream()
-            .filter(mr -> gitlabIds.contains(mr.getAuthorGitlabUserId()))
+            .filter(mr -> finalAuthoredMrIds.contains(mr.getId()))
             .toList();
         int mrMergedCount = (int) authoredMrs.stream().filter(mr -> mr.getMergedAtGitlab() != null).count();
-        Set<Long> authoredMrIds = authoredMrs.stream().map(MergeRequest::getId).collect(Collectors.toSet());
         Set<Long> projectsTouched = authoredMrs.stream()
             .map(MergeRequest::getTrackedProjectId).collect(Collectors.toSet());
 
         // --- Commits & volume ---
         List<MergeRequestCommit> userCommits = commitsByMrId.entrySet().stream()
-            .filter(e -> authoredMrIds.contains(e.getKey()))
+            .filter(e -> finalAuthoredMrIds.contains(e.getKey()))
             .flatMap(e -> e.getValue().stream())
             .filter(c -> isUserCommit(c, user, aliasEmails))
             .toList();
@@ -130,18 +131,18 @@ public class MetricCalculationService {
         // MR считается просмотренным, если пользователь оставил хотя бы один
         // не-системный комментарий ИЛИ подтвердил (approve) чужой MR
         List<MergeRequestNote> reviewNotes = userNotes.stream()
-            .filter(n -> !n.isSystem() && !authoredMrIds.contains(n.getMergeRequestId()))
+            .filter(n -> !n.isSystem() && !finalAuthoredMrIds.contains(n.getMergeRequestId()))
             .toList();
         Set<Long> reviewedMrIds = reviewNotes.stream()
             .map(MergeRequestNote::getMergeRequestId)
             .collect(Collectors.toCollection(HashSet::new));
         userApprovals.stream()
             .map(MergeRequestApproval::getMergeRequestId)
-            .filter(id -> !authoredMrIds.contains(id))
+            .filter(id -> !finalAuthoredMrIds.contains(id))
             .forEach(reviewedMrIds::add);
         int mrsReviewedCount = reviewedMrIds.size();
         int approvalsGivenCount = (int) userApprovals.stream()
-            .filter(a -> !authoredMrIds.contains(a.getMergeRequestId())).count();
+            .filter(a -> !finalAuthoredMrIds.contains(a.getMergeRequestId())).count();
 
         // --- Flow ---
         FlowResult flow = computeFlowMetrics(authoredMrs, gitlabIds, user, aliasEmails,
@@ -190,6 +191,29 @@ public class MetricCalculationService {
             .mrMergedPerActiveDay(MetricsMathUtils.round2(mrMergedPerActiveDay))
             .commentsPerReviewedMr(MetricsMathUtils.round2(commentsPerReviewedMr))
             .build();
+    }
+
+    /**
+     * MR считается авторским если пользователь сделал хотя бы один коммит в нём (по email).
+     * Fallback на gitlabUserId если email-алиасов нет или коммитов не нашлось.
+     */
+    private Set<Long> resolveAuthoredMrIds(Set<String> aliasEmails,
+                                           Set<Long> gitlabIds,
+                                           List<MergeRequest> allMrs,
+                                           Map<Long, List<MergeRequestCommit>> commitsByMrId) {
+        Set<Long> byEmail = commitsByMrId.entrySet().stream()
+            .filter(e -> e.getValue().stream()
+                .anyMatch(c -> c.getAuthorEmail() != null
+                    && aliasEmails.contains(c.getAuthorEmail().toLowerCase(Locale.ROOT))))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toSet());
+        if (!byEmail.isEmpty() || gitlabIds.isEmpty()) {
+            return byEmail;
+        }
+        return allMrs.stream()
+            .filter(mr -> gitlabIds.contains(mr.getAuthorGitlabUserId()))
+            .map(MergeRequest::getId)
+            .collect(Collectors.toSet());
     }
 
     private ChangeVolume computeChangeVolume(List<MergeRequestCommit> userCommits,
