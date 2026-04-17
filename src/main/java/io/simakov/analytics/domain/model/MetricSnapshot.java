@@ -1,6 +1,7 @@
 package io.simakov.analytics.domain.model;
 
 import io.simakov.analytics.domain.model.enums.PeriodType;
+import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.model.enums.ScopeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +21,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "metric_snapshot")
@@ -59,6 +61,20 @@ public class MetricSnapshot {
             nullable = false,
             length = 50)
     private ScopeType scopeType;
+
+    @Column(name = "snapshot_date",
+            nullable = false)
+    private LocalDate snapshotDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "report_mode",
+            nullable = false,
+            length = 50)
+    private ReportMode reportMode;
+
+    @Column(name = "window_days",
+            nullable = false)
+    private int windowDays;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metrics_json",

@@ -13,3 +13,6 @@ app:
     connect-timeout-seconds: 5
     read-timeout-seconds: 10
     max-retries: 1
+  snapshot:
+    cron: "-"
+    window-days: 30
