@@ -46,9 +46,6 @@ public class UserMetrics {
     private final Double medianTimeToMergeMinutes;
     private final int reworkMrCount;
     private final double reworkRatio;
-    private final int selfMergeCount;
-    private final double selfMergeRatio;
-
     // --- Normalized ---
     private final double mrMergedPerActiveDay;
     private final double commentsPerReviewedMr;
@@ -81,8 +78,6 @@ public class UserMetrics {
         map.put(Metric.MEDIAN_TIME_TO_MERGE_MINUTES.key(), medianTimeToMergeMinutes);
         map.put(Metric.REWORK_MR_COUNT.key(), reworkMrCount);
         map.put(Metric.REWORK_RATIO.key(), reworkRatio);
-        map.put(Metric.SELF_MERGE_COUNT.key(), selfMergeCount);
-        map.put(Metric.SELF_MERGE_RATIO.key(), selfMergeRatio);
         return map;
     }
 

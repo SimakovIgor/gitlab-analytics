@@ -150,9 +150,6 @@ public class MetricCalculationService {
         double reworkRatio = mrMergedCount > 0
             ? (double) flow.reworkMrCount() / mrMergedCount
             : 0.0;
-        double selfMergeRatio = mrMergedCount > 0
-            ? (double) flow.selfMergeCount() / mrMergedCount
-            : 0.0;
         double mrMergedPerActiveDay = activeDaysCount > 0
             ? (double) mrMergedCount / activeDaysCount
             : 0.0;
@@ -189,8 +186,6 @@ public class MetricCalculationService {
             .medianTimeToMergeMinutes(MetricsMathUtils.optMedian(flow.timeToMerge()))
             .reworkMrCount(flow.reworkMrCount())
             .reworkRatio(MetricsMathUtils.round2(reworkRatio))
-            .selfMergeCount(flow.selfMergeCount())
-            .selfMergeRatio(MetricsMathUtils.round2(selfMergeRatio))
             // Normalized
             .mrMergedPerActiveDay(MetricsMathUtils.round2(mrMergedPerActiveDay))
             .commentsPerReviewedMr(MetricsMathUtils.round2(commentsPerReviewedMr))
@@ -256,7 +251,6 @@ public class MetricCalculationService {
         List<Long> timeToFirstReview = new ArrayList<>();
         List<Long> timeToMerge = new ArrayList<>();
         int reworkMrCount = 0;
-        int selfMergeCount = 0;
 
         for (MergeRequest mr : authoredMrs) {
             List<MergeRequestNote> mrNotes = notesByMrId.getOrDefault(mr.getId(), List.of());
@@ -276,13 +270,9 @@ public class MetricCalculationService {
             }
 
             collectTimeToMerge(mr, timeToMerge);
-
-            if (mr.getMergedByGitlabUserId() != null && gitlabIds.contains(mr.getMergedByGitlabUserId())) {
-                selfMergeCount++;
-            }
         }
 
-        return new FlowResult(timeToFirstReview, timeToMerge, reworkMrCount, selfMergeCount);
+        return new FlowResult(timeToFirstReview, timeToMerge, reworkMrCount);
     }
 
     /**
@@ -432,8 +422,7 @@ public class MetricCalculationService {
 
     private record FlowResult(List<Long> timeToFirstReview,
                               List<Long> timeToMerge,
-                              int reworkMrCount,
-                              int selfMergeCount) {
+                              int reworkMrCount) {
 
     }
 }

@@ -117,14 +117,6 @@ public enum Metric {
         "Отношение MR с доработкой к общему числу смерджённых MR.",
         Category.FLOW, false, false),
 
-    SELF_MERGE_COUNT("self_merge_count", "Само-мержи",
-        "Число MR, смерджённых без ревью со стороны. Сигнал о возможном обходе процесса.",
-        Category.FLOW, false, true),
-
-    SELF_MERGE_RATIO("self_merge_ratio", "Доля само-мержей",
-        "Отношение само-мержей к общему числу смерджённых MR.",
-        Category.FLOW, false, false),
-
     // ── Normalized ────────────────────────────────────────────────────────────
 
     MR_MERGED_PER_ACTIVE_DAY("mr_merged_per_active_day", "MR/активный день",

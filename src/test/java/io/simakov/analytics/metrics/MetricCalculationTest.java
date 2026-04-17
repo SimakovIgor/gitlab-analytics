@@ -520,49 +520,6 @@ class MetricCalculationTest extends BaseIT {
     }
 
     // =========================================================================
-    // FLOW: SELF-MERGE
-    // =========================================================================
-
-    @Test
-    void selfMergeRatioOneWhenAuthorMergesOwnMr() {
-        saveMergedMrByAlice(T); // mergedByGitlabUserId = ALICE_GITLAB_ID by default
-
-        ContributionResult result = aliceReport();
-        assertThat(intMetric(result, "self_merge_count")).isEqualTo(1);
-        assertThat(dblMetric(result, "self_merge_ratio")).isEqualTo(1.0);
-    }
-
-    @Test
-    void selfMergeRatioZeroWhenMergedByOther() {
-        long id = seqNext();
-        mrRepository.save(MergeRequest.builder()
-            .trackedProjectId(projectId).gitlabMrId(id).gitlabMrIid(id)
-            .state(MrState.MERGED)
-            .authorGitlabUserId(ALICE_GITLAB_ID).authorUsername("alice")
-            .createdAtGitlab(T.minusSeconds(3600)).mergedAtGitlab(T)
-            .mergedByGitlabUserId(BOB_GITLAB_ID) // Bob merged it
-            .build());
-
-        ContributionResult result = aliceReport();
-        assertThat(intMetric(result, "self_merge_count")).isZero();
-        assertThat(dblMetric(result, "self_merge_ratio")).isZero();
-    }
-
-    @Test
-    void selfMergeRatioZeroWhenMergedByIsNull() {
-        long id = seqNext();
-        mrRepository.save(MergeRequest.builder()
-            .trackedProjectId(projectId).gitlabMrId(id).gitlabMrIid(id)
-            .state(MrState.MERGED)
-            .authorGitlabUserId(ALICE_GITLAB_ID).authorUsername("alice")
-            .createdAtGitlab(T.minusSeconds(3600)).mergedAtGitlab(T)
-            .mergedByGitlabUserId(null)
-            .build());
-
-        ContributionResult result = aliceReport();
-        assertThat(intMetric(result, "self_merge_count")).isZero();
-    }
-
     // =========================================================================
     // NORMALIZED
     // =========================================================================
