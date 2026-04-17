@@ -5,6 +5,7 @@ import io.simakov.analytics.api.dto.response.ContributionReportResponse;
 import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
+import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -70,11 +71,11 @@ public class ReportController {
 
         // Summary
         int totalMerged = results.stream()
-            .mapToInt(r -> toInt(r.metrics().get("mr_merged_count"))).sum();
+            .mapToInt(r -> toInt(r.metrics().get(Metric.MR_MERGED_COUNT.key()))).sum();
         int totalComments = results.stream()
-            .mapToInt(r -> toInt(r.metrics().get("review_comments_written_count"))).sum();
+            .mapToInt(r -> toInt(r.metrics().get(Metric.REVIEW_COMMENTS_WRITTEN_COUNT.key()))).sum();
         int totalApprovals = results.stream()
-            .mapToInt(r -> toInt(r.metrics().get("approvals_given_count"))).sum();
+            .mapToInt(r -> toInt(r.metrics().get(Metric.APPROVALS_GIVEN_COUNT.key()))).sum();
 
         return new ContributionReportResponse(
             new ContributionReportResponse.PeriodInfo(dateFrom, dateTo, request.periodPreset()),
@@ -127,8 +128,12 @@ public class ReportController {
     private Map<String, Double> buildTeamComparison(UserMetrics m,
                                                     Map<String, List<Double>> teamValues) {
         Map<String, Double> comparison = new HashMap<>();
-        List<String> keyMetrics = List.of("mr_merged_count", "review_comments_written_count",
-            "approvals_given_count", "mrs_reviewed_count");
+        List<String> keyMetrics = List.of(
+            Metric.MR_MERGED_COUNT.key(),
+            Metric.REVIEW_COMMENTS_WRITTEN_COUNT.key(),
+            Metric.APPROVALS_GIVEN_COUNT.key(),
+            Metric.MRS_REVIEWED_COUNT.key()
+        );
 
         for (String key : keyMetrics) {
             Object val = m.toMetricsMap().get(key);

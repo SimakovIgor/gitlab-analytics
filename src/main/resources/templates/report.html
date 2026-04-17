@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitLab Analytics — Отчёт</title>
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+</head>
+<body class="app-layout">
+
+<header class="topbar">
+    <span class="topbar-brand">
+        <svg viewBox="0 0 380 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
+                  fill="#FC6D26"/>
+        </svg>
+        GitLab Analytics
+    </span>
+
+    <nav class="topbar-nav">
+        <a href="/dashboard" class="nav-link">Обзор</a>
+        <a href="/report" class="nav-link nav-link-active">Отчёт</a>
+        <a href="/history" class="nav-link">История</a>
+    </nav>
+
+    <div class="topbar-user" th:if="${currentUser}">
+        <img th:if="${currentUser.avatarUrl != ''}"
+             th:src="${currentUser.avatarUrl}"
+             class="avatar"
+             th:alt="${currentUser.name}">
+        <div th:unless="${currentUser.avatarUrl != ''}" class="avatar-placeholder"
+             th:text="${#strings.substring(currentUser.name, 0, 1)}">?</div>
+        <span class="topbar-username" th:text="${currentUser.name}">Пользователь</span>
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit" class="btn-logout">Выйти</button>
+        </form>
+    </div>
+</header>
+
+<main class="main-content">
+
+    <!-- Фильтры -->
+    <form method="get" action="/report" class="filter-form">
+
+        <div class="filter-group">
+            <label class="filter-label">Период</label>
+            <div class="period-buttons">
+                <button type="submit" name="period" value="LAST_7_DAYS"
+                        th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'">
+                    7 дней
+                </button>
+                <button type="submit" name="period" value="LAST_30_DAYS"
+                        th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'">
+                    30 дней
+                </button>
+                <button type="submit" name="period" value="LAST_90_DAYS"
+                        th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'">
+                    90 дней
+                </button>
+                <button type="submit" name="period" value="LAST_180_DAYS"
+                        th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'">
+                    180 дней
+                </button>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label class="filter-label">Репозитории</label>
+            <div class="project-checkboxes">
+                <label class="checkbox-label" th:each="project : ${allProjects}">
+                    <input type="checkbox"
+                           name="projectIds"
+                           th:value="${project.id}"
+                           th:checked="${selectedProjectIds.contains(project.id)}"
+                           class="project-cb">
+                    <span th:text="${project.name}">Репо</span>
+                    <span class="repo-path" th:text="${'(' + project.pathWithNamespace + ')'}"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label class="filter-label">Сотрудники</label>
+            <label class="checkbox-label">
+                <input type="checkbox" name="showInactive" value="true"
+                       th:checked="${showInactive}">
+                <span>Показать неактивных</span>
+            </label>
+        </div>
+
+        <!-- Сохраняем период при изменении других фильтров -->
+        <input type="hidden" name="period" th:value="${selectedPeriod}" id="periodHidden">
+
+        <button type="submit" class="btn-apply">Применить</button>
+    </form>
+
+    <!-- Период -->
+    <p class="period-info">
+        <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
+        &nbsp;→&nbsp;
+        <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
+    </p>
+
+    <!-- Описание метрик -->
+    <details class="metrics-legend">
+        <summary>Что означают колонки?</summary>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <span class="legend-name">MR смерджено</span>
+                <span class="legend-desc">Число MR, слитых в выбранном периоде. Основной показатель доставки.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">+ строк / − строк</span>
+                <span class="legend-desc">Объём изменений кода в смерджённых MR. Косвенно говорит о размере задач.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Коммиты</span>
+                <span class="legend-desc">Число коммитов в MR, авторство которых принадлежит сотруднику.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Комментарии</span>
+                <span class="legend-desc">Комментарии, оставленные при ревью чужих MR. Показывает вовлечённость в код-ревью.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">MR отревьюено</span>
+                <span class="legend-desc">Число чужих MR, в которых сотрудник оставил хотя бы один комментарий или аппрув.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Аппрувы</span>
+                <span class="legend-desc">Число выданных аппрувов. Не равно MR отревьюено — можно смотреть без аппрува.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Активных дней</span>
+                <span class="legend-desc">Дней, когда был хотя бы один коммит, комментарий или аппрув. Показывает регулярность.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">До мержа</span>
+                <span class="legend-desc">Среднее время от открытия MR до мержа (в часах). Чем меньше — тем быстрее проходит ревью.</span>
+            </div>
+        </div>
+    </details>
+
+    <!-- Таблица результатов -->
+    <div class="section-title">Вклад сотрудников</div>
+
+    <div th:if="${metrics.isEmpty()}" class="empty-state">
+        Нет данных за выбранный период
+    </div>
+
+    <div th:unless="${metrics.isEmpty()}" class="table-scroll">
+        <table class="data-table report-table">
+            <thead>
+                <tr>
+                    <th>Сотрудник</th>
+                    <th title="MR смерджено за период">MR смерджено</th>
+                    <th title="Строк добавлено">+ строк</th>
+                    <th title="Строк удалено">− строк</th>
+                    <th title="Коммитов в MR">Коммиты</th>
+                    <th title="Комментарии оставлены при ревью чужих MR">Комментарии</th>
+                    <th title="Количество чужих MR, в которых участвовал в ревью">MR отревьюено</th>
+                    <th title="Аппрувов выдано">Аппрувы</th>
+                    <th title="Дней с хотя бы одним действием">Активных дней</th>
+                    <th title="Среднее время от создания MR до мержа">До мержа</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="m : ${metrics}" th:with="d=${deltas[m.trackedUserId]}">
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar"
+                                 th:text="${#strings.substring(m.displayName, 0, 1)}">?</div>
+                            <span class="user-name" th:text="${m.displayName}">Имя</span>
+                        </div>
+                    </td>
+                    <td class="num-cell accent">
+                        <div class="metric-cell">
+                            <span th:text="${m.mrMergedCount}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['mrMerged']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <td class="num-cell positive">
+                        <div class="metric-cell">
+                            <span th:text="${m.linesAdded}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['linesAdded']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <td class="num-cell negative">
+                        <div class="metric-cell">
+                            <span th:text="${m.linesDeleted}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['linesDeleted']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <td class="num-cell">
+                        <div class="metric-cell">
+                            <span th:text="${m.commitsInMrCount}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['commits']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <td class="num-cell">
+                        <div class="metric-cell">
+                            <span th:text="${m.reviewCommentsWrittenCount}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['comments']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <td class="num-cell">
+                        <div class="metric-cell">
+                            <span th:text="${m.mrsReviewedCount}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['reviewed']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <td class="num-cell">
+                        <div class="metric-cell">
+                            <span th:text="${m.approvalsGivenCount}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['approvals']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <td class="num-cell">
+                        <div class="metric-cell">
+                            <span th:text="${m.activeDaysCount}">0</span>
+                            <span th:if="${d != null}" th:with="v=${d['activeDays']}"
+                                  th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0 ? '+' + v : v}"></span>
+                        </div>
+                    </td>
+                    <!-- До мержа: уменьшение = хорошо, поэтому цвета инвертированы -->
+                    <td class="num-cell">
+                        <div class="metric-cell">
+                            <span th:text="${m.avgTimeToMergeMinutes != null
+                                ? #numbers.formatDecimal(m.avgTimeToMergeMinutes / 60.0, 1, 1) + ' ч'
+                                : '—'}">—</span>
+                            <span th:if="${d != null and d['timeToMerge'] != null}"
+                                  th:with="v=${d['timeToMerge']}"
+                                  th:class="${v < 0 ? 'delta delta-pos' : (v > 0 ? 'delta delta-neg' : 'delta delta-zero')}"
+                                  th:text="${v > 0
+                                      ? '+' + #numbers.formatDecimal(v / 60.0, 1, 1) + ' ч'
+                                      : #numbers.formatDecimal(v / 60.0, 1, 1) + ' ч'}">
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</main>
+
+<script>
+    // При нажатии кнопок периода — отключаем hidden, чтобы не дублировать параметр
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('periodHidden').disabled = true;
+        });
+    });
+</script>
+
+</body>
+</html>

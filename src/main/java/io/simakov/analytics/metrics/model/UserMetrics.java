@@ -56,40 +56,40 @@ public class UserMetrics {
     public Map<String, Object> toMetricsMap() {
         Map<String, Object> map = new HashMap<>();
         // Delivery
-        map.put("mr_opened_count", mrOpenedCount);
-        map.put("mr_merged_count", mrMergedCount);
-        map.put("active_days_count", activeDaysCount);
-        map.put("repositories_touched_count", repositoriesTouchedCount);
-        map.put("commits_in_mr_count", commitsInMrCount);
+        map.put(Metric.MR_OPENED_COUNT.key(), mrOpenedCount);
+        map.put(Metric.MR_MERGED_COUNT.key(), mrMergedCount);
+        map.put(Metric.ACTIVE_DAYS_COUNT.key(), activeDaysCount);
+        map.put(Metric.REPOSITORIES_TOUCHED_COUNT.key(), repositoriesTouchedCount);
+        map.put(Metric.COMMITS_IN_MR_COUNT.key(), commitsInMrCount);
         // Change volume
-        map.put("lines_added", linesAdded);
-        map.put("lines_deleted", linesDeleted);
-        map.put("lines_changed", linesChanged);
-        map.put("files_changed", filesChanged);
-        map.put("avg_mr_size_lines", avgMrSizeLines);
-        map.put("median_mr_size_lines", medianMrSizeLines);
-        map.put("avg_mr_size_files", avgMrSizeFiles);
+        map.put(Metric.LINES_ADDED.key(), linesAdded);
+        map.put(Metric.LINES_DELETED.key(), linesDeleted);
+        map.put(Metric.LINES_CHANGED.key(), linesChanged);
+        map.put(Metric.FILES_CHANGED.key(), filesChanged);
+        map.put(Metric.AVG_MR_SIZE_LINES.key(), avgMrSizeLines);
+        map.put(Metric.MEDIAN_MR_SIZE_LINES.key(), medianMrSizeLines);
+        map.put(Metric.AVG_MR_SIZE_FILES.key(), avgMrSizeFiles);
         // Review
-        map.put("review_comments_written_count", reviewCommentsWrittenCount);
-        map.put("mrs_reviewed_count", mrsReviewedCount);
-        map.put("approvals_given_count", approvalsGivenCount);
-        map.put("review_threads_started_count", reviewThreadsStartedCount);
+        map.put(Metric.REVIEW_COMMENTS_WRITTEN_COUNT.key(), reviewCommentsWrittenCount);
+        map.put(Metric.MRS_REVIEWED_COUNT.key(), mrsReviewedCount);
+        map.put(Metric.APPROVALS_GIVEN_COUNT.key(), approvalsGivenCount);
+        map.put(Metric.REVIEW_THREADS_STARTED_COUNT.key(), reviewThreadsStartedCount);
         // Flow
-        map.put("avg_time_to_first_review_minutes", avgTimeToFirstReviewMinutes);
-        map.put("median_time_to_first_review_minutes", medianTimeToFirstReviewMinutes);
-        map.put("avg_time_to_merge_minutes", avgTimeToMergeMinutes);
-        map.put("median_time_to_merge_minutes", medianTimeToMergeMinutes);
-        map.put("rework_mr_count", reworkMrCount);
-        map.put("rework_ratio", reworkRatio);
-        map.put("self_merge_count", selfMergeCount);
-        map.put("self_merge_ratio", selfMergeRatio);
+        map.put(Metric.AVG_TIME_TO_FIRST_REVIEW_MINUTES.key(), avgTimeToFirstReviewMinutes);
+        map.put(Metric.MEDIAN_TIME_TO_FIRST_REVIEW_MINUTES.key(), medianTimeToFirstReviewMinutes);
+        map.put(Metric.AVG_TIME_TO_MERGE_MINUTES.key(), avgTimeToMergeMinutes);
+        map.put(Metric.MEDIAN_TIME_TO_MERGE_MINUTES.key(), medianTimeToMergeMinutes);
+        map.put(Metric.REWORK_MR_COUNT.key(), reworkMrCount);
+        map.put(Metric.REWORK_RATIO.key(), reworkRatio);
+        map.put(Metric.SELF_MERGE_COUNT.key(), selfMergeCount);
+        map.put(Metric.SELF_MERGE_RATIO.key(), selfMergeRatio);
         return map;
     }
 
     public Map<String, Double> toNormalizedMap() {
         Map<String, Double> map = new HashMap<>();
-        map.put("mr_merged_per_active_day", mrMergedPerActiveDay);
-        map.put("comments_per_reviewed_mr", commentsPerReviewedMr);
+        map.put(Metric.MR_MERGED_PER_ACTIVE_DAY.key(), mrMergedPerActiveDay);
+        map.put(Metric.COMMENTS_PER_REVIEWED_MR.key(), commentsPerReviewedMr);
         return map;
     }
 }

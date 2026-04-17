@@ -34,6 +34,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("org.thymeleaf.extras:thymeleaf-extras-springsecurity6")
 
     // SpotBugs annotations (for @SuppressFBWarnings)
     implementation("com.github.spotbugs:spotbugs-annotations:4.8.6")
@@ -113,3 +116,4 @@ tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
