@@ -19,10 +19,9 @@ public interface MetricSnapshotRepository extends JpaRepository<MetricSnapshot, 
         + "WHERE s.trackedUserId IN :userIds "
         + "AND s.snapshotDate >= :from "
         + "AND s.snapshotDate <= :to "
-        + "AND s.reportMode = :reportMode "
+        + "AND s.reportMode = io.simakov.analytics.domain.model.enums.ReportMode.MERGED_IN_PERIOD "
         + "ORDER BY s.snapshotDate ASC")
     List<MetricSnapshot> findHistory(@Param("userIds") List<Long> userIds,
                                      @Param("from") LocalDate from,
-                                     @Param("to") LocalDate to,
-                                     @Param("reportMode") ReportMode reportMode);
+                                     @Param("to") LocalDate to);
 }

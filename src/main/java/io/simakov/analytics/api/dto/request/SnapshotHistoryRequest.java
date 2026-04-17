@@ -1,6 +1,5 @@
 package io.simakov.analytics.api.dto.request;
 
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.model.enums.TimeGroupBy;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -12,8 +11,7 @@ public record SnapshotHistoryRequest(
     @NotEmpty List<Long> userIds,
     @NotNull LocalDate from,
     @NotNull LocalDate to,
-    @NotNull TimeGroupBy groupBy,
-    ReportMode reportMode
+    @NotNull TimeGroupBy groupBy
 ) {
 
 }

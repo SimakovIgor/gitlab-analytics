@@ -35,6 +35,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class SnapshotService {
 
+    private static final ReportMode SNAPSHOT_MODE = ReportMode.MERGED_IN_PERIOD;
+
     private final MetricCalculationService metricCalculationService;
     private final MetricSnapshotRepository snapshotRepository;
     private final TrackedUserRepository trackedUserRepository;
@@ -45,22 +47,18 @@ public class SnapshotService {
     @Scheduled(cron = "${app.snapshot.cron:0 0 2 * * *}")
     public void runDailySnapshot() {
         log.info("Running daily metric snapshot");
-        AppProperties.Snapshot cfg = appProperties.snapshot();
-        run(null, null, cfg.windowDays(), cfg.defaultReportMode(), LocalDate.now(ZoneOffset.UTC));
+        run(null, null, appProperties.snapshot().windowDays(), LocalDate.now(ZoneOffset.UTC));
     }
 
     public RunSnapshotResponse runSnapshot(RunSnapshotRequest request) {
-        AppProperties.Snapshot cfg = appProperties.snapshot();
-        int windowDays = Objects.requireNonNullElse(request.windowDays(), cfg.windowDays());
-        ReportMode reportMode = Objects.requireNonNullElse(request.reportMode(), cfg.defaultReportMode());
+        int windowDays = Objects.requireNonNullElse(request.windowDays(), appProperties.snapshot().windowDays());
         LocalDate snapshotDate = Objects.requireNonNullElse(request.snapshotDate(), LocalDate.now(ZoneOffset.UTC));
-        return run(request.userIds(), request.projectIds(), windowDays, reportMode, snapshotDate);
+        return run(request.userIds(), request.projectIds(), windowDays, snapshotDate);
     }
 
     private RunSnapshotResponse run(List<Long> userIds,
                                     List<Long> projectIds,
                                     int windowDays,
-                                    ReportMode reportMode,
                                     LocalDate snapshotDate) {
         List<Long> resolvedUserIds = resolveUserIds(userIds);
         List<Long> resolvedProjectIds = resolveProjectIds(projectIds);
@@ -74,17 +72,16 @@ public class SnapshotService {
         Instant dateFrom = dateTo.minus(windowDays, ChronoUnit.DAYS);
 
         Map<Long, UserMetrics> metrics = metricCalculationService.calculate(
-            resolvedProjectIds, resolvedUserIds, dateFrom, dateTo, reportMode);
+            resolvedProjectIds, resolvedUserIds, dateFrom, dateTo, SNAPSHOT_MODE);
 
         int saved = 0;
         for (Map.Entry<Long, UserMetrics> entry : metrics.entrySet()) {
-            if (saveSnapshot(entry.getKey(), snapshotDate, dateFrom, dateTo,
-                windowDays, reportMode, entry.getValue())) {
+            if (saveSnapshot(entry.getKey(), snapshotDate, dateFrom, dateTo, windowDays, entry.getValue())) {
                 saved++;
             }
         }
 
-        log.info("Saved {} snapshots for date={}, windowDays={}, mode={}", saved, snapshotDate, windowDays, reportMode);
+        log.info("Saved {} snapshots for date={}, windowDays={}", saved, snapshotDate, windowDays);
         return new RunSnapshotResponse(saved, snapshotDate);
     }
 
@@ -93,7 +90,6 @@ public class SnapshotService {
                                  Instant dateFrom,
                                  Instant dateTo,
                                  int windowDays,
-                                 ReportMode reportMode,
                                  UserMetrics userMetrics) {
         try {
             Map<String, Object> allMetrics = new LinkedHashMap<>(userMetrics.toMetricsMap());
@@ -101,7 +97,7 @@ public class SnapshotService {
             String json = objectMapper.writeValueAsString(allMetrics);
 
             MetricSnapshot snapshot = snapshotRepository
-                .findByTrackedUserIdAndSnapshotDateAndReportMode(userId, snapshotDate, reportMode)
+                .findByTrackedUserIdAndSnapshotDateAndReportMode(userId, snapshotDate, SNAPSHOT_MODE)
                 .orElseGet(MetricSnapshot::new);
 
             snapshot.setTrackedUserId(userId);
@@ -109,7 +105,7 @@ public class SnapshotService {
             snapshot.setDateFrom(dateFrom);
             snapshot.setDateTo(dateTo);
             snapshot.setWindowDays(windowDays);
-            snapshot.setReportMode(reportMode);
+            snapshot.setReportMode(SNAPSHOT_MODE);
             snapshot.setPeriodType(PeriodType.CUSTOM);
             snapshot.setScopeType(ScopeType.USER);
             snapshot.setMetricsJson(json);

@@ -85,8 +85,7 @@ class SnapshotTest extends BaseIT {
 
     @Test
     void runSnapshotCreatesOneRowPerUser() {
-        RunSnapshotRequest req = new RunSnapshotRequest(
-            List.of(aliceId, bobId), List.of(projectId), 30, ReportMode.MERGED_IN_PERIOD, TODAY);
+        RunSnapshotRequest req = new RunSnapshotRequest(List.of(aliceId, bobId), List.of(projectId), 30, TODAY);
 
         ResponseEntity<RunSnapshotResponse> resp = post("/api/v1/snapshots/run", req, RunSnapshotResponse.class);
 
@@ -99,8 +98,7 @@ class SnapshotTest extends BaseIT {
 
     @Test
     void runSnapshotIsIdempotentForSameDate() {
-        RunSnapshotRequest req = new RunSnapshotRequest(
-            List.of(aliceId), List.of(projectId), 30, ReportMode.MERGED_IN_PERIOD, TODAY);
+        RunSnapshotRequest req = new RunSnapshotRequest(List.of(aliceId), List.of(projectId), 30, TODAY);
 
         post("/api/v1/snapshots/run", req, RunSnapshotResponse.class);
         post("/api/v1/snapshots/run", req, RunSnapshotResponse.class);
@@ -112,7 +110,7 @@ class SnapshotTest extends BaseIT {
     @Test
     void runSnapshotWithEmptyBodyUsesDefaults() {
         // Empty body (all nulls) → service falls back to all enabled users / projects / defaults
-        RunSnapshotRequest emptyReq = new RunSnapshotRequest(null, null, null, null, null);
+        RunSnapshotRequest emptyReq = new RunSnapshotRequest(null, null, null, null);
         ResponseEntity<RunSnapshotResponse> resp = post("/api/v1/snapshots/run", emptyReq, RunSnapshotResponse.class);
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -122,33 +120,18 @@ class SnapshotTest extends BaseIT {
     }
 
     @Test
-    void runSnapshotPersistsWindowDaysAndReportMode() {
-        RunSnapshotRequest req = new RunSnapshotRequest(
-            List.of(aliceId), List.of(projectId), 90, ReportMode.CREATED_IN_PERIOD, TODAY);
+    void runSnapshotPersistsWindowDays() {
+        RunSnapshotRequest req = new RunSnapshotRequest(List.of(aliceId), List.of(projectId), 90, TODAY);
 
         post("/api/v1/snapshots/run", req, RunSnapshotResponse.class);
 
         MetricSnapshot saved = snapshotRepository
-            .findByTrackedUserIdAndSnapshotDateAndReportMode(aliceId, TODAY, ReportMode.CREATED_IN_PERIOD)
+            .findByTrackedUserIdAndSnapshotDateAndReportMode(aliceId, TODAY, ReportMode.MERGED_IN_PERIOD)
             .orElseThrow();
         assertThat(saved.getWindowDays()).isEqualTo(90);
-        assertThat(saved.getReportMode()).isEqualTo(ReportMode.CREATED_IN_PERIOD);
+        assertThat(saved.getReportMode()).isEqualTo(ReportMode.MERGED_IN_PERIOD);
         assertThat(saved.getSnapshotDate()).isEqualTo(TODAY);
         assertThat(saved.getMetricsJson()).isNotBlank();
-    }
-
-    @Test
-    void runSnapshotSeparateRowsPerReportMode() {
-        RunSnapshotRequest merged = new RunSnapshotRequest(
-            List.of(aliceId), List.of(projectId), 30, ReportMode.MERGED_IN_PERIOD, TODAY);
-        RunSnapshotRequest created = new RunSnapshotRequest(
-            List.of(aliceId), List.of(projectId), 30, ReportMode.CREATED_IN_PERIOD, TODAY);
-
-        post("/api/v1/snapshots/run", merged, RunSnapshotResponse.class);
-        post("/api/v1/snapshots/run", created, RunSnapshotResponse.class);
-
-        // Different report modes → different rows
-        assertThat(snapshotRepository.findAll()).hasSize(2);
     }
 
     // -------------------------------------------------------------------------
@@ -240,8 +223,7 @@ class SnapshotTest extends BaseIT {
         saveSnapshot(aliceId, TODAY);
         saveSnapshot(bobId, TODAY);
 
-        SnapshotHistoryResponse resp = history(List.of(aliceId),
-            TODAY, TODAY, TimeGroupBy.DAY);
+        SnapshotHistoryResponse resp = history(List.of(aliceId), TODAY, TODAY, TimeGroupBy.DAY);
 
         assertThat(resp.points()).hasSize(1);
         List<SnapshotHistoryResponse.UserSnapshotMetrics> users = resp.points().get(0).users();
@@ -281,8 +263,7 @@ class SnapshotTest extends BaseIT {
         saveSnapshot(aliceId, TODAY);
         saveSnapshot(bobId, TODAY);
 
-        SnapshotHistoryResponse resp = history(List.of(aliceId, bobId),
-            TODAY, TODAY, TimeGroupBy.DAY);
+        SnapshotHistoryResponse resp = history(List.of(aliceId, bobId), TODAY, TODAY, TimeGroupBy.DAY);
 
         assertThat(resp.points()).hasSize(1);
         assertThat(resp.points().get(0).users()).hasSize(2);
@@ -320,8 +301,7 @@ class SnapshotTest extends BaseIT {
                                             LocalDate from,
                                             LocalDate to,
                                             TimeGroupBy groupBy) {
-        SnapshotHistoryRequest req = new SnapshotHistoryRequest(
-            userIds, from, to, groupBy, ReportMode.MERGED_IN_PERIOD);
+        SnapshotHistoryRequest req = new SnapshotHistoryRequest(userIds, from, to, groupBy);
         ResponseEntity<SnapshotHistoryResponse> resp = post(
             "/api/v1/snapshots/history", req, SnapshotHistoryResponse.class);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);

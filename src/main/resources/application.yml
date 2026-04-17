@@ -47,7 +47,6 @@ app:
     # Daily at 02:00 UTC. Set to '-' to disable.
     cron: "0 0 2 * * *"
     window-days: 30
-    default-report-mode: MERGED_IN_PERIOD
 
 management:
   endpoints:

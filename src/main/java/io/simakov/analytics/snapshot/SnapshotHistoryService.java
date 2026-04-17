@@ -7,7 +7,6 @@ import io.simakov.analytics.api.dto.response.SnapshotHistoryResponse.SnapshotPoi
 import io.simakov.analytics.api.dto.response.SnapshotHistoryResponse.UserSnapshotMetrics;
 import io.simakov.analytics.domain.model.MetricSnapshot;
 import io.simakov.analytics.domain.model.TrackedUser;
-import io.simakov.analytics.domain.model.enums.ReportMode;
 import io.simakov.analytics.domain.model.enums.TimeGroupBy;
 import io.simakov.analytics.domain.repository.MetricSnapshotRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
@@ -40,12 +39,8 @@ public class SnapshotHistoryService {
     public SnapshotHistoryResponse getHistory(List<Long> userIds,
                                               LocalDate from,
                                               LocalDate to,
-                                              TimeGroupBy groupBy,
-                                              ReportMode reportMode) {
-        ReportMode effectiveMode = reportMode != null
-            ? reportMode
-            : ReportMode.MERGED_IN_PERIOD;
-        List<MetricSnapshot> snapshots = snapshotRepository.findHistory(userIds, from, to, effectiveMode);
+                                              TimeGroupBy groupBy) {
+        List<MetricSnapshot> snapshots = snapshotRepository.findHistory(userIds, from, to);
 
         Map<Long, String> userNames = loadUserNames(userIds);
 

@@ -43,7 +43,6 @@ public class SnapshotController {
             request.userIds(),
             request.from(),
             request.to(),
-            request.groupBy(),
-            request.reportMode());
+            request.groupBy());
     }
 }
