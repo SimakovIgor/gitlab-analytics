@@ -599,7 +599,10 @@ function switchTab(name) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const defaultTab = (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers)
+    const syncRunning = ACTIVE_JOB_IDS.length > 0;
+
+    // В онбординге не переключаемся на «Сотрудники» пока идёт синк — там нечего показывать
+    const defaultTab = (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && !syncRunning)
         ? 'users'
         : (sessionStorage.getItem(TAB_STORAGE_KEY) || 'sources');
     switchTab(defaultTab);
@@ -607,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
 
     // Если онбординг: проекты есть, синк уже завершён, пользователей нет → сразу грузим discovery в визард
-    if (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && ACTIVE_JOB_IDS.length === 0) {
+    if (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && !syncRunning) {
         loadObDiscovery();
     }
 });
@@ -759,6 +762,7 @@ function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
             if (job.status === 'COMPLETED') {
                 clearInterval(interval);
                 clearInterval(durationTimer);
+                activeSyncRunning = false;
                 if (fillEl()) fillEl().style.width = '100%';
                 if (labelEl()) labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
                 updateBanner(bannerId, 'ok', 'Синхронизация завершена');
@@ -766,6 +770,7 @@ function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
             } else if (job.status === 'FAILED') {
                 clearInterval(interval);
                 clearInterval(durationTimer);
+                activeSyncRunning = false;
                 updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
                 updateJobRow(jobId, 'FAILED', job.errorMessage);
             }
@@ -845,6 +850,10 @@ function updateBanner(bannerId, type, message) {
         setTimeout(() => el.remove(), 5000);
         if (ONBOARDING_MODE && !OB_STATE.hasUsers) {
             onSyncCompletedInOnboarding();
+        } else {
+            // Вне онбординга — обновляем вкладку «Сотрудники», если пользователь там
+            discoveryLoaded = false;
+            loadDiscoveredContributors();
         }
     }
 }
@@ -855,6 +864,8 @@ function onSyncCompletedInOnboarding() {
     if (syncSection)   syncSection.classList.add('hidden');
     if (selectSection) selectSection.classList.remove('hidden');
     loadObDiscovery();
+    // Обновить вкладку «Сотрудники» — данные могут быть уже загружены до синка
+    discoveryLoaded = false;
 }
 
 async function loadObDiscovery() {
@@ -1181,8 +1192,11 @@ async function deleteProject(id, name) {
 
 let discoveryLoaded = false;
 
+let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
+
 async function loadDiscoveredContributors() {
     if (discoveryLoaded) return;
+    if (activeSyncRunning) return;  // не показываем discovery пока идёт синк
     const loading = document.getElementById('discovery-loading');
     const panel   = document.getElementById('discovery-panel');
     loading.classList.remove('hidden');

@@ -255,21 +255,7 @@ public class SettingsController {
         List<Map<String, Object>> created = new ArrayList<>();
         for (CreateTrackedUserRequest req : requests) {
             TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(req));
-            if (req.aliasEmails() != null) {
-                for (String aliasEmail : req.aliasEmails()) {
-                    if (aliasEmail != null && !aliasEmail.isBlank()) {
-                        String normalizedEmail = aliasEmail.toLowerCase(Locale.ROOT).strip();
-                        List<Long> gitlabUserIds = mergeRequestRepository
-                            .findAuthorGitlabUserIdByCommitEmail(normalizedEmail);
-                        Long gitlabUserId = gitlabUserIds.isEmpty() ? null : gitlabUserIds.get(0);
-                        aliasRepository.save(TrackedUserAlias.builder()
-                            .trackedUserId(saved.getId())
-                            .email(normalizedEmail)
-                            .gitlabUserId(gitlabUserId)
-                            .build());
-                    }
-                }
-            }
+            saveAliasEmails(saved.getId(), req.aliasEmails());
             created.add(Map.of(
                 "id", saved.getId(),
                 "displayName", saved.getDisplayName(),
@@ -277,6 +263,26 @@ public class SettingsController {
             ));
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("created", created));
+    }
+
+    private void saveAliasEmails(Long userId, List<String> aliasEmails) {
+        if (aliasEmails == null) {
+            return;
+        }
+        for (String aliasEmail : aliasEmails) {
+            if (aliasEmail == null || aliasEmail.isBlank()) {
+                continue;
+            }
+            String normalizedEmail = aliasEmail.toLowerCase(Locale.ROOT).strip();
+            List<Long> gitlabUserIds = mergeRequestRepository
+                .findAuthorGitlabUserIdByCommitEmail(normalizedEmail);
+            Long gitlabUserId = gitlabUserIds.isEmpty() ? null : gitlabUserIds.get(0);
+            aliasRepository.save(TrackedUserAlias.builder()
+                .trackedUserId(userId)
+                .email(normalizedEmail)
+                .gitlabUserId(gitlabUserId)
+                .build());
+        }
     }
 
     // ── Tracked Users ────────────────────────────────────────────────────────
