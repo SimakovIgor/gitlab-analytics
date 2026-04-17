@@ -61,7 +61,7 @@ final class MetricsMathUtils {
     public static Double optMedian(List<Long> values) {
         return values.isEmpty()
             ? null
-            : round2(median(values));
+            : round2(median(values.stream().sorted().toList()));
     }
 
 }
