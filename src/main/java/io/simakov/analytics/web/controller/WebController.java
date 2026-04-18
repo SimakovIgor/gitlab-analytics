@@ -50,6 +50,7 @@ public class WebController {
         model.addAttribute("hasProjects", data.hasProjects());
         model.addAttribute("hasUsers", data.hasUsers());
         model.addAttribute("onboardingMode", data.onboardingMode());
+        model.addAttribute("hasSyncCompleted", data.hasSyncCompleted());
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("usersWithAliases", data.usersWithAliases());
         model.addAttribute("allProjects", data.allProjects());

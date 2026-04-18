@@ -14,6 +14,7 @@ public record ReportPageData(
     boolean hasProjects,
     boolean hasUsers,
     boolean onboardingMode,
+    boolean hasSyncCompleted,
     List<Long> activeJobIds,
     List<Map<String, Object>> usersWithAliases,
     List<TrackedProject> allProjects,

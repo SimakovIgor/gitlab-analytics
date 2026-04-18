@@ -53,11 +53,13 @@ public class ReportViewService {
             .findByStatusOrderByStartedAtDesc(SyncStatus.STARTED)
             .stream().map(SyncJob::getId).toList();
 
+        boolean hasSyncCompleted = syncJobRepository.existsByStatus(SyncStatus.COMPLETED);
+
         List<Map<String, Object>> usersWithAliases = buildUsersWithAliases(allUsers);
 
         if (onboardingMode) {
             return new ReportPageData(
-                sources, hasSources, hasProjects, hasUsers, true,
+                sources, hasSources, hasProjects, hasUsers, true, hasSyncCompleted,
                 activeJobIds, usersWithAliases, allProjects,
                 List.of(), period, showInactive,
                 null, null, List.of(), Map.of()
@@ -97,7 +99,7 @@ public class ReportViewService {
         }
 
         return new ReportPageData(
-            sources, hasSources, hasProjects, hasUsers, false,
+            sources, hasSources, hasProjects, hasUsers, false, hasSyncCompleted,
             activeJobIds, usersWithAliases, allProjects,
             selectedProjectIds, period, showInactive,
             dateFrom, dateTo, metrics, deltas

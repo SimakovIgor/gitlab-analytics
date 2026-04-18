@@ -100,21 +100,31 @@
             </div>
 
             <!-- Шаг 3: Синхронизация -->
+            <!--
+                Состояния:
+                  locked  — нет проектов
+                  active  — есть проекты, идёт синк ИЛИ синк ещё не завершался
+                  done    — hasSyncCompleted=true и нет активного синка
+            -->
             <div id="ob-step-3"
-                 th:class="${hasProjects and activeJobIds.isEmpty()} ? 'ob-step ob-step-done' : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                 th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-step ob-step-done'
+                           : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
                 <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasProjects and activeJobIds.isEmpty()} ? '✓' : '3'">3</div>
+                    <div class="ob-step-num"
+                         th:text="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? '✓' : '3'">3</div>
                     <div class="ob-step-line"></div>
                 </div>
                 <div class="ob-step-content">
                     <div class="ob-step-title">Дождитесь синхронизации</div>
+                    <!-- Показывается только когда синк активен -->
                     <div id="ob-sync-section"
                          th:class="${hasProjects and !activeJobIds.isEmpty()} ? 'ob-sync-section' : 'ob-sync-section hidden'">
                         <div class="ob-sync-desc">Идёт загрузка MR, коммитов и ревью за 360 дней. После завершения станет доступен следующий шаг.</div>
                         <div id="sync-banners-ob"></div>
                     </div>
+                    <!-- Показывается только после успешного завершения -->
                     <span id="ob-sync-done-badge"
-                          th:class="${hasProjects and activeJobIds.isEmpty()} ? 'ob-done-badge' : 'ob-done-badge hidden'">
+                          th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-done-badge' : 'ob-done-badge hidden'">
                         Синхронизировано ✓
                     </span>
                     <span class="ob-locked-hint" th:if="${!hasProjects}">Сначала добавьте репозиторий</span>
@@ -122,22 +132,30 @@
             </div>
 
             <!-- Шаг 4: Выберите сотрудников -->
+            <!--
+                Состояния:
+                  locked  — синк не завершался (hasSyncCompleted=false) или идёт синк
+                  active  — синк завершён, пользователей нет
+                  done    — пользователи добавлены
+            -->
             <div id="ob-step-4"
-                 th:class="${hasUsers} ? 'ob-step ob-step-done' : (${hasProjects and activeJobIds.isEmpty()} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                 th:class="${hasUsers} ? 'ob-step ob-step-done'
+                           : (${hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
                 <div class="ob-step-indicator">
                     <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '4'">4</div>
                     <div class="ob-step-line"></div>
                 </div>
                 <div class="ob-step-content">
                     <div class="ob-step-title">Выберите сотрудников</div>
+                    <!-- Список участников — только после завершения синка и только если нет пользователей -->
                     <div id="ob-select-section"
-                         th:class="${hasProjects and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
+                         th:class="${hasSyncCompleted and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
                         <div class="ob-step-desc" style="margin-bottom:12px">
                             Отметьте участников — система сопоставит коммиты и MR по email.
                         </div>
                         <div class="discovery-loading hidden" id="ob-discovery-loading">
                             <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                            Ищем участников в синхронизированных данных...
+                            Ищем участников...
                         </div>
                         <div class="discovery-list" id="ob-discovery-list" style="max-height:320px;overflow-y:auto"></div>
                         <div class="discovery-actions hidden" id="ob-discovery-actions" style="margin-top:12px">
@@ -148,13 +166,22 @@
                         </div>
                     </div>
                     <span class="ob-done-badge" th:if="${hasUsers}">Добавлено ✓</span>
-                    <span class="ob-locked-hint" th:if="${!hasProjects or !activeJobIds.isEmpty()}"
-                          th:text="${!hasProjects} ? 'Сначала добавьте репозиторий' : 'Дождитесь окончания синхронизации'">
+                    <span class="ob-locked-hint"
+                          th:if="${!hasUsers and (!hasSyncCompleted or !activeJobIds.isEmpty())}"
+                          th:text="${!hasProjects} ? 'Сначала добавьте репозиторий'
+                                   : (!hasSyncCompleted ? 'Дождитесь окончания синхронизации'
+                                   : 'Дождитесь окончания синхронизации')">
                     </span>
                 </div>
             </div>
 
             <!-- Шаг 5: Бэкфилл истории -->
+            <!--
+                Состояния:
+                  locked  — нет пользователей
+                  active  — пользователи добавлены, backfill запущен или ещё не запускался
+                  done    — backfill завершён (управляется только JS)
+            -->
             <div id="ob-step-5"
                  th:class="${hasUsers} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked'">
                 <div class="ob-step-indicator">
@@ -162,23 +189,28 @@
                 </div>
                 <div class="ob-step-content">
                     <div class="ob-step-title">Формируем историю метрик</div>
-                    <div id="ob-backfill-section"
-                         th:class="${hasUsers} ? 'ob-sync-section' : 'ob-sync-section hidden'">
-                        <div class="ob-sync-desc">Создаём еженедельные снапшоты за 360 дней — после этого станет доступен график истории.</div>
-                        <div class="discovery-loading hidden" id="ob-backfill-progress">
+                    <!-- Секция backfill: скрыта до начала — покажется при запуске triggerSnapshotBackfill() -->
+                    <div id="ob-backfill-section" class="ob-sync-section hidden">
+                        <div class="discovery-loading" id="ob-backfill-progress">
                             <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
                             Формируем снапшоты...
                         </div>
                     </div>
                     <span class="ob-done-badge hidden" id="ob-backfill-done-badge">История сформирована ✓</span>
                     <span class="ob-locked-hint" th:if="${!hasUsers}">Сначала добавьте сотрудников</span>
+                    <!-- Нейтральный hint пока backfill не запущен (управляется JS) -->
+                    <span class="ob-step-desc" id="ob-backfill-hint"
+                          th:class="${hasUsers} ? 'ob-step-desc hidden' : 'ob-step-desc hidden'">
+                        Запустится автоматически после добавления сотрудников
+                    </span>
                 </div>
             </div>
 
         </div>
 
-        <div id="ob-cta" th:class="${hasProjects and hasUsers} ? 'ob-footer' : 'ob-footer hidden'">
-            <div class="ob-cta-text">Всё настроено! Нажмите кнопку — откроется отчёт с данными.</div>
+        <!-- Финальный блок — показывается только после завершения backfill (управляется JS) -->
+        <div id="ob-cta" class="ob-footer hidden">
+            <div class="ob-cta-text">Онбординг завершён. Можно переходить к просмотру метрик.</div>
             <a class="btn-primary ob-cta-btn" href="/report">Открыть отчёт →</a>
         </div>
     </div>
@@ -596,6 +628,7 @@
     };
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
+    let hasSyncCompleted = /*[[${hasSyncCompleted}]]*/ false;
 
     // ── Фильтрация отчёта ─────────────────────────────────────────────────────
 
@@ -899,7 +932,8 @@
                     : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
         );
 
-        const syncDone = s.hasProjects && !activeSyncRunning;
+        // Шаг 3: done только если есть проекты, синк завершился и нет активного синка
+        const syncDone = s.hasProjects && hasSyncCompleted && !activeSyncRunning;
         const step3 = document.getElementById('ob-step-3');
         if (step3) {
             step3.className = 'ob-step ' + (syncDone ? 'ob-step-done' : s.hasProjects ? 'ob-step-active' : 'ob-step-locked');
@@ -909,7 +943,8 @@
             }
             const syncSection = document.getElementById('ob-sync-section');
             if (syncSection) {
-                syncSection.classList.toggle('hidden', syncDone || !s.hasProjects);
+                // Показываем секцию прогресса только когда идёт синк
+                syncSection.classList.toggle('hidden', !activeSyncRunning || !s.hasProjects);
             }
             const syncDoneBadge = document.getElementById('ob-sync-done-badge');
             if (syncDoneBadge) {
@@ -918,6 +953,7 @@
             step3.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.toggle('hidden', s.hasProjects));
         }
 
+        // Шаг 4: active только после завершения синка
         const step4 = document.getElementById('ob-step-4');
         if (step4) {
             step4.className = 'ob-step ' + (s.hasUsers ? 'ob-step-done' : syncDone ? 'ob-step-active' : 'ob-step-locked');
@@ -931,21 +967,20 @@
                     selectSection.classList.add('hidden');
                 }
             }
-        }
-
-        const step5 = document.getElementById('ob-step-5');
-        if (step5) {
-            step5.className = 'ob-step ' + (s.hasUsers ? 'ob-step-active' : 'ob-step-locked');
-            const backfillSection = document.getElementById('ob-backfill-section');
-            if (backfillSection) {
-                backfillSection.classList.toggle('hidden', !s.hasUsers);
+            // Показываем/скрываем секцию выбора
+            const selectSection = document.getElementById('ob-select-section');
+            if (selectSection && !s.hasUsers) {
+                selectSection.classList.toggle('hidden', !syncDone);
             }
         }
 
-        const cta = document.getElementById('ob-cta');
-        if (cta) {
-            cta.classList.toggle('hidden', !(s.hasProjects && s.hasUsers));
+        // Шаг 5: locked пока нет пользователей; backfill-секция управляется JS triggerSnapshotBackfill
+        const step5 = document.getElementById('ob-step-5');
+        if (step5) {
+            step5.className = 'ob-step ' + (s.hasUsers ? 'ob-step-active' : 'ob-step-locked');
         }
+
+        // CTA скрыт до завершения backfill (показывается в triggerSnapshotBackfill)
     }
 
     function setObStep(stepId, done, active, numText, actionHtml) {
@@ -960,11 +995,8 @@
 
     function onSyncCompletedInOnboarding() {
         activeSyncRunning = false;
+        hasSyncCompleted = true;
         refreshOnboarding();
-        const selectSection = document.getElementById('ob-select-section');
-        if (selectSection) {
-            selectSection.classList.remove('hidden');
-        }
         loadObDiscovery();
     }
 
@@ -1090,23 +1122,38 @@
     }
 
     async function triggerSnapshotBackfill() {
-        const progressEl = document.getElementById('ob-backfill-progress');
+        const backfillSection = document.getElementById('ob-backfill-section');
         const doneBadge = document.getElementById('ob-backfill-done-badge');
-        if (progressEl) {
-            progressEl.classList.remove('hidden');
+        // Показываем секцию со спиннером
+        if (backfillSection) {
+            backfillSection.classList.remove('hidden');
         }
         try {
             await api('POST', '/settings/snapshots/backfill');
-            if (progressEl) {
-                progressEl.classList.add('hidden');
+            // Скрываем секцию прогресса, показываем done badge
+            if (backfillSection) {
+                backfillSection.classList.add('hidden');
             }
             if (doneBadge) {
                 doneBadge.classList.remove('hidden');
             }
-            document.querySelector('#ob-backfill-section .ob-sync-desc')?.remove();
+            // Переводим шаг 5 в done
+            const step5 = document.getElementById('ob-step-5');
+            if (step5) {
+                step5.className = 'ob-step ob-step-done';
+                const numEl = step5.querySelector('.ob-step-num');
+                if (numEl) {
+                    numEl.textContent = '✓';
+                }
+            }
+            // Показываем финальный CTA
+            const cta = document.getElementById('ob-cta');
+            if (cta) {
+                cta.classList.remove('hidden');
+            }
         } catch (e) {
-            if (progressEl) {
-                progressEl.classList.add('hidden');
+            if (backfillSection) {
+                backfillSection.classList.add('hidden');
             }
             console.error('Backfill error:', e);
         }
@@ -1362,10 +1409,11 @@
     document.addEventListener('DOMContentLoaded', () => {
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
 
-        if (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && !activeSyncRunning) {
-            loadObDiscovery();
-        }
-        if (ONBOARDING_MODE && OB_STATE.hasUsers) {
+        if (ONBOARDING_MODE) {
+            // Загружаем список участников только если синк завершился и есть проекты
+            if (hasSyncCompleted && OB_STATE.hasProjects && !OB_STATE.hasUsers && !activeSyncRunning) {
+                loadObDiscovery();
+            }
             refreshOnboarding();
         }
     });

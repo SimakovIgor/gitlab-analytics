@@ -1,17 +1,23 @@
 package io.simakov.analytics.sync;
 
+import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.MergeRequestCommit;
+import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
+import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
+import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -49,6 +55,27 @@ public class PlaceholderAliasDiscoveryService {
     private final MergeRequestCommitRepository commitRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
+    private final TrackedProjectRepository trackedProjectRepository;
+    private final GitSourceRepository gitSourceRepository;
+    private final EncryptionService encryptionService;
+
+    /**
+     * Запускается асинхронно после добавления новых пользователей.
+     * Перебирает все отслеживаемые проекты и запускает поиск placeholder-алиасов,
+     * чтобы привязать placeholder-аккаунты к новым пользователям.
+     */
+    @Async("syncTaskExecutor")
+    public void discoverForAllProjectsAsync() {
+        List<TrackedProject> projects = trackedProjectRepository.findAll();
+        for (TrackedProject project : projects) {
+            GitSource source = gitSourceRepository.findById(project.getGitSourceId()).orElse(null);
+            if (source == null) {
+                continue;
+            }
+            String token = encryptionService.decrypt(project.getTokenEncrypted());
+            discoverAndSave(project.getId(), source.getBaseUrl(), token);
+        }
+    }
 
     /**
      * Запускается после синка проекта. Находит неизвестные author_gitlab_user_id в MR проекта,

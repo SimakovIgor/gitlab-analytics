@@ -21,7 +21,6 @@
     </span>
 
     <nav class="topbar-nav">
-
         <a class="nav-link" href="/report">Отчёт</a>
         <a class="nav-link" href="/history">История</a>
         <a class="nav-link nav-link-active" href="/settings">Настройки</a>
@@ -47,162 +46,6 @@
 
     <div class="page-title">Настройки</div>
     <div class="page-subtitle">Управление источниками GitLab, репозиториями и сотрудниками</div>
-
-    <!-- Баннеры синхронизации -->
-    <div id="sync-banners"></div>
-
-    <!-- ── Онбординг-визард ───────────────────────────────────────────────── -->
-    <div class="onboarding-wizard" id="onboarding-wizard" th:if="${onboardingMode}">
-        <div class="ob-wizard-header">
-            <h2 class="ob-wizard-title">Настройка за 5 шагов</h2>
-            <p class="ob-wizard-subtitle">После добавления репозитория система автоматически загрузит данные GitLab за последние 360 дней</p>
-        </div>
-
-        <div class="ob-steps">
-
-            <!-- Шаг 1: GitLab источник -->
-            <div id="ob-step-1" th:class="${hasSources} ? 'ob-step ob-step-done' : 'ob-step ob-step-active'">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasSources} ? '✓' : '1'">1</div>
-                    <div class="ob-step-line"></div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Подключите GitLab</div>
-                    <div class="ob-step-desc">Укажите URL вашего инстанса GitLab</div>
-                    <div class="ob-step-action">
-                        <span class="ob-done-badge" th:if="${hasSources}">Добавлено ✓</span>
-                        <button class="btn-primary" onclick="openModal('modal-source')" th:unless="${hasSources}">
-                            + Добавить источник
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Шаг 2: Репозитории -->
-            <div id="ob-step-2"
-                 th:class="${hasProjects} ? 'ob-step ob-step-done' : (${hasSources} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasProjects} ? '✓' : '2'">2</div>
-                    <div class="ob-step-line"></div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Добавьте репозитории</div>
-                    <div class="ob-step-desc">
-                        Выберите репозитории, за активностью которых нужно следить.
-                        Данные за 360 дней загрузятся сразу после добавления.
-                    </div>
-                    <div class="ob-step-action">
-                        <span class="ob-done-badge" th:if="${hasProjects}">Добавлено ✓</span>
-                        <button class="btn-primary" onclick="openModal('modal-project')"
-                                th:if="${!hasProjects and hasSources}">
-                            + Добавить репозиторий
-                        </button>
-                        <span class="ob-locked-hint" th:if="${!hasProjects and !hasSources}">
-                            Сначала добавьте GitLab источник
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Шаг 3: Синхронизация -->
-            <div id="ob-step-3"
-                 th:class="${hasProjects and activeJobIds.isEmpty()} ? 'ob-step ob-step-done' : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasProjects and activeJobIds.isEmpty()} ? '✓' : '3'">3</div>
-                    <div class="ob-step-line"></div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Дождитесь синхронизации</div>
-
-                    <!-- Синк выполняется -->
-                    <div id="ob-sync-section"
-                         th:class="${hasProjects and !activeJobIds.isEmpty()} ? 'ob-sync-section' : 'ob-sync-section hidden'">
-                        <div class="ob-sync-desc">
-                            Идёт загрузка MR, коммитов и ревью за 360 дней.
-                            После завершения станет доступен следующий шаг.
-                        </div>
-                        <div id="sync-banners-ob"></div>
-                    </div>
-
-                    <!-- Синк завершён -->
-                    <span id="ob-sync-done-badge"
-                          th:class="${hasProjects and activeJobIds.isEmpty()} ? 'ob-done-badge' : 'ob-done-badge hidden'">
-                        Синхронизировано ✓
-                    </span>
-
-                    <!-- Заблокировано -->
-                    <span class="ob-locked-hint" th:if="${!hasProjects}">Сначала добавьте репозиторий</span>
-                </div>
-            </div>
-
-            <!-- Шаг 4: Выберите сотрудников -->
-            <div id="ob-step-4"
-                 th:class="${hasUsers} ? 'ob-step ob-step-done' : (${hasProjects and activeJobIds.isEmpty()} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '4'">4</div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Выберите сотрудников</div>
-
-                    <!-- После синка: выбор участников -->
-                    <div id="ob-select-section"
-                         th:class="${hasProjects and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
-                        <div class="ob-step-desc" style="margin-bottom:12px">
-                            Отметьте участников из репозитория — по email система сопоставит коммиты и MR с конкретным человеком. По умолчанию выбраны все.
-                        </div>
-                        <div class="discovery-loading hidden" id="ob-discovery-loading">
-                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                            Ищем участников в синхронизированных данных...
-                        </div>
-                        <div class="discovery-list" id="ob-discovery-list" style="max-height:320px;overflow-y:auto"></div>
-                        <div class="discovery-actions hidden" id="ob-discovery-actions" style="margin-top:12px">
-                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
-                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
-                            <button class="btn-sm btn-primary" id="ob-btn-add" onclick="addSelectedOb()">
-                                Добавить выбранных
-                            </button>
-                            <button class="btn-sm btn-secondary" onclick="openModal('modal-user')">+ Вручную</button>
-                        </div>
-                    </div>
-
-                    <span class="ob-done-badge" th:if="${hasUsers}">Добавлено ✓</span>
-                    <span class="ob-locked-hint" th:if="${!hasProjects or !activeJobIds.isEmpty()}"
-                          th:text="${!hasProjects} ? 'Сначала добавьте репозиторий' : 'Дождитесь окончания синхронизации'">
-                    </span>
-                </div>
-            </div>
-
-            <!-- Шаг 5: Бэкфилл истории -->
-            <div id="ob-step-5"
-                 th:class="${hasUsers} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked'">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num">5</div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Формируем историю метрик</div>
-                    <div id="ob-backfill-section"
-                         th:class="${hasUsers} ? 'ob-sync-section' : 'ob-sync-section hidden'">
-                        <div class="ob-sync-desc">
-                            Создаём еженедельные снапшоты за 360 дней — после этого станет доступен график истории.
-                        </div>
-                        <div class="discovery-loading hidden" id="ob-backfill-progress">
-                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                            Формируем снапшоты...
-                        </div>
-                    </div>
-                    <span class="ob-done-badge hidden" id="ob-backfill-done-badge">История сформирована ✓</span>
-                    <span class="ob-locked-hint" th:if="${!hasUsers}">Сначала добавьте сотрудников</span>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- CTA: перейти к дашборду -->
-        <div id="ob-cta" th:class="${hasProjects and hasUsers} ? 'ob-footer' : 'ob-footer hidden'">
-            <div class="ob-cta-text">Всё настроено! Пока идёт синхронизация, можно посмотреть дашборд.</div>
-            <a class="btn-primary ob-cta-btn" href="/dashboard">Перейти к дашборду →</a>
-        </div>
-    </div>
 
     <!-- Вкладки -->
     <div class="settings-tabs">
@@ -574,81 +417,10 @@
     const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
     const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
 
-    // ── Онбординг ─────────────────────────────────────────────────────────────
-
-    const ONBOARDING_MODE = /*[[${onboardingMode}]]*/ false;
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
-    const OB_STATE = {
-        hasSources:  /*[[${hasSources}]]*/ false,
-        hasProjects: /*[[${hasProjects}]]*/ false,
-        hasUsers:    /*[[${hasUsers}]]*/ false
-    };
+    const HAS_PROJECTS = /*[[${hasProjects}]]*/ false;
 
-    function refreshOnboarding() {
-        if (!ONBOARDING_MODE) return;
-        const s = OB_STATE;
-
-        setObStep('ob-step-1', s.hasSources, true, s.hasSources ? '✓' : '1',
-            s.hasSources
-                ? '<span class="ob-done-badge">Добавлено ✓</span>'
-                : '<button class="btn-primary" onclick="openModal(\'modal-source\')">+ Добавить источник</button>'
-        );
-
-        setObStep('ob-step-2', s.hasProjects, s.hasSources, s.hasProjects ? '✓' : '2',
-            s.hasProjects
-                ? '<span class="ob-done-badge">Добавлено ✓</span>'
-                : s.hasSources
-                    ? '<button class="btn-primary" onclick="openModal(\'modal-project\')">+ Добавить репозиторий</button>'
-                    : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
-        );
-
-        // Шаг 3: синхронизация (done = проекты есть и синк не идёт)
-        const syncDone = s.hasProjects && !activeSyncRunning;
-        const step3 = document.getElementById('ob-step-3');
-        if (step3) {
-            step3.className = 'ob-step ' + (syncDone ? 'ob-step-done' : s.hasProjects ? 'ob-step-active' : 'ob-step-locked');
-            const numEl = step3.querySelector('.ob-step-num');
-            if (numEl) numEl.textContent = syncDone ? '✓' : '3';
-            const syncSection = document.getElementById('ob-sync-section');
-            if (syncSection) syncSection.classList.toggle('hidden', syncDone || !s.hasProjects);
-            const syncDoneBadge = document.getElementById('ob-sync-done-badge');
-            if (syncDoneBadge) syncDoneBadge.classList.toggle('hidden', !syncDone);
-            // Скрыть server-rendered locked hint если проекты уже добавлены
-            step3.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.toggle('hidden', s.hasProjects));
-        }
-
-        // Шаг 4: сотрудники
-        const step4 = document.getElementById('ob-step-4');
-        if (step4) {
-            step4.className = 'ob-step ' + (s.hasUsers ? 'ob-step-done' : syncDone ? 'ob-step-active' : 'ob-step-locked');
-            const numEl = step4.querySelector('.ob-step-num');
-            if (numEl) numEl.textContent = s.hasUsers ? '✓' : '4';
-            // Скрыть интерактив шага 4 после добавления пользователей
-            if (s.hasUsers) {
-                const selectSection = document.getElementById('ob-select-section');
-                if (selectSection) selectSection.classList.add('hidden');
-            }
-        }
-
-        // Шаг 5: бэкфилл истории
-        const step5 = document.getElementById('ob-step-5');
-        if (step5) {
-            step5.className = 'ob-step ' + (s.hasUsers ? 'ob-step-active' : 'ob-step-locked');
-            const backfillSection = document.getElementById('ob-backfill-section');
-            if (backfillSection) backfillSection.classList.toggle('hidden', !s.hasUsers);
-        }
-
-        const cta = document.getElementById('ob-cta');
-        if (cta) cta.classList.toggle('hidden', !(s.hasProjects && s.hasUsers));
-    }
-
-    function setObStep(stepId, done, active, numText, actionHtml) {
-        const el = document.getElementById(stepId);
-        if (!el) return;
-        el.className = 'ob-step ' + (done ? 'ob-step-done' : active ? 'ob-step-active' : 'ob-step-locked');
-        el.querySelector('.ob-step-num').textContent = numText;
-        el.querySelector('.ob-step-action').innerHTML = actionHtml;
-    }
+    let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
 
     // ── Утилиты ──────────────────────────────────────────────────────────────
 
@@ -682,22 +454,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const syncRunning = ACTIVE_JOB_IDS.length > 0;
-
         const defaultTab = sessionStorage.getItem(TAB_STORAGE_KEY) || 'sources';
         switchTab(defaultTab);
-
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
-
-        // Если онбординг: проекты есть, синк уже завершён, пользователей нет → сразу грузим discovery в визард
-        if (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && !syncRunning) {
-            loadObDiscovery();
-        }
-
-        // Если онбординг: пользователи уже добавлены → показываем шаг 5 (бэкфилл мог не запуститься)
-        if (ONBOARDING_MODE && OB_STATE.hasUsers) {
-            refreshOnboarding();
-        }
     });
 
     // ── Модалки ───────────────────────────────────────────────────────────────
@@ -747,40 +506,12 @@
     `;
     }
 
-    function showSyncBanner(jobId, projectName, isRetry) {
-        const banners = ONBOARDING_MODE
-            ? document.getElementById('sync-banners-ob')
-            : document.getElementById('sync-banners');
-        const id = 'sync-banner-' + jobId;
-        const div = document.createElement('div');
-        div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        const desc = isRetry
-            ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
-            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем данные за 360 дней`;
-        div.innerHTML = buildBannerHtml(jobId, desc);
-        banners.prepend(div);
-        startBannerTimers(jobId, id, Date.now());
+    function showSyncBanner(jobId) {
+        startBannerTimers(jobId, 'sync-banner-' + jobId, Date.now());
     }
 
     function restoreSyncBanner(jobId) {
-        const banners = ONBOARDING_MODE
-            ? document.getElementById('sync-banners-ob')
-            : document.getElementById('sync-banners');
-        if (!banners) return;
-        const id = 'sync-banner-' + jobId;
-        if (document.getElementById(id)) return;
-        const div = document.createElement('div');
-        div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...');
-        banners.prepend(div);
-        if (ONBOARDING_MODE) {
-            const step4 = document.getElementById('ob-step-4');
-            if (step4) step4.classList.remove('hidden');
-        }
-        // startedAt уточним из первого ответа сервера
-        startBannerTimers(jobId, id, null);
+        startBannerTimers(jobId, 'sync-banner-' + jobId, null);
     }
 
     function startBannerTimers(jobId, bannerId, localStartMs) {
@@ -813,8 +544,6 @@
     function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
         const fillEl = () => document.getElementById('sync-fill-' + jobId);
         const labelEl = () => document.getElementById('sync-plabel-' + jobId);
-        let prevProcessed = 0;
-        let prevElapsedSec = 1;
 
         const interval = setInterval(async () => {
             try {
@@ -824,7 +553,6 @@
                     onStartedAt(job.startedAt);
                 }
 
-                // обновляем прогресс-бар пока выполняется
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
                     const pct = Math.round(job.processedMrs / job.totalMrs * 100);
                     if (fillEl()) fillEl().style.width = pct + '%';
@@ -834,15 +562,12 @@
                     let label = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
 
                     if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
-                        const rate = job.processedMrs / elapsedSec; // MR/с
+                        const rate = job.processedMrs / elapsedSec;
                         const remaining = job.totalMrs - job.processedMrs;
                         const etaSec = Math.round(remaining / rate);
                         label += ' • ETA ' + formatEta(etaSec);
                     }
                     if (labelEl()) labelEl().textContent = label;
-
-                    prevProcessed = job.processedMrs;
-                    prevElapsedSec = elapsedSec;
                 } else if (job.status === 'STARTED' && job.totalMrs === 0) {
                     if (labelEl()) labelEl().textContent = 'получение списка MR...';
                 }
@@ -899,7 +624,7 @@
                 origRow.querySelector('.btn-sm')?.remove();
             }
             prependJobRow(job.jobId);
-            showSyncBanner(job.jobId, 'повтор', true);
+            showSyncBanner(job.jobId);
         } catch (e) {
             alert('Не удалось запустить повтор: ' + e.message);
         }
@@ -936,152 +661,8 @@
         el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
         if (type === 'ok') {
             setTimeout(() => el.remove(), 5000);
-            if (ONBOARDING_MODE && !OB_STATE.hasUsers) {
-                onSyncCompletedInOnboarding();
-            } else {
-                // Вне онбординга — обновляем вкладку «Сотрудники», если пользователь там
-                discoveryLoaded = false;
-                loadDiscoveredContributors();
-            }
-        }
-    }
-
-    function onSyncCompletedInOnboarding() {
-        activeSyncRunning = false;
-        // Перевести шаги в нужные состояния
-        refreshOnboarding();
-        // Показать выбор участников в шаге 4
-        const selectSection = document.getElementById('ob-select-section');
-        if (selectSection) selectSection.classList.remove('hidden');
-        loadObDiscovery();
-        discoveryLoaded = false;
-    }
-
-    async function loadObDiscovery() {
-        const loading = document.getElementById('ob-discovery-loading');
-        const listEl = document.getElementById('ob-discovery-list');
-        const actions = document.getElementById('ob-discovery-actions');
-        if (!listEl) return;
-        if (loading) loading.classList.remove('hidden');
-        try {
-            const contributors = await api('GET', '/settings/users/discovered');
-            if (loading) loading.classList.add('hidden');
-            const untracked = contributors.filter(c => !c.alreadyTracked);
-            if (untracked.length === 0) {
-                listEl.innerHTML = '<div class="empty-state" style="padding:16px">Все участники уже отслеживаются</div>';
-                return;
-            }
-            listEl.innerHTML = contributors.map(c => renderObRow(c)).join('');
-            updateObBtn();
-            if (actions) actions.classList.remove('hidden');
-        } catch (e) {
-            if (loading) loading.classList.add('hidden');
-            console.error('Ошибка загрузки контрибьютеров в онбординге:', e);
-        }
-    }
-
-    function renderObRow(c) {
-        const letter = (c.primaryName || c.email)[0].toUpperCase();
-        const repos = (c.repoNames || []).map(r => `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
-        const merged = (c.mergedEmails || []).length > 0
-            ? `<span class="discovery-alt-names" title="Объединённые email: ${escHtml((c.mergedEmails || []).join(', '))}">+${c.mergedEmails.length} email</span>`
-            : '';
-        if (c.alreadyTracked) {
-            return `<div class="discovery-row discovery-row-tracked">
-            <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-            <div class="discovery-info">
-                <span class="discovery-name">${escHtml(c.primaryName)}</span>
-                <span class="discovery-email">${escHtml(c.email)}</span>
-                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
-            </div>
-            <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
-        </div>`;
-        }
-        const mergedData = c.mergedEmails && c.mergedEmails.length > 0
-            ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
-        return `<label class="discovery-row discovery-row-selectable">
-        <input type="checkbox" class="ob-check" value="${escHtml(c.email)}"
-               data-name="${escHtml(c.primaryName)}" ${mergedData}
-               onchange="updateObBtn()" checked>
-        <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-        <div class="discovery-info">
-            <span class="discovery-name">${escHtml(c.primaryName)}</span>${merged}
-            <span class="discovery-email">${escHtml(c.email)}</span>
-            <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
-        </div>
-    </label>`;
-    }
-
-    function updateObBtn() {
-        const count = document.querySelectorAll('.ob-check:checked').length;
-        const btn = document.getElementById('ob-btn-add');
-        if (btn) btn.textContent = count > 0 ? `Добавить выбранных (${count})` : 'Добавить выбранных';
-    }
-
-    function toggleAllOb(checked) {
-        document.querySelectorAll('.ob-check').forEach(cb => cb.checked = checked);
-        updateObBtn();
-    }
-
-    async function addSelectedOb() {
-        const checked = [...document.querySelectorAll('.ob-check:checked')];
-        if (checked.length === 0) return;
-        const requests = checked.map(cb => ({
-            displayName: cb.dataset.name || cb.value,
-            email: cb.value,
-            aliasEmails: cb.dataset.merged ? JSON.parse(cb.dataset.merged) : []
-        }));
-        const btn = document.getElementById('ob-btn-add');
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = 'Добавляем...';
-        }
-        try {
-            await api('POST', '/settings/users/bulk', requests);
-            // Перевести строки в "отслеживается"
-            checked.forEach(cb => {
-                const row = cb.closest('.discovery-row');
-                if (row) {
-                    const letter = (cb.dataset.name || cb.value)[0].toUpperCase();
-                    row.outerHTML = `<div class="discovery-row discovery-row-tracked">
-                    <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-                    <div class="discovery-info">
-                        <span class="discovery-name">${escHtml(cb.dataset.name)}</span>
-                        <span class="discovery-email">${escHtml(cb.value)}</span>
-                    </div>
-                    <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
-                </div>`;
-                }
-            });
-            OB_STATE.hasUsers = true;
-            refreshOnboarding();
             discoveryLoaded = false;
-            // Запустить бэкфилл и показать прогресс в шаге 5
-            triggerSnapshotBackfill();
-        } catch (e) {
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = 'Добавить выбранных';
-            }
-            alert('Не удалось добавить: ' + e.message);
-        }
-    }
-
-    async function triggerSnapshotBackfill() {
-        const progressEl = document.getElementById('ob-backfill-progress');
-        const doneBadge = document.getElementById('ob-backfill-done-badge');
-        if (progressEl) progressEl.classList.remove('hidden');
-        try {
-            await api('POST', '/settings/snapshots/backfill');
-            if (progressEl) progressEl.classList.add('hidden');
-            if (doneBadge) doneBadge.classList.remove('hidden');
-            const backfillSection = document.getElementById('ob-backfill-section');
-            if (backfillSection) {
-                backfillSection.querySelector('.ob-sync-desc')?.remove();
-            }
-        } catch (e) {
-            if (progressEl) progressEl.classList.add('hidden');
-            console.error('Backfill error:', e);
+            loadDiscoveredContributors();
         }
     }
 
@@ -1105,8 +686,6 @@
             addSourceRow(source);
             document.getElementById('source-name').value = '';
             document.getElementById('source-url').value = '';
-            OB_STATE.hasSources = true;
-            refreshOnboarding();
         } catch (e) {
             showError('source-error', e.message);
         }
@@ -1134,7 +713,6 @@
             <button class="btn-sm btn-danger" onclick="deleteSource(${source.id}, '${escHtml(source.name)}')">Удалить</button>
         </td>`;
         tbody.appendChild(tr);
-        // Обновляем список source в select добавления проектов
         const sel = document.getElementById('project-source-id');
         const opt = document.createElement('option');
         opt.value = source.id;
@@ -1244,14 +822,12 @@
             });
             closeModal('modal-project');
             addProjectRow(result);
-            showSyncBanner(result.jobId, result.name);
+            showSyncBanner(result.jobId);
             prependJobRow(result.jobId);
-            if (!ONBOARDING_MODE) switchTab('projects');
+            switchTab('projects');
             clearProjectSearch();
             document.getElementById('project-token').value = '';
-            OB_STATE.hasProjects = true;
             activeSyncRunning = true;
-            refreshOnboarding();
         } catch (e) {
             showError('project-error', e.message);
             btn.disabled = false;
@@ -1290,7 +866,7 @@
         if (!confirm('Запустить синхронизацию репозитория «' + name + '» за последние 360 дней?')) return;
         try {
             const job = await api('POST', '/settings/projects/' + id + '/backfill');
-            showSyncBanner(job.jobId, name);
+            showSyncBanner(job.jobId);
             prependJobRow(job.jobId);
         } catch (e) {
             alert('Ошибка запуска синхронизации: ' + e.message);
@@ -1311,13 +887,10 @@
 
     let discoveryLoaded = false;
 
-    let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
-
     async function loadDiscoveredContributors() {
         if (discoveryLoaded) return;
         if (activeSyncRunning) return;
-        if (!OB_STATE.hasProjects) return;
-        if (ONBOARDING_MODE) return;  // в онбординге discovery идёт через визард (шаг 4)
+        if (!HAS_PROJECTS) return;
         const loading = document.getElementById('discovery-loading');
         const panel = document.getElementById('discovery-panel');
         loading.classList.remove('hidden');
@@ -1417,11 +990,8 @@
                 <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
             </div>`;
             });
-            OB_STATE.hasUsers = true;
-            refreshOnboarding();
             updateAddBtn();
-            api('POST', '/settings/snapshots/backfill').catch(() => {
-            });
+            api('POST', '/settings/snapshots/backfill').catch(() => {});
         } catch (e) {
             alert('Ошибка добавления: ' + e.message);
         }
@@ -1495,8 +1065,6 @@
             document.getElementById('user-email').value = '';
             discoveryLoaded = false;
             loadDiscoveredContributors();
-            OB_STATE.hasUsers = true;
-            refreshOnboarding();
         } catch (e) {
             showError('user-error', e.message);
         }

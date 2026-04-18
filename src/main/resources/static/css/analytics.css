@@ -1,3 +1,7 @@
+.hidden {
+    display: none !important;
+}
+
 :root {
     --color-primary: #FC6D26;
     --color-primary-hover: #e85e1a;

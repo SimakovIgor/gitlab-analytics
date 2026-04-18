@@ -15,4 +15,6 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
                                                  Instant threshold);
 
     List<SyncJob> findTop30ByOrderByStartedAtDesc();
+
+    boolean existsByStatus(SyncStatus status);
 }

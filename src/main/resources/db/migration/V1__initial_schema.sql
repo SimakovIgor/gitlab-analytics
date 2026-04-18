@@ -1,12 +1,11 @@
 -- GitLab instance connections
 CREATE TABLE git_source
 (
-    id              BIGSERIAL PRIMARY KEY,
-    name            VARCHAR(255) NOT NULL,
-    base_url        VARCHAR(512) NOT NULL,
-    token_encrypted TEXT         NOT NULL,
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    id         BIGSERIAL PRIMARY KEY,
+    name       VARCHAR(255) NOT NULL,
+    base_url   VARCHAR(512) NOT NULL,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 -- Repositories to track
@@ -17,6 +16,7 @@ CREATE TABLE tracked_project
     gitlab_project_id   BIGINT       NOT NULL,
     path_with_namespace VARCHAR(512) NOT NULL,
     name                VARCHAR(255) NOT NULL,
+    token_encrypted     TEXT         NOT NULL,
     enabled             BOOLEAN      NOT NULL DEFAULT TRUE,
     created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -176,7 +176,9 @@ CREATE TABLE sync_job
     date_from     TIMESTAMPTZ,
     date_to       TIMESTAMPTZ,
     payload_json  JSONB,
-    error_message TEXT
+    error_message TEXT,
+    total_mrs     INT         NOT NULL DEFAULT 0,
+    processed_mrs INT         NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_sync_job_status ON sync_job (status);

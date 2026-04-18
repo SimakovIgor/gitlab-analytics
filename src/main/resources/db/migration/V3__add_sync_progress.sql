@@ -1,3 +1,0 @@
-ALTER TABLE sync_job
-    ADD COLUMN total_mrs     INT NOT NULL DEFAULT 0,
-    ADD COLUMN processed_mrs INT NOT NULL DEFAULT 0;
