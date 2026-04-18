@@ -54,6 +54,28 @@ public class GitLabApiClient {
     }
 
     /**
+     * Fetches a GitLab user by ID. Returns null if the user does not exist or on API error.
+     */
+    public GitLabUserDto getUserById(String baseUrl,
+                                     String token,
+                                     Long userId) {
+        try {
+            return webClient.get()
+                .uri(baseUrl + "/api/v4/users/" + userId)
+                .header(PRIVATE_TOKEN_HEADER, token)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                    response.bodyToMono(String.class)
+                        .map(body -> new GitLabApiException("GitLab API error " + response.statusCode(), response.statusCode())))
+                .bodyToMono(GitLabUserDto.class)
+                .block(readTimeout());
+        } catch (GitLabApiException e) {
+            log.warn("Could not fetch GitLab user id={}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Search GitLab projects accessible to the token owner.
      * Results are filtered to projects the token has membership in.
      */

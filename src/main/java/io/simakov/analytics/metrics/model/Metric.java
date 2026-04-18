@@ -135,6 +135,7 @@ public enum Metric {
     private final Category category;
     private final boolean inMinutes;
     private final boolean chartVisible;
+
     Metric(String key,
            String label,
            String description,

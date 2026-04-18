@@ -14,6 +14,9 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     Optional<MergeRequest> findByTrackedProjectIdAndGitlabMrId(Long trackedProjectId,
                                                                Long gitlabMrId);
 
+    @Query("SELECT DISTINCT mr.authorGitlabUserId FROM MergeRequest mr WHERE mr.trackedProjectId = :projectId AND mr.authorGitlabUserId IS NOT NULL")
+    List<Long> findDistinctAuthorIdsByTrackedProjectId(@Param("projectId") Long projectId);
+
     /**
      * MRs created within the given period for the given projects
      */

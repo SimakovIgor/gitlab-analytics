@@ -13,4 +13,6 @@ public interface TrackedUserAliasRepository extends JpaRepository<TrackedUserAli
 
     boolean existsByTrackedUserIdAndEmail(Long trackedUserId,
                                           String email);
+
+    boolean existsByGitlabUserId(Long gitlabUserId);
 }
