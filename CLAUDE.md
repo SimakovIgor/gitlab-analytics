@@ -67,11 +67,12 @@ Controller → Service → Repository → Model
 - **`snapshot/`** — `SnapshotService` (daily scheduler + manual API), `SnapshotHistoryService`
 - **`sync/`** — `SyncOrchestrator`, `SyncJobService`
 - **`web/controller/`** — Thymeleaf web UI controllers (`WebController`, `HistoryController`, `SettingsController`)
-- **`web/`** — `ContributorDiscoveryService`, `UserAliasService`
+- **`web/`** — `ContributorDiscoveryService`, `UserAliasService`, `ReportViewService`
+- **`web/dto/`** — `ReportPageData`, `MrSummaryDto`, `HistoryPageData`, `SettingsPageData`, etc.
 - **`security/`** — `BearerTokenAuthFilter`
 - **`encryption/`** — `EncryptionService` interface + `NoOpEncryptionService`
 
-Templates: `src/main/resources/templates/` (login, dashboard, report, history, settings)
+Templates: `src/main/resources/templates/` (login, report, history, settings)
 Static assets: `src/main/resources/static/css/analytics.css`
 
 ## Key Patterns
@@ -106,6 +107,10 @@ Static assets: `src/main/resources/static/css/analytics.css`
 The History chart reads from `metric_snapshot` table — if data looks missing, check whether snapshots exist for the needed date range.
 
 **Thymeleaf + Chart.js**: History chart data is passed as a JSON string via model attribute `chartData`, injected into JS with `th:inline="javascript"` + `JSON.parse([[${chartData}]])`. Period filter on History page uses days (7/30/90/180/360), on Report page uses `PeriodType` string values.
+
+**MR drill-down**: `GET /report/user/{id}/mrs?period=&projectIds=` — returns `List<MrSummaryDto>` (JSON). Resolves `gitlabUserId` via `TrackedUserAlias`, queries `MergeRequestRepository.findMergedInPeriodByAuthors()`. Called from report.html JS on row click, renders in modal.
+
+**Report row click**: clicking a row opens a modal with the user's merged MRs for the current period/filters. The chart is NOT affected by row clicks (chart is controlled only by the metric selector and period buttons).
 
 ## Database
 
@@ -159,6 +164,20 @@ Environment variables:
 - `API_TOKEN` — bearer token for REST API authentication (default: `changeme-in-production`)
 - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — GitHub OAuth2 app credentials for web UI login
 
+## Observability
+
+Spring Boot Actuator + Micrometer are configured. Exposed endpoints:
+
+- `GET /actuator/health` — full health (DB, disk, liveness, readiness). `show-details: always`.
+- `GET /actuator/health/liveness` — liveness probe
+- `GET /actuator/health/readiness` — readiness probe
+- `GET /actuator/metrics` — Micrometer metric list
+- `GET /actuator/prometheus` — Prometheus scrape endpoint
+
+All metrics carry the tag `application=gitlab-analytics` (set via `management.metrics.tags.application`). Enabled metric groups: JVM, process, system, HTTP server requests, HikariCP.
+
+The `/actuator/**` endpoints are exposed over HTTP without additional auth (appropriate for internal/local use). For production, add `management.endpoints.web.base-path` behind an internal network or add security.
+
 ## Dependencies
 
 Spring Boot 3.3.4, Java 21, Gradle Kotlin DSL.
@@ -167,6 +186,7 @@ Notable non-BOM dependencies (pin versions manually):
 
 - `spring-boot-starter-oauth2-client` — GitHub OAuth2 login for web UI
 - `spring-boot-starter-thymeleaf` + `thymeleaf-extras-springsecurity6` — server-side templates
+- `micrometer-registry-prometheus` — Prometheus metrics export (`runtimeOnly`)
 - `springdoc-openapi-starter-webmvc-ui:2.6.0`
 - `pg-index-health-test-starter:0.20.3`
 - `spotbugs-annotations:4.8.6`

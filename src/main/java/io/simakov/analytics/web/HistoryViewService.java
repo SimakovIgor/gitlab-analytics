@@ -109,7 +109,7 @@ public class HistoryViewService {
      * labels = отсортированные даты снапшотов,
      * datasets = по одному на каждого пользователя.
      */
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    @SuppressWarnings({"PMD.AvoidInstantiatingObjectsInLoops", "PMD.CyclomaticComplexity"})
     private String buildChartJson(List<MetricSnapshot> snapshots,
                                   List<TrackedUser> users,
                                   String metric,

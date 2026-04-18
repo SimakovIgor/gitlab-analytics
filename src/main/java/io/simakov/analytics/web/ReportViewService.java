@@ -1,6 +1,7 @@
 package io.simakov.analytics.web;
 
 import io.simakov.analytics.domain.model.GitSource;
+import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
@@ -8,6 +9,7 @@ import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
+import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
@@ -15,17 +17,23 @@ import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.util.DateTimeUtils;
+import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
 import io.simakov.analytics.web.dto.ReportSummary;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +45,7 @@ public class ReportViewService {
     private final TrackedUserAliasRepository aliasRepository;
     private final SyncJobRepository syncJobRepository;
     private final MetricCalculationService metricCalculationService;
+    private final MergeRequestRepository mergeRequestRepository;
 
     public ReportPageData buildReportPage(String period,
                                           List<Long> requestedProjectIds,
@@ -187,6 +196,75 @@ public class ReportViewService {
         return values.size() % 2 == 0
             ? (values.get(mid - 1) + values.get(mid)) / 2.0
             : values.get(mid);
+    }
+
+    @SuppressWarnings("PMD.NPathComplexity")
+    public List<MrSummaryDto> getUserMrs(Long userId, String period, List<Long> requestedProjectIds) {
+        List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserId(userId);
+
+        List<Long> gitlabUserIds = aliases.stream()
+            .map(TrackedUserAlias::getGitlabUserId)
+            .filter(Objects::nonNull)
+            .toList();
+
+        List<TrackedProject> allProjects = trackedProjectRepository.findAll();
+        List<Long> projectIds = (requestedProjectIds == null || requestedProjectIds.isEmpty())
+            ? allProjects.stream().map(TrackedProject::getId).toList()
+            : requestedProjectIds;
+        if (projectIds.isEmpty()) {
+            return List.of();
+        }
+
+        int days = parsePeriodDays(period);
+        Instant dateTo = DateTimeUtils.now();
+        Instant dateFrom = dateTo.minus(days, ChronoUnit.DAYS);
+
+        Map<Long, String> projectPathById = allProjects.stream()
+            .collect(Collectors.toMap(TrackedProject::getId, TrackedProject::getPathWithNamespace));
+
+        if (!gitlabUserIds.isEmpty()) {
+            return mergeRequestRepository
+                .findMergedInPeriodByAuthors(projectIds, gitlabUserIds, dateFrom, dateTo)
+                .stream()
+                .map(mr -> toMrSummary(mr, projectPathById))
+                .toList();
+        }
+
+        // Fallback: gitlab_user_id не задан — ищем MR по email коммитов,
+        // зеркалируя логику MetricCalculationService.resolveAuthoredMrIds
+        TrackedUser user = trackedUserRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return List.of();
+        }
+        Set<String> emails = new HashSet<>();
+        aliases.forEach(a -> {
+            if (a.getEmail() != null) {
+                emails.add(a.getEmail().toLowerCase(Locale.ROOT));
+            }
+        });
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            emails.add(user.getEmail().toLowerCase(Locale.ROOT));
+        }
+        if (emails.isEmpty()) {
+            return List.of();
+        }
+        return mergeRequestRepository
+            .findMergedInPeriodByCommitEmails(projectIds, List.copyOf(emails), dateFrom, dateTo)
+            .stream()
+            .map(mr -> toMrSummary(mr, projectPathById))
+            .toList();
+    }
+
+    private MrSummaryDto toMrSummary(MergeRequest mr, Map<Long, String> projectPathById) {
+        String projectPath = projectPathById.getOrDefault(mr.getTrackedProjectId(), "");
+        Double hoursToMerge = null;
+        if (mr.getMergedAtGitlab() != null && mr.getCreatedAtGitlab() != null) {
+            long seconds = mr.getMergedAtGitlab().getEpochSecond() - mr.getCreatedAtGitlab().getEpochSecond();
+            hoursToMerge = Math.round(seconds / 3600.0 * 10.0) / 10.0;
+        }
+        String createdAt = mr.getCreatedAtGitlab() != null ? mr.getCreatedAtGitlab().toString() : null;
+        String mergedAt = mr.getMergedAtGitlab() != null ? mr.getMergedAtGitlab().toString() : null;
+        return new MrSummaryDto(mr.getTitle(), projectPath, mr.getWebUrl(), createdAt, mergedAt, hoursToMerge);
     }
 
     private int parsePeriodDays(String period) {

@@ -138,7 +138,7 @@ class ReportControllerTest extends BaseIT {
     // ── showInactive filter ───────────────────────────────────────────────────
 
     @Test
-    void inactiveUsersHiddenByDefault() throws Exception {
+    void allUsersShownByDefault() throws Exception {
         // Alice has a merged MR (active), Bob has nothing (inactive)
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
@@ -148,28 +148,26 @@ class ReportControllerTest extends BaseIT {
             .andReturn();
 
         String body = result.getResponse().getContentAsString();
-        // Alice has activity — appears in metrics table
-        assertThat(body).contains("class=\"user-name\">Alice");
-        // Bob is inactive — must not appear in metrics table (may appear in sidebar)
-        assertThat(body).doesNotContain("class=\"user-name\">Bob");
+        // Both users appear by default (showInactive=true is the default)
+        assertThat(body)
+            .contains("class=\"user-name\">Alice")
+            .contains("class=\"user-name\">Bob");
     }
 
     @Test
-    void inactiveUsersShownWhenShowInactiveTrue() throws Exception {
+    void inactiveUsersHiddenWhenShowInactiveFalse() throws Exception {
         // Alice has a merged MR, Bob has nothing
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
         MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
                 .param("period", "LAST_30_DAYS")
-                .param("showInactive", "true"))
+                .param("showInactive", "false"))
             .andExpect(status().isOk())
             .andReturn();
 
         String body = result.getResponse().getContentAsString();
-        // Both should appear in metrics table when showInactive=true
-        assertThat(body)
-            .contains("class=\"user-name\">Alice")
-            .contains("class=\"user-name\">Bob");
+        assertThat(body).contains("class=\"user-name\">Alice");
+        assertThat(body).doesNotContain("class=\"user-name\">Bob");
     }
 
     @Test
@@ -204,7 +202,8 @@ class ReportControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
                 .param("period", "LAST_30_DAYS")
-                .param("projectIds", "99999"))
+                .param("projectIds", "99999")
+                .param("showInactive", "false"))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -228,7 +227,8 @@ class ReportControllerTest extends BaseIT {
         mergeRequestRepository.save(old);
 
         MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
-                .param("period", "LAST_30_DAYS"))
+                .param("period", "LAST_30_DAYS")
+                .param("showInactive", "false"))
             .andExpect(status().isOk())
             .andReturn();
 

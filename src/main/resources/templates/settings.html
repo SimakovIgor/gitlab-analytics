@@ -337,7 +337,7 @@
             <div class="modal-error hidden" id="project-error"></div>
             <div class="form-group">
                 <label class="form-label">GitLab Source</label>
-                <select class="form-select" id="project-source-id" onchange="clearProjectSearch()">
+                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
                     <option value="">— выберите источник —</option>
                     <option th:each="source : ${sources}"
                             th:text="${source.name}"
@@ -347,9 +347,13 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Project Access Token</label>
-                <input class="form-input" id="project-token" oninput="clearProjectSearch()"
+                <input class="form-input" id="project-token"
+                       oninput="clearProjectSearch(); scheduleTokenValidate()"
                        placeholder="glpat-..." type="password">
-                <div class="form-hint">Токен привязан к репозиторию (Settings → Access Tokens). Нужны права: api, read_api</div>
+                <div class="token-validate-status" id="token-validate-status"></div>
+                <div class="form-hint token-hint">
+                    <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label">Репозиторий</label>
@@ -360,11 +364,9 @@
                            placeholder="Начните вводить название..."
                            type="search">
                 </div>
-                <div class="form-hint">Введите 2+ символа — результаты появятся автоматически</div>
             </div>
             <div class="search-results hidden" id="project-search-results"></div>
             <div class="selected-project hidden" id="project-selected">
-                <div class="form-label">Выбран</div>
                 <div class="selected-project-card">
                     <span id="project-selected-name"></span>
                     <span class="repo-path" id="project-selected-path"></span>
@@ -826,6 +828,91 @@
 
     let selectedProject = null;
     let searchDebounceTimer = null;
+    let tokenValidateTimer = null;
+    let tokenIsValid = false;
+
+    function updateAddProjectBtn() {
+        const sourceId = document.getElementById('project-source-id').value;
+        const btn = document.getElementById('btn-add-project');
+        btn.disabled = !(sourceId && tokenIsValid && selectedProject);
+    }
+
+    function scheduleTokenValidate() {
+        clearTimeout(tokenValidateTimer);
+        const token = document.getElementById('project-token').value.trim();
+        const statusEl = document.getElementById('token-validate-status');
+        const inputEl = document.getElementById('project-token');
+        const hintEl = inputEl?.closest('.form-group')?.querySelector('.token-hint');
+        if (!token) {
+            tokenIsValid = false;
+            if (statusEl) {
+                statusEl.className = 'token-validate-status';
+                statusEl.textContent = '';
+            }
+            if (inputEl) {
+                inputEl.classList.remove('token-ok', 'token-error');
+            }
+            if (hintEl) {
+                hintEl.style.display = '';
+            }
+            updateAddProjectBtn();
+            return;
+        }
+        if (statusEl) {
+            statusEl.className = 'token-validate-status tv-loading';
+            statusEl.textContent = 'Проверяем токен...';
+        }
+        tokenValidateTimer = setTimeout(() => validateToken(token, statusEl, inputEl, hintEl), 600);
+    }
+
+    async function validateToken(token, statusEl, inputEl, hintEl) {
+        const sourceId = document.getElementById('project-source-id').value;
+        if (!sourceId) {
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-loading';
+                statusEl.textContent = 'Сначала выберите GitLab Source';
+            }
+            return;
+        }
+        try {
+            const result = await api('GET',
+                '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
+            if (result.valid) {
+                tokenIsValid = true;
+                if (statusEl) {
+                    statusEl.className = 'token-validate-status tv-ok';
+                    statusEl.textContent = '✓ Токен действителен · используется только для чтения';
+                }
+                if (inputEl) {
+                    inputEl.classList.remove('token-error');
+                    inputEl.classList.add('token-ok');
+                }
+                if (hintEl) {
+                    hintEl.style.display = 'none';
+                }
+            } else {
+                tokenIsValid = false;
+                if (statusEl) {
+                    statusEl.className = 'token-validate-status tv-error';
+                    statusEl.textContent = '✕ ' + (result.error || 'Токен недействителен');
+                }
+                if (inputEl) {
+                    inputEl.classList.remove('token-ok');
+                    inputEl.classList.add('token-error');
+                }
+                if (hintEl) {
+                    hintEl.style.display = '';
+                }
+            }
+        } catch (e) {
+            tokenIsValid = false;
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-error';
+                statusEl.textContent = '✕ Не удалось проверить токен';
+            }
+        }
+        updateAddProjectBtn();
+    }
 
     function clearProjectSearch() {
         const searchEl = document.getElementById('project-search');
@@ -834,7 +921,7 @@
         document.getElementById('project-search-results').classList.add('hidden');
         selectedProject = null;
         document.getElementById('project-selected').classList.add('hidden');
-        document.getElementById('btn-add-project').disabled = true;
+        updateAddProjectBtn();
     }
 
     function debounceSearch(q) {
@@ -885,7 +972,7 @@
         document.getElementById('project-selected').classList.remove('hidden');
         document.getElementById('project-selected-name').textContent = name;
         document.getElementById('project-selected-path').textContent = path;
-        document.getElementById('btn-add-project').disabled = false;
+        updateAddProjectBtn();
     }
 
     async function addProject() {
@@ -902,7 +989,7 @@
         }
         const btn = document.getElementById('btn-add-project');
         btn.disabled = true;
-        btn.textContent = 'Добавление...';
+        btn.textContent = 'Синхронизируем...';
         try {
             const result = await api('POST', '/settings/projects', {
                 gitSourceId: parseInt(sourceId),

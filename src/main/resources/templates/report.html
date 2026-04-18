@@ -152,8 +152,11 @@
                     <!-- Список участников — только после завершения синка и только если нет пользователей -->
                     <div id="ob-select-section"
                          th:class="${hasSyncCompleted and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
-                        <div class="ob-step-desc" style="margin-bottom:12px">
-                            Отметьте участников — система сопоставит коммиты и MR по email.
+                        <div class="ob-step-desc" style="margin-bottom:4px">
+                            Участники найдены по commit email и GitLab User ID из синхронизированных репозиториев.
+                        </div>
+                        <div class="ob-step-hint" style="margin-bottom:14px">
+                            Выберите, кого отслеживать. Добавить или убрать можно в любой момент в Настройках.
                         </div>
                         <div class="discovery-loading hidden" id="ob-discovery-loading">
                             <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
@@ -163,6 +166,7 @@
                         <div class="discovery-actions hidden" id="ob-discovery-actions" style="margin-top:12px">
                             <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
                             <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
+                            <button class="btn-sm btn-secondary" id="ob-filter-active-btn" onclick="toggleObActivityFilter()">Только с коммитами</button>
                             <button class="btn-sm btn-primary" id="ob-btn-add" onclick="addSelectedOb()">Добавить выбранных</button>
                             <button class="btn-sm btn-secondary" onclick="openModal('modal-user')">+ Вручную</button>
                         </div>
@@ -190,21 +194,22 @@
                     <div class="ob-step-num">5</div>
                 </div>
                 <div class="ob-step-content">
-                    <div class="ob-step-title">Формируем историю метрик</div>
+                    <div class="ob-step-title">История метрик</div>
                     <!-- Секция backfill: скрыта до начала — покажется при запуске triggerSnapshotBackfill() -->
                     <div class="ob-sync-section hidden" id="ob-backfill-section">
                         <div class="discovery-loading" id="ob-backfill-progress">
                             <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                            Формируем снапшоты...
+                            <span>
+                                Готовим историю метрик
+                                <span class="ob-backfill-hint-sub">Обычно занимает несколько секунд</span>
+                            </span>
                         </div>
                     </div>
-                    <span class="ob-done-badge hidden" id="ob-backfill-done-badge">История сформирована ✓</span>
+                    <div class="ob-backfill-done hidden" id="ob-backfill-done-badge">
+                        <span class="ob-done-badge">Сформировано ✓</span>
+                        <span class="ob-step-desc">Снапшоты за 360 дней загружены — график динамики готов</span>
+                    </div>
                     <span class="ob-locked-hint" th:if="${!hasUsers}">Сначала добавьте сотрудников</span>
-                    <!-- Нейтральный hint пока backfill не запущен (управляется JS) -->
-                    <span class="ob-step-desc" id="ob-backfill-hint"
-                          th:class="${hasUsers} ? 'ob-step-desc hidden' : 'ob-step-desc hidden'">
-                        Запустится автоматически после добавления сотрудников
-                    </span>
                 </div>
             </div>
 
@@ -212,8 +217,11 @@
 
         <!-- Финальный блок — показывается только после завершения backfill (управляется JS) -->
         <div class="ob-footer hidden" id="ob-cta">
-            <div class="ob-cta-text">Онбординг завершён. Можно переходить к просмотру метрик.</div>
-            <a class="btn-primary ob-cta-btn" href="/report">Открыть отчёт →</a>
+            <div class="ob-cta-body">
+                <div class="ob-cta-title">Готово</div>
+                <div class="ob-cta-summary" id="ob-cta-summary"></div>
+            </div>
+            <a class="btn-primary ob-cta-btn" href="/report">Перейти к аналитике команды →</a>
         </div>
     </div>
 </div>
@@ -271,9 +279,9 @@
             </div>
             <label class="sidebar-inactive-toggle">
                 <input id="show-inactive-cb" onchange="applyFilters()"
-                       th:checked="${showInactive}"
+                       th:checked="${!showInactive}"
                        type="checkbox">
-                Показывать неактивных
+                Скрывать неактивных
             </label>
             <button class="sidebar-add-btn" onclick="openModal('modal-user')">
                 <span>+</span> Добавить сотрудника
@@ -411,14 +419,19 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr class="report-row" th:data-user="${m.displayName}"
+                <tr th:class="${m.inactive} ? 'report-row row-inactive' : 'report-row'"
+                    th:data-user="${m.displayName}"
+                    th:data-user-id="${m.trackedUserId}"
                     th:each="m : ${metrics}" th:with="d=${deltas[m.trackedUserId]}">
                     <td>
                         <div class="user-cell">
                             <div class="user-avatar"
                                  th:text="${#strings.substring(m.displayName, 0, 1)}">?
                             </div>
-                            <span class="user-name" th:text="${m.displayName}">Имя</span>
+                            <div class="user-cell-info">
+                                <span class="user-name" th:text="${m.displayName}">Имя</span>
+                                <span class="user-inactive-hint" th:if="${m.inactive}">Нет активности за период</span>
+                            </div>
                         </div>
                     </td>
                     <td class="num-cell accent">
@@ -521,6 +534,19 @@
     </main>
 </div>
 
+<!-- Детали сотрудника (MR drill-down) -->
+<div class="modal-overlay hidden" id="modal-user-mrs" onclick="handleOverlayClick(event, 'modal-user-mrs')">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <span id="modal-user-mrs-title">MR сотрудника</span>
+            <button class="modal-close" onclick="closeModal('modal-user-mrs')">✕</button>
+        </div>
+        <div class="modal-body" id="modal-user-mrs-body">
+            <div class="mr-list-loading">Загружаем данные...</div>
+        </div>
+    </div>
+</div>
+
 <!-- ═══════════════ Модалки ═══════════════ -->
 
 <!-- Добавить источник -->
@@ -559,7 +585,7 @@
             <div class="modal-error hidden" id="project-error"></div>
             <div class="form-group">
                 <label class="form-label">GitLab Source</label>
-                <select class="form-select" id="project-source-id" onchange="clearProjectSearch()">
+                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
                     <option value="">— выберите источник —</option>
                     <option th:each="source : ${sources}"
                             th:text="${source.name}"
@@ -569,9 +595,13 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Project Access Token</label>
-                <input class="form-input" id="project-token" oninput="clearProjectSearch()"
+                <input class="form-input" id="project-token"
+                       oninput="clearProjectSearch(); scheduleTokenValidate()"
                        placeholder="glpat-..." type="password">
-                <div class="form-hint">Права: api, read_api</div>
+                <div class="token-validate-status" id="token-validate-status"></div>
+                <div class="form-hint token-hint">
+                    <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label">Репозиторий</label>
@@ -582,11 +612,9 @@
                            placeholder="Начните вводить название..."
                            type="search">
                 </div>
-                <div class="form-hint">Введите 2+ символа</div>
             </div>
             <div class="search-results hidden" id="project-search-results"></div>
             <div class="selected-project hidden" id="project-selected">
-                <div class="form-label">Выбран</div>
                 <div class="selected-project-card">
                     <span id="project-selected-name"></span>
                     <span class="repo-path" id="project-selected-path"></span>
@@ -669,6 +697,8 @@
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
     let hasSyncCompleted = /*[[${hasSyncCompleted}]]*/ false;
+    let obAddedDevs = 0;
+    let obTotalMrs = parseInt(sessionStorage.getItem('ob_total_mrs') || '0', 10);
 
     // ── Фильтрация отчёта ─────────────────────────────────────────────────────
 
@@ -682,19 +712,19 @@
 
     function applyFilters() {
         const projectIds = getCurrentProjectIds();
-        const showInactive = document.getElementById('show-inactive-cb')?.checked || false;
+        const showInactive = !(document.getElementById('show-inactive-cb')?.checked || false);
         navigateReport(SELECTED_PERIOD, projectIds, showInactive, getMetric());
     }
 
     function applyFiltersWithPeriod(period) {
         const projectIds = getCurrentProjectIds();
-        const showInactive = document.getElementById('show-inactive-cb')?.checked || false;
+        const showInactive = !(document.getElementById('show-inactive-cb')?.checked || false);
         navigateReport(period, projectIds, showInactive, getMetric());
     }
 
     function applyFiltersWithMetric(metric) {
         const projectIds = getCurrentProjectIds();
-        const showInactive = document.getElementById('show-inactive-cb')?.checked || false;
+        const showInactive = !(document.getElementById('show-inactive-cb')?.checked || false);
         navigateReport(SELECTED_PERIOD, projectIds, showInactive, metric);
     }
 
@@ -702,10 +732,8 @@
         const params = new URLSearchParams();
         params.set('period', period);
         params.set('metric', metric || SELECTED_METRIC);
+        params.set('showInactive', showInactive ? 'true' : 'false');
         projectIds.forEach(id => params.append('projectIds', id));
-        if (showInactive) {
-            params.set('showInactive', 'true');
-        }
         window.location.href = '/report?' + params.toString();
     }
 
@@ -928,6 +956,10 @@
                     clearInterval(interval);
                     clearInterval(durationTimer);
                     activeSyncRunning = false;
+                    if (job.totalMrs > 0) {
+                        obTotalMrs = job.totalMrs;
+                        sessionStorage.setItem('ob_total_mrs', String(obTotalMrs));
+                    }
                     if (fillEl()) {
                         fillEl().style.width = '100%';
                     }
@@ -1023,12 +1055,24 @@
             if (selectSection && !s.hasUsers) {
                 selectSection.classList.toggle('hidden', !syncDone);
             }
+            // Обновляем locked-hint: скрываем если syncDone, иначе актуализируем текст
+            step4.querySelectorAll('.ob-locked-hint').forEach(el => {
+                if (syncDone) {
+                    el.classList.add('hidden');
+                } else if (s.hasProjects) {
+                    el.classList.remove('hidden');
+                    el.textContent = 'Дождитесь окончания синхронизации';
+                }
+            });
         }
 
         // Шаг 5: locked пока нет пользователей; backfill-секция управляется JS triggerSnapshotBackfill
         const step5 = document.getElementById('ob-step-5');
         if (step5) {
             step5.className = 'ob-step ' + (s.hasUsers ? 'ob-step-active' : 'ob-step-locked');
+            if (s.hasUsers) {
+                step5.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.add('hidden'));
+            }
         }
 
         // CTA скрыт до завершения backfill (показывается в triggerSnapshotBackfill)
@@ -1103,7 +1147,7 @@
         }
         const mergedData = c.mergedEmails && c.mergedEmails.length > 0
             ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
-        return `<label class="discovery-row discovery-row-selectable">
+        return `<label class="discovery-row discovery-row-selectable" data-commits="${c.commitCount || 0}">
         <input type="checkbox" class="ob-check" value="${escHtml(c.email)}"
                data-name="${escHtml(c.primaryName)}" ${mergedData}
                onchange="updateObBtn()" checked>
@@ -1125,7 +1169,28 @@
     }
 
     function toggleAllOb(checked) {
-        document.querySelectorAll('.ob-check').forEach(cb => cb.checked = checked);
+        document.querySelectorAll('#ob-discovery-list .discovery-row-selectable:not([style*="display: none"])').forEach(row => {
+            const cb = row.querySelector('.ob-check');
+            if (cb) {
+                cb.checked = checked;
+            }
+        });
+        updateObBtn();
+    }
+
+    let obActivityFilterActive = false;
+
+    function toggleObActivityFilter() {
+        obActivityFilterActive = !obActivityFilterActive;
+        const btn = document.getElementById('ob-filter-active-btn');
+        if (btn) {
+            btn.classList.toggle('btn-primary', obActivityFilterActive);
+            btn.classList.toggle('btn-secondary', !obActivityFilterActive);
+        }
+        document.querySelectorAll('#ob-discovery-list .discovery-row-selectable').forEach(row => {
+            const commits = parseInt(row.dataset.commits || '0', 10);
+            row.style.display = obActivityFilterActive && commits === 0 ? 'none' : '';
+        });
         updateObBtn();
     }
 
@@ -1160,6 +1225,7 @@
                 </div>`;
                 }
             });
+            obAddedDevs = checked.length;
             OB_STATE.hasUsers = true;
             refreshOnboarding();
             triggerSnapshotBackfill();
@@ -1197,9 +1263,23 @@
                     numEl.textContent = '✓';
                 }
             }
-            // Показываем финальный CTA
+            // Показываем финальный CTA с summary
             const cta = document.getElementById('ob-cta');
             if (cta) {
+                const summaryEl = document.getElementById('ob-cta-summary');
+                if (summaryEl) {
+                    const devsWord = obAddedDevs === 1 ? 'разработчик' : (obAddedDevs < 5 ? 'разработчика' : 'разработчиков');
+                    const mrsWord = obTotalMrs === 1 ? 'MR' : 'MR';
+                    const lines = [];
+                    if (obAddedDevs > 0) {
+                        lines.push(`${obAddedDevs} ${devsWord} добавлено в трекинг`);
+                    }
+                    if (obTotalMrs > 0) {
+                        lines.push(`${obTotalMrs} ${mrsWord} загружено из GitLab`);
+                    }
+                    lines.push('Данные за последние 360 дней');
+                    summaryEl.innerHTML = lines.map(l => `<div class="ob-cta-stat">${escHtml(l)}</div>`).join('');
+                }
                 cta.classList.remove('hidden');
             }
         } catch (e) {
@@ -1243,6 +1323,91 @@
 
     let selectedProject = null;
     let searchDebounceTimer = null;
+    let tokenValidateTimer = null;
+    let tokenIsValid = false;
+
+    function updateAddProjectBtn() {
+        const sourceId = document.getElementById('project-source-id').value;
+        const btn = document.getElementById('btn-add-project');
+        btn.disabled = !(sourceId && tokenIsValid && selectedProject);
+    }
+
+    function scheduleTokenValidate() {
+        clearTimeout(tokenValidateTimer);
+        const token = document.getElementById('project-token').value.trim();
+        const statusEl = document.getElementById('token-validate-status');
+        const inputEl = document.getElementById('project-token');
+        const hintEl = inputEl?.closest('.form-group')?.querySelector('.token-hint');
+        if (!token) {
+            tokenIsValid = false;
+            if (statusEl) {
+                statusEl.className = 'token-validate-status';
+                statusEl.textContent = '';
+            }
+            if (inputEl) {
+                inputEl.classList.remove('token-ok', 'token-error');
+            }
+            if (hintEl) {
+                hintEl.style.display = '';
+            }
+            updateAddProjectBtn();
+            return;
+        }
+        if (statusEl) {
+            statusEl.className = 'token-validate-status tv-loading';
+            statusEl.textContent = 'Проверяем токен...';
+        }
+        tokenValidateTimer = setTimeout(() => validateToken(token, statusEl, inputEl, hintEl), 600);
+    }
+
+    async function validateToken(token, statusEl, inputEl, hintEl) {
+        const sourceId = document.getElementById('project-source-id').value;
+        if (!sourceId) {
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-loading';
+                statusEl.textContent = 'Сначала выберите GitLab Source';
+            }
+            return;
+        }
+        try {
+            const result = await api('GET',
+                '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
+            if (result.valid) {
+                tokenIsValid = true;
+                if (statusEl) {
+                    statusEl.className = 'token-validate-status tv-ok';
+                    statusEl.textContent = '✓ Токен действителен · используется только для чтения';
+                }
+                if (inputEl) {
+                    inputEl.classList.remove('token-error');
+                    inputEl.classList.add('token-ok');
+                }
+                if (hintEl) {
+                    hintEl.style.display = 'none';
+                }
+            } else {
+                tokenIsValid = false;
+                if (statusEl) {
+                    statusEl.className = 'token-validate-status tv-error';
+                    statusEl.textContent = '✕ ' + (result.error || 'Токен недействителен');
+                }
+                if (inputEl) {
+                    inputEl.classList.remove('token-ok');
+                    inputEl.classList.add('token-error');
+                }
+                if (hintEl) {
+                    hintEl.style.display = '';
+                }
+            }
+        } catch (e) {
+            tokenIsValid = false;
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-error';
+                statusEl.textContent = '✕ Не удалось проверить токен';
+            }
+        }
+        updateAddProjectBtn();
+    }
 
     function clearProjectSearch() {
         const searchEl = document.getElementById('project-search');
@@ -1253,7 +1418,7 @@
         document.getElementById('project-search-results').classList.add('hidden');
         selectedProject = null;
         document.getElementById('project-selected').classList.add('hidden');
-        document.getElementById('btn-add-project').disabled = true;
+        updateAddProjectBtn();
     }
 
     function debounceSearch(q) {
@@ -1304,7 +1469,7 @@
         document.getElementById('project-selected').classList.remove('hidden');
         document.getElementById('project-selected-name').textContent = name;
         document.getElementById('project-selected-path').textContent = path;
-        document.getElementById('btn-add-project').disabled = false;
+        updateAddProjectBtn();
     }
 
     async function addProject() {
@@ -1323,7 +1488,7 @@
         }
         const btn = document.getElementById('btn-add-project');
         btn.disabled = true;
-        btn.textContent = 'Добавление...';
+        btn.textContent = 'Синхронизируем...';
         try {
             const result = await api('POST', '/settings/projects', {
                 gitSourceId: parseInt(sourceId),
@@ -1582,28 +1747,10 @@
     // Первичная инициализация
     rebuildChart(INITIAL_CHART_DATA);
 
-    // Клик по строке таблицы — фокус на пользователе
-    document.querySelectorAll('.report-table tbody tr[data-user]').forEach(row => {
+    // Клик по строке таблицы — drill-down в MR сотрудника
+    document.querySelectorAll('.report-table tbody tr[data-user-id]').forEach(row => {
         row.addEventListener('click', function () {
-            if (!_chart) return;
-            const name = this.dataset.user;
-            const wasFocused = this.classList.contains('row-focused');
-            document.querySelectorAll('.report-table tbody tr').forEach(r => r.classList.remove('row-focused'));
-            if (wasFocused) {
-                _chart.data.datasets.forEach((ds, i) => {
-                    ds.hidden = i >= TOP_N;
-                    ds.borderColor = _origColors[i];
-                    ds.borderWidth = 1.5;
-                });
-            } else {
-                this.classList.add('row-focused');
-                _chart.data.datasets.forEach((ds, i) => {
-                    ds.hidden = ds.label !== name;
-                    ds.borderColor = _origColors[i];
-                    ds.borderWidth = ds.label === name ? 2.5 : 1.5;
-                });
-            }
-            _chart.update();
+            openUserMrs(this.dataset.userId, this.dataset.user);
         });
     });
 })();
@@ -1677,6 +1824,168 @@
         th.appendChild(icon);
         th.addEventListener('click', () => sortByCol(colIdx));
     });
+})();
+</script>
+
+<script th:inline="javascript">
+(function initUserMrDrilldown() {
+    const PERIOD = /*[[${selectedPeriod}]]*/ 'LAST_30_DAYS';
+    const PROJECT_IDS = /*[[${selectedProjectIds}]]*/ [];
+
+    function buildProjectParams() {
+        if (!PROJECT_IDS || PROJECT_IDS.length === 0) return '';
+        return PROJECT_IDS.map(id => '&projectIds=' + id).join('');
+    }
+
+    function fmtDate(isoStr) {
+        if (!isoStr) return '—';
+        const d = new Date(isoStr);
+        return d.toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: 'numeric'});
+    }
+
+    function fmtHours(h) {
+        if (h == null) return '—';
+        if (h < 1) return Math.round(h * 60) + ' мин';
+        if (h < 24) return h.toFixed(1) + ' ч';
+        return (h / 24).toFixed(1) + ' д';
+    }
+
+    function repoShort(projectPath) {
+        if (!projectPath) return '—';
+        const parts = projectPath.split('/');
+        return parts[parts.length - 1];
+    }
+
+    function computeSummary(mrs) {
+        const withTime = mrs.filter(m => m.hoursToMerge != null);
+        const longCount = withTime.filter(m => m.hoursToMerge > 24).length;
+        let median = null;
+        if (withTime.length > 0) {
+            const vals = withTime.map(m => m.hoursToMerge).sort((a, b) => a - b);
+            const mid = Math.floor(vals.length / 2);
+            median = vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
+        }
+        return {total: mrs.length, median, longCount};
+    }
+
+    function renderRows(mrs) {
+        if (!mrs.length) {
+            return '<tr><td colspan="5" class="mr-list-empty">Нет MR, удовлетворяющих фильтру</td></tr>';
+        }
+        return mrs.map(mr => {
+            const title = mr.webUrl
+                ? `<a class="mr-title-link" href="${escHtml(mr.webUrl)}" target="_blank" rel="noopener">${escHtml(mr.title)}</a>`
+                : escHtml(mr.title);
+            const repo = `<span title="${escHtml(mr.projectPath || '')}">${escHtml(repoShort(mr.projectPath))}</span>`;
+            return `<tr>
+                <td class="mr-td-title">${title}</td>
+                <td class="mr-td-repo">${repo}</td>
+                <td class="mr-td-date">${fmtDate(mr.createdAt)}</td>
+                <td class="mr-td-date">${fmtDate(mr.mergedAt)}</td>
+                <td class="mr-td-ttm">${fmtHours(mr.hoursToMerge)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.openUserMrs = async function(userId, userName) {
+        document.getElementById('modal-user-mrs-title').textContent = userName + ' — MR за период';
+        document.getElementById('modal-user-mrs-body').innerHTML =
+            '<div class="mr-list-loading">Загружаем данные...</div>';
+        openModal('modal-user-mrs');
+        try {
+            const url = '/report/user/' + userId + '/mrs?period=' + PERIOD + buildProjectParams();
+            const allMrs = await api('GET', url);
+
+            if (!allMrs.length) {
+                document.getElementById('modal-user-mrs-body').innerHTML =
+                    '<div class="mr-list-empty">Нет смёрженных MR за выбранный период</div>';
+                return;
+            }
+
+            // Состояние сортировки: по умолчанию "до мержа" desc
+            let sortCol = 'ttm';
+            let sortAsc = false;
+            let filterActive = false;
+
+            function getSorted() {
+                return allMrs.slice().sort((a, b) => {
+                    let av, bv;
+                    if (sortCol === 'created') {
+                        av = new Date(a.createdAt || 0);
+                        bv = new Date(b.createdAt || 0);
+                    } else if (sortCol === 'merged') {
+                        av = new Date(a.mergedAt || 0);
+                        bv = new Date(b.mergedAt || 0);
+                    } else {
+                        av = a.hoursToMerge ?? 0;
+                        bv = b.hoursToMerge ?? 0;
+                    }
+                    return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+                });
+            }
+
+            function updateHeaders() {
+                ['created', 'merged', 'ttm'].forEach(col => {
+                    const icon = document.getElementById('mr-sort-icon-' + col);
+                    if (icon) {
+                        icon.textContent = sortCol === col ? (sortAsc ? ' ↑' : ' ↓') : '';
+                    }
+                });
+            }
+
+            function refresh() {
+                const base = getSorted();
+                const display = filterActive ? base.filter(m => m.hoursToMerge > 24) : base;
+                document.getElementById('mr-tbody').innerHTML = renderRows(display);
+                updateHeaders();
+            }
+
+            const {total, median, longCount} = computeSummary(allMrs);
+            const medianStr = median != null ? fmtHours(median) : '—';
+            const warnClass = longCount > 0 ? ' mr-summary-pill-warn' : '';
+            const filterAttr = longCount > 0 ? ' data-filter="long"' : '';
+
+            document.getElementById('modal-user-mrs-body').innerHTML = `
+                <div class="mr-summary-strip">
+                    <span class="mr-summary-pill"><b>${total}</b> MR</span>
+                    <span class="mr-summary-pill">Медиана до мержа: <b>${medianStr}</b></span>
+                    <span class="mr-summary-pill${warnClass}" id="mr-pill-long"${filterAttr}>Долгих &gt;24ч: <b>${longCount}</b></span>
+                </div>
+                <div class="mr-table-wrap"><table class="mr-detail-table">
+                    <thead><tr>
+                        <th>MR</th>
+                        <th>Репозиторий</th>
+                        <th class="mr-th-sort" id="mr-th-created">Открыт<span class="mr-sort-icon" id="mr-sort-icon-created"></span></th>
+                        <th class="mr-th-sort" id="mr-th-merged">Смёрджен<span class="mr-sort-icon" id="mr-sort-icon-merged"></span></th>
+                        <th class="mr-th-sort" id="mr-th-ttm">До мержа<span class="mr-sort-icon" id="mr-sort-icon-ttm"> ↓</span></th>
+                    </tr></thead>
+                    <tbody id="mr-tbody">${renderRows(getSorted())}</tbody>
+                </table></div>`;
+
+            ['created', 'merged', 'ttm'].forEach(col => {
+                document.getElementById('mr-th-' + col).addEventListener('click', function () {
+                    if (sortCol === col) {
+                        sortAsc = !sortAsc;
+                    } else {
+                        sortCol = col;
+                        sortAsc = false;
+                    }
+                    refresh();
+                });
+            });
+
+            if (longCount > 0) {
+                document.getElementById('mr-pill-long').addEventListener('click', function () {
+                    filterActive = !filterActive;
+                    this.classList.toggle('mr-summary-pill-active', filterActive);
+                    refresh();
+                });
+            }
+        } catch (e) {
+            document.getElementById('modal-user-mrs-body').innerHTML =
+                '<div class="mr-list-empty">Ошибка загрузки данных</div>';
+        }
+    };
 })();
 </script>
 

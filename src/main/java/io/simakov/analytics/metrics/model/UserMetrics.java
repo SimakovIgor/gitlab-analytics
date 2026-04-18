@@ -53,6 +53,7 @@ public class UserMetrics {
     /**
      * Сотрудник считается неактивным, если все ключевые метрики за период равны нулю.
      */
+    @SuppressWarnings("checkstyle:BooleanExpressionComplexity")
     public boolean isInactive() {
         return mrMergedCount == 0
             && commitsInMrCount == 0

@@ -6,12 +6,14 @@
     <description>PMD configuration for gitlab-analytics</description>
 
     <rule ref="category/java/bestpractices.xml">
-        <!--        <exclude name="UnitTestShouldIncludeAssert"/>-->
-        <!--        <exclude name="UnitTestAssertionsShouldIncludeMessage"/>-->
+        <exclude name="UnitTestShouldIncludeAssert"/>
+        <exclude name="JUnitTestsShouldIncludeAssert"/>
+        <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
         <exclude name="GuardLogStatement"/>
         <exclude name="CheckResultSet"/>
         <exclude name="AbstractClassWithoutAbstractMethod"/>
-        <!--        <exclude name="UnitTestContainsTooManyAsserts"/>-->
+        <exclude name="UnitTestContainsTooManyAsserts"/>
+        <exclude name="JUnitTestContainsTooManyAsserts"/>
         <exclude name="PreserveStackTrace"/>
         <!--        <exclude name="ImplicitFunctionalInterface"/>-->
     </rule>
@@ -77,6 +79,7 @@
         <exclude name="CouplingBetweenObjects"/>
         <exclude name="TooManyMethods"/>
         <exclude name="ClassWithOnlyPrivateConstructorsShouldBeFinal"/>
+        <exclude name="SingularField"/>
         <exclude name="AvoidThrowingRawExceptionTypes"/>
         <exclude name="DataClass"/>
     </rule>

@@ -37,4 +37,10 @@
     <Match>
         <Bug pattern="DP_DO_INSIDE_DO_PRIVILEGED"/>
     </Match>
+    <!-- List<Double> arithmetic unavoidably boxes/unboxes; false positive -->
+    <Match>
+        <Bug pattern="BX_UNBOXING_IMMEDIATELY_REBOXED"/>
+        <Class name="io.simakov.analytics.web.ReportViewService"/>
+        <Method name="computeMedianHours"/>
+    </Match>
 </FindBugsFilter>

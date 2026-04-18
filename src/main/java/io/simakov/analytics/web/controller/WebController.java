@@ -4,13 +4,15 @@ import io.simakov.analytics.web.HistoryViewService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.ReportViewService;
 import io.simakov.analytics.web.dto.HistoryPageData;
+import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -43,7 +45,7 @@ public class WebController {
     public String report(OAuth2AuthenticationToken authentication,
                          @RequestParam(defaultValue = "LAST_30_DAYS") String period,
                          @RequestParam(required = false) List<Long> projectIds,
-                         @RequestParam(defaultValue = "false") boolean showInactive,
+                         @RequestParam(defaultValue = "true") boolean showInactive,
                          @RequestParam(defaultValue = "mr_merged_count") String metric,
                          Model model) {
         if (authentication != null) {
@@ -85,5 +87,13 @@ public class WebController {
                             @RequestParam(defaultValue = "false") boolean showInactive,
                             @RequestParam(defaultValue = "mr_merged_count") String metric) {
         return historyViewService.buildHistoryPage(metric, period, projectIds, showInactive).chartJson();
+    }
+
+    @GetMapping(value = "/report/user/{id}/mrs", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<MrSummaryDto> userMrs(@PathVariable Long id,
+                                      @RequestParam(defaultValue = "LAST_30_DAYS") String period,
+                                      @RequestParam(required = false) List<Long> projectIds) {
+        return reportViewService.getUserMrs(id, period, projectIds);
     }
 }

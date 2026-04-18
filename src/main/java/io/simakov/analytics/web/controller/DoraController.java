@@ -1,5 +1,6 @@
 package io.simakov.analytics.web.controller;
 
+import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.web.DoraService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import lombok.RequiredArgsConstructor;
@@ -22,16 +23,21 @@ public class DoraController {
     @GetMapping("/dora")
     public String dora(OAuth2AuthenticationToken authentication,
                        @RequestParam(required = false) List<Long> projectIds,
-                       @RequestParam(defaultValue = "180") int days,
+                       @RequestParam(defaultValue = "30") int days,
                        Model model) {
         if (authentication != null) {
             model.addAttribute("currentUser", userResolver.resolve(authentication));
         }
 
+        List<TrackedProject> allProjects = doraService.getAllProjects();
+        List<Long> effectiveProjectIds = (projectIds != null && !projectIds.isEmpty())
+            ? projectIds
+            : allProjects.stream().map(TrackedProject::getId).toList();
+
         Map<String, Object> leadTime = doraService.buildLeadTimeData(projectIds, days);
 
-        model.addAttribute("projects", doraService.getAllProjects());
-        model.addAttribute("selectedProjectIds", projectIds != null ? projectIds : List.of());
+        model.addAttribute("projects", allProjects);
+        model.addAttribute("selectedProjectIds", effectiveProjectIds);
         model.addAttribute("selectedDays", days);
         model.addAttribute("dateFrom", java.time.LocalDate.now().minusDays(days));
         model.addAttribute("dateTo", java.time.LocalDate.now());

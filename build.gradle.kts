@@ -41,6 +41,9 @@ dependencies {
     // SpotBugs annotations (for @SuppressFBWarnings)
     implementation("com.github.spotbugs:spotbugs-annotations:4.8.6")
 
+    // Metrics
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+
     // Database
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")

@@ -47,6 +47,40 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                                           @Param("dateTo") Instant dateTo);
 
     /**
+     * MRs merged within the given period by specific GitLab authors across given projects.
+     */
+    @Query("""
+        SELECT mr FROM MergeRequest mr
+        WHERE mr.trackedProjectId IN :projectIds
+        AND mr.authorGitlabUserId IN :authorIds
+        AND mr.mergedAtGitlab >= :dateFrom
+        AND mr.mergedAtGitlab <= :dateTo
+        ORDER BY mr.mergedAtGitlab DESC
+        """)
+    List<MergeRequest> findMergedInPeriodByAuthors(@Param("projectIds") List<Long> projectIds,
+                                                   @Param("authorIds") List<Long> authorIds,
+                                                   @Param("dateFrom") Instant dateFrom,
+                                                   @Param("dateTo") Instant dateTo);
+
+    /**
+     * MRs merged within the given period that have at least one commit authored by the given emails.
+     * Used as fallback when gitlab_user_id is not resolved for a tracked user.
+     */
+    @Query("""
+        SELECT DISTINCT mr FROM MergeRequest mr
+        JOIN MergeRequestCommit c ON c.mergeRequestId = mr.id
+        WHERE mr.trackedProjectId IN :projectIds
+        AND LOWER(c.authorEmail) IN :authorEmails
+        AND mr.mergedAtGitlab >= :dateFrom
+        AND mr.mergedAtGitlab <= :dateTo
+        ORDER BY mr.mergedAtGitlab DESC
+        """)
+    List<MergeRequest> findMergedInPeriodByCommitEmails(@Param("projectIds") List<Long> projectIds,
+                                                        @Param("authorEmails") List<String> authorEmails,
+                                                        @Param("dateFrom") Instant dateFrom,
+                                                        @Param("dateTo") Instant dateTo);
+
+    /**
      * Finds the most likely GitLab user ID for a given commit email.
      * Groups by MR author and returns the one with the most commits from that email —
      * this is the person who both opened the MR and wrote the commits.

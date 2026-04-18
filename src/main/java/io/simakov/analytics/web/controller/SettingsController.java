@@ -88,6 +88,13 @@ public class SettingsController {
 
     // ── Tracked Projects ────────────────────────────────────────────────────
 
+    @GetMapping("/sources/{id}/token/validate")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> validateToken(@PathVariable Long id,
+                                                             @RequestParam String token) {
+        return ResponseEntity.ok(settingsService.validateToken(id, token));
+    }
+
     @GetMapping("/sources/{id}/projects/search")
     @ResponseBody
     public List<GitLabProjectDto> searchProjects(@PathVariable Long id,

@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -69,6 +70,18 @@ public class SettingsService {
     }
 
     // ── Tracked Projects ─────────────────────────────────────────────────────
+
+    @SuppressWarnings("checkstyle:IllegalCatch")
+    public Map<String, Object> validateToken(Long sourceId, String token) {
+        GitSource source = gitSourceRepository.findById(sourceId)
+            .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
+        try {
+            var user = gitLabApiClient.getCurrentUser(source.getBaseUrl(), token);
+            return Map.of("valid", true, "username", user.username() != null ? user.username() : "");
+        } catch (Exception e) {
+            return Map.of("valid", false, "error", "Токен недействителен или недостаточно прав");
+        }
+    }
 
     public List<GitLabProjectDto> searchProjects(Long sourceId,
                                                  String q,
@@ -128,7 +141,7 @@ public class SettingsService {
                 return user;
             })
             .toList();
-        snapshotService.runWeeklyBackfillAsync(BACKFILL_DAYS);
+        snapshotService.runDailyBackfillAsync(BACKFILL_DAYS);
         return saved;
     }
 
@@ -136,7 +149,7 @@ public class SettingsService {
         TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(request));
         userAliasService.saveAlias(saved.getId(), request.email());
         userAliasService.saveAliases(saved.getId(), request.aliasEmails());
-        snapshotService.runWeeklyBackfillAsync(BACKFILL_DAYS);
+        snapshotService.runDailyBackfillAsync(BACKFILL_DAYS);
         return saved;
     }
 
@@ -159,7 +172,7 @@ public class SettingsService {
     // ── Snapshots ────────────────────────────────────────────────────────────
 
     public int triggerSnapshotBackfill() {
-        return snapshotService.runWeeklyBackfill(BACKFILL_DAYS);
+        return snapshotService.runDailyBackfill(BACKFILL_DAYS);
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────────

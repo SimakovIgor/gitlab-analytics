@@ -53,6 +53,14 @@
             <label class="filter-label">Период</label>
             <div class="period-row">
                 <div class="period-buttons">
+                    <button name="days" th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="submit" value="7">
+                        7 дней
+                    </button>
+                    <button name="days" th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="submit" value="30">
+                        30 дней
+                    </button>
                     <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'"
                             type="submit" value="90">
                         90 дней
@@ -76,41 +84,6 @@
         <input id="daysHidden" name="days" th:value="${selectedDays}" type="hidden">
     </form>
 
-    <!-- Описание метрик -->
-    <details class="metrics-legend">
-        <summary>Что означают эти метрики?</summary>
-        <div class="legend-grid">
-            <div class="legend-item">
-                <span class="legend-name">Lead Time for Changes</span>
-                <span class="legend-desc">Время от открытия MR до мержа в основную ветку. Медиана &lt; 1 ч — Elite, &lt; 1 дня — High, &lt; 1 недели — Medium.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Медиана (P50)</span>
-                <span class="legend-desc">Половина MR закрывается быстрее этого времени. Более стабильный показатель, чем среднее — не искажается аномально долгими MR.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">P75</span>
-                <span class="legend-desc">75% MR закрывается быстрее этого времени. Помогает увидеть «медленный хвост» — MR, которые застревают на ревью.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">P95</span>
-                <span class="legend-desc">95% MR быстрее. Выявляет самые проблемные MR, на которые стоит обратить особое внимание.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Deployment Frequency</span>
-                <span class="legend-desc">Как часто команда деплоит в продакшн. Требует подключения CI/CD пайплайнов GitLab. Планируется к добавлению.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Change Failure Rate</span>
-                <span class="legend-desc">Процент деплоев, приводящих к инцидентам. Требует интеграции с системой трекинга инцидентов (Jira, PagerDuty).</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Mean Time to Restore (MTTR)</span>
-                <span class="legend-desc">Среднее время восстановления после инцидента. Требует данных о времени открытия и закрытия инцидентов.</span>
-            </div>
-        </div>
-    </details>
-
     <!-- ── Lead Time ─────────────────────────────────────────────────────────── -->
 
     <div class="dora-section">
@@ -122,37 +95,55 @@
                     Показывает скорость доставки изменений.
                 </div>
             </div>
-            <div class="dora-badge dora-badge-elite" th:if="${medianHours != null and medianHours <= 1}">Elite</div>
-            <div class="dora-badge dora-badge-high"
+            <div class="dora-badge dora-badge-elite tooltip-hint"
+                 data-tooltip="Elite: медиана Lead Time менее 1 часа. Лучший уровень по классификации DORA Research."
+                 th:if="${medianHours != null and medianHours <= 1}">Elite</div>
+            <div class="dora-badge dora-badge-high tooltip-hint"
+                 data-tooltip="High: медиана Lead Time от 1 часа до 1 дня. Высокая скорость доставки изменений."
                  th:if="${medianHours != null and medianHours > 1 and medianHours <= 24}">High
             </div>
-            <div class="dora-badge dora-badge-medium"
+            <div class="dora-badge dora-badge-medium tooltip-hint"
+                 data-tooltip="Medium: медиана Lead Time от 1 до 7 дней. Средний уровень — есть пространство для улучшения."
                  th:if="${medianHours != null and medianHours > 24 and medianHours <= 168}">Medium
             </div>
-            <div class="dora-badge dora-badge-low" th:if="${medianHours != null and medianHours > 168}">Low</div>
+            <div class="dora-badge dora-badge-low tooltip-hint"
+                 data-tooltip="Low: медиана Lead Time более 7 дней. Изменения долго доходят до основной ветки."
+                 th:if="${medianHours != null and medianHours > 168}">Low</div>
         </div>
 
         <div class="dora-stats-row">
             <div class="dora-stat-card">
-                <div class="dora-stat-label">Медиана</div>
+                <div class="dora-stat-label">
+                    <span class="tooltip-hint"
+                          data-tooltip="P50 — половина MR закрывается быстрее. Устойчивее среднего, не искажается выбросами.">Медиана</span>
+                </div>
                 <div class="dora-stat-value"
                      th:text="${medianHours != null ? #numbers.formatDecimal(medianHours, 1, 1) + ' ч' : '—'}">—
                 </div>
             </div>
             <div class="dora-stat-card">
-                <div class="dora-stat-label">P75</div>
+                <div class="dora-stat-label">
+                    <span class="tooltip-hint"
+                          data-tooltip="75% MR закрывается быстрее. Показывает «медленный хвост» — MR, застрявшие на ревью.">P75</span>
+                </div>
                 <div class="dora-stat-value"
                      th:text="${p75Hours != null ? #numbers.formatDecimal(p75Hours, 1, 1) + ' ч' : '—'}">—
                 </div>
             </div>
             <div class="dora-stat-card">
-                <div class="dora-stat-label">P95</div>
+                <div class="dora-stat-label">
+                    <span class="tooltip-hint"
+                          data-tooltip="95% MR закрывается быстрее. Выявляет самые проблемные MR, требующие внимания.">P95</span>
+                </div>
                 <div class="dora-stat-value"
                      th:text="${p95Hours != null ? #numbers.formatDecimal(p95Hours, 1, 1) + ' ч' : '—'}">—
                 </div>
             </div>
             <div class="dora-stat-card">
-                <div class="dora-stat-label">MR за период</div>
+                <div class="dora-stat-label">
+                    <span class="tooltip-hint"
+                          data-tooltip="Число MR, смерджённых в выбранном периоде. Основа для расчёта перцентилей Lead Time.">MR за период</span>
+                </div>
                 <div class="dora-stat-value" th:text="${totalMrs}">0</div>
             </div>
         </div>
