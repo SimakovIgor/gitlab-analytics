@@ -27,6 +27,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
+
 /**
  * Обнаруживает GitLab placeholder-аккаунты (артефакты миграции вида "username_placeholder_xxx")
  * и автоматически привязывает их к существующим tracked users как дополнительные aliases.
@@ -109,7 +112,7 @@ public class PlaceholderAliasDiscoveryService {
             }
 
             Long matchedUserId = matchByName(user.name(), trackedUsers);
-            if (matchedUserId == null && isPersonalPlaceholderName(user.name())) {
+            if (matchedUserId == null) {
                 matchedUserId = matchByCommitEmails(unknownId, trackedProjectId, emailToTrackedUserId);
             }
 
@@ -129,19 +132,6 @@ public class PlaceholderAliasDiscoveryService {
 
     private boolean isPlaceholder(GitLabUserDto user) {
         return user.username() != null && user.username().contains(PLACEHOLDER_MARKER);
-    }
-
-    /**
-     * Возвращает true только для «личных» placeholder-аккаунтов вида "Placeholder Anton Lepikhin".
-     * Generic GitHub-заглушки ("Placeholder github Source User") не подходят для email-fallback,
-     * т.к. их MRы содержат коммиты всей команды — сопоставление даст ложный результат.
-     */
-    private boolean isPersonalPlaceholderName(String name) {
-        if (name == null || !name.startsWith(PLACEHOLDER_NAME_PREFIX)) {
-            return false;
-        }
-        String realName = name.substring(PLACEHOLDER_NAME_PREFIX.length()).trim();
-        return !realName.isBlank() && !"github Source User".equalsIgnoreCase(realName);
     }
 
     /**
@@ -165,8 +155,9 @@ public class PlaceholderAliasDiscoveryService {
     }
 
     /**
-     * Если сопоставление по имени не удалось — смотрим email'ы коммитов, которые
-     * пользователь пушил в MR этого проекта. Если email совпадает с алиасом — нашли.
+     * Если сопоставление по имени не удалось — анализируем email'ы коммитов в MR-ах
+     * этого placeholder-аккаунта. Привязываем только если один email-автор доминирует
+     * (> 60% коммитов), иначе это shared-заглушка — пропускаем.
      */
     private Long matchByCommitEmails(Long unknownAuthorId,
                                      Long trackedProjectId,
@@ -187,11 +178,22 @@ public class PlaceholderAliasDiscoveryService {
             return null;
         }
 
-        return commitRepository.findByMergeRequestIdIn(mrIds).stream()
+        List<String> emails = commitRepository.findByMergeRequestIdIn(mrIds).stream()
             .map(MergeRequestCommit::getAuthorEmail)
             .filter(Objects::nonNull)
             .map(e -> e.toLowerCase(Locale.ROOT).strip())
-            .map(emailToTrackedUserId::get)
+            .toList();
+
+        if (emails.isEmpty()) {
+            return null;
+        }
+
+        Map<String, Long> countByEmail = emails.stream().collect(groupingBy(e -> e, counting()));
+        long total = emails.size();
+
+        return countByEmail.entrySet().stream()
+            .filter(e -> (double) e.getValue() / total > 0.6)
+            .map(e -> emailToTrackedUserId.get(e.getKey()))
             .filter(Objects::nonNull)
             .findFirst()
             .orElse(null);

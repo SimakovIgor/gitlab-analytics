@@ -402,6 +402,15 @@
             <div class="form-hint" id="link-selected-hint" style="display:none">
                 Выбран аккаунт: <strong id="link-selected-label"></strong>
             </div>
+            <div class="form-group" style="margin-top:12px">
+                <label class="form-label">Или введите GitLab ID напрямую</label>
+                <div class="form-group-row">
+                    <input class="form-input" id="link-direct-id" placeholder="например: 1933"
+                           style="max-width:160px" type="number" oninput="onDirectIdInput()">
+                    <span class="form-hint" id="link-direct-label" style="align-self:center"></span>
+                </div>
+                <div class="form-hint">Используйте для привязки placeholder-аккаунтов, которые не находятся через поиск</div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeModal('modal-link-gitlab')">Отмена</button>
@@ -1171,6 +1180,8 @@
         document.getElementById('link-gl-search').value = '';
         document.getElementById('link-search-results').innerHTML = '';
         document.getElementById('link-search-results').classList.add('hidden');
+        document.getElementById('link-direct-id').value = '';
+        document.getElementById('link-direct-label').textContent = '';
         document.getElementById('link-selected-hint').style.display = 'none';
         document.getElementById('btn-link-gitlab').disabled = true;
         clearModalError('link-gitlab-error');
@@ -1208,6 +1219,40 @@
             </div>`).join('');
         } catch (e) {
             results.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
+        }
+    }
+
+    let directIdTimer = null;
+
+    function onDirectIdInput() {
+        clearTimeout(directIdTimer);
+        const val = document.getElementById('link-direct-id').value.trim();
+        document.getElementById('link-direct-label').textContent = '';
+        if (!val) return;
+        directIdTimer = setTimeout(() => lookupDirectId(val), 400);
+    }
+
+    async function lookupDirectId(idStr) {
+        const sourceId = document.getElementById('link-source-id')?.value;
+        if (!sourceId) return;
+        const label = document.getElementById('link-direct-label');
+        label.textContent = 'Проверяем...';
+        try {
+            const users = await api('GET', `/settings/sources/${sourceId}/users/search?q=${encodeURIComponent(idStr)}`);
+            const found = users.find(u => String(u.id) === idStr);
+            if (found) {
+                selectLinkUser(found);
+                label.textContent = '';
+            } else {
+                const directUser = {id: parseInt(idStr), username: 'id:' + idStr, name: 'GitLab user #' + idStr};
+                linkSelectedUser = directUser;
+                document.getElementById('link-selected-hint').style.display = 'block';
+                document.getElementById('link-selected-label').textContent = 'GitLab ID #' + idStr;
+                document.getElementById('btn-link-gitlab').disabled = false;
+                label.textContent = '';
+            }
+        } catch (e) {
+            label.textContent = 'Ошибка поиска';
         }
     }
 
