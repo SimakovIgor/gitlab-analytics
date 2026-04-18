@@ -70,7 +70,9 @@ public class SettingsService {
 
     // ── Tracked Projects ─────────────────────────────────────────────────────
 
-    public List<GitLabProjectDto> searchProjects(Long sourceId, String q, String token) {
+    public List<GitLabProjectDto> searchProjects(Long sourceId,
+                                                 String q,
+                                                 String token) {
         GitSource source = gitSourceRepository.findById(sourceId)
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         return gitLabApiClient.searchProjects(source.getBaseUrl(), token, q);
@@ -103,7 +105,8 @@ public class SettingsService {
 
     // ── Users ────────────────────────────────────────────────────────────────
 
-    public List<GitLabUserSearchDto> searchUsers(Long sourceId, String q) {
+    public List<GitLabUserSearchDto> searchUsers(Long sourceId,
+                                                 String q) {
         GitSource source = gitSourceRepository.findById(sourceId)
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         TrackedProject project = trackedProjectRepository.findFirstByGitSourceId(sourceId)

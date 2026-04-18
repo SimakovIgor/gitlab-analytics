@@ -1,15 +1,15 @@
 :root {
-    --color-primary:  #FC6D26;
+    --color-primary: #FC6D26;
     --color-primary-hover: #e85e1a;
-    --color-bg:       #f4f5f7;
-    --color-surface:  #ffffff;
-    --color-border:   #dde1e7;
-    --color-text:     #1f2329;
-    --color-muted:    #6c737a;
-    --color-success:  #1aaa55;
-    --color-danger:   #db3b21;
-    --radius:         8px;
-    --shadow:         0 2px 12px rgba(0, 0, 0, 0.08);
+    --color-bg: #f4f5f7;
+    --color-surface: #ffffff;
+    --color-border: #dde1e7;
+    --color-text: #1f2329;
+    --color-muted: #6c737a;
+    --color-success: #1aaa55;
+    --color-danger: #db3b21;
+    --radius: 8px;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 *, *::before, *::after {
@@ -574,9 +574,17 @@ body {
     letter-spacing: 0.01em;
 }
 
-.delta-pos { color: var(--color-success); }
-.delta-neg { color: var(--color-danger); }
-.delta-zero { color: var(--color-border); }
+.delta-pos {
+    color: var(--color-success);
+}
+
+.delta-neg {
+    color: var(--color-danger);
+}
+
+.delta-zero {
+    color: var(--color-border);
+}
 
 .num-cell.accent {
     font-weight: 700;
@@ -685,8 +693,14 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .tab-toolbar {
@@ -1154,7 +1168,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ── Alias chips ──────────────────────────────────────────── */
@@ -1725,8 +1741,13 @@ body {
     flex-shrink: 0;
 }
 
-.dot-active  { background: var(--color-success); }
-.dot-inactive { background: var(--color-border); }
+.dot-active {
+    background: var(--color-success);
+}
+
+.dot-inactive {
+    background: var(--color-border);
+}
 
 .sidebar-user-avatar {
     width: 22px;

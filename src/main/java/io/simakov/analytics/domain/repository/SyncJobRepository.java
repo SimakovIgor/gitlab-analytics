@@ -11,7 +11,8 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
 
     List<SyncJob> findByStatusOrderByStartedAtDesc(SyncStatus status);
 
-    List<SyncJob> findByStatusAndStartedAtBefore(SyncStatus status, Instant threshold);
+    List<SyncJob> findByStatusAndStartedAtBefore(SyncStatus status,
+                                                 Instant threshold);
 
     List<SyncJob> findTop30ByOrderByStartedAtDesc();
 }

@@ -11,5 +11,6 @@ public interface TrackedUserAliasRepository extends JpaRepository<TrackedUserAli
 
     List<TrackedUserAlias> findByTrackedUserIdIn(List<Long> trackedUserIds);
 
-    boolean existsByTrackedUserIdAndEmail(Long trackedUserId, String email);
+    boolean existsByTrackedUserIdAndEmail(Long trackedUserId,
+                                          String email);
 }

@@ -66,7 +66,8 @@ public class SyncJobService {
     }
 
     @Transactional
-    public int failStaleJobs(Instant startedBefore, String reason) {
+    public int failStaleJobs(Instant startedBefore,
+                             String reason) {
         var stale = syncJobRepository.findByStatusAndStartedAtBefore(SyncStatus.STARTED, startedBefore);
         Instant now = Instant.now();
         for (SyncJob job : stale) {

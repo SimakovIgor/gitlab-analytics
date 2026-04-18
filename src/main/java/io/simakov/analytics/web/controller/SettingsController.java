@@ -147,7 +147,9 @@ public class SettingsController {
             .map(u -> Map.<String, Object>of(
                 "id", u.getId(),
                 "displayName", u.getDisplayName(),
-                "email", u.getEmail() != null ? u.getEmail() : ""
+                "email", u.getEmail() != null
+                    ? u.getEmail()
+                    : ""
             ))
             .toList();
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("created", created));
@@ -160,7 +162,9 @@ public class SettingsController {
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
             "id", saved.getId(),
             "displayName", saved.getDisplayName(),
-            "email", saved.getEmail() != null ? saved.getEmail() : "",
+            "email", saved.getEmail() != null
+                ? saved.getEmail()
+                : "",
             "enabled", saved.isEnabled()
         ));
     }

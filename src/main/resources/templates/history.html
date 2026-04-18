@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>GitLab Analytics — История</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
 </head>
@@ -10,31 +10,33 @@
 
 <header class="topbar">
     <span class="topbar-brand">
-        <svg viewBox="0 0 380 380" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
-                  fill="#FC6D26"/>
+        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
+                fill="#FC6D26"/>
         </svg>
         GitLab Analytics
     </span>
 
     <nav class="topbar-nav">
-        
-        <a href="/report" class="nav-link">Отчёт</a>
-        <a href="/history" class="nav-link nav-link-active">История</a>
-        <a href="/settings" class="nav-link">Настройки</a>
+
+        <a class="nav-link" href="/report">Отчёт</a>
+        <a class="nav-link nav-link-active" href="/history">История</a>
+        <a class="nav-link" href="/settings">Настройки</a>
     </nav>
 
     <div class="topbar-user" th:if="${currentUser}">
-        <img th:if="${currentUser.avatarUrl != ''}"
-             th:src="${currentUser.avatarUrl}"
-             class="avatar"
-             th:alt="${currentUser.name}">
-        <div th:unless="${currentUser.avatarUrl != ''}" class="avatar-placeholder"
-             th:text="${#strings.substring(currentUser.name, 0, 1)}">?</div>
+        <img class="avatar"
+             th:alt="${currentUser.name}"
+             th:if="${currentUser.avatarUrl != ''}"
+             th:src="${currentUser.avatarUrl}">
+        <div class="avatar-placeholder" th:text="${#strings.substring(currentUser.name, 0, 1)}"
+             th:unless="${currentUser.avatarUrl != ''}">?
+        </div>
         <span class="topbar-username" th:text="${currentUser.name}">Пользователь</span>
-        <form th:action="@{/logout}" method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-            <button type="submit" class="btn-logout">Выйти</button>
+        <form method="post" th:action="@{/logout}">
+            <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
+            <button class="btn-logout" type="submit">Выйти</button>
         </form>
     </div>
 </header>
@@ -45,29 +47,29 @@
     <div class="page-subtitle">Сравнение показателей всех сотрудников за выбранный период</div>
 
     <!-- Фильтры -->
-    <form method="get" action="/history" class="filter-form">
+    <form action="/history" class="filter-form" method="get">
 
         <div class="filter-group">
             <label class="filter-label">Период</label>
             <div class="period-buttons">
-                <button type="submit" name="days" value="7"
-                        th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'">
+                <button name="days" th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="7">
                     7 дней
                 </button>
-                <button type="submit" name="days" value="30"
-                        th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'">
+                <button name="days" th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="30">
                     30 дней
                 </button>
-                <button type="submit" name="days" value="90"
-                        th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'">
+                <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="90">
                     90 дней
                 </button>
-                <button type="submit" name="days" value="180"
-                        th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'">
+                <button name="days" th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="180">
                     180 дней
                 </button>
-                <button type="submit" name="days" value="360"
-                        th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'">
+                <button name="days" th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="360">
                     360 дней
                 </button>
             </div>
@@ -75,17 +77,17 @@
 
         <div class="filter-group">
             <label class="filter-label" for="metricSelect">Метрика</label>
-            <select id="metricSelect" name="metric" class="metric-select" onchange="this.form.submit()">
+            <select class="metric-select" id="metricSelect" name="metric" onchange="this.form.submit()">
                 <option th:each="entry : ${metricOptions}"
-                        th:value="${entry.key}"
+                        th:selected="${entry.key == selectedMetric}"
                         th:text="${entry.value}"
-                        th:selected="${entry.key == selectedMetric}">
+                        th:value="${entry.key}">
                 </option>
             </select>
         </div>
 
         <!-- Сохраняем days при смене метрики через select -->
-        <input type="hidden" id="daysHidden" name="days" th:value="${selectedDays}">
+        <input id="daysHidden" name="days" th:value="${selectedDays}" type="hidden">
 
     </form>
 
@@ -129,7 +131,7 @@
                     labels: {
                         boxWidth: 12,
                         padding: 16,
-                        font: { size: 12 }
+                        font: {size: 12}
                     }
                 },
                 tooltip: {
@@ -139,13 +141,13 @@
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: { font: { size: 11 }, maxRotation: 45 }
+                    grid: {color: 'rgba(0,0,0,0.05)'},
+                    ticks: {font: {size: 11}, maxRotation: 45}
                 },
                 y: {
                     beginAtZero: true,
-                    grid: { color: 'rgba(0,0,0,0.05)' },
-                    ticks: { font: { size: 11 } }
+                    grid: {color: 'rgba(0,0,0,0.05)'},
+                    ticks: {font: {size: 11}}
                 }
             }
         }

@@ -41,7 +41,7 @@ public class SnapshotController {
                    + "Intended for onboarding: call once after users are added to populate history. "
                    + "Default days=360. Already existing snapshots are overwritten with fresh data.")
     public java.util.Map<String, Integer> backfill(
-            @RequestParam(defaultValue = "360") int days) {
+        @RequestParam(defaultValue = "360") int days) {
         int saved = snapshotService.runWeeklyBackfill(days);
         return java.util.Map.of("snapshotsSaved", saved);
     }

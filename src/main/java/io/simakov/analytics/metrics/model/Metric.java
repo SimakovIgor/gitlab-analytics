@@ -129,56 +129,24 @@ public enum Metric {
 
     // ── Enum infrastructure ───────────────────────────────────────────────────
 
-    /** Logical grouping of metrics. */
-    public enum Category {
-        DELIVERY, CHANGE_VOLUME, REVIEW, FLOW, NORMALIZED
-    }
-
     private final String key;
     private final String label;
     private final String description;
     private final Category category;
     private final boolean inMinutes;
     private final boolean chartVisible;
-
-    Metric(String key, String label, String description,
-           Category category, boolean inMinutes, boolean chartVisible) {
+    Metric(String key,
+           String label,
+           String description,
+           Category category,
+           boolean inMinutes,
+           boolean chartVisible) {
         this.key = key;
         this.label = label;
         this.description = description;
         this.category = category;
         this.inMinutes = inMinutes;
         this.chartVisible = chartVisible;
-    }
-
-    /** JSON/DB key for this metric (e.g. {@code "mr_merged_count"}). */
-    public String key() {
-        return key;
-    }
-
-    /** Short Russian UI label (e.g. {@code "MR смерджено"}). */
-    public String label() {
-        return label;
-    }
-
-    /** One-sentence Russian description for the metrics legend. */
-    public String description() {
-        return description;
-    }
-
-    /** Logical category. */
-    public Category category() {
-        return category;
-    }
-
-    /** True when the stored value is in minutes and should be displayed as hours. */
-    public boolean isInMinutes() {
-        return inMinutes;
-    }
-
-    /** True when this metric appears in the History chart dropdown. */
-    public boolean isChartVisible() {
-        return chartVisible;
     }
 
     /**
@@ -213,5 +181,54 @@ public enum Metric {
             }
         }
         return null;
+    }
+
+    /**
+     * JSON/DB key for this metric (e.g. {@code "mr_merged_count"}).
+     */
+    public String key() {
+        return key;
+    }
+
+    /**
+     * Short Russian UI label (e.g. {@code "MR смерджено"}).
+     */
+    public String label() {
+        return label;
+    }
+
+    /**
+     * One-sentence Russian description for the metrics legend.
+     */
+    public String description() {
+        return description;
+    }
+
+    /**
+     * Logical category.
+     */
+    public Category category() {
+        return category;
+    }
+
+    /**
+     * True when the stored value is in minutes and should be displayed as hours.
+     */
+    public boolean isInMinutes() {
+        return inMinutes;
+    }
+
+    /**
+     * True when this metric appears in the History chart dropdown.
+     */
+    public boolean isChartVisible() {
+        return chartVisible;
+    }
+
+    /**
+     * Logical grouping of metrics.
+     */
+    public enum Category {
+        DELIVERY, CHANGE_VOLUME, REVIEW, FLOW, NORMALIZED
     }
 }
