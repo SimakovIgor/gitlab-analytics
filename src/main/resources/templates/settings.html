@@ -23,6 +23,7 @@
     <nav class="topbar-nav">
         <a class="nav-link" href="/report">Отчёт</a>
         <a class="nav-link" href="/history">История</a>
+        <a class="nav-link" href="/dora">DORA</a>
         <a class="nav-link nav-link-active" href="/settings">Настройки</a>
     </nav>
 
@@ -491,7 +492,7 @@
     const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
 
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
-    const HAS_PROJECTS = /*[[${hasProjects}]]*/ false;
+    let hasProjects = /*[[${hasProjects}]]*/ false;
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
 
@@ -918,6 +919,7 @@
             switchTab('projects');
             clearProjectSearch();
             document.getElementById('project-token').value = '';
+            hasProjects = true;
             activeSyncRunning = true;
         } catch (e) {
             showError('project-error', e.message);
@@ -981,7 +983,7 @@
     async function loadDiscoveredContributors() {
         if (discoveryLoaded) return;
         if (activeSyncRunning) return;
-        if (!HAS_PROJECTS) return;
+        if (!hasProjects) return;
         const loading = document.getElementById('discovery-loading');
         const panel = document.getElementById('discovery-panel');
         loading.classList.remove('hidden');

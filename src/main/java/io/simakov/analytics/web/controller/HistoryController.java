@@ -20,16 +20,16 @@ public class HistoryController {
     @GetMapping("/history")
     public String history(OAuth2AuthenticationToken authentication,
                           @RequestParam(defaultValue = "mr_merged_count") String metric,
-                          @RequestParam(defaultValue = "360") int days,
+                          @RequestParam(defaultValue = "LAST_360_DAYS") String period,
                           Model model) {
         if (authentication != null) {
             model.addAttribute("currentUser", userResolver.resolve(authentication));
         }
 
-        HistoryPageData data = historyViewService.buildHistoryPage(metric, days);
+        HistoryPageData data = historyViewService.buildHistoryPage(metric, period);
         model.addAttribute("chartData", data.chartJson());
         model.addAttribute("selectedMetric", data.selectedMetric());
-        model.addAttribute("selectedDays", data.selectedDays());
+        model.addAttribute("selectedPeriod", data.selectedPeriod());
         model.addAttribute("metricLabel", data.metricLabel());
         model.addAttribute("metricOptions", data.metricOptions());
 

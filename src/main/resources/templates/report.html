@@ -23,6 +23,7 @@
     <nav class="topbar-nav">
         <a class="nav-link nav-link-active" href="/report">Отчёт</a>
         <a class="nav-link" href="/history">История</a>
+        <a class="nav-link" href="/dora">DORA</a>
         <a class="nav-link" href="/settings">Настройки</a>
     </nav>
 
@@ -326,6 +327,17 @@
                 <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
             </span>
         </div>
+
+        <!-- Примечание о точности данных -->
+        <details class="data-notice">
+            <summary>Почему данные могут отличаться от реальной активности</summary>
+            <ul>
+                <li><strong>Коммиты</strong> считаются по email в git-коммите. Если разработчик коммитил с другого адреса (личного, GitHub no-reply и т.д.) — эти коммиты не будут учтены. Проверьте <code>git config user.email</code> и добавьте нужный email как псевдоним в <a href="/settings">Настройки → Сотрудники</a>.</li>
+                <li><strong>MR</strong> привязываются по GitLab user ID. Если аккаунт GitLab не связан с сотрудником, его MR не попадут в статистику. Убедитесь, что при добавлении сотрудника был корректно указан GitLab username.</li>
+                <li><strong>Аппрувы и комментарии</strong> также атрибутируются по GitLab user ID — та же причина.</li>
+                <li><strong>Период</strong>: учитываются MR, смерджённые в выбранном диапазоне дат, а не созданные. Большой MR, открытый в прошлом периоде и смерджённый в текущем, войдёт в текущий период.</li>
+            </ul>
+        </details>
 
         <!-- Описание метрик -->
         <details class="metrics-legend">

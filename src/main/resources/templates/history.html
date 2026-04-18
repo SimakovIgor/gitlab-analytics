@@ -22,6 +22,7 @@
 
         <a class="nav-link" href="/report">Отчёт</a>
         <a class="nav-link nav-link-active" href="/history">История</a>
+        <a class="nav-link" href="/dora">DORA</a>
         <a class="nav-link" href="/settings">Настройки</a>
     </nav>
 
@@ -52,24 +53,24 @@
         <div class="filter-group">
             <label class="filter-label">Период</label>
             <div class="period-buttons">
-                <button name="days" th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="7">
+                <button name="period" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="LAST_7_DAYS">
                     7 дней
                 </button>
-                <button name="days" th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="30">
+                <button name="period" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="LAST_30_DAYS">
                     30 дней
                 </button>
-                <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="90">
+                <button name="period" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="LAST_90_DAYS">
                     90 дней
                 </button>
-                <button name="days" th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="180">
+                <button name="period" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="LAST_180_DAYS">
                     180 дней
                 </button>
-                <button name="days" th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="360">
+                <button name="period" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                        value="LAST_360_DAYS">
                     360 дней
                 </button>
             </div>
@@ -86,10 +87,21 @@
             </select>
         </div>
 
-        <!-- Сохраняем days при смене метрики через select -->
-        <input id="daysHidden" name="days" th:value="${selectedDays}" type="hidden">
+        <!-- Сохраняем period при смене метрики через select -->
+        <input name="period" th:value="${selectedPeriod}" type="hidden">
 
     </form>
+
+    <!-- Примечание о точности данных -->
+    <details class="data-notice">
+        <summary>Почему данные могут отличаться от реальной активности</summary>
+        <ul>
+            <li><strong>Коммиты</strong> считаются по email в git-коммите. Если разработчик коммитил с другого адреса (личного, GitHub no-reply и т.д.) — эти коммиты не будут учтены. Проверьте <code>git config user.email</code> и добавьте нужный email как псевдоним в <a href="/settings">Настройки → Сотрудники</a>.</li>
+            <li><strong>MR</strong> привязываются по GitLab user ID. Если аккаунт GitLab не связан с сотрудником, его MR не попадут в статистику. Убедитесь, что при добавлении сотрудника был корректно указан GitLab username.</li>
+            <li><strong>Аппрувы и комментарии</strong> также атрибутируются по GitLab user ID — та же причина.</li>
+            <li><strong>История</strong> строится на еженедельных снимках. Если снимков за нужный период нет, запустите бэкфилл через <a href="/settings">Настройки</a>.</li>
+        </ul>
+    </details>
 
     <!-- График -->
     <div class="chart-card">

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.domain.model.MetricSnapshot;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.repository.MetricSnapshotRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.model.Metric;
@@ -41,12 +42,19 @@ public class HistoryViewService {
     private final ObjectMapper objectMapper;
 
     public HistoryPageData buildHistoryPage(String metric,
-                                            int days) {
+                                            String period) {
+        PeriodType periodType;
+        try {
+            periodType = PeriodType.valueOf(period);
+        } catch (IllegalArgumentException e) {
+            periodType = PeriodType.LAST_360_DAYS;
+        }
+
         List<TrackedUser> users = trackedUserRepository.findAll()
             .stream().filter(TrackedUser::isEnabled).toList();
 
         LocalDate dateTo = DateTimeUtils.currentDateUtc();
-        LocalDate dateFrom = dateTo.minusDays(days);
+        LocalDate dateFrom = dateTo.minusDays(periodType.toDays());
 
         String chartJson = "{}";
         if (!users.isEmpty()) {
@@ -58,7 +66,7 @@ public class HistoryViewService {
         return new HistoryPageData(
             chartJson,
             metric,
-            days,
+            periodType.name(),
             METRIC_OPTIONS.getOrDefault(metric, metric),
             METRIC_OPTIONS
         );

@@ -5,7 +5,7 @@ import java.util.Map;
 public record HistoryPageData(
     String chartJson,
     String selectedMetric,
-    int selectedDays,
+    String selectedPeriod,
     String metricLabel,
     Map<String, String> metricOptions
 ) {
