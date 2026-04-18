@@ -1197,6 +1197,11 @@ body {
     font-style: italic;
 }
 
+.alias-chip-placeholder {
+    opacity: 0.6;
+    font-style: italic;
+}
+
 /* ── Onboarding: dashboard welcome ──────────────────────────────────────── */
 
 .onboarding-welcome {

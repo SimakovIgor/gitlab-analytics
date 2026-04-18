@@ -169,6 +169,16 @@ public class SettingsController {
         ));
     }
 
+    @PostMapping("/users/{id}/link-gitlab")
+    @ResponseBody
+    public ResponseEntity<Void> linkGitlabAccount(@PathVariable Long id,
+                                                   @RequestBody Map<String, Object> body) {
+        Long gitlabUserId = Long.valueOf(body.get("gitlabUserId").toString());
+        String username = body.containsKey("username") ? body.get("username").toString() : null;
+        settingsService.linkGitlabAccount(id, gitlabUserId, username);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/users/{id}")
     @ResponseBody
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {

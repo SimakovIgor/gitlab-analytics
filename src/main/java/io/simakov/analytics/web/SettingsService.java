@@ -142,6 +142,15 @@ public class SettingsService {
         return saved;
     }
 
+    public void linkGitlabAccount(Long userId,
+                                   Long gitlabUserId,
+                                   String username) {
+        if (!trackedUserRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("TrackedUser", userId);
+        }
+        userAliasService.linkGitlabAccount(userId, gitlabUserId, username);
+    }
+
     public void deleteUser(Long id) {
         if (!trackedUserRepository.existsById(id)) {
             throw new ResourceNotFoundException("TrackedUser", id);

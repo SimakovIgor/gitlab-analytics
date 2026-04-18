@@ -200,14 +200,26 @@
                 </td>
                 <td>
                     <div class="alias-empty" th:if="${entry.aliases.isEmpty()}">нет алиасов</div>
-                    <div class="alias-chip" th:each="alias : ${entry.aliases}">
-                            <span th:if="${alias.username != null}"
-                                  th:text="'@' + ${alias.username}">@user</span>
-                        <span th:if="${alias.username == null and alias.email != null}"
-                              th:text="${alias.email}">email</span>
+                    <div th:each="alias : ${entry.aliases}">
+                        <div class="alias-chip" th:if="${alias.username != null}">
+                            <span th:text="'@' + ${alias.username}">@user</span>
+                        </div>
+                        <div class="alias-chip" th:if="${alias.username == null and alias.email != null}">
+                            <span th:text="${alias.email}">email</span>
+                        </div>
+                        <div class="alias-chip alias-chip-placeholder"
+                             th:if="${alias.username == null and alias.email == null and alias.gitlabUserId != null}">
+                            <span th:text="'GitLab #' + ${alias.gitlabUserId}">GitLab #</span>
+                        </div>
                     </div>
                 </td>
                 <td class="actions-cell">
+                    <button class="btn-sm btn-secondary"
+                            onclick="openLinkGitlabModal(this.dataset.id, this.dataset.name)"
+                            th:data-id="${entry.user.id}"
+                            th:data-name="${entry.user.displayName}">
+                        Привязать GitLab
+                    </button>
                     <button class="btn-sm btn-danger"
                             onclick="deleteUser(this.dataset.id, this.dataset.name)"
                             th:data-id="${entry.user.id}"
@@ -352,6 +364,47 @@
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
             <button class="btn-primary" disabled id="btn-add-project" onclick="addProject()">Добавить и синхронизировать</button>
+        </div>
+    </div>
+</div>
+
+<!-- Привязать GitLab-аккаунт -->
+<div class="modal-overlay hidden" id="modal-link-gitlab" onclick="handleOverlayClick(event, 'modal-link-gitlab')">
+    <div class="modal">
+        <div class="modal-header">
+            <span id="link-gitlab-title">Привязать GitLab-аккаунт</span>
+            <button class="modal-close" onclick="closeModal('modal-link-gitlab')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="link-gitlab-error"></div>
+            <div class="form-group" th:if="${hasSources}">
+                <label class="form-label">Найти аккаунт в GitLab</label>
+                <div class="form-group-row">
+                    <select class="form-input form-input-sm" id="link-source-id">
+                        <option th:each="source : ${sources}"
+                                th:text="${source.name}"
+                                th:value="${source.id}">Источник
+                        </option>
+                    </select>
+                    <div class="search-input-wrap" style="flex:1">
+                        <span class="search-input-icon">
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                        </span>
+                        <input autocomplete="off" class="form-input search-input-with-icon" id="link-gl-search"
+                               oninput="debounceLinkSearch(this.value)"
+                               placeholder="Введите username или имя..."
+                               type="search">
+                    </div>
+                </div>
+                <div class="search-results hidden" id="link-search-results"></div>
+            </div>
+            <div class="form-hint" id="link-selected-hint" style="display:none">
+                Выбран аккаунт: <strong id="link-selected-label"></strong>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-link-gitlab')">Отмена</button>
+            <button class="btn-primary" disabled id="btn-link-gitlab" onclick="saveLinkGitlab()">Привязать</button>
         </div>
     </div>
 </div>
@@ -1100,6 +1153,92 @@
             document.getElementById('user-row-' + id)?.remove();
         } catch (e) {
             alert('Ошибка удаления: ' + e.message);
+        }
+    }
+
+    // ── Привязка GitLab-аккаунта ──────────────────────────────────────────────
+
+    let linkTargetUserId = null;
+    let linkSelectedUser = null;
+    let linkSearchTimer = null;
+
+    function openLinkGitlabModal(userId, userName) {
+        linkTargetUserId = userId;
+        linkSelectedUser = null;
+        document.getElementById('link-gitlab-title').textContent = 'Привязать GitLab-аккаунт: ' + userName;
+        document.getElementById('link-gl-search').value = '';
+        document.getElementById('link-search-results').innerHTML = '';
+        document.getElementById('link-search-results').classList.add('hidden');
+        document.getElementById('link-selected-hint').style.display = 'none';
+        document.getElementById('btn-link-gitlab').disabled = true;
+        clearModalError('link-gitlab-error');
+        openModal('modal-link-gitlab');
+    }
+
+    function debounceLinkSearch(q) {
+        clearTimeout(linkSearchTimer);
+        if (q.length < 2) {
+            document.getElementById('link-search-results').classList.add('hidden');
+            return;
+        }
+        linkSearchTimer = setTimeout(() => doLinkSearch(q), 350);
+    }
+
+    async function doLinkSearch(q) {
+        const sourceId = document.getElementById('link-source-id')?.value;
+        if (!sourceId) return;
+        const results = document.getElementById('link-search-results');
+        results.innerHTML = '<div class="search-loading">Поиск...</div>';
+        results.classList.remove('hidden');
+        try {
+            const users = await api('GET', `/settings/sources/${sourceId}/users/search?q=${encodeURIComponent(q)}`);
+            if (users.length === 0) {
+                results.innerHTML = '<div class="search-empty">Пользователи не найдены</div>';
+                return;
+            }
+            results.innerHTML = users.slice(0, 10).map(u => `
+            <div class="search-result-item" onclick="selectLinkUser(${JSON.stringify(u).replace(/"/g, '&quot;')})">
+                <img src="${escHtml(u.avatar_url || '')}" class="search-result-avatar" onerror="this.style.display='none'">
+                <div class="search-result-info">
+                    <div class="search-result-name">${escHtml(u.name)}</div>
+                    <div class="search-result-sub">@${escHtml(u.username)}${u.public_email ? ' · ' + escHtml(u.public_email) : ''}</div>
+                </div>
+            </div>`).join('');
+        } catch (e) {
+            results.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
+        }
+    }
+
+    function selectLinkUser(user) {
+        linkSelectedUser = user;
+        document.getElementById('link-search-results').classList.add('hidden');
+        document.getElementById('link-gl-search').value = '';
+        const hint = document.getElementById('link-selected-hint');
+        hint.style.display = 'block';
+        document.getElementById('link-selected-label').textContent = '@' + user.username + ' (' + user.name + ')';
+        document.getElementById('btn-link-gitlab').disabled = false;
+    }
+
+    async function saveLinkGitlab() {
+        if (!linkSelectedUser || !linkTargetUserId) return;
+        try {
+            await api('POST', '/settings/users/' + linkTargetUserId + '/link-gitlab', {
+                gitlabUserId: linkSelectedUser.id,
+                username: linkSelectedUser.username
+            });
+            closeModal('modal-link-gitlab');
+            const aliasCell = document.querySelector('#user-row-' + linkTargetUserId + ' td:nth-child(4)');
+            if (aliasCell) {
+                const emptyDiv = aliasCell.querySelector('.alias-empty');
+                if (emptyDiv) emptyDiv.remove();
+                const chip = document.createElement('div');
+                chip.className = 'alias-chip';
+                chip.innerHTML = '<span>@' + escHtml(linkSelectedUser.username) + '</span>';
+                aliasCell.appendChild(chip);
+            }
+            api('POST', '/settings/snapshots/backfill').catch(() => {});
+        } catch (e) {
+            showError('link-gitlab-error', e.message);
         }
     }
 
