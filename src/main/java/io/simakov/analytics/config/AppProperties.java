@@ -10,7 +10,8 @@ import org.springframework.validation.annotation.Validated;
 public record AppProperties(
     Security security,
     Gitlab gitlab,
-    Snapshot snapshot
+    Snapshot snapshot,
+    Sync sync
 ) {
 
     public record Security(
@@ -29,6 +30,13 @@ public record AppProperties(
     }
 
     public record Snapshot(
+        String cron,
+        @Min(1) int windowDays
+    ) {
+
+    }
+
+    public record Sync(
         String cron,
         @Min(1) int windowDays
     ) {
