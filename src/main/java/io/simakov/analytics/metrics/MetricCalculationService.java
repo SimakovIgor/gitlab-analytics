@@ -84,8 +84,8 @@ public class MetricCalculationService {
                 continue;
             }
             AliasData alias = aliasDataByUser.getOrDefault(userId, AliasData.empty());
-            if (alias.gitlabIds().isEmpty() && alias.emails().isEmpty()) {
-                log.warn("TrackedUser {} has no aliases — metrics will be empty", userId);
+            if (alias.gitlabIds().isEmpty() && alias.emails().isEmpty() && user.getEmail() == null) {
+                log.warn("TrackedUser {} has no email and no aliases — metrics will be empty", userId);
             }
             results.put(userId, calculateForUser(user, alias, allMrs, notesByMrId, approvalsByMrId, commitsByMrId));
         }
@@ -99,7 +99,13 @@ public class MetricCalculationService {
                                          Map<Long, List<MergeRequestApproval>> approvalsByMrId,
                                          Map<Long, List<MergeRequestCommit>> commitsByMrId) {
         Set<Long> gitlabIds = alias.gitlabIds();
-        Set<String> aliasEmails = alias.emails();
+        // Включаем основной email TrackedUser в сет поиска: alias-записи создаются только
+        // при добавлении через discovery/bulk, а вручную добавленный пользователь имеет
+        // email только в TrackedUser.email — без этого все метрики будут нулями.
+        Set<String> aliasEmails = new HashSet<>(alias.emails());
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            aliasEmails.add(user.getEmail().toLowerCase(Locale.ROOT));
+        }
 
         // --- Authored MRs ---
         final Set<Long> finalAuthoredMrIds = resolveAuthoredMrIds(
