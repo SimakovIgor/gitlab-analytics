@@ -29,6 +29,7 @@ public interface MergeRequestCommitRepository extends JpaRepository<MergeRequest
                JOIN tracked_project tp ON tp.id = mr.tracked_project_id
                WHERE mrc.author_email IS NOT NULL
                  AND mrc.author_email <> ''
+                 AND mr.state = 'merged'
                GROUP BY mrc.author_email, mrc.author_name, tp.name
                ORDER BY commit_count DESC
                """)

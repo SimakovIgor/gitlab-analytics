@@ -18,6 +18,7 @@ import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -45,6 +46,11 @@ public class SnapshotService {
      * Используется при онбординге для немедленного наполнения истории.
      * Возвращает суммарное количество сохранённых снапшотов.
      */
+    @Async("syncTaskExecutor")
+    public void runWeeklyBackfillAsync(int days) {
+        runWeeklyBackfill(days);
+    }
+
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     public int runWeeklyBackfill(int days) {
         LocalDate today = DateTimeUtils.currentDateUtc();

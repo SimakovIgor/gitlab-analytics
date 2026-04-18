@@ -1,13 +1,10 @@
 package io.simakov.analytics.sync;
 
 import io.simakov.analytics.domain.model.GitSource;
-import io.simakov.analytics.domain.model.MergeRequest;
-import io.simakov.analytics.domain.model.MergeRequestCommit;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
-import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
@@ -21,14 +18,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.counting;
-import static java.util.stream.Collectors.groupingBy;
 
 /**
  * Обнаруживает GitLab placeholder-аккаунты (артефакты миграции вида "username_placeholder_xxx")
@@ -38,12 +30,15 @@ import static java.util.stream.Collectors.groupingBy;
  * до миграции, остаются записанными на placeholder-ID. Без этого шага исторические MR
  * не будут атрибутированы правильному разработчику.</p>
  *
- * <p>Стратегия сопоставления:</p>
- * <ol>
- *   <li>По имени: "Placeholder Anton Lepikhin" → ищем TrackedUser с displayName="Anton Lepikhin"</li>
- *   <li>По email коммитов: если у MR-автора-placeholder'а в коммитах email совпадает
- *       с email из tracked_user_alias — привязываем к этому пользователю.</li>
- * </ol>
+ * <p>Стратегия сопоставления — только по имени:</p>
+ * <ul>
+ *   <li>"Placeholder Anton Lepikhin" → ищем TrackedUser с displayName="Anton Lepikhin"</li>
+ *   <li>"Placeholder github Source User" → пропускаем (shared-заглушка, требует ручной привязки)</li>
+ * </ul>
+ *
+ * <p>Сопоставление по email коммитов намеренно исключено: placeholder может быть shared
+ * (разные авторы в разных проектах), но alias применяется глобально — это приводит к
+ * неверной атрибуции MR. Ручная привязка через "Привязать GitLab" надёжнее.</p>
  */
 @Slf4j
 @Service
@@ -55,7 +50,6 @@ public class PlaceholderAliasDiscoveryService {
 
     private final GitLabApiClient gitLabApiClient;
     private final MergeRequestRepository mergeRequestRepository;
-    private final MergeRequestCommitRepository commitRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
     private final TrackedProjectRepository trackedProjectRepository;
@@ -82,7 +76,7 @@ public class PlaceholderAliasDiscoveryService {
 
     /**
      * Запускается после синка проекта. Находит неизвестные author_gitlab_user_id в MR проекта,
-     * проверяет — не placeholder ли это, и если да — привязывает к нужному tracked user.
+     * проверяет — не placeholder ли это, и если да — пытается привязать по имени.
      */
     public void discoverAndSave(Long trackedProjectId,
                                 String baseUrl,
@@ -103,7 +97,6 @@ public class PlaceholderAliasDiscoveryService {
         }
 
         List<TrackedUser> trackedUsers = trackedUserRepository.findAll();
-        Map<String, Long> emailToTrackedUserId = buildEmailToUserIdMap(trackedUsers);
 
         for (Long unknownId : unknownAuthorIds) {
             GitLabUserDto user = gitLabApiClient.getUserById(baseUrl, token, unknownId);
@@ -112,9 +105,6 @@ public class PlaceholderAliasDiscoveryService {
             }
 
             Long matchedUserId = matchByName(user.name(), trackedUsers);
-            if (matchedUserId == null) {
-                matchedUserId = matchByCommitEmails(unknownId, trackedProjectId, emailToTrackedUserId);
-            }
 
             if (matchedUserId != null) {
                 aliasRepository.save(TrackedUserAlias.builder()
@@ -124,7 +114,7 @@ public class PlaceholderAliasDiscoveryService {
                 log.info("Auto-linked placeholder {} (id={}) → tracked user id={}",
                     user.username(), unknownId, matchedUserId);
             } else {
-                log.debug("Could not match placeholder {} (id={}) to any tracked user",
+                log.debug("Could not match placeholder {} (id={}) by name — skipping (use manual link)",
                     user.username(), unknownId);
             }
         }
@@ -136,7 +126,7 @@ public class PlaceholderAliasDiscoveryService {
 
     /**
      * "Placeholder Anton Lepikhin" → ищем TrackedUser с displayName="Anton Lepikhin" (case-insensitive).
-     * "Placeholder github Source User" → null (не поддаётся сопоставлению по имени).
+     * "Placeholder github Source User" → null (shared-заглушка, требует ручной привязки).
      */
     private Long matchByName(String placeholderName,
                              List<TrackedUser> trackedUsers) {
@@ -152,61 +142,5 @@ public class PlaceholderAliasDiscoveryService {
             .map(TrackedUser::getId)
             .findFirst()
             .orElse(null);
-    }
-
-    /**
-     * Если сопоставление по имени не удалось — анализируем email'ы коммитов в MR-ах
-     * этого placeholder-аккаунта. Привязываем только если один email-автор доминирует
-     * (> 60% коммитов), иначе это shared-заглушка — пропускаем.
-     */
-    private Long matchByCommitEmails(Long unknownAuthorId,
-                                     Long trackedProjectId,
-                                     Map<String, Long> emailToTrackedUserId) {
-        List<MergeRequest> authorMrs = mergeRequestRepository
-            .findDistinctAuthorIdsByTrackedProjectId(trackedProjectId)
-            .stream()
-            .filter(id -> id.equals(unknownAuthorId))
-            .findFirst()
-            .map(id -> mergeRequestRepository.findAll().stream()
-                .filter(mr -> id.equals(mr.getAuthorGitlabUserId())
-                    && trackedProjectId.equals(mr.getTrackedProjectId()))
-                .toList())
-            .orElse(List.of());
-
-        List<Long> mrIds = authorMrs.stream().map(MergeRequest::getId).toList();
-        if (mrIds.isEmpty()) {
-            return null;
-        }
-
-        List<String> emails = commitRepository.findByMergeRequestIdIn(mrIds).stream()
-            .map(MergeRequestCommit::getAuthorEmail)
-            .filter(Objects::nonNull)
-            .map(e -> e.toLowerCase(Locale.ROOT).strip())
-            .toList();
-
-        if (emails.isEmpty()) {
-            return null;
-        }
-
-        Map<String, Long> countByEmail = emails.stream().collect(groupingBy(e -> e, counting()));
-        long total = emails.size();
-
-        return countByEmail.entrySet().stream()
-            .filter(e -> (double) e.getValue() / total > 0.6)
-            .map(e -> emailToTrackedUserId.get(e.getKey()))
-            .filter(Objects::nonNull)
-            .findFirst()
-            .orElse(null);
-    }
-
-    private Map<String, Long> buildEmailToUserIdMap(List<TrackedUser> trackedUsers) {
-        List<Long> userIds = trackedUsers.stream().map(TrackedUser::getId).toList();
-        return aliasRepository.findByTrackedUserIdIn(userIds).stream()
-            .filter(a -> a.getEmail() != null)
-            .collect(Collectors.toMap(
-                a -> a.getEmail().toLowerCase(Locale.ROOT),
-                TrackedUserAlias::getTrackedUserId,
-                (existing, replacement) -> existing
-            ));
     }
 }

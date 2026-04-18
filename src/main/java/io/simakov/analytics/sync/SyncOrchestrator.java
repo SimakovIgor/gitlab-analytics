@@ -52,7 +52,6 @@ public class SyncOrchestrator {
     private final MergeRequestApprovalRepository approvalRepository;
 
     private final SyncJobService syncJobService;
-    private final PlaceholderAliasDiscoveryService placeholderAliasDiscoveryService;
 
     @Qualifier("mrProcessingExecutor")
     private final Executor mrProcessingExecutor;
@@ -114,8 +113,6 @@ public class SyncOrchestrator {
         }
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-
-        placeholderAliasDiscoveryService.discoverAndSave(trackedProjectId, baseUrl, token);
     }
 
     private void syncMergeRequest(GitLabMergeRequestDto mrDto,

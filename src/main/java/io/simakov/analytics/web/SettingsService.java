@@ -20,7 +20,6 @@ import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
 import io.simakov.analytics.snapshot.SnapshotService;
-import io.simakov.analytics.sync.PlaceholderAliasDiscoveryService;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
 import io.simakov.analytics.util.DateTimeUtils;
@@ -51,7 +50,6 @@ public class SettingsService {
     private final ContributorDiscoveryService contributorDiscoveryService;
     private final UserAliasService userAliasService;
     private final SnapshotService snapshotService;
-    private final PlaceholderAliasDiscoveryService placeholderAliasDiscoveryService;
 
     // ── GitLab Sources ───────────────────────────────────────────────────────
 
@@ -130,7 +128,7 @@ public class SettingsService {
                 return user;
             })
             .toList();
-        placeholderAliasDiscoveryService.discoverForAllProjectsAsync();
+        snapshotService.runWeeklyBackfillAsync(BACKFILL_DAYS);
         return saved;
     }
 
@@ -138,7 +136,7 @@ public class SettingsService {
         TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(request));
         userAliasService.saveAlias(saved.getId(), request.email());
         userAliasService.saveAliases(saved.getId(), request.aliasEmails());
-        placeholderAliasDiscoveryService.discoverForAllProjectsAsync();
+        snapshotService.runWeeklyBackfillAsync(BACKFILL_DAYS);
         return saved;
     }
 
