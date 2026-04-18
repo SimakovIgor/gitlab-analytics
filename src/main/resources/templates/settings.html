@@ -962,6 +962,7 @@ async function addSelectedOb() {
         refreshOnboarding();
         discoveryLoaded = false;
         loadDiscoveredContributors();
+        api('POST', '/api/v1/snapshots/backfill?days=360', null).catch(() => {});
     } catch (e) {
         alert('Не удалось добавить: ' + e.message);
     }
@@ -1299,6 +1300,7 @@ async function addSelectedDiscovered() {
         OB_STATE.hasUsers = true;
         refreshOnboarding();
         updateAddBtn();
+        api('POST', '/api/v1/snapshots/backfill?days=360', null).catch(() => {});
     } catch (e) {
         alert('Ошибка добавления: ' + e.message);
     }

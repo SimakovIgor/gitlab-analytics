@@ -40,6 +40,31 @@ public class SnapshotService {
     private final ObjectMapper objectMapper;
     private final AppProperties appProperties;
 
+    /**
+     * Создаёт еженедельные снапшоты за последние {@code days} дней (шаг 7 дней).
+     * Используется при онбординге для немедленного наполнения истории.
+     * Возвращает суммарное количество сохранённых снапшотов.
+     */
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    public int runWeeklyBackfill(int days) {
+        LocalDate today = DateTimeUtils.currentDateUtc();
+        int windowDays = appProperties.snapshot().windowDays();
+        int total = 0;
+        // Weekly snapshots from oldest to most recent (step = 7 days)
+        for (int d = days; d > 0; d -= 7) {
+            LocalDate snapshotDate = today.minusDays(d);
+            RunSnapshotResponse resp = runSnapshot(
+                new RunSnapshotRequest(null, null, windowDays, snapshotDate));
+            total += resp.snapshotsCreated();
+        }
+        // Always include today regardless of whether it falls on a week boundary
+        RunSnapshotResponse todayResp = runSnapshot(
+            new RunSnapshotRequest(null, null, windowDays, today));
+        total += todayResp.snapshotsCreated();
+        log.info("Weekly backfill completed: {} snapshots saved for last {} days", total, days);
+        return total;
+    }
+
     @Scheduled(cron = "${app.snapshot.cron:0 0 2 * * *}")
     public void runDailySnapshot() {
         log.info("Running daily metric snapshot");

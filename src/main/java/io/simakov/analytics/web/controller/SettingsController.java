@@ -271,6 +271,8 @@ public class SettingsController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createUser(@RequestBody @Valid CreateTrackedUserRequest request) {
         TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(request));
+        userAliasService.saveAlias(saved.getId(), request.email());
+        userAliasService.saveAliases(saved.getId(), request.aliasEmails());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
             "id", saved.getId(),
             "displayName", saved.getDisplayName(),
