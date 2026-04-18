@@ -17,6 +17,7 @@ curl -s http://localhost:8080/actuator/health | python3 -c "import sys,json; pri
 ```
 
 If not UP, tell the user to start it:
+
 ```bash
 API_TOKEN=local-test DB_URL=jdbc:postgresql://localhost:5432/gitlab_analytics DB_USERNAME=analytics DB_PASSWORD=analytics ./gradlew bootRun -x test -x checkstyleMain -x pmdMain -x spotbugsMain
 ```
@@ -73,30 +74,31 @@ Display a markdown summary table followed by individual observations.
 
 **Summary table format:**
 
-| Метрика | Saltykov | Upatov | Simakov |
-|---|---|---|---|
-| MR merged | | | |
-| Commits | | | |
-| Lines added | | | |
-| Lines deleted | | | |
-| Avg MR size (lines) | | | |
-| Median MR size (lines) | | | |
-| Active days | | | |
-| Review comments | | | |
-| MRs reviewed | | | |
-| Approvals given | | | |
-| Review threads started | | | |
-| Median time to first review | min | min | min |
-| Median time to merge | min | min | min |
-| Rework ratio | % | % | % |
-| Self-merge ratio | % | % | % |
-| MR merged / active day | | | |
-| Comments / reviewed MR | | | |
+| Метрика                     | Saltykov | Upatov | Simakov |
+|-----------------------------|----------|--------|---------|
+| MR merged                   |          |        |         |
+| Commits                     |          |        |         |
+| Lines added                 |          |        |         |
+| Lines deleted               |          |        |         |
+| Avg MR size (lines)         |          |        |         |
+| Median MR size (lines)      |          |        |         |
+| Active days                 |          |        |         |
+| Review comments             |          |        |         |
+| MRs reviewed                |          |        |         |
+| Approvals given             |          |        |         |
+| Review threads started      |          |        |         |
+| Median time to first review | min      | min    | min     |
+| Median time to merge        | min      | min    | min     |
+| Rework ratio                | %        | %      | %       |
+| Self-merge ratio            | %        | %      | %       |
+| MR merged / active day      |          |        |         |
+| Comments / reviewed MR      |          |        |         |
 
 Convert `rework_ratio` and `self_merge_ratio` to percentages (multiply by 100, round to 1 decimal).
 Convert time metrics from minutes to hours if > 120 min (e.g. "8.5h"), otherwise show as "43 min".
 
-After the table, add **3-5 bullet points** of observations — things that stand out, unexpected patterns, or comparisons between team members worth discussing at a retrospective. Be specific and grounded in the numbers. Do not judge or score people.
+After the table, add **3-5 bullet points** of observations — things that stand out, unexpected patterns, or comparisons between team members worth discussing at a retrospective. Be specific and
+grounded in the numbers. Do not judge or score people.
 
 Then add a **"Как считаются метрики"** section with the following table (copy verbatim):
 
@@ -104,22 +106,22 @@ Then add a **"Как считаются метрики"** section with the follo
 
 ### Как считаются метрики
 
-| Метрика | Как считается |
-|---|---|
-| **MR merged** | Авторские MR с непустым `merged_at` в периоде |
-| **Commits** | Коммиты в авторских MR, где `author_email` совпадает с пользователем (по email, не по GitLab-аккаунту) |
-| **Lines added** | Сумма `additions` по собственным коммитам |
-| **Lines deleted** | Сумма `deletions` по собственным коммитам |
-| **Avg MR size (lines)** | Среднее суммы (additions + deletions) по **всем** коммитам внутри каждого MR (включая чужие коммиты в MR) |
-| **Median MR size (lines)** | Медиана того же — менее чувствительна к выбросам |
-| **Active days** | Уникальные UTC-дни, в которые был хотя бы один коммит, заметка или апрув от пользователя |
-| **Review comments** | Несистемные заметки (`system=false`) в **чужих** MR |
-| **MRs reviewed** | Уникальные чужие MR с хотя бы одной заметкой или апрувом от пользователя |
-| **Approvals given** | Апрувы на чужие MR |
-| **Review threads started** | Заметки, первые в своём дискуссионном треде в чужом MR |
-| **Median time to first review** | Медиана минут от `created_at` MR до первой внешней заметки или апрува (только для авторских MR) |
-| **Median time to merge** | Медиана минут от `created_at` до `merged_at` (только для авторских MR) |
-| **Rework ratio** | `rework_mr_count / mr_merged_count` — доля MR-ов, в которых автор пушил коммиты после первого внешнего ревью |
-| **Self-merge ratio** | `self_merge_count / mr_merged_count` — доля MR-ов, где `merged_by` совпадает с автором |
-| **MR merged / active day** | `mr_merged_count / active_days_count` |
-| **Comments / reviewed MR** | `review_comments_written_count / mrs_reviewed_count` |
+| Метрика                         | Как считается                                                                                                |
+|---------------------------------|--------------------------------------------------------------------------------------------------------------|
+| **MR merged**                   | Авторские MR с непустым `merged_at` в периоде                                                                |
+| **Commits**                     | Коммиты в авторских MR, где `author_email` совпадает с пользователем (по email, не по GitLab-аккаунту)       |
+| **Lines added**                 | Сумма `additions` по собственным коммитам                                                                    |
+| **Lines deleted**               | Сумма `deletions` по собственным коммитам                                                                    |
+| **Avg MR size (lines)**         | Среднее суммы (additions + deletions) по **всем** коммитам внутри каждого MR (включая чужие коммиты в MR)    |
+| **Median MR size (lines)**      | Медиана того же — менее чувствительна к выбросам                                                             |
+| **Active days**                 | Уникальные UTC-дни, в которые был хотя бы один коммит, заметка или апрув от пользователя                     |
+| **Review comments**             | Несистемные заметки (`system=false`) в **чужих** MR                                                          |
+| **MRs reviewed**                | Уникальные чужие MR с хотя бы одной заметкой или апрувом от пользователя                                     |
+| **Approvals given**             | Апрувы на чужие MR                                                                                           |
+| **Review threads started**      | Заметки, первые в своём дискуссионном треде в чужом MR                                                       |
+| **Median time to first review** | Медиана минут от `created_at` MR до первой внешней заметки или апрува (только для авторских MR)              |
+| **Median time to merge**        | Медиана минут от `created_at` до `merged_at` (только для авторских MR)                                       |
+| **Rework ratio**                | `rework_mr_count / mr_merged_count` — доля MR-ов, в которых автор пушил коммиты после первого внешнего ревью |
+| **Self-merge ratio**            | `self_merge_count / mr_merged_count` — доля MR-ов, где `merged_by` совпадает с автором                       |
+| **MR merged / active day**      | `mr_merged_count / active_days_count`                                                                        |
+| **Comments / reviewed MR**      | `review_comments_written_count / mrs_reviewed_count`                                                         |

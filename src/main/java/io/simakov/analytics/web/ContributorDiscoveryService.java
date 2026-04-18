@@ -72,8 +72,8 @@ public class ContributorDiscoveryService {
                 .orElse(c);
 
             List<String> mergedEmails = group.stream()
-                .filter(x -> !x.email().equals(primary.email()))
                 .map(DiscoveredContributor::email)
+                .filter(email -> !email.equals(primary.email()))
                 .toList();
 
             Set<String> allRepos = new LinkedHashSet<>(primary.repoNames());

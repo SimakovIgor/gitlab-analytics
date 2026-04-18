@@ -143,8 +143,8 @@ public class SettingsService {
     }
 
     public void linkGitlabAccount(Long userId,
-                                   Long gitlabUserId,
-                                   String username) {
+                                  Long gitlabUserId,
+                                  String username) {
         if (!trackedUserRepository.existsById(userId)) {
             throw new ResourceNotFoundException("TrackedUser", userId);
         }

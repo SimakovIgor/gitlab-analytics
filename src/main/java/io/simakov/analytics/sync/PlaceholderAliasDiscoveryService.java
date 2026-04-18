@@ -136,7 +136,7 @@ public class PlaceholderAliasDiscoveryService {
      * "Placeholder github Source User" → null (не поддаётся сопоставлению по имени).
      */
     private Long matchByName(String placeholderName,
-                              List<TrackedUser> trackedUsers) {
+                             List<TrackedUser> trackedUsers) {
         if (placeholderName == null || !placeholderName.startsWith(PLACEHOLDER_NAME_PREFIX)) {
             return null;
         }

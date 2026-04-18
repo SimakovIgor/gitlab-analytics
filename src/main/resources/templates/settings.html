@@ -388,7 +388,8 @@
                     </select>
                     <div class="search-input-wrap" style="flex:1">
                         <span class="search-input-icon">
-                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21"
+                                                                                                                                                                    y2="16.65"/></svg>
                         </span>
                         <input autocomplete="off" class="form-input search-input-with-icon" id="link-gl-search"
                                oninput="debounceLinkSearch(this.value)"
@@ -1044,7 +1045,8 @@
             </div>`;
             });
             updateAddBtn();
-            api('POST', '/settings/snapshots/backfill').catch(() => {});
+            api('POST', '/settings/snapshots/backfill').catch(() => {
+            });
         } catch (e) {
             alert('Ошибка добавления: ' + e.message);
         }
@@ -1236,7 +1238,8 @@
                 chip.innerHTML = '<span>@' + escHtml(linkSelectedUser.username) + '</span>';
                 aliasCell.appendChild(chip);
             }
-            api('POST', '/settings/snapshots/backfill').catch(() => {});
+            api('POST', '/settings/snapshots/backfill').catch(() => {
+            });
         } catch (e) {
             showError('link-gitlab-error', e.message);
         }
