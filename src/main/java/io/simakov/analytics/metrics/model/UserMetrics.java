@@ -50,6 +50,17 @@ public class UserMetrics {
     private final double mrMergedPerActiveDay;
     private final double commentsPerReviewedMr;
 
+    /**
+     * Сотрудник считается неактивным, если все ключевые метрики за период равны нулю.
+     */
+    public boolean isInactive() {
+        return mrMergedCount == 0
+            && commitsInMrCount == 0
+            && activeDaysCount == 0
+            && mrsReviewedCount == 0
+            && approvalsGivenCount == 0;
+    }
+
     public Map<String, Object> toMetricsMap() {
         Map<String, Object> map = new HashMap<>();
         // Delivery

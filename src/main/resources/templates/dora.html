@@ -21,7 +21,6 @@
 
     <nav class="topbar-nav">
         <a class="nav-link" href="/report">Отчёт</a>
-        <a class="nav-link" href="/history">История</a>
         <a class="nav-link nav-link-active" href="/dora">DORA</a>
         <a class="nav-link" href="/settings">Настройки</a>
     </nav>
@@ -52,37 +51,65 @@
     <form action="/dora" class="filter-form" method="get">
         <div class="filter-group">
             <label class="filter-label">Период</label>
-            <div class="period-buttons">
-                <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="submit" value="90">
-                    90 дней
-                </button>
-                <button name="days" th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="submit" value="180">
-                    180 дней
-                </button>
-                <button name="days" th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="submit" value="360">
-                    360 дней
-                </button>
+            <div class="period-row">
+                <div class="period-buttons">
+                    <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="submit" value="90">
+                        90 дней
+                    </button>
+                    <button name="days" th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="submit" value="180">
+                        180 дней
+                    </button>
+                    <button name="days" th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="submit" value="360">
+                        360 дней
+                    </button>
+                </div>
+                <span th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
             </div>
         </div>
-        <div class="filter-group">
-            <label class="filter-label">Репозитории</label>
-            <div class="filter-checkboxes">
-                <th:block th:each="project : ${projects}">
-                    <label class="filter-checkbox-label">
-                        <input name="projectIds" th:checked="${selectedProjectIds.contains(project.id)}"
-                               th:value="${project.id}" type="checkbox">
-                        <span th:text="${project.name}">repo</span>
-                    </label>
-                </th:block>
-            </div>
-        </div>
+
+        <div th:replace="~{fragments/filters :: repoFilter(${projects}, ${selectedProjectIds})}"></div>
+
         <!-- Сохраняем days при смене репозиториев -->
         <input id="daysHidden" name="days" th:value="${selectedDays}" type="hidden">
-        <button class="btn-primary" type="submit">Применить</button>
     </form>
+
+    <!-- Описание метрик -->
+    <details class="metrics-legend">
+        <summary>Что означают эти метрики?</summary>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <span class="legend-name">Lead Time for Changes</span>
+                <span class="legend-desc">Время от открытия MR до мержа в основную ветку. Медиана &lt; 1 ч — Elite, &lt; 1 дня — High, &lt; 1 недели — Medium.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Медиана (P50)</span>
+                <span class="legend-desc">Половина MR закрывается быстрее этого времени. Более стабильный показатель, чем среднее — не искажается аномально долгими MR.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">P75</span>
+                <span class="legend-desc">75% MR закрывается быстрее этого времени. Помогает увидеть «медленный хвост» — MR, которые застревают на ревью.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">P95</span>
+                <span class="legend-desc">95% MR быстрее. Выявляет самые проблемные MR, на которые стоит обратить особое внимание.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Deployment Frequency</span>
+                <span class="legend-desc">Как часто команда деплоит в продакшн. Требует подключения CI/CD пайплайнов GitLab. Планируется к добавлению.</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Change Failure Rate</span>
+                <span class="legend-desc">Процент деплоев, приводящих к инцидентам. Требует интеграции с системой трекинга инцидентов (Jira, PagerDuty).</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-name">Mean Time to Restore (MTTR)</span>
+                <span class="legend-desc">Среднее время восстановления после инцидента. Требует данных о времени открытия и закрытия инцидентов.</span>
+            </div>
+        </div>
+    </details>
 
     <!-- ── Lead Time ─────────────────────────────────────────────────────────── -->
 
@@ -137,41 +164,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Описание метрик -->
-    <details class="metrics-legend">
-        <summary>Что означают эти метрики?</summary>
-        <div class="legend-grid">
-            <div class="legend-item">
-                <span class="legend-name">Lead Time for Changes</span>
-                <span class="legend-desc">Время от открытия MR до мержа в основную ветку. Медиана &lt; 1 ч — Elite, &lt; 1 дня — High, &lt; 1 недели — Medium.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Медиана (P50)</span>
-                <span class="legend-desc">Половина MR закрывается быстрее этого времени. Более стабильный показатель, чем среднее — не искажается аномально долгими MR.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">P75</span>
-                <span class="legend-desc">75% MR закрывается быстрее этого времени. Помогает увидеть «медленный хвост» — MR, которые застревают на ревью.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">P95</span>
-                <span class="legend-desc">95% MR быстрее. Выявляет самые проблемные MR, на которые стоит обратить особое внимание.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Deployment Frequency</span>
-                <span class="legend-desc">Как часто команда деплоит в продакшн. Требует подключения CI/CD пайплайнов GitLab. Планируется к добавлению.</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Change Failure Rate</span>
-                <span class="legend-desc">Процент деплоев, приводящих к инцидентам. Требует интеграции с системой трекинга инцидентов (Jira, PagerDuty).</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-name">Mean Time to Restore (MTTR)</span>
-                <span class="legend-desc">Среднее время восстановления после инцидента. Требует данных о времени открытия и закрытия инцидентов.</span>
-            </div>
-        </div>
-    </details>
 
     <!-- ── Deployment Frequency (TBD) ────────────────────────────────────────── -->
 

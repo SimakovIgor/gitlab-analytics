@@ -16,6 +16,7 @@ import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.dto.ReportPageData;
+import io.simakov.analytics.web.dto.ReportSummary;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -62,7 +63,7 @@ public class ReportViewService {
                 sources, hasSources, hasProjects, hasUsers, true, hasSyncCompleted,
                 activeJobIds, usersWithAliases, allProjects,
                 List.of(), period, showInactive,
-                null, null, List.of(), Map.of()
+                null, null, List.of(), Map.of(), null
             );
         }
 
@@ -82,6 +83,7 @@ public class ReportViewService {
         List<Long> userIds = filteredUsers.stream().map(TrackedUser::getId).toList();
         List<UserMetrics> metrics = List.of();
         Map<Long, Map<String, Number>> deltas = Map.of();
+        ReportSummary summary = null;
 
         if (!userIds.isEmpty() && !selectedProjectIds.isEmpty()) {
             Map<Long, UserMetrics> current = metricCalculationService.calculate(
@@ -92,17 +94,19 @@ public class ReportViewService {
             metrics = allUsers.stream()
                 .map(u -> current.get(u.getId()))
                 .filter(Objects::nonNull)
+                .filter(m -> showInactive || !m.isInactive())
                 .sorted(Comparator.comparingInt(UserMetrics::getMrMergedCount).reversed())
                 .toList();
 
             deltas = buildDeltas(metrics, previous);
+            summary = buildSummary(metrics, previous, allUsers.size());
         }
 
         return new ReportPageData(
             sources, hasSources, hasProjects, hasUsers, false, hasSyncCompleted,
             activeJobIds, usersWithAliases, allProjects,
             selectedProjectIds, period, showInactive,
-            dateFrom, dateTo, metrics, deltas
+            dateFrom, dateTo, metrics, deltas, summary
         );
     }
 
@@ -142,6 +146,47 @@ public class ReportViewService {
             result.put(m.getTrackedUserId(), d);
         }
         return result;
+    }
+
+    private ReportSummary buildSummary(List<UserMetrics> metrics,
+                                       Map<Long, UserMetrics> previous,
+                                       int totalDevs) {
+        int totalMrMerged = metrics.stream().mapToInt(UserMetrics::getMrMergedCount).sum();
+        int activeDevs = (int) metrics.stream().filter(m -> !m.isInactive()).count();
+        int totalComments = metrics.stream().mapToInt(UserMetrics::getReviewCommentsWrittenCount).sum();
+        Double medianTtm = computeMedianHours(metrics);
+
+        List<UserMetrics> prevList = List.copyOf(previous.values());
+        int prevMrMerged = prevList.stream().mapToInt(UserMetrics::getMrMergedCount).sum();
+        int prevComments = prevList.stream().mapToInt(UserMetrics::getReviewCommentsWrittenCount).sum();
+        Double prevMedian = computeMedianHours(prevList);
+
+        Integer deltaMr = previous.isEmpty() ? null : totalMrMerged - prevMrMerged;
+        Integer deltaComments = previous.isEmpty() ? null : totalComments - prevComments;
+        Double deltaMedian = (medianTtm != null && prevMedian != null) ? medianTtm - prevMedian : null;
+
+        return new ReportSummary(
+            totalMrMerged, deltaMr,
+            activeDevs, totalDevs,
+            medianTtm, deltaMedian,
+            totalComments, deltaComments
+        );
+    }
+
+    private Double computeMedianHours(List<UserMetrics> list) {
+        List<Double> values = list.stream()
+            .map(UserMetrics::getAvgTimeToMergeMinutes)
+            .filter(Objects::nonNull)
+            .map(v -> v / 60.0)
+            .sorted()
+            .toList();
+        if (values.isEmpty()) {
+            return null;
+        }
+        int mid = values.size() / 2;
+        return values.size() % 2 == 0
+            ? (values.get(mid - 1) + values.get(mid)) / 2.0
+            : values.get(mid);
     }
 
     private int parsePeriodDays(String period) {

@@ -33,6 +33,8 @@ public class DoraController {
         model.addAttribute("projects", doraService.getAllProjects());
         model.addAttribute("selectedProjectIds", projectIds != null ? projectIds : List.of());
         model.addAttribute("selectedDays", days);
+        model.addAttribute("dateFrom", java.time.LocalDate.now().minusDays(days));
+        model.addAttribute("dateTo", java.time.LocalDate.now());
         model.addAttribute("totalMrs", leadTime.get("totalMrs"));
         model.addAttribute("medianHours", leadTime.get("medianHours"));
         model.addAttribute("p75Hours", leadTime.get("p75Hours"));

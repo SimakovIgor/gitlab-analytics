@@ -47,44 +47,47 @@
     <div class="page-title">Динамика команды</div>
     <div class="page-subtitle">Сравнение показателей всех сотрудников за выбранный период</div>
 
-    <!-- Фильтры -->
+    <!-- Фильтры: Период + Репозитории -->
     <form action="/history" class="filter-form" method="get">
 
         <div class="filter-group">
             <label class="filter-label">Период</label>
-            <div class="period-buttons">
-                <button name="period" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="LAST_7_DAYS">
-                    7 дней
-                </button>
-                <button name="period" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="LAST_30_DAYS">
-                    30 дней
-                </button>
-                <button name="period" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="LAST_90_DAYS">
-                    90 дней
-                </button>
-                <button name="period" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="LAST_180_DAYS">
-                    180 дней
-                </button>
-                <button name="period" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
-                        value="LAST_360_DAYS">
-                    360 дней
-                </button>
+            <div class="period-row">
+                <div class="period-buttons">
+                    <button name="period" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                            value="LAST_7_DAYS">
+                        7 дней
+                    </button>
+                    <button name="period" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                            value="LAST_30_DAYS">
+                        30 дней
+                    </button>
+                    <button name="period" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                            value="LAST_90_DAYS">
+                        90 дней
+                    </button>
+                    <button name="period" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                            value="LAST_180_DAYS">
+                        180 дней
+                    </button>
+                    <button name="period" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'" type="submit"
+                            value="LAST_360_DAYS">
+                        360 дней
+                    </button>
+                </div>
+                <span th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
             </div>
         </div>
 
-        <div class="filter-group">
-            <label class="filter-label">Диапазон</label>
-            <span class="period-info">
-                <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
-                &nbsp;→&nbsp;
-                <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
-            </span>
-        </div>
+        <div th:replace="~{fragments/filters :: repoFilter(${allProjects}, ${selectedProjectIds})}"></div>
 
+        <input name="metric" th:value="${selectedMetric}" type="hidden">
+        <input name="showInactive" th:value="${showInactive}" type="hidden">
+
+    </form>
+
+    <!-- Метрика + неактивные -->
+    <form action="/history" class="filter-form" method="get">
         <div class="filter-group">
             <label class="filter-label" for="metricSelect">Метрика</label>
             <select class="metric-select" id="metricSelect" name="metric" onchange="this.form.submit()">
@@ -95,10 +98,18 @@
                 </option>
             </select>
         </div>
-
-        <!-- Сохраняем period при смене метрики через select -->
+        <div class="filter-group">
+            <label class="filter-label">Отображение</label>
+            <label class="filter-checkbox-label">
+                <input name="showInactive" onchange="this.form.submit()"
+                       th:checked="${showInactive}" type="checkbox" value="true">
+                <span>Показывать неактивных</span>
+            </label>
+        </div>
         <input name="period" th:value="${selectedPeriod}" type="hidden">
-
+        <th:block th:each="id : ${selectedProjectIds}">
+            <input name="projectIds" th:value="${id}" type="hidden">
+        </th:block>
     </form>
 
     <!-- Примечание о точности данных -->

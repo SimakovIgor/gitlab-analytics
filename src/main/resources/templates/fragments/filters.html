@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+    Отображение выбранного диапазона дат под кнопками периода.
+    Использование: <span th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
+-->
+<span th:fragment="dateRange(dateFrom, dateTo)" class="period-info">
+    <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
+    &nbsp;→&nbsp;
+    <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
+</span>
+
+<!--
+    Фильтр по репозиториям для страниц с form-submit (История, DORA).
+    Использование: <div th:replace="~{fragments/filters :: repoFilter(${allProjects}, ${selectedProjectIds})}"></div>
+-->
+<div th:fragment="repoFilter(projects, selectedIds)"
+     class="filter-group"
+     th:if="${projects != null and !projects.isEmpty()}">
+    <label class="filter-label">Репозитории</label>
+    <div class="filter-checkboxes">
+        <th:block th:each="project : ${projects}">
+            <label class="filter-checkbox-label">
+                <input name="projectIds"
+                       onchange="this.form.submit()"
+                       th:checked="${selectedIds != null and selectedIds.contains(project.id)}"
+                       th:value="${project.id}"
+                       type="checkbox">
+                <span th:text="${project.name}">repo</span>
+            </label>
+        </th:block>
+    </div>
+</div>
+
+</body>
+</html>

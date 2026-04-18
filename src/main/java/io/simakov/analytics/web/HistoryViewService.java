@@ -4,9 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.domain.model.MetricSnapshot;
+import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.PeriodType;
+import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.MetricSnapshotRepository;
+import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.util.DateTimeUtils;
@@ -20,8 +25,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -38,11 +45,16 @@ public class HistoryViewService {
     private static final Set<String> MINUTES_METRICS = Metric.minuteKeys();
 
     private final TrackedUserRepository trackedUserRepository;
+    private final TrackedProjectRepository trackedProjectRepository;
+    private final TrackedUserAliasRepository trackedUserAliasRepository;
+    private final MergeRequestRepository mergeRequestRepository;
     private final MetricSnapshotRepository metricSnapshotRepository;
     private final ObjectMapper objectMapper;
 
     public HistoryPageData buildHistoryPage(String metric,
-                                            String period) {
+                                            String period,
+                                            List<Long> requestedProjectIds,
+                                            boolean showInactive) {
         PeriodType periodType;
         try {
             periodType = PeriodType.valueOf(period);
@@ -50,8 +62,23 @@ public class HistoryViewService {
             periodType = PeriodType.LAST_360_DAYS;
         }
 
+        List<TrackedProject> allProjects = trackedProjectRepository.findAll();
+        List<Long> selectedProjectIds = (requestedProjectIds == null || requestedProjectIds.isEmpty())
+            ? List.of()
+            : requestedProjectIds;
+
         List<TrackedUser> users = trackedUserRepository.findAll()
             .stream().filter(TrackedUser::isEnabled).toList();
+
+        if (!selectedProjectIds.isEmpty()) {
+            List<Long> gitlabUserIds = mergeRequestRepository
+                .findDistinctAuthorIdsByTrackedProjectIdIn(selectedProjectIds);
+            Set<Long> trackedUserIds = trackedUserAliasRepository
+                .findByGitlabUserIdIn(gitlabUserIds)
+                .stream().map(TrackedUserAlias::getTrackedUserId)
+                .collect(Collectors.toSet());
+            users = users.stream().filter(u -> trackedUserIds.contains(u.getId())).toList();
+        }
 
         LocalDate dateTo = DateTimeUtils.currentDateUtc();
         LocalDate dateFrom = dateTo.minusDays(periodType.toDays());
@@ -60,7 +87,7 @@ public class HistoryViewService {
         if (!users.isEmpty()) {
             List<Long> userIds = users.stream().map(TrackedUser::getId).toList();
             List<MetricSnapshot> snapshots = metricSnapshotRepository.findHistory(userIds, dateFrom, dateTo);
-            chartJson = buildChartJson(snapshots, users, metric);
+            chartJson = buildChartJson(snapshots, users, metric, showInactive);
         }
 
         return new HistoryPageData(
@@ -70,7 +97,10 @@ public class HistoryViewService {
             METRIC_OPTIONS.getOrDefault(metric, metric),
             METRIC_OPTIONS,
             dateFrom,
-            dateTo
+            dateTo,
+            allProjects,
+            selectedProjectIds,
+            showInactive
         );
     }
 
@@ -82,7 +112,8 @@ public class HistoryViewService {
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     private String buildChartJson(List<MetricSnapshot> snapshots,
                                   List<TrackedUser> users,
-                                  String metric) {
+                                  String metric,
+                                  boolean showInactive) {
         // userId → (date → value)
         Map<Long, Map<String, Object>> byUser = new LinkedHashMap<>();
         for (TrackedUser u : users) {
@@ -106,16 +137,24 @@ public class HistoryViewService {
             }
         }
 
+        // Скрываем пользователей без данных за период, если toggle выключен
+        List<TrackedUser> visibleUsers = showInactive
+            ? users
+            : users.stream()
+                .filter(u -> byUser.getOrDefault(u.getId(), Map.of())
+                    .values().stream().anyMatch(Objects::nonNull))
+                .toList();
+
         // Все уникальные даты (отсортированы через TreeMap)
-        List<String> labels = byUser.values().stream()
-            .flatMap(m -> m.keySet().stream())
+        List<String> labels = visibleUsers.stream()
+            .flatMap(u -> byUser.getOrDefault(u.getId(), Map.of()).keySet().stream())
             .distinct()
             .sorted()
             .toList();
 
         List<Map<String, Object>> datasets = new ArrayList<>();
         int colorIdx = 0;
-        for (TrackedUser user : users) {
+        for (TrackedUser user : visibleUsers) {
             Map<String, Object> dateValues = byUser.get(user.getId());
             List<Object> data = labels.stream()
                 .map(date -> dateValues.getOrDefault(date, null))
@@ -131,9 +170,9 @@ public class HistoryViewService {
             dataset.put("backgroundColor", color + "22");
             dataset.put("tension", 0.3);
             dataset.put("spanGaps", true);
-            dataset.put("borderWidth", 2.5);
-            dataset.put("pointRadius", 3);
-            dataset.put("pointHoverRadius", 6);
+            dataset.put("borderWidth", 1.5);
+            dataset.put("pointRadius", 2);
+            dataset.put("pointHoverRadius", 5);
             datasets.add(dataset);
         }
 

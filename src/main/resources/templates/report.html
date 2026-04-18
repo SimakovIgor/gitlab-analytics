@@ -22,7 +22,6 @@
 
     <nav class="topbar-nav">
         <a class="nav-link nav-link-active" href="/report">Отчёт</a>
-        <a class="nav-link" href="/history">История</a>
         <a class="nav-link" href="/dora">DORA</a>
         <a class="nav-link" href="/settings">Настройки</a>
     </nav>
@@ -32,7 +31,8 @@
              th:alt="${currentUser.name}"
              th:if="${currentUser.avatarUrl != ''}"
              th:src="${currentUser.avatarUrl}">
-        <div class="avatar-placeholder" th:text="${#strings.substring(currentUser.name, 0, 1)}"
+        <div class="avatar-placeholder"
+             th:text="${#strings.isEmpty(currentUser.name) ? '?' : #strings.substring(currentUser.name, 0, 1)}"
              th:unless="${currentUser.avatarUrl != ''}">?
         </div>
         <span class="topbar-username" th:text="${currentUser.name}">Пользователь</span>
@@ -233,14 +233,8 @@
                 <div class="sidebar-item"
                      th:each="project : ${allProjects}"
                      th:id="'sidebar-repo-' + ${project.id}">
-                    <input class="sidebar-repo-check"
-                           onchange="applyFilters()"
-                           th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
-                           th:id="'sr-' + ${project.id}"
-                           th:value="${project.id}"
-                           type="checkbox">
                     <span th:class="${project.enabled} ? 'sidebar-status-dot dot-active' : 'sidebar-status-dot dot-inactive'"></span>
-                    <label class="sidebar-item-name" th:for="'sr-' + ${project.id}" th:text="${project.name}">repo</label>
+                    <span class="sidebar-item-name" th:text="${project.name}">repo</span>
                     <button class="sidebar-icon-btn" onclick="sidebarSync(this.dataset.id, this.dataset.name)"
                             th:data-id="${project.id}" th:data-name="${project.name}"
                             title="Синхронизировать">⟳
@@ -288,7 +282,6 @@
 
         <!-- Подвал боковой панели -->
         <div class="sidebar-footer">
-            <a class="sidebar-footer-link" href="/history">↗ История метрик</a>
             <a class="sidebar-footer-link" href="/settings">⚙ Источники GitLab · Логи синков</a>
         </div>
 
@@ -297,40 +290,52 @@
     <!-- ── Основная область ────────────────────────────────── -->
     <main class="report-main">
 
+        <div class="page-title">Отчёт по команде</div>
+        <div class="page-subtitle">Метрики активности разработчиков за выбранный период</div>
+
         <!-- Период -->
         <div class="filter-form">
             <div class="filter-group">
                 <label class="filter-label">Период</label>
-                <div class="period-buttons">
-                    <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="button">
-                        7 дней
-                    </button>
-                    <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="button">
-                        30 дней
-                    </button>
-                    <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="button">
-                        90 дней
-                    </button>
-                    <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="button">
-                        180 дней
-                    </button>
-                    <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="button">
-                        360 дней
-                    </button>
+                <div class="period-row">
+                    <div class="period-buttons">
+                        <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="button">
+                            7 дней
+                        </button>
+                        <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="button">
+                            30 дней
+                        </button>
+                        <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="button">
+                            90 дней
+                        </button>
+                        <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="button">
+                            180 дней
+                        </button>
+                        <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="button">
+                            360 дней
+                        </button>
+                    </div>
+                    <span th:if="${dateFrom != null}"
+                          th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
                 </div>
             </div>
-            <div class="filter-group">
-                <label class="filter-label">Диапазон</label>
-                <span class="period-info" style="margin:0">
-                    <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
-                    &nbsp;→&nbsp;
-                    <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
-                </span>
+            <div class="filter-group" th:if="${!allProjects.isEmpty()}">
+                <label class="filter-label">Репозитории</label>
+                <div class="filter-checkboxes">
+                    <th:block th:each="project : ${allProjects}">
+                        <label class="filter-checkbox-label">
+                            <input class="filter-project-check" onchange="applyFilters()"
+                                   th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
+                                   th:value="${project.id}" type="checkbox">
+                            <span th:text="${project.name}">repo</span>
+                        </label>
+                    </th:block>
+                </div>
             </div>
         </div>
 
@@ -345,68 +350,69 @@
             </ul>
         </details>
 
-        <!-- Описание метрик -->
-        <details class="metrics-legend">
-            <summary>Что означают колонки?</summary>
-            <div class="legend-grid">
-                <div class="legend-item">
-                    <span class="legend-name">MR смерджено</span>
-                    <span class="legend-desc">Число MR, слитых в выбранном периоде. Основной показатель доставки.</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-name">+ строк / − строк</span>
-                    <span class="legend-desc">Объём изменений кода в смерджённых MR.</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-name">Коммиты</span>
-                    <span class="legend-desc">Число коммитов в MR, авторство которых принадлежит сотруднику.</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-name">Комментарии</span>
-                    <span class="legend-desc">Комментарии, оставленные при ревью чужих MR.</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-name">MR отревьюено</span>
-                    <span class="legend-desc">Число чужих MR, в которых сотрудник оставил комментарий или аппрув.</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-name">Аппрувы</span>
-                    <span class="legend-desc">Число выданных аппрувов.</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-name">Активных дней</span>
-                    <span class="legend-desc">Дней с хотя бы одним коммитом, комментарием или аппрувом.</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-name">До мержа</span>
-                    <span class="legend-desc">Среднее время от открытия MR до мержа. Чем меньше — тем лучше.</span>
+        <!-- Сводка -->
+        <div class="summary-grid" th:if="${summary != null}">
+            <div class="summary-card">
+                <div class="summary-label">MR смерджено</div>
+                <div class="summary-value" th:text="${summary.totalMrMerged()}">0</div>
+                <div class="summary-delta" th:if="${summary.deltaMrMerged() != null}"
+                     th:classappend="${summary.deltaMrMerged() > 0 ? 'delta-pos' : (summary.deltaMrMerged() < 0 ? 'delta-neg' : 'delta-zero')}"
+                     th:text="${summary.deltaMrMerged() > 0 ? '+' + summary.deltaMrMerged() : summary.deltaMrMerged()}"></div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Активных разработчиков</div>
+                <div class="summary-value">
+                    <span th:text="${summary.activeDevs()}">0</span><span
+                        class="summary-of" th:text="' / ' + ${summary.totalDevs()}"></span>
                 </div>
             </div>
-        </details>
+            <div class="summary-card">
+                <div class="summary-label">Медиана до мержа</div>
+                <div class="summary-value"
+                     th:text="${summary.medianTimeToMergeHours() != null ? #numbers.formatDecimal(summary.medianTimeToMergeHours(), 1, 1) + ' ч' : '—'}">—
+                </div>
+                <div class="summary-delta" th:if="${summary.deltaMedianTimeToMergeHours() != null}"
+                     th:classappend="${summary.deltaMedianTimeToMergeHours() < 0 ? 'delta-pos' : (summary.deltaMedianTimeToMergeHours() > 0 ? 'delta-neg' : 'delta-zero')}"
+                     th:text="${summary.deltaMedianTimeToMergeHours() > 0
+                         ? '+' + #numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1) + ' ч'
+                         : #numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1) + ' ч'}"></div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Комментарии к ревью</div>
+                <div class="summary-value" th:text="${summary.totalComments()}">0</div>
+                <div class="summary-delta" th:if="${summary.deltaComments() != null}"
+                     th:classappend="${summary.deltaComments() > 0 ? 'delta-pos' : (summary.deltaComments() < 0 ? 'delta-neg' : 'delta-zero')}"
+                     th:text="${summary.deltaComments() > 0 ? '+' + summary.deltaComments() : summary.deltaComments()}"></div>
+            </div>
+        </div>
 
         <!-- Таблица -->
         <div class="empty-state" th:if="${metrics == null or metrics.isEmpty()}">
             Нет данных за выбранный период
         </div>
 
+        <div class="delta-baseline-note" th:unless="${metrics == null or metrics.isEmpty()}">
+            Δ — изменение к предыдущему периоду
+        </div>
         <div class="table-scroll" th:unless="${metrics == null or metrics.isEmpty()}">
             <table class="data-table report-table">
                 <thead>
                 <tr>
                     <th>Сотрудник</th>
-                    <th title="MR смерджено за период">MR смерджено</th>
-                    <th title="Строк добавлено">+ строк</th>
-                    <th title="Строк удалено">− строк</th>
-                    <th title="Коммитов в MR">Коммиты</th>
-                    <th title="Комментарии оставлены при ревью чужих MR">Комментарии</th>
-                    <th title="Количество чужих MR, в которых участвовал в ревью">MR отревьюено</th>
-                    <th title="Аппрувов выдано">Аппрувы</th>
-                    <th title="Дней с хотя бы одним действием">Активных дней</th>
-                    <th title="Среднее время от создания MR до мержа">До мержа</th>
+                    <th class="th-hint" data-tooltip="Число MR, слитых в выбранном периоде. Основной показатель доставки.">MR смерджено</th>
+                    <th class="th-hint" data-tooltip="Строк добавлено в смерджённых MR.">+ строк</th>
+                    <th class="th-hint" data-tooltip="Строк удалено в смерджённых MR.">− строк</th>
+                    <th class="th-hint" data-tooltip="Число коммитов в MR, авторство которых принадлежит сотруднику.">Коммиты</th>
+                    <th class="th-hint" data-tooltip="Комментарии, оставленные при ревью чужих MR.">Комментарии</th>
+                    <th class="th-hint" data-tooltip="Число чужих MR, в которых сотрудник оставил комментарий или аппрув.">MR отревьюено</th>
+                    <th class="th-hint" data-tooltip="Число выданных аппрувов.">Аппрувы</th>
+                    <th class="th-hint" data-tooltip="Дней с хотя бы одним коммитом, комментарием или аппрувом.">Активных дней</th>
+                    <th class="th-hint" data-tooltip="Среднее время от открытия MR до мержа. Чем меньше — тем лучше.">До мержа</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="m : ${metrics}" th:with="d=${deltas[m.trackedUserId]}">
+                <tr class="report-row" th:data-user="${m.displayName}"
+                    th:each="m : ${metrics}" th:with="d=${deltas[m.trackedUserId]}">
                     <td>
                         <div class="user-cell">
                             <div class="user-avatar"
@@ -426,25 +432,22 @@
                     <td class="num-cell positive">
                         <div class="metric-cell">
                             <span th:text="${m.linesAdded}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['linesAdded']}"></span>
+                            <span class="delta delta-neutral" th:if="${d != null and d['linesAdded'] != 0}"
+                                  th:text="${d['linesAdded'] > 0 ? '+' + d['linesAdded'] : d['linesAdded']}"></span>
                         </div>
                     </td>
                     <td class="num-cell negative">
                         <div class="metric-cell">
                             <span th:text="${m.linesDeleted}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['linesDeleted']}"></span>
+                            <span class="delta delta-neutral" th:if="${d != null and d['linesDeleted'] != 0}"
+                                  th:text="${d['linesDeleted'] > 0 ? '+' + d['linesDeleted'] : d['linesDeleted']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
                         <div class="metric-cell">
                             <span th:text="${m.commitsInMrCount}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['commits']}"></span>
+                            <span class="delta delta-neutral" th:if="${d != null and d['commits'] != 0}"
+                                  th:text="${d['commits'] > 0 ? '+' + d['commits'] : d['commits']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
@@ -496,6 +499,23 @@
                 </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- График динамики -->
+        <div class="chart-card" th:unless="${metrics == null or metrics.isEmpty()}">
+            <div class="chart-card-header">
+                <div class="chart-title">Динамика</div>
+                <select class="metric-select" id="metricSelect">
+                    <option th:each="entry : ${metricOptions}"
+                            th:selected="${entry.key == selectedMetric}"
+                            th:text="${entry.value}"
+                            th:value="${entry.key}">
+                    </option>
+                </select>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="historyChart"></canvas>
+            </div>
         </div>
 
     </main>
@@ -638,6 +658,7 @@
     const ONBOARDING_MODE = /*[[${onboardingMode}]]*/ false;
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     const SELECTED_PERIOD = /*[[${selectedPeriod}]]*/ 'LAST_30_DAYS';
+    const SELECTED_METRIC = /*[[${selectedMetric}]]*/ 'mr_merged_count';
     const SHOW_INACTIVE = /*[[${showInactive}]]*/ false;
 
     const OB_STATE = {
@@ -652,24 +673,35 @@
     // ── Фильтрация отчёта ─────────────────────────────────────────────────────
 
     function getCurrentProjectIds() {
-        return [...document.querySelectorAll('.sidebar-repo-check:checked')].map(cb => cb.value);
+        return [...document.querySelectorAll('.filter-project-check:checked')].map(cb => cb.value);
+    }
+
+    function getMetric() {
+        return document.getElementById('metricSelect')?.value || SELECTED_METRIC;
     }
 
     function applyFilters() {
         const projectIds = getCurrentProjectIds();
         const showInactive = document.getElementById('show-inactive-cb')?.checked || false;
-        navigateReport(SELECTED_PERIOD, projectIds, showInactive);
+        navigateReport(SELECTED_PERIOD, projectIds, showInactive, getMetric());
     }
 
     function applyFiltersWithPeriod(period) {
         const projectIds = getCurrentProjectIds();
         const showInactive = document.getElementById('show-inactive-cb')?.checked || false;
-        navigateReport(period, projectIds, showInactive);
+        navigateReport(period, projectIds, showInactive, getMetric());
     }
 
-    function navigateReport(period, projectIds, showInactive) {
+    function applyFiltersWithMetric(metric) {
+        const projectIds = getCurrentProjectIds();
+        const showInactive = document.getElementById('show-inactive-cb')?.checked || false;
+        navigateReport(SELECTED_PERIOD, projectIds, showInactive, metric);
+    }
+
+    function navigateReport(period, projectIds, showInactive, metric) {
         const params = new URLSearchParams();
         params.set('period', period);
+        params.set('metric', metric || SELECTED_METRIC);
         projectIds.forEach(id => params.append('projectIds', id));
         if (showInactive) {
             params.set('showInactive', 'true');
@@ -1438,6 +1470,214 @@
     });
 
     /*]]>*/
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const INITIAL_CHART_DATA = JSON.parse([[${chartData}]]);
+    /*]]>*/
+</script>
+<script>
+(function () {
+    const TOP_N = 5;
+    let _chart = null;
+    let _origColors = [];
+
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+    }
+
+    function prepareDatasets(rawData) {
+        const active = rawData.datasets.filter(ds =>
+            ds.data.some(v => v != null && v !== 0)
+        );
+        active.sort((a, b) =>
+            b.data.reduce((s, v) => s + (v || 0), 0) -
+            a.data.reduce((s, v) => s + (v || 0), 0)
+        );
+        active.forEach((ds, i) => { ds.hidden = i >= TOP_N; });
+        rawData.datasets = active;
+        return active.map(ds => ds.borderColor);
+    }
+
+    function restoreAll() {
+        if (!_chart) return;
+        _chart.data.datasets.forEach((ds, i) => {
+            ds.borderColor = _origColors[i];
+            ds.borderWidth = 1.5;
+        });
+        _chart.update('none');
+    }
+
+    window.rebuildChart = function (rawData) {
+        const wrap = document.querySelector('.chart-wrap');
+        if (!wrap) return;
+        if (_chart) { _chart.destroy(); _chart = null; }
+
+        // Пересоздаём canvas чтобы очистить старые обработчики
+        const canvas = document.createElement('canvas');
+        canvas.id = 'historyChart';
+        wrap.innerHTML = '';
+        wrap.appendChild(canvas);
+
+        if (!rawData || !rawData.labels || rawData.labels.length === 0) return;
+        _origColors = prepareDatasets(rawData);
+        if (rawData.datasets.length === 0) return;
+
+        _chart = new Chart(canvas, {
+            type: 'line',
+            data: rawData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {boxWidth: 10, padding: 14, font: {size: 11}, color: '#6c737a'},
+                        onHover(evt, item, legend) {
+                            const idx = item.datasetIndex;
+                            legend.chart.data.datasets.forEach((ds, i) => {
+                                ds.borderColor = i === idx ? _origColors[i] : hexToRgba(_origColors[i], 0.15);
+                                ds.borderWidth = i === idx ? 2.5 : 1;
+                            });
+                            legend.chart.update('none');
+                        },
+                        onLeave() { restoreAll(); }
+                    },
+                    tooltip: {padding: 10, bodySpacing: 4}
+                },
+                scales: {
+                    x: {grid: {color: 'rgba(0,0,0,0.04)'}, ticks: {font: {size: 11}, maxRotation: 45}},
+                    y: {beginAtZero: true, grid: {color: 'rgba(0,0,0,0.04)'}, ticks: {font: {size: 11}}}
+                }
+            }
+        });
+
+        // Hover на линиях
+        let lastIdx = null;
+        canvas.addEventListener('mousemove', evt => {
+            if (!_chart) return;
+            const pts = _chart.getElementsAtEventForMode(evt, 'nearest', {intersect: true}, true);
+            const idx = pts.length > 0 ? pts[0].datasetIndex : null;
+            if (idx === lastIdx) return;
+            lastIdx = idx;
+            if (idx === null) {
+                restoreAll();
+            } else {
+                _chart.data.datasets.forEach((ds, i) => {
+                    ds.borderColor = i === idx ? _origColors[i] : hexToRgba(_origColors[i], 0.15);
+                    ds.borderWidth = i === idx ? 2.5 : 1;
+                });
+                _chart.update('none');
+            }
+        });
+        canvas.addEventListener('mouseleave', () => { lastIdx = null; restoreAll(); });
+    };
+
+    // Первичная инициализация
+    rebuildChart(INITIAL_CHART_DATA);
+
+    // Клик по строке таблицы — фокус на пользователе
+    document.querySelectorAll('.report-table tbody tr[data-user]').forEach(row => {
+        row.addEventListener('click', function () {
+            if (!_chart) return;
+            const name = this.dataset.user;
+            const wasFocused = this.classList.contains('row-focused');
+            document.querySelectorAll('.report-table tbody tr').forEach(r => r.classList.remove('row-focused'));
+            if (wasFocused) {
+                _chart.data.datasets.forEach((ds, i) => {
+                    ds.hidden = i >= TOP_N;
+                    ds.borderColor = _origColors[i];
+                    ds.borderWidth = 1.5;
+                });
+            } else {
+                this.classList.add('row-focused');
+                _chart.data.datasets.forEach((ds, i) => {
+                    ds.hidden = ds.label !== name;
+                    ds.borderColor = _origColors[i];
+                    ds.borderWidth = ds.label === name ? 2.5 : 1.5;
+                });
+            }
+            _chart.update();
+        });
+    });
+})();
+</script>
+
+<script>
+(function initTableEnhancements() {
+    const table = document.querySelector('.report-table');
+    if (!table) return;
+
+    // ── Смена метрики — обновляем только график ───────────────────────────────
+
+    const metricSelect = document.getElementById('metricSelect');
+    if (metricSelect) {
+        metricSelect.addEventListener('change', async function () {
+            const metric = this.value;
+            const params = new URLSearchParams(window.location.search);
+            params.set('metric', metric);
+            try {
+                const resp = await fetch('/report/chart?' + params.toString());
+                const data = await resp.json();
+                if (typeof rebuildChart === 'function') rebuildChart(data);
+            } catch (e) {
+                console.error('Chart update failed', e);
+            }
+        });
+    }
+
+    // ── Клиентская сортировка ─────────────────────────────────────────────────
+
+    let sortColIdx = -1;
+    let sortAsc = false;
+
+    function getCellValue(row, colIdx) {
+        const cell = row.children[colIdx];
+        if (!cell) return 0;
+        const userName = cell.querySelector('.user-name');
+        if (userName) return userName.textContent.trim().toLowerCase();
+        const mainSpan = cell.querySelector('.metric-cell span:first-child');
+        const raw = mainSpan ? mainSpan.textContent : cell.textContent;
+        const num = parseFloat(raw.replace(/[^0-9.-]/g, ''));
+        return isNaN(num) ? raw.trim() : num;
+    }
+
+    function sortByCol(colIdx) {
+        if (sortColIdx === colIdx) {
+            sortAsc = !sortAsc;
+        } else {
+            sortColIdx = colIdx;
+            sortAsc = colIdx === 0; // имя — по возрастанию; числа — по убыванию
+        }
+
+        table.querySelectorAll('thead th .th-sort-icon').forEach((icon, i) => {
+            icon.textContent = i === colIdx ? (sortAsc ? ' ↑' : ' ↓') : '';
+        });
+
+        const tbody = table.querySelector('tbody');
+        Array.from(tbody.rows)
+            .sort((a, b) => {
+                const av = getCellValue(a, colIdx);
+                const bv = getCellValue(b, colIdx);
+                if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
+                return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+            })
+            .forEach(r => tbody.appendChild(r));
+    }
+
+    table.querySelectorAll('thead th').forEach((th, colIdx) => {
+        const icon = document.createElement('span');
+        icon.className = 'th-sort-icon';
+        th.appendChild(icon);
+        th.addEventListener('click', () => sortByCol(colIdx));
+    });
+})();
 </script>
 
 </body>

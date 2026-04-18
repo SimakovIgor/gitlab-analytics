@@ -24,7 +24,8 @@ public record ReportPageData(
     Instant dateFrom,
     Instant dateTo,
     List<UserMetrics> metrics,
-    Map<Long, Map<String, Number>> deltas
+    Map<Long, Map<String, Number>> deltas,
+    ReportSummary summary
 ) {
 
 }
