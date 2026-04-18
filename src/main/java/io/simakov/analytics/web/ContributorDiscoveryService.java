@@ -26,42 +26,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ContributorDiscoveryService {
 
-    /** Minimum normalized-name length to attempt same-person merging. */
+    /**
+     * Minimum normalized-name length to attempt same-person merging.
+     */
     private static final int MIN_NAME_LENGTH_FOR_MERGE = 5;
 
     private final MergeRequestCommitRepository commitRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
-
-    @Transactional(readOnly = true)
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
-    public List<DiscoveredContributor> discover() {
-        Set<String> trackedEmails = buildTrackedEmailSet();
-
-        // email → {name → totalCommits}
-        Map<String, Map<String, Long>> nameCommits = new LinkedHashMap<>();
-        // email → repos
-        Map<String, Set<String>> emailRepos = new LinkedHashMap<>();
-
-        for (Object[] row : commitRepository.findContributorRows()) {
-            String email = ((String) row[0]).toLowerCase(Locale.ROOT).strip();
-            String name = row[1] != null ? (String) row[1] : "";
-            long count = ((Number) row[2]).longValue();
-            String repo = row[3] != null ? (String) row[3] : "";
-
-            nameCommits.computeIfAbsent(email, k -> new HashMap<>())
-                .merge(name, count, Long::sum);
-            emailRepos.computeIfAbsent(email, k -> new LinkedHashSet<>())
-                .add(repo);
-        }
-
-        List<DiscoveredContributor> byEmail = nameCommits.entrySet().stream()
-            .map(entry -> toContributor(entry, emailRepos, trackedEmails))
-            .sorted(Comparator.comparingInt(DiscoveredContributor::commitCount).reversed())
-            .collect(Collectors.toCollection(ArrayList::new));
-
-        return mergeByName(byEmail);
-    }
 
     /**
      * Second pass: contributors sharing the same normalized display name are merged.
@@ -156,6 +128,40 @@ public class ContributorDiscoveryService {
             trackedEmails.contains(email),
             List.of()
         );
+    }
+
+    @Transactional(readOnly = true)
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    public List<DiscoveredContributor> discover() {
+        Set<String> trackedEmails = buildTrackedEmailSet();
+
+        // email → {name → totalCommits}
+        Map<String, Map<String, Long>> nameCommits = new LinkedHashMap<>();
+        // email → repos
+        Map<String, Set<String>> emailRepos = new LinkedHashMap<>();
+
+        for (Object[] row : commitRepository.findContributorRows()) {
+            String email = ((String) row[0]).toLowerCase(Locale.ROOT).strip();
+            String name = row[1] != null
+                ? (String) row[1]
+                : "";
+            long count = ((Number) row[2]).longValue();
+            String repo = row[3] != null
+                ? (String) row[3]
+                : "";
+
+            nameCommits.computeIfAbsent(email, k -> new HashMap<>())
+                .merge(name, count, Long::sum);
+            emailRepos.computeIfAbsent(email, k -> new LinkedHashSet<>())
+                .add(repo);
+        }
+
+        List<DiscoveredContributor> byEmail = nameCommits.entrySet().stream()
+            .map(entry -> toContributor(entry, emailRepos, trackedEmails))
+            .sorted(Comparator.comparingInt(DiscoveredContributor::commitCount).reversed())
+            .collect(Collectors.toCollection(ArrayList::new));
+
+        return mergeByName(byEmail);
     }
 
     private Set<String> buildTrackedEmailSet() {

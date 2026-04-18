@@ -20,7 +20,7 @@
     </span>
 
     <nav class="topbar-nav">
-        <a href="/dashboard" class="nav-link">Обзор</a>
+        
         <a href="/report" class="nav-link">Отчёт</a>
         <a href="/history" class="nav-link">История</a>
         <a href="/settings" class="nav-link nav-link-active">Настройки</a>
@@ -52,7 +52,7 @@
     <!-- ── Онбординг-визард ───────────────────────────────────────────────── -->
     <div th:if="${onboardingMode}" id="onboarding-wizard" class="onboarding-wizard">
         <div class="ob-wizard-header">
-            <h2 class="ob-wizard-title">Настройка за 3 шага</h2>
+            <h2 class="ob-wizard-title">Настройка за 5 шагов</h2>
             <p class="ob-wizard-subtitle">После добавления репозитория система автоматически загрузит данные GitLab за последние 360 дней</p>
         </div>
 
@@ -102,23 +102,47 @@
                 </div>
             </div>
 
-            <!-- Шаг 3: Синхронизация → Сотрудники -->
+            <!-- Шаг 3: Синхронизация -->
             <div id="ob-step-3"
-                 th:class="${hasUsers} ? 'ob-step ob-step-done' : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                 th:class="${hasProjects and activeJobIds.isEmpty()} ? 'ob-step ob-step-done' : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
                 <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '3'">3</div>
+                    <div class="ob-step-num" th:text="${hasProjects and activeJobIds.isEmpty()} ? '✓' : '3'">3</div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Дождитесь синхронизации</div>
+
+                    <!-- Синк выполняется -->
+                    <div id="ob-sync-section"
+                         th:class="${hasProjects and !activeJobIds.isEmpty()} ? 'ob-sync-section' : 'ob-sync-section hidden'">
+                        <div class="ob-sync-desc">
+                            Идёт загрузка MR, коммитов и ревью за 360 дней.
+                            После завершения станет доступен следующий шаг.
+                        </div>
+                        <div id="sync-banners-ob"></div>
+                    </div>
+
+                    <!-- Синк завершён -->
+                    <span id="ob-sync-done-badge"
+                          th:class="${hasProjects and activeJobIds.isEmpty()} ? 'ob-done-badge' : 'ob-done-badge hidden'">
+                        Синхронизировано ✓
+                    </span>
+
+                    <!-- Заблокировано -->
+                    <span th:if="${!hasProjects}" class="ob-locked-hint">Сначала добавьте репозиторий</span>
+                </div>
+            </div>
+
+            <!-- Шаг 4: Выберите сотрудников -->
+            <div id="ob-step-4"
+                 th:class="${hasUsers} ? 'ob-step ob-step-done' : (${hasProjects and activeJobIds.isEmpty()} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '4'">4</div>
                 </div>
                 <div class="ob-step-content">
                     <div class="ob-step-title">Выберите сотрудников</div>
 
-                    <!-- Синк выполняется -->
-                    <div id="ob-sync-section"
-                         th:class="${hasProjects and !activeJobIds.isEmpty() and !hasUsers} ? 'ob-sync-section' : 'ob-sync-section hidden'">
-                        <div class="ob-sync-desc">Идёт загрузка MR, коммитов и ревью за 360 дней. Первая синхронизация может занять 10–30 минут в зависимости от размера репозитория.</div>
-                        <div id="sync-banners-ob"></div>
-                    </div>
-
-                    <!-- После синка: выбор из репозитория (или пока не запускали) -->
+                    <!-- После синка: выбор участников -->
                     <div id="ob-select-section"
                          th:class="${hasProjects and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
                         <div class="ob-step-desc" style="margin-bottom:12px">
@@ -140,7 +164,32 @@
                     </div>
 
                     <span th:if="${hasUsers}" class="ob-done-badge">Добавлено ✓</span>
-                    <span th:if="${!hasProjects}" class="ob-locked-hint">Сначала добавьте репозиторий</span>
+                    <span th:if="${!hasProjects or !activeJobIds.isEmpty()}" class="ob-locked-hint"
+                          th:text="${!hasProjects} ? 'Сначала добавьте репозиторий' : 'Дождитесь окончания синхронизации'">
+                    </span>
+                </div>
+            </div>
+
+            <!-- Шаг 5: Бэкфилл истории -->
+            <div id="ob-step-5"
+                 th:class="${hasUsers} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked'">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num">5</div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Формируем историю метрик</div>
+                    <div id="ob-backfill-section"
+                         th:class="${hasUsers} ? 'ob-sync-section' : 'ob-sync-section hidden'">
+                        <div class="ob-sync-desc">
+                            Создаём еженедельные снапшоты за 360 дней — после этого станет доступен график истории.
+                        </div>
+                        <div id="ob-backfill-progress" class="discovery-loading hidden">
+                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+                            Формируем снапшоты...
+                        </div>
+                    </div>
+                    <span id="ob-backfill-done-badge" class="ob-done-badge hidden">История сформирована ✓</span>
+                    <span th:if="${!hasUsers}" class="ob-locked-hint">Сначала добавьте сотрудников</span>
                 </div>
             </div>
 
@@ -547,12 +596,40 @@ function refreshOnboarding() {
                 : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
     );
 
-    // Шаг 3 управляется через ob-sync-section / ob-select-section, только обновляем класс и номер
+    // Шаг 3: синхронизация (done = проекты есть и синк не идёт)
+    const syncDone = s.hasProjects && !activeSyncRunning;
     const step3 = document.getElementById('ob-step-3');
     if (step3) {
-        step3.className = 'ob-step ' + (s.hasUsers ? 'ob-step-done' : s.hasProjects ? 'ob-step-active' : 'ob-step-locked');
+        step3.className = 'ob-step ' + (syncDone ? 'ob-step-done' : s.hasProjects ? 'ob-step-active' : 'ob-step-locked');
         const numEl = step3.querySelector('.ob-step-num');
-        if (numEl) numEl.textContent = s.hasUsers ? '✓' : '3';
+        if (numEl) numEl.textContent = syncDone ? '✓' : '3';
+        const syncSection = document.getElementById('ob-sync-section');
+        if (syncSection) syncSection.classList.toggle('hidden', syncDone || !s.hasProjects);
+        const syncDoneBadge = document.getElementById('ob-sync-done-badge');
+        if (syncDoneBadge) syncDoneBadge.classList.toggle('hidden', !syncDone);
+        // Скрыть server-rendered locked hint если проекты уже добавлены
+        step3.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.toggle('hidden', s.hasProjects));
+    }
+
+    // Шаг 4: сотрудники
+    const step4 = document.getElementById('ob-step-4');
+    if (step4) {
+        step4.className = 'ob-step ' + (s.hasUsers ? 'ob-step-done' : syncDone ? 'ob-step-active' : 'ob-step-locked');
+        const numEl = step4.querySelector('.ob-step-num');
+        if (numEl) numEl.textContent = s.hasUsers ? '✓' : '4';
+        // Скрыть интерактив шага 4 после добавления пользователей
+        if (s.hasUsers) {
+            const selectSection = document.getElementById('ob-select-section');
+            if (selectSection) selectSection.classList.add('hidden');
+        }
+    }
+
+    // Шаг 5: бэкфилл истории
+    const step5 = document.getElementById('ob-step-5');
+    if (step5) {
+        step5.className = 'ob-step ' + (s.hasUsers ? 'ob-step-active' : 'ob-step-locked');
+        const backfillSection = document.getElementById('ob-backfill-section');
+        if (backfillSection) backfillSection.classList.toggle('hidden', !s.hasUsers);
     }
 
     const cta = document.getElementById('ob-cta');
@@ -601,10 +678,7 @@ function switchTab(name) {
 document.addEventListener('DOMContentLoaded', () => {
     const syncRunning = ACTIVE_JOB_IDS.length > 0;
 
-    // В онбординге не переключаемся на «Сотрудники» пока идёт синк — там нечего показывать
-    const defaultTab = (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && !syncRunning)
-        ? 'users'
-        : (sessionStorage.getItem(TAB_STORAGE_KEY) || 'sources');
+    const defaultTab = sessionStorage.getItem(TAB_STORAGE_KEY) || 'sources';
     switchTab(defaultTab);
 
     ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
@@ -612,6 +686,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Если онбординг: проекты есть, синк уже завершён, пользователей нет → сразу грузим discovery в визард
     if (ONBOARDING_MODE && OB_STATE.hasProjects && !OB_STATE.hasUsers && !syncRunning) {
         loadObDiscovery();
+    }
+
+    // Если онбординг: пользователи уже добавлены → показываем шаг 5 (бэкфилл мог не запуститься)
+    if (ONBOARDING_MODE && OB_STATE.hasUsers) {
+        refreshOnboarding();
     }
 });
 
@@ -859,12 +938,13 @@ function updateBanner(bannerId, type, message) {
 }
 
 function onSyncCompletedInOnboarding() {
-    const syncSection   = document.getElementById('ob-sync-section');
+    activeSyncRunning = false;
+    // Перевести шаги в нужные состояния
+    refreshOnboarding();
+    // Показать выбор участников в шаге 4
     const selectSection = document.getElementById('ob-select-section');
-    if (syncSection)   syncSection.classList.add('hidden');
     if (selectSection) selectSection.classList.remove('hidden');
     loadObDiscovery();
-    // Обновить вкладку «Сотрудники» — данные могут быть уже загружены до синка
     discoveryLoaded = false;
 }
 
@@ -942,8 +1022,11 @@ async function addSelectedOb() {
         email:       cb.value,
         aliasEmails: cb.dataset.merged ? JSON.parse(cb.dataset.merged) : []
     }));
+    const btn = document.getElementById('ob-btn-add');
+    if (btn) { btn.disabled = true; btn.textContent = 'Добавляем...'; }
     try {
         await api('POST', '/settings/users/bulk', requests);
+        // Перевести строки в "отслеживается"
         checked.forEach(cb => {
             const row = cb.closest('.discovery-row');
             if (row) {
@@ -961,10 +1044,29 @@ async function addSelectedOb() {
         OB_STATE.hasUsers = true;
         refreshOnboarding();
         discoveryLoaded = false;
-        loadDiscoveredContributors();
-        api('POST', '/api/v1/snapshots/backfill?days=360', null).catch(() => {});
+        // Запустить бэкфилл и показать прогресс в шаге 5
+        triggerSnapshotBackfill();
     } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Добавить выбранных'; }
         alert('Не удалось добавить: ' + e.message);
+    }
+}
+
+async function triggerSnapshotBackfill() {
+    const progressEl = document.getElementById('ob-backfill-progress');
+    const doneBadge  = document.getElementById('ob-backfill-done-badge');
+    if (progressEl) progressEl.classList.remove('hidden');
+    try {
+        await api('POST', '/settings/snapshots/backfill');
+        if (progressEl) progressEl.classList.add('hidden');
+        if (doneBadge) doneBadge.classList.remove('hidden');
+        const backfillSection = document.getElementById('ob-backfill-section');
+        if (backfillSection) {
+            backfillSection.querySelector('.ob-sync-desc')?.remove();
+        }
+    } catch (e) {
+        if (progressEl) progressEl.classList.add('hidden');
+        console.error('Backfill error:', e);
     }
 }
 
@@ -1133,6 +1235,7 @@ async function addProject() {
         clearProjectSearch();
         document.getElementById('project-token').value = '';
         OB_STATE.hasProjects = true;
+        activeSyncRunning = true;
         refreshOnboarding();
     } catch (e) {
         showError('project-error', e.message);
@@ -1197,7 +1300,9 @@ let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
 
 async function loadDiscoveredContributors() {
     if (discoveryLoaded) return;
-    if (activeSyncRunning) return;  // не показываем discovery пока идёт синк
+    if (activeSyncRunning) return;
+    if (!OB_STATE.hasProjects) return;
+    if (ONBOARDING_MODE) return;  // в онбординге discovery идёт через визард (шаг 4)
     const loading = document.getElementById('discovery-loading');
     const panel   = document.getElementById('discovery-panel');
     loading.classList.remove('hidden');
@@ -1300,7 +1405,7 @@ async function addSelectedDiscovered() {
         OB_STATE.hasUsers = true;
         refreshOnboarding();
         updateAddBtn();
-        api('POST', '/api/v1/snapshots/backfill?days=360', null).catch(() => {});
+        api('POST', '/settings/snapshots/backfill').catch(() => {});
     } catch (e) {
         alert('Ошибка добавления: ' + e.message);
     }

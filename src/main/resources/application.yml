@@ -56,7 +56,7 @@ app:
     connect-timeout-seconds: 10
     # Таймаут ожидания ответа от GitLab API (секунды).
     # Увеличить при работе с медленными инстансами GitLab.
-    read-timeout-seconds: 30
+    read-timeout-seconds: 120
     # Количество повторных попыток при временных ошибках сети
     max-retries: 3
     # Размер страницы при пагинации GitLab API (max 100)

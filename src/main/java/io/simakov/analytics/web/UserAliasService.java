@@ -26,7 +26,8 @@ public class UserAliasService {
     private final EncryptionService encryptionService;
     private final GitLabApiClient gitLabApiClient;
 
-    public void saveAlias(Long userId, String email) {
+    public void saveAlias(Long userId,
+                          String email) {
         if (email == null || email.isBlank()) {
             return;
         }
@@ -40,7 +41,8 @@ public class UserAliasService {
         }
     }
 
-    public void saveAliases(Long userId, List<String> emails) {
+    public void saveAliases(Long userId,
+                            List<String> emails) {
         if (emails == null) {
             return;
         }

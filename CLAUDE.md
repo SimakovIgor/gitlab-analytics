@@ -66,11 +66,12 @@ Controller → Service → Repository → Model
 - **`metrics/`** — `MetricCalculationService`, `Metric` enum
 - **`snapshot/`** — `SnapshotService` (daily scheduler + manual API), `SnapshotHistoryService`
 - **`sync/`** — `SyncOrchestrator`, `SyncJobService`
-- **`web/controller/`** — Thymeleaf web UI controllers (`WebController`, `HistoryController`)
+- **`web/controller/`** — Thymeleaf web UI controllers (`WebController`, `HistoryController`, `SettingsController`)
+- **`web/`** — `ContributorDiscoveryService`, `UserAliasService`
 - **`security/`** — `BearerTokenAuthFilter`
 - **`encryption/`** — `EncryptionService` interface + `NoOpEncryptionService`
 
-Templates: `src/main/resources/templates/` (login, dashboard, report, history)
+Templates: `src/main/resources/templates/` (login, dashboard, report, history, settings)
 Static assets: `src/main/resources/static/css/analytics.css`
 
 ## Key Patterns
@@ -91,9 +92,18 @@ Static assets: `src/main/resources/static/css/analytics.css`
 
 **Commit stats**: The GitLab MR list and single-MR endpoints do not return `additions`/`deletions` on this GitLab instance. Stats are fetched individually via `GET /repository/commits/:sha` (one call per new commit during sync). `MetricCalculationService` computes `lines_added/deleted` from commit-level stats, not MR-level.
 
+**GitLab API timeout**: `app.gitlab.read-timeout-seconds` (default 30s). Increase to 120s+ for slow GitLab instances. A full sync with commits for 450+ MRs takes ~3-4 minutes with parallel processing (`mrProcessingExecutor` thread pool).
+
 **Commit attribution**: `isUserCommit` matches commits by email. It checks both `TrackedUser.email` and all `TrackedUserAlias.email` values (lowercased). Commit emails often differ from GitLab account emails — always register the correct commit email in the alias.
 
-**Snapshot backfill**: Snapshots are created daily by scheduler (`app.snapshot.cron`, default `0 0 2 * * *`). To backfill historical data call `POST /api/v1/snapshots/run` with `snapshotDate` and `windowDays`. The History chart reads from `metric_snapshot` table — if data looks missing, check whether snapshots exist for the needed date range.
+**MR attribution**: Done by `author_gitlab_user_id` (stored on each `MergeRequest`). When a `TrackedUser` is added, `UserAliasService.saveAlias()` calls `GitLabApiClient.findUserIdByUsername()` using the username-prefix of the email (e.g., `a.upatov` from `a.upatov@uzum.com`) to resolve and store the `gitlab_user_id` in `tracked_user_alias`. If the email prefix doesn't match the GitLab username, `gitlab_user_id` will be null and MR attribution will fail for that user.
+
+**`ManualSyncRequest` field names**: `fetchNotes`, `fetchApprovals`, `fetchCommits` (not `syncNotes`/`syncCommits`). All default to `false` — must be explicitly set to `true` for a full sync. The `SettingsController.triggerBackfill()` sets all three to `true`.
+
+**Snapshot backfill**: Snapshots are created daily by scheduler (`app.snapshot.cron`, default `0 0 2 * * *`). Two endpoints for manual control:
+- `POST /api/v1/snapshots/backfill?days=360` — creates weekly snapshots going back N days (step=7d). Auto-triggered from the UI when users are added during onboarding. This is the main backfill for History chart.
+- `POST /api/v1/snapshots/run` — creates a single snapshot for a specific `snapshotDate` and `windowDays`.
+The History chart reads from `metric_snapshot` table — if data looks missing, check whether snapshots exist for the needed date range.
 
 **Thymeleaf + Chart.js**: History chart data is passed as a JSON string via model attribute `chartData`, injected into JS with `th:inline="javascript"` + `JSON.parse([[${chartData}]])`. Period filter on History page uses days (7/30/90/180/360), on Report page uses `PeriodType` string values.
 

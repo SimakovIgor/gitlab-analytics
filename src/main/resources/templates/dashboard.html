@@ -72,91 +72,35 @@
         <a href="/settings" class="btn-primary onboarding-welcome-btn">Начать настройку →</a>
     </div>
 
-    <!-- Сводные карточки -->
-    <div th:unless="${needsOnboarding}" class="card-grid">
-        <div class="card">
-            <div class="card-label">Сотрудников</div>
-            <div class="card-value" th:text="${usersTotal}">0</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Активных</div>
-            <div class="card-value" th:text="${usersActive}">0</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Репозиториев</div>
-            <div class="card-value" th:text="${projectsTotal}">0</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Активных репо</div>
-            <div class="card-value" th:text="${projectsActive}">0</div>
-        </div>
-    </div>
-
-    </div>
-
+    <!-- Сводные карточки + быстрые действия -->
     <div th:unless="${needsOnboarding}">
 
-    <!-- Сотрудники -->
-    <div class="section-title">Сотрудники</div>
-    <table class="data-table" th:if="${!users.isEmpty()}">
-        <thead>
-            <tr>
-                <th>Имя</th>
-                <th>Email</th>
-                <th>Статус</th>
-                <th>Добавлен</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="user : ${users}">
-                <td>
-                    <div class="user-cell">
-                        <div class="user-avatar"
-                             th:text="${#strings.substring(user.displayName, 0, 1)}">?</div>
-                        <div>
-                            <div class="user-name" th:text="${user.displayName}">Имя</div>
-                        </div>
-                    </div>
-                </td>
-                <td th:text="${user.email ?: '—'}">—</td>
-                <td>
-                    <span th:if="${user.enabled}" class="badge badge-active">Активен</span>
-                    <span th:unless="${user.enabled}" class="badge badge-inactive">Отключён</span>
-                </td>
-                <td th:text="${#strings.substring(user.createdAt.toString(), 0, 10)}">—</td>
-            </tr>
-        </tbody>
-    </table>
-    <div th:if="${users.isEmpty()}" class="empty-state">
-        Нет отслеживаемых сотрудников
-    </div>
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-label">Сотрудников</div>
+                <div class="card-value" th:text="${usersTotal}">0</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Активных</div>
+                <div class="card-value" th:text="${usersActive}">0</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Репозиториев</div>
+                <div class="card-value" th:text="${projectsTotal}">0</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Активных репо</div>
+                <div class="card-value" th:text="${projectsActive}">0</div>
+            </div>
+        </div>
 
-    <!-- Репозитории -->
-    <div class="section-title">Репозитории</div>
-    <table class="data-table" th:if="${!projects.isEmpty()}">
-        <thead>
-            <tr>
-                <th>Название</th>
-                <th>Путь</th>
-                <th>Статус</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="project : ${projects}">
-                <td th:text="${project.name}">Репо</td>
-                <td><span class="repo-path" th:text="${project.pathWithNamespace}">path</span></td>
-                <td>
-                    <span th:if="${project.enabled}" class="badge badge-active">Активен</span>
-                    <span th:unless="${project.enabled}" class="badge badge-inactive">Отключён</span>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    <div th:if="${projects.isEmpty()}" class="empty-state">
-        Нет отслеживаемых репозиториев
-    </div>
+        <div style="display:flex;gap:12px;margin-top:24px">
+            <a href="/report" class="btn-primary">Отчёт по метрикам →</a>
+            <a href="/history" class="btn-secondary">История динамики →</a>
+            <a href="/settings" class="btn-secondary">Настройки</a>
+        </div>
 
-    </div><!-- /th:unless needsOnboarding -->
+    </div>
 
 </main>
 
