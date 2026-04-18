@@ -264,6 +264,16 @@
                     <span class="job-status job-status-run" th:if="${job.status == 'STARTED'}">
                             <span class="sync-spinner-sm"></span> Выполняется
                         </span>
+                        <div class="job-progress-wrap" th:if="${job.status == 'STARTED'}"
+                             th:id="'job-progress-' + ${job.id}">
+                            <div class="job-progress-bar">
+                                <div class="job-progress-fill" th:id="'row-fill-' + ${job.id}"
+                                     style="width:0%"></div>
+                            </div>
+                            <span class="job-progress-label" th:id="'row-plabel-' + ${job.id}">
+                                получение списка MR...
+                            </span>
+                        </div>
                 </td>
                 <td class="job-time-cell" th:text="${job.startedAt}">—</td>
                 <td class="job-time-cell" th:text="${job.finishedAt ?: '—'}">—</td>
@@ -581,7 +591,7 @@
         let serverStartMs = localStartMs;
         const durationEl = document.getElementById('sync-duration-' + jobId);
         const durationTimer = setInterval(() => {
-            if (!serverStartMs) return;
+            if (!serverStartMs || !durationEl) return;
             const sec = Math.floor((Date.now() - serverStartMs) / 1000);
             durationEl.textContent = formatSec(sec);
         }, 1000);
@@ -607,6 +617,15 @@
     function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
         const fillEl = () => document.getElementById('sync-fill-' + jobId);
         const labelEl = () => document.getElementById('sync-plabel-' + jobId);
+        const rowFillEl = () => document.getElementById('row-fill-' + jobId);
+        const rowLabelEl = () => document.getElementById('row-plabel-' + jobId);
+
+        function setProgress(pct, label) {
+            if (fillEl()) fillEl().style.width = pct + '%';
+            if (labelEl()) labelEl().textContent = label;
+            if (rowFillEl()) rowFillEl().style.width = pct + '%';
+            if (rowLabelEl()) rowLabelEl().textContent = label;
+        }
 
         const interval = setInterval(async () => {
             try {
@@ -618,8 +637,6 @@
 
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
                     const pct = Math.round(job.processedMrs / job.totalMrs * 100);
-                    if (fillEl()) fillEl().style.width = pct + '%';
-
                     const serverStartMs = new Date(job.startedAt).getTime();
                     const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
                     let label = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
@@ -630,19 +647,22 @@
                         const etaSec = Math.round(remaining / rate);
                         label += ' • ETA ' + formatEta(etaSec);
                     }
-                    if (labelEl()) labelEl().textContent = label;
+                    setProgress(pct, label);
                 } else if (job.status === 'STARTED' && job.totalMrs === 0) {
-                    if (labelEl()) labelEl().textContent = 'получение списка MR...';
+                    setProgress(0, 'получение списка MR...');
                 }
 
                 if (job.status === 'COMPLETED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
                     activeSyncRunning = false;
-                    if (fillEl()) fillEl().style.width = '100%';
-                    if (labelEl()) labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
+                    const doneLabel = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
+                    setProgress(100, doneLabel);
                     updateBanner(bannerId, 'ok', 'Синхронизация завершена');
                     updateJobRow(jobId, 'COMPLETED', null);
+                    // Обновляем список участников вне зависимости от наличия баннера в DOM
+                    discoveryLoaded = false;
+                    loadDiscoveredContributors();
                 } else if (job.status === 'FAILED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
@@ -667,11 +687,20 @@
         tr.className = 'job-row-running';
         tr.innerHTML = `
         <td class="job-id-cell">${jobId}</td>
-        <td><span class="job-status job-status-run"><span class="sync-spinner-sm"></span> Выполняется</span></td>
+        <td>
+            <span class="job-status job-status-run"><span class="sync-spinner-sm"></span> Выполняется</span>
+            <div class="job-progress-wrap" id="job-progress-${jobId}">
+                <div class="job-progress-bar">
+                    <div class="job-progress-fill" id="row-fill-${jobId}" style="width:0%"></div>
+                </div>
+                <span class="job-progress-label" id="row-plabel-${jobId}">получение списка MR...</span>
+            </div>
+        </td>
         <td class="job-time-cell">${timeStr}</td>
         <td class="job-time-cell">—</td>
         <td>в процессе</td>
         <td class="job-error-cell"></td>
+        <td></td>
     `;
         if (table) {
             table.querySelector('tbody').prepend(tr);
@@ -703,6 +732,7 @@
         } else {
             statusCell.innerHTML = '<span class="job-status job-status-err">✕ Ошибка</span>';
         }
+        document.getElementById('job-progress-' + jobId)?.remove();
         if (errorMessage) {
             row.cells[5].textContent = errorMessage;
         }
@@ -724,8 +754,6 @@
         el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
         if (type === 'ok') {
             setTimeout(() => el.remove(), 5000);
-            discoveryLoaded = false;
-            loadDiscoveredContributors();
         }
     }
 
