@@ -15,12 +15,13 @@ public class OAuth2UserResolver {
         String username = "github".equals(provider)
             ? (String) attrs.get("login")
             : (String) attrs.get("username");
+        String resolvedUsername = username != null ? username : "";
+        String name = (String) attrs.get("name");
+        String avatarUrl = (String) attrs.get("avatar_url");
         return Map.of(
-            "name", attrs.getOrDefault("name", username),
-            "username", username != null
-                ? username
-                : "",
-            "avatarUrl", attrs.getOrDefault("avatar_url", ""),
+            "name", name != null ? name : resolvedUsername,
+            "username", resolvedUsername,
+            "avatarUrl", avatarUrl != null ? avatarUrl : "",
             "provider", provider
         );
     }

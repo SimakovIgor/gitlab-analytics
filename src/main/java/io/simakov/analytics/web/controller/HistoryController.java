@@ -32,6 +32,8 @@ public class HistoryController {
         model.addAttribute("selectedPeriod", data.selectedPeriod());
         model.addAttribute("metricLabel", data.metricLabel());
         model.addAttribute("metricOptions", data.metricOptions());
+        model.addAttribute("dateFrom", data.dateFrom());
+        model.addAttribute("dateTo", data.dateTo());
 
         return "history";
     }

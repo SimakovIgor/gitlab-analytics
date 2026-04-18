@@ -1,5 +1,6 @@
 package io.simakov.analytics.web.dto;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 public record HistoryPageData(
@@ -7,7 +8,9 @@ public record HistoryPageData(
     String selectedMetric,
     String selectedPeriod,
     String metricLabel,
-    Map<String, String> metricOptions
+    Map<String, String> metricOptions,
+    LocalDate dateFrom,
+    LocalDate dateTo
 ) {
 
 }

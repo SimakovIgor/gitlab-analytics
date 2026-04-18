@@ -77,6 +77,15 @@
         </div>
 
         <div class="filter-group">
+            <label class="filter-label">Диапазон</label>
+            <span class="period-info">
+                <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
+                &nbsp;→&nbsp;
+                <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
+            </span>
+        </div>
+
+        <div class="filter-group">
             <label class="filter-label" for="metricSelect">Метрика</label>
             <select class="metric-select" id="metricSelect" name="metric" onchange="this.form.submit()">
                 <option th:each="entry : ${metricOptions}"

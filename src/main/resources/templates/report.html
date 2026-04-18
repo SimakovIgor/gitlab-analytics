@@ -298,34 +298,40 @@
     <main class="report-main">
 
         <!-- Период -->
-        <div class="report-period-bar">
-            <div class="period-buttons">
-                <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="button">
-                    7 дней
-                </button>
-                <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="button">
-                    30 дней
-                </button>
-                <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="button">
-                    90 дней
-                </button>
-                <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="button">
-                    180 дней
-                </button>
-                <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                        type="button">
-                    360 дней
-                </button>
+        <div class="filter-form">
+            <div class="filter-group">
+                <label class="filter-label">Период</label>
+                <div class="period-buttons">
+                    <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="button">
+                        7 дней
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="button">
+                        30 дней
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="button">
+                        90 дней
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="button">
+                        180 дней
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
+                            type="button">
+                        360 дней
+                    </button>
+                </div>
             </div>
-            <span class="period-info" style="margin:0">
-                <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
-                &nbsp;→&nbsp;
-                <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
-            </span>
+            <div class="filter-group">
+                <label class="filter-label">Диапазон</label>
+                <span class="period-info" style="margin:0">
+                    <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
+                    &nbsp;→&nbsp;
+                    <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
+                </span>
+            </div>
         </div>
 
         <!-- Примечание о точности данных -->

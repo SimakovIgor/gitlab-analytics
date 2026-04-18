@@ -68,7 +68,9 @@ public class HistoryViewService {
             metric,
             periodType.name(),
             METRIC_OPTIONS.getOrDefault(metric, metric),
-            METRIC_OPTIONS
+            METRIC_OPTIONS,
+            dateFrom,
+            dateTo
         );
     }
 
