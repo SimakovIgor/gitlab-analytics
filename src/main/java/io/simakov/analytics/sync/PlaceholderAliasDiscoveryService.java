@@ -109,7 +109,7 @@ public class PlaceholderAliasDiscoveryService {
             }
 
             Long matchedUserId = matchByName(user.name(), trackedUsers);
-            if (matchedUserId == null) {
+            if (matchedUserId == null && isPersonalPlaceholderName(user.name())) {
                 matchedUserId = matchByCommitEmails(unknownId, trackedProjectId, emailToTrackedUserId);
             }
 
@@ -129,6 +129,19 @@ public class PlaceholderAliasDiscoveryService {
 
     private boolean isPlaceholder(GitLabUserDto user) {
         return user.username() != null && user.username().contains(PLACEHOLDER_MARKER);
+    }
+
+    /**
+     * Возвращает true только для «личных» placeholder-аккаунтов вида "Placeholder Anton Lepikhin".
+     * Generic GitHub-заглушки ("Placeholder github Source User") не подходят для email-fallback,
+     * т.к. их MRы содержат коммиты всей команды — сопоставление даст ложный результат.
+     */
+    private boolean isPersonalPlaceholderName(String name) {
+        if (name == null || !name.startsWith(PLACEHOLDER_NAME_PREFIX)) {
+            return false;
+        }
+        String realName = name.substring(PLACEHOLDER_NAME_PREFIX.length()).trim();
+        return !realName.isBlank() && !"github Source User".equalsIgnoreCase(realName);
     }
 
     /**
