@@ -33,6 +33,9 @@ public class OnboardingController {
         }
 
         ReportPageData data = reportViewService.buildReportPage("LAST_30_DAYS", null, true);
+        if (!data.onboardingMode()) {
+            return "redirect:/report";
+        }
         model.addAttribute("workspaceReady", true);
         model.addAttribute("hasSources", data.hasSources());
         model.addAttribute("hasProjects", data.hasProjects());
