@@ -8,6 +8,7 @@ import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
+import io.simakov.analytics.security.WorkspaceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -77,7 +78,13 @@ public class UserAliasService {
         if (!email.contains("@")) {
             return null;
         }
-        TrackedProject project = trackedProjectRepository.findAll().stream().findFirst().orElse(null);
+        if (!WorkspaceContext.isSet()) {
+            return null;
+        }
+        Long workspaceId = WorkspaceContext.get();
+        TrackedProject project = trackedProjectRepository
+            .findTopByWorkspaceIdAndEnabledTrue(workspaceId)
+            .orElse(null);
         if (project == null) {
             return null;
         }

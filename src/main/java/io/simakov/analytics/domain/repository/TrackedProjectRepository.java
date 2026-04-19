@@ -22,4 +22,6 @@ public interface TrackedProjectRepository extends JpaRepository<TrackedProject, 
                                                                                Long gitlabProjectId);
 
     Optional<TrackedProject> findFirstByGitSourceId(Long gitSourceId);
+
+    Optional<TrackedProject> findTopByWorkspaceIdAndEnabledTrue(Long workspaceId);
 }

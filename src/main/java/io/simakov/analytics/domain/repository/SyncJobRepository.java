@@ -11,6 +11,9 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
 
     List<SyncJob> findByStatusOrderByStartedAtDesc(SyncStatus status);
 
+    List<SyncJob> findByWorkspaceIdAndStatusOrderByStartedAtDesc(Long workspaceId,
+                                                                  SyncStatus status);
+
     List<SyncJob> findByStatusAndStartedAtBefore(SyncStatus status,
                                                  Instant threshold);
 

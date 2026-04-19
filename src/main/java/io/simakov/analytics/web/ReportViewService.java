@@ -16,6 +16,7 @@ import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
@@ -51,9 +52,10 @@ public class ReportViewService {
     public ReportPageData buildReportPage(String period,
                                           List<Long> requestedProjectIds,
                                           boolean showInactive) {
-        List<GitSource> sources = gitSourceRepository.findAll();
-        List<TrackedProject> allProjects = trackedProjectRepository.findAll();
-        List<TrackedUser> allUsers = trackedUserRepository.findAll();
+        Long workspaceId = WorkspaceContext.get();
+        List<GitSource> sources = gitSourceRepository.findAllByWorkspaceId(workspaceId);
+        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId);
+        List<TrackedUser> allUsers = trackedUserRepository.findAllByWorkspaceId(workspaceId);
 
         boolean hasSources = !sources.isEmpty();
         boolean hasProjects = !allProjects.isEmpty();
@@ -61,10 +63,10 @@ public class ReportViewService {
         boolean onboardingMode = !hasProjects || !hasUsers;
 
         List<Long> activeJobIds = syncJobRepository
-            .findByStatusOrderByStartedAtDesc(SyncStatus.STARTED)
+            .findByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED)
             .stream().map(SyncJob::getId).toList();
 
-        boolean hasSyncCompleted = syncJobRepository.existsByStatus(SyncStatus.COMPLETED);
+        boolean hasSyncCompleted = syncJobRepository.existsByWorkspaceIdAndStatus(workspaceId, SyncStatus.COMPLETED);
 
         List<UserWithAliases> usersWithAliases = buildUsersWithAliases(allUsers);
 
@@ -218,7 +220,7 @@ public class ReportViewService {
             .filter(Objects::nonNull)
             .toList();
 
-        List<TrackedProject> allProjects = trackedProjectRepository.findAll();
+        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(WorkspaceContext.get());
         List<Long> projectIds = (requestedProjectIds == null || requestedProjectIds.isEmpty())
             ? allProjects.stream().map(TrackedProject::getId).toList()
             : requestedProjectIds;
