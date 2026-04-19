@@ -7,8 +7,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TrackedUserAliasRepositoryTest extends BaseIT {
@@ -20,7 +18,6 @@ class TrackedUserAliasRepositoryTest extends BaseIT {
     private TrackedUserRepository trackedUserRepository;
 
     private Long userId1;
-    private Long userId2;
 
     @BeforeEach
     void setUp() {
@@ -28,67 +25,31 @@ class TrackedUserAliasRepositoryTest extends BaseIT {
             .workspaceId(testWorkspaceId)
             .displayName("Alice").email("alice@example.com").enabled(true).build());
         userId1 = user1.getId();
-
-        TrackedUser user2 = trackedUserRepository.save(TrackedUser.builder()
-            .workspaceId(testWorkspaceId)
-            .displayName("Bob").email("bob@example.com").enabled(true).build());
-        userId2 = user2.getId();
     }
 
     @Test
-    void findByGitlabUserIdInReturnMatchingAliases() {
-        aliasRepository.save(TrackedUserAlias.builder()
-            .trackedUserId(userId1).gitlabUserId(101L).email("alice@example.com").build());
-        aliasRepository.save(TrackedUserAlias.builder()
-            .trackedUserId(userId2).gitlabUserId(202L).email("bob@example.com").build());
-
-        List<TrackedUserAlias> result = aliasRepository.findByGitlabUserIdIn(List.of(101L, 202L));
-
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(TrackedUserAlias::getGitlabUserId)
-            .containsExactlyInAnyOrder(101L, 202L);
-    }
-
-    @Test
-    void findByGitlabUserIdInReturnsOnlyRequestedIds() {
-        aliasRepository.save(TrackedUserAlias.builder()
-            .trackedUserId(userId1).gitlabUserId(101L).email("alice@example.com").build());
-        aliasRepository.save(TrackedUserAlias.builder()
-            .trackedUserId(userId2).gitlabUserId(202L).email("bob@example.com").build());
-
-        List<TrackedUserAlias> result = aliasRepository.findByGitlabUserIdIn(List.of(101L));
-
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().getTrackedUserId()).isEqualTo(userId1);
-    }
-
-    @Test
-    void findByGitlabUserIdInReturnsEmptyWhenNoMatch() {
+    void existsByTrackedUserIdAndEmailReturnsTrueWhenAliasExists() {
         aliasRepository.save(TrackedUserAlias.builder()
             .trackedUserId(userId1).gitlabUserId(101L).email("alice@example.com").build());
 
-        List<TrackedUserAlias> result = aliasRepository.findByGitlabUserIdIn(List.of(99_999L));
-
-        assertThat(result).isEmpty();
+        assertThat(aliasRepository.existsByTrackedUserIdAndEmail(userId1, "alice@example.com")).isTrue();
     }
 
     @Test
-    void findByGitlabUserIdInIgnoresAliasesWithNullGitlabUserId() {
-        aliasRepository.save(TrackedUserAlias.builder()
-            .trackedUserId(userId1).gitlabUserId(null).email("alice@example.com").build());
-
-        List<TrackedUserAlias> result = aliasRepository.findByGitlabUserIdIn(List.of(101L));
-
-        assertThat(result).isEmpty();
+    void existsByTrackedUserIdAndEmailReturnsFalseWhenAliasAbsent() {
+        assertThat(aliasRepository.existsByTrackedUserIdAndEmail(userId1, "unknown@example.com")).isFalse();
     }
 
     @Test
-    void findByGitlabUserIdInReturnsEmptyForEmptyInput() {
+    void existsByGitlabUserIdReturnsTrueWhenExists() {
         aliasRepository.save(TrackedUserAlias.builder()
             .trackedUserId(userId1).gitlabUserId(101L).email("alice@example.com").build());
 
-        List<TrackedUserAlias> result = aliasRepository.findByGitlabUserIdIn(List.of());
+        assertThat(aliasRepository.existsByGitlabUserId(101L)).isTrue();
+    }
 
-        assertThat(result).isEmpty();
+    @Test
+    void existsByGitlabUserIdReturnsFalseWhenAbsent() {
+        assertThat(aliasRepository.existsByGitlabUserId(99_999L)).isFalse();
     }
 }

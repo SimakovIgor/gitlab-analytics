@@ -7,11 +7,194 @@
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>GitLab Analytics — Настройка</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
-</head>
-<body th:class="${workspaceReady} ? 'app-layout' : 'login-page'">
+    <style>
+        @keyframes ob-fadein {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .main-content { animation: ob-fadein .35s ease; }
 
-<!-- Topbar — только в режиме визарда -->
-<header class="topbar" th:if="${workspaceReady}">
+        /* Режим A: вертикальное центрирование */
+        .ob-start-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 56px);
+            padding: 2rem 1rem;
+        }
+        .ob-start-card {
+            width: 100%;
+            max-width: 640px;
+        }
+        .ob-hint-line {
+            font-size: .8rem;
+            color: #999;
+            margin-bottom: 1.5rem;
+            letter-spacing: .02em;
+        }
+
+        /* Прогресс-бар шагов */
+        .ob-progress {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 2.5rem;
+        }
+        .ob-prog-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .ob-prog-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .75rem;
+            font-weight: 700;
+        }
+        .ob-prog-dot-active {
+            background: #FC6D26;
+            color: #fff;
+            box-shadow: 0 0 0 4px rgba(252,109,38,.2);
+        }
+        .ob-prog-dot-inactive {
+            background: #f0f0f0;
+            color: #ccc;
+        }
+        .ob-prog-label {
+            font-size: .65rem;
+            color: #ccc;
+            white-space: nowrap;
+        }
+        .ob-prog-label-active {
+            color: #FC6D26;
+            font-weight: 700;
+        }
+        .ob-prog-line {
+            flex: 1;
+            height: 2px;
+            background: #eee;
+            margin: 0 4px;
+            margin-bottom: 16px;
+        }
+        .ob-prog-line-active {
+            background: #FC6D26;
+        }
+
+        .ob-start-title {
+            font-size: 1.65rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 .5rem;
+        }
+        .ob-start-subtitle {
+            font-size: .95rem;
+            color: #666;
+            margin: 0 0 2rem;
+            line-height: 1.5;
+        }
+
+        /* Завершённый шаг stepper — менее яркий, чем active */
+        .ob-prog-dot-done {
+            background: #fff3ee;
+            color: #FC6D26;
+            border: 1.5px solid #fca326;
+            font-size: .8rem;
+        }
+        .ob-prog-label-done {
+            color: #aaa;
+            font-weight: 500;
+        }
+        .ob-prog-line-done {
+            background: #fca326;
+            opacity: .5;
+        }
+
+        /* Spinner для loading state кнопки */
+        @keyframes ob-spin { to { transform: rotate(360deg); } }
+        .ob-btn-spinner {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: ob-spin .7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        /* Финальный блок шага 6 — единый */
+        .ob-final-loading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 20px;
+            background: #f8f9fa;
+            border: 1.5px solid #e9ecef;
+            border-radius: 10px;
+            margin-top: 1rem;
+            color: #555;
+            font-size: .95rem;
+        }
+        .ob-final-done {
+            background: #fff8f5;
+            border: 1.5px solid #fde8dc;
+            border-radius: 14px;
+            padding: 2rem 1.75rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .ob-final-done-icon { font-size: 2.5rem; line-height: 1; margin-bottom: .75rem; }
+        .ob-final-done-title { font-size: 1.35rem; font-weight: 700; color: #1a1a1a; margin-bottom: .4rem; }
+        .ob-final-done-sub { font-size: .9rem; color: #666; margin-bottom: 1.25rem; }
+        .ob-final-stats { color: #888; font-size: .875rem; margin-bottom: 1.5rem; line-height: 1.8; }
+        .ob-final-action { display: flex; justify-content: center; }
+
+        /* Discovery list улучшения */
+        #ob-discovery-list .discovery-row {
+            padding: 10px 12px;
+        }
+        #ob-discovery-list .discovery-email {
+            color: #aaa;
+        }
+        #ob-discovery-list .discovery-name {
+            font-weight: 600;
+        }
+        .ob-discovery-actions-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 10px;
+        }
+        .ob-discovery-actions-row .btn-sm-add {
+            margin-left: auto;
+        }
+
+        /* Контент активного шага */
+        .ob-step-body {
+            margin-top: 2rem;
+            animation: ob-fadein .3s ease;
+        }
+        .ob-step-body .btn-primary {
+            margin-top: .5rem;
+        }
+
+        /* Унифицированная ширина для обоих режимов */
+        .ob-start-card {
+            max-width: 720px;
+        }
+    </style>
+</head>
+<body class="app-layout">
+
+<header class="topbar">
     <span class="topbar-brand">
         <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
             <path
@@ -23,201 +206,219 @@
 </header>
 
 <!-- ══════════════════════════════════════════════════════════
-     РЕЖИМ A: создание workspace
+     РЕЖИМ A: создание workspace (шаг 1 из 6)
      ══════════════════════════════════════════════════════════ -->
-<div class="login-card" th:if="${!workspaceReady}">
+<div class="main-content" th:if="${!workspaceReady}">
+    <div class="ob-start-wrap">
+        <div class="ob-start-card">
 
-    <div class="login-icon">
-        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
-            <path
-                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
-                fill="#FC6D26"/>
-            <path d="M282.83 170.73l-.27-.69a88.3 88.3 0 00-35.15 19.33L190 239.11c19.55 14.79 36.57 27.64 36.57 27.64l40.06-30 .1-.08a48.56 48.56 0 0016.1-56.04z"
-                  fill="#E24329"/>
-            <path d="M153.43 266.75l19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91S209.55 254 190 239.11c-19.55 14.79-36.57 27.64-36.57 27.64z"
-                  fill="#FCA326"/>
-            <path d="M132.58 189.37A88.19 88.19 0 0097.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82S170.45 254 190 239.11z"
-                  fill="#E24329"/>
-        </svg>
+            <div class="ob-hint-line">Это займёт ~2 минуты</div>
+
+            <!-- Прогресс: 6 шагов -->
+            <div class="ob-progress">
+                <div class="ob-prog-step">
+                    <div class="ob-prog-dot ob-prog-dot-active">1</div>
+                    <div class="ob-prog-label ob-prog-label-active">Команда</div>
+                </div>
+                <div class="ob-prog-line"></div>
+                <div class="ob-prog-step">
+                    <div class="ob-prog-dot ob-prog-dot-inactive">2</div>
+                    <div class="ob-prog-label">GitLab</div>
+                </div>
+                <div class="ob-prog-line"></div>
+                <div class="ob-prog-step">
+                    <div class="ob-prog-dot ob-prog-dot-inactive">3</div>
+                    <div class="ob-prog-label">Репо</div>
+                </div>
+                <div class="ob-prog-line"></div>
+                <div class="ob-prog-step">
+                    <div class="ob-prog-dot ob-prog-dot-inactive">4</div>
+                    <div class="ob-prog-label">Синхр.</div>
+                </div>
+                <div class="ob-prog-line"></div>
+                <div class="ob-prog-step">
+                    <div class="ob-prog-dot ob-prog-dot-inactive">5</div>
+                    <div class="ob-prog-label">Сотрудники</div>
+                </div>
+                <div class="ob-prog-line"></div>
+                <div class="ob-prog-step">
+                    <div class="ob-prog-dot ob-prog-dot-inactive">6</div>
+                    <div class="ob-prog-label">Метрики</div>
+                </div>
+            </div>
+
+            <h2 class="ob-start-title">Создайте команду</h2>
+            <p class="ob-start-subtitle">Добавьте репозитории и начните отслеживать метрики разработки</p>
+
+            <form method="post" th:action="@{/onboarding}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block;font-size:.85rem;font-weight:600;color:#444;margin-bottom:6px;">
+                        Название команды
+                    </label>
+                    <input
+                        class="form-input"
+                        type="text"
+                        name="workspaceName"
+                        placeholder="Например: Backend Team"
+                        required
+                        maxlength="255"
+                        autofocus
+                        style="width:100%;box-sizing:border-box;"/>
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:.75rem 1.5rem;font-size:1rem;">
+                    Создать команду и продолжить →
+                </button>
+            </form>
+
+        </div>
     </div>
-
-    <h1>Добро пожаловать, <span th:text="${login}">user</span>!</h1>
-    <p class="login-subtitle">Как называется ваша команда?</p>
-
-    <form method="post" th:action="@{/onboarding}" style="width:100%;margin-top:1.5rem;">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <input
-            type="text"
-            name="workspaceName"
-            placeholder="Например: Backend Team"
-            required
-            maxlength="255"
-            autofocus
-            style="width:100%;padding:.75rem 1rem;font-size:1rem;border:1px solid #d0d7de;
-                   border-radius:8px;box-sizing:border-box;margin-bottom:1rem;outline:none;"/>
-        <button type="submit" class="btn-oauth btn-github" style="width:100%;justify-content:center;">
-            Создать workspace →
-        </button>
-    </form>
-
-    <p class="login-hint">После этого подключите GitLab и добавьте репозитории</p>
-
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
      РЕЖИМ B: визард настройки (workspace уже создан)
      ══════════════════════════════════════════════════════════ -->
 <div class="main-content" th:if="${workspaceReady}">
+    <div class="ob-start-wrap">
+        <div class="ob-start-card" id="onboarding-wizard">
 
-    <div class="onboarding-wizard" id="onboarding-wizard">
-        <div class="ob-wizard-header">
-            <h2 class="ob-wizard-title">Настройка за 5 шагов</h2>
-            <p class="ob-wizard-subtitle">После добавления репозитория система автоматически загрузит данные GitLab за последние 360 дней</p>
-        </div>
+            <div class="ob-hint-line">Это займёт ~2 минуты</div>
 
-        <div class="ob-steps">
+            <!-- Горизонтальный 6-шаговый stepper -->
+            <div class="ob-progress">
 
-            <!-- Шаг 1: GitLab источник -->
-            <div id="ob-step-1" th:class="${hasSources} ? 'ob-step ob-step-done' : 'ob-step ob-step-active'">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasSources} ? '✓' : '1'">1</div>
-                    <div class="ob-step-line"></div>
+                <!-- Шаг 1: Команда — всегда выполнен -->
+                <div class="ob-prog-step">
+                    <div class="ob-prog-dot ob-prog-dot-done">✓</div>
+                    <div class="ob-prog-label ob-prog-label-done">Команда</div>
                 </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Подключите GitLab</div>
-                    <div class="ob-step-desc">Укажите URL вашего инстанса GitLab</div>
-                    <div class="ob-step-action">
-                        <span class="ob-done-badge" th:if="${hasSources}">Добавлено ✓</span>
-                        <button class="btn-primary" onclick="openModal('modal-source')" th:unless="${hasSources}">
-                            + Добавить источник
-                        </button>
+                <div class="ob-prog-line ob-prog-line-done"></div>
+
+                <!-- Шаг 2: GitLab -->
+                <div class="ob-prog-step">
+                    <div id="ob-dot-2"
+                         th:class="${hasSources} ? 'ob-prog-dot ob-prog-dot-done' : 'ob-prog-dot ob-prog-dot-active'"
+                         th:text="${hasSources} ? '✓' : '2'">2</div>
+                    <div id="ob-label-2"
+                         th:class="${hasSources} ? 'ob-prog-label ob-prog-label-done' : 'ob-prog-label ob-prog-label-active'">GitLab</div>
+                </div>
+                <div id="ob-line-2-3" th:class="${hasSources} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
+
+                <!-- Шаг 3: Репозиторий -->
+                <div class="ob-prog-step">
+                    <div id="ob-dot-3"
+                         th:class="${hasProjects} ? 'ob-prog-dot ob-prog-dot-done'
+                                   : (${hasSources} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive')"
+                         th:text="${hasProjects} ? '✓' : '3'">3</div>
+                    <div id="ob-label-3"
+                         th:class="${hasProjects} ? 'ob-prog-label ob-prog-label-done'
+                                   : (${hasSources} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label')">Репо</div>
+                </div>
+                <div id="ob-line-3-4" th:class="${hasProjects} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
+
+                <!-- Шаг 4: Синхронизация -->
+                <div class="ob-prog-step">
+                    <div id="ob-dot-4"
+                         th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-dot ob-prog-dot-done'
+                                   : (${hasProjects} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive')"
+                         th:text="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? '✓' : '4'">4</div>
+                    <div id="ob-label-4"
+                         th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-label ob-prog-label-done'
+                                   : (${hasProjects} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label')">Синхр.</div>
+                </div>
+                <div id="ob-line-4-5"
+                     th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
+
+                <!-- Шаг 5: Сотрудники -->
+                <div class="ob-prog-step">
+                    <div id="ob-dot-5"
+                         th:class="${hasUsers} ? 'ob-prog-dot ob-prog-dot-done'
+                                   : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive')"
+                         th:text="${hasUsers} ? '✓' : '5'">5</div>
+                    <div id="ob-label-5"
+                         th:class="${hasUsers} ? 'ob-prog-label ob-prog-label-done'
+                                   : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label')">Сотрудники</div>
+                </div>
+                <div id="ob-line-5-6" th:class="${hasUsers} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
+
+                <!-- Шаг 6: Метрики -->
+                <div class="ob-prog-step">
+                    <div id="ob-dot-6"
+                         th:class="${hasUsers} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive'">6</div>
+                    <div id="ob-label-6"
+                         th:class="${hasUsers} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label'">Метрики</div>
+                </div>
+
+            </div>
+
+            <!-- ── Контент активного шага ───────────────────────────────── -->
+
+            <!-- Шаг 2: Подключите GitLab -->
+            <div id="ob-content-2" th:class="${hasSources} ? 'ob-step-body hidden' : 'ob-step-body'">
+                <h2 class="ob-start-title">Подключите GitLab</h2>
+                <p class="ob-start-subtitle">Укажите URL вашего GitLab и добавьте источник — данные забираются только для чтения</p>
+                <button class="btn-primary" onclick="openModal('modal-source')">+ Добавить источник</button>
+            </div>
+
+            <!-- Шаг 3: Добавьте репозиторий -->
+            <div id="ob-content-3"
+                 th:class="${!hasSources or hasProjects} ? 'ob-step-body hidden' : 'ob-step-body'">
+                <h2 class="ob-start-title">Добавьте репозиторий</h2>
+                <p class="ob-start-subtitle">Данные за 360 дней загрузятся автоматически после добавления</p>
+                <button class="btn-primary" onclick="openModal('modal-project')">+ Добавить репозиторий</button>
+            </div>
+
+            <!-- Шаг 4: Синхронизация -->
+            <div id="ob-content-4"
+                 th:class="${hasProjects and !(hasSyncCompleted and activeJobIds.isEmpty())} ? 'ob-step-body' : 'ob-step-body hidden'">
+                <h2 class="ob-start-title">Синхронизация данных</h2>
+                <p class="ob-start-subtitle">Загружаем MR, коммиты и ревью за 360 дней. Шаг 5 откроется автоматически.</p>
+                <div id="ob-sync-section">
+                    <div id="sync-banners-ob"></div>
+                </div>
+            </div>
+
+            <!-- Шаг 5: Выберите сотрудников -->
+            <div id="ob-content-5"
+                 th:class="${hasSyncCompleted and activeJobIds.isEmpty() and !hasUsers} ? 'ob-step-body' : 'ob-step-body hidden'">
+                <h2 class="ob-start-title">Выберите сотрудников</h2>
+                <p class="ob-start-subtitle">Выберите, кого отслеживать — добавить или убрать можно в любой момент</p>
+                <div class="discovery-loading hidden" id="ob-discovery-loading">
+                    <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+                    Ищем участников...
+                </div>
+                <div class="discovery-list" id="ob-discovery-list" style="max-height:340px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:8px;"></div>
+                <div class="ob-discovery-actions-row hidden" id="ob-discovery-actions">
+                    <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
+                    <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
+                    <button class="btn-sm btn-secondary" id="ob-filter-active-btn" onclick="toggleObActivityFilter()">С коммитами</button>
+                    <button class="btn-sm btn-secondary" onclick="openModal('modal-user')">+ Вручную</button>
+                    <button class="btn-sm btn-primary" id="ob-btn-add" onclick="addSelectedOb()" style="margin-left:auto">Добавить выбранных</button>
+                </div>
+            </div>
+
+            <!-- Шаг 6: Финал — единый success-блок -->
+            <div id="ob-content-6" th:class="${!hasUsers} ? 'ob-step-body hidden' : 'ob-step-body'">
+                <h2 class="ob-start-title">История метрик</h2>
+                <p class="ob-start-subtitle">Создаём снапшоты за 360 дней — займёт несколько секунд</p>
+                <div class="ob-final-loading" id="ob-final-loading">
+                    <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666;flex-shrink:0"></span>
+                    <span>Готовим историю метрик...</span>
+                </div>
+                <div class="ob-final-done hidden" id="ob-final-done">
+                    <div class="ob-final-done-icon">✅</div>
+                    <div class="ob-final-done-title">Всё готово!</div>
+                    <div class="ob-final-done-sub">Данные синхронизированы, история метрик за 360 дней загружена</div>
+                    <div class="ob-final-stats" id="ob-final-stats"></div>
+                    <div class="ob-final-action">
+                        <a class="btn-primary" href="/report"
+                           style="padding:.875rem 2.5rem;font-size:1.05rem;font-weight:600;">
+                            Перейти к аналитике команды →
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Шаг 2: Репозитории -->
-            <div id="ob-step-2"
-                 th:class="${hasProjects} ? 'ob-step ob-step-done' : (${hasSources} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasProjects} ? '✓' : '2'">2</div>
-                    <div class="ob-step-line"></div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Добавьте репозитории</div>
-                    <div class="ob-step-desc">Данные за 360 дней загрузятся сразу после добавления.</div>
-                    <div class="ob-step-action">
-                        <span class="ob-done-badge" th:if="${hasProjects}">Добавлено ✓</span>
-                        <button class="btn-primary" onclick="openModal('modal-project')"
-                                th:if="${!hasProjects and hasSources}">
-                            + Добавить репозиторий
-                        </button>
-                        <span class="ob-locked-hint" th:if="${!hasProjects and !hasSources}">
-                            Сначала добавьте GitLab источник
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Шаг 3: Синхронизация -->
-            <div id="ob-step-3"
-                 th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-step ob-step-done'
-                           : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num"
-                         th:text="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? '✓' : '3'">3
-                    </div>
-                    <div class="ob-step-line"></div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Дождитесь синхронизации</div>
-                    <div id="ob-sync-section"
-                         th:class="${hasProjects and !activeJobIds.isEmpty()} ? 'ob-sync-section' : 'ob-sync-section hidden'">
-                        <div class="ob-sync-desc">Идёт загрузка MR, коммитов и ревью за 360 дней. После завершения станет доступен следующий шаг.</div>
-                        <div id="sync-banners-ob"></div>
-                    </div>
-                    <span id="ob-sync-done-badge"
-                          th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-done-badge' : 'ob-done-badge hidden'">
-                        Синхронизировано ✓
-                    </span>
-                    <span class="ob-locked-hint" th:if="${!hasProjects}">Сначала добавьте репозиторий</span>
-                </div>
-            </div>
-
-            <!-- Шаг 4: Выберите сотрудников -->
-            <div id="ob-step-4"
-                 th:class="${hasUsers} ? 'ob-step ob-step-done'
-                           : (${hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '4'">4</div>
-                    <div class="ob-step-line"></div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">Выберите сотрудников</div>
-                    <div id="ob-select-section"
-                         th:class="${hasSyncCompleted and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
-                        <div class="ob-step-desc" style="margin-bottom:4px">
-                            Участники найдены по commit email и GitLab User ID из синхронизированных репозиториев.
-                        </div>
-                        <div class="ob-step-hint" style="margin-bottom:14px">
-                            Выберите, кого отслеживать. Добавить или убрать можно в любой момент в Настройках.
-                        </div>
-                        <div class="discovery-loading hidden" id="ob-discovery-loading">
-                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                            Ищем участников...
-                        </div>
-                        <div class="discovery-list" id="ob-discovery-list" style="max-height:320px;overflow-y:auto"></div>
-                        <div class="discovery-actions hidden" id="ob-discovery-actions" style="margin-top:12px">
-                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
-                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
-                            <button class="btn-sm btn-secondary" id="ob-filter-active-btn" onclick="toggleObActivityFilter()">Только с коммитами</button>
-                            <button class="btn-sm btn-primary" id="ob-btn-add" onclick="addSelectedOb()">Добавить выбранных</button>
-                            <button class="btn-sm btn-secondary" onclick="openModal('modal-user')">+ Вручную</button>
-                        </div>
-                    </div>
-                    <span class="ob-done-badge" th:if="${hasUsers}">Добавлено ✓</span>
-                    <span class="ob-locked-hint"
-                          th:if="${!hasUsers and (!hasSyncCompleted or !activeJobIds.isEmpty())}"
-                          th:text="${!hasProjects} ? 'Сначала добавьте репозиторий'
-                                   : (!hasSyncCompleted ? 'Дождитесь окончания синхронизации'
-                                   : 'Дождитесь окончания синхронизации')">
-                    </span>
-                </div>
-            </div>
-
-            <!-- Шаг 5: Бэкфилл истории -->
-            <div id="ob-step-5"
-                 th:class="${hasUsers} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked'">
-                <div class="ob-step-indicator">
-                    <div class="ob-step-num">5</div>
-                </div>
-                <div class="ob-step-content">
-                    <div class="ob-step-title">История метрик</div>
-                    <div class="ob-sync-section hidden" id="ob-backfill-section">
-                        <div class="discovery-loading" id="ob-backfill-progress">
-                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                            <span>
-                                Готовим историю метрик
-                                <span class="ob-backfill-hint-sub">Обычно занимает несколько секунд</span>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="ob-backfill-done hidden" id="ob-backfill-done-badge">
-                        <span class="ob-done-badge">Сформировано ✓</span>
-                        <span class="ob-step-desc">Снапшоты за 360 дней загружены — график динамики готов</span>
-                    </div>
-                    <span class="ob-locked-hint" th:if="${!hasUsers}">Сначала добавьте сотрудников</span>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Финальный блок -->
-        <div class="ob-footer hidden" id="ob-cta">
-            <div class="ob-cta-body">
-                <div class="ob-cta-title">Готово</div>
-                <div class="ob-cta-summary" id="ob-cta-summary"></div>
-            </div>
-            <a class="btn-primary ob-cta-btn" href="/report">Перейти к аналитике команды →</a>
         </div>
     </div>
 </div>
@@ -584,85 +785,63 @@
 
     // ── Онбординг ─────────────────────────────────────────────────────────────
 
-    function refreshOnboarding() {
-        const s = OB_STATE;
-
-        setObStep('ob-step-1', s.hasSources, true, s.hasSources ? '✓' : '1',
-            s.hasSources
-                ? '<span class="ob-done-badge">Добавлено ✓</span>'
-                : '<button class="btn-primary" onclick="openModal(\'modal-source\')">+ Добавить источник</button>'
-        );
-        setObStep('ob-step-2', s.hasProjects, s.hasSources, s.hasProjects ? '✓' : '2',
-            s.hasProjects
-                ? '<span class="ob-done-badge">Добавлено ✓</span>'
-                : s.hasSources
-                    ? '<button class="btn-primary" onclick="openModal(\'modal-project\')">+ Добавить репозиторий</button>'
-                    : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
-        );
-
-        const syncDone = s.hasProjects && hasSyncCompleted && !activeSyncRunning;
-        const step3 = document.getElementById('ob-step-3');
-        if (step3) {
-            step3.className = 'ob-step ' + (syncDone ? 'ob-step-done' : s.hasProjects ? 'ob-step-active' : 'ob-step-locked');
-            const numEl = step3.querySelector('.ob-step-num');
-            if (numEl) {
-                numEl.textContent = syncDone ? '✓' : '3';
-            }
-            const syncSection = document.getElementById('ob-sync-section');
-            if (syncSection) {
-                syncSection.classList.toggle('hidden', !activeSyncRunning || !s.hasProjects);
-            }
-            const syncDoneBadge = document.getElementById('ob-sync-done-badge');
-            if (syncDoneBadge) {
-                syncDoneBadge.classList.toggle('hidden', !syncDone);
-            }
-            step3.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.toggle('hidden', s.hasProjects));
+    function applyDot(dotId, labelId, state, text) {
+        const dot = document.getElementById(dotId);
+        const label = document.getElementById(labelId);
+        if (dot) {
+            dot.className = 'ob-prog-dot ob-prog-dot-' + state;
+            dot.textContent = text;
         }
-
-        const step4 = document.getElementById('ob-step-4');
-        if (step4) {
-            step4.className = 'ob-step ' + (s.hasUsers ? 'ob-step-done' : syncDone ? 'ob-step-active' : 'ob-step-locked');
-            const numEl = step4.querySelector('.ob-step-num');
-            if (numEl) {
-                numEl.textContent = s.hasUsers ? '✓' : '4';
-            }
-            if (s.hasUsers) {
-                const selectSection = document.getElementById('ob-select-section');
-                if (selectSection) {
-                    selectSection.classList.add('hidden');
-                }
-            }
-            const selectSection = document.getElementById('ob-select-section');
-            if (selectSection && !s.hasUsers) {
-                selectSection.classList.toggle('hidden', !syncDone);
-            }
-            step4.querySelectorAll('.ob-locked-hint').forEach(el => {
-                if (syncDone) {
-                    el.classList.add('hidden');
-                } else if (s.hasProjects) {
-                    el.classList.remove('hidden');
-                    el.textContent = 'Дождитесь окончания синхронизации';
-                }
-            });
-        }
-
-        const step5 = document.getElementById('ob-step-5');
-        if (step5) {
-            step5.className = 'ob-step ' + (s.hasUsers ? 'ob-step-active' : 'ob-step-locked');
-            if (s.hasUsers) {
-                step5.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.add('hidden'));
-            }
+        if (label) {
+            label.className = 'ob-prog-label' + (state !== 'inactive' ? ' ob-prog-label-' + state : '');
         }
     }
 
-    function setObStep(stepId, done, active, numText, actionHtml) {
-        const el = document.getElementById(stepId);
-        if (!el) {
-            return;
+    function applyLine(lineId, done) {
+        const line = document.getElementById(lineId);
+        if (line) {
+            line.className = 'ob-prog-line' + (done ? ' ob-prog-line-done' : '');
         }
-        el.className = 'ob-step ' + (done ? 'ob-step-done' : active ? 'ob-step-active' : 'ob-step-locked');
-        el.querySelector('.ob-step-num').textContent = numText;
-        el.querySelector('.ob-step-action').innerHTML = actionHtml;
+    }
+
+    function showContent(num, visible) {
+        const el = document.getElementById('ob-content-' + num);
+        if (el) {
+            el.classList.toggle('hidden', !visible);
+        }
+    }
+
+    function refreshOnboarding() {
+        const s = OB_STATE;
+        const syncDone = s.hasProjects && hasSyncCompleted && !activeSyncRunning;
+
+        // ── Stepper dots ──────────────────────────────────────────────────────
+        applyDot('ob-dot-2', 'ob-label-2', s.hasSources ? 'done' : 'active', s.hasSources ? '✓' : '2');
+        applyLine('ob-line-2-3', s.hasSources);
+
+        applyDot('ob-dot-3', 'ob-label-3',
+            s.hasProjects ? 'done' : s.hasSources ? 'active' : 'inactive',
+            s.hasProjects ? '✓' : '3');
+        applyLine('ob-line-3-4', s.hasProjects);
+
+        applyDot('ob-dot-4', 'ob-label-4',
+            syncDone ? 'done' : s.hasProjects ? 'active' : 'inactive',
+            syncDone ? '✓' : '4');
+        applyLine('ob-line-4-5', syncDone);
+
+        applyDot('ob-dot-5', 'ob-label-5',
+            s.hasUsers ? 'done' : syncDone ? 'active' : 'inactive',
+            s.hasUsers ? '✓' : '5');
+        applyLine('ob-line-5-6', s.hasUsers);
+
+        applyDot('ob-dot-6', 'ob-label-6', s.hasUsers ? 'active' : 'inactive', '6');
+
+        // ── Content sections ──────────────────────────────────────────────────
+        showContent(2, !s.hasSources);
+        showContent(3, s.hasSources && !s.hasProjects);
+        showContent(4, s.hasProjects && !syncDone);
+        showContent(5, syncDone && !s.hasUsers);
+        showContent(6, s.hasUsers);
     }
 
     function onSyncCompletedInOnboarding() {
@@ -784,7 +963,7 @@
         const btn = document.getElementById('ob-btn-add');
         if (btn) {
             btn.disabled = true;
-            btn.textContent = 'Добавляем...';
+            btn.innerHTML = '<span class="ob-btn-spinner"></span>Добавляем...';
         }
         try {
             await api('POST', '/settings/users/bulk', requests);
@@ -809,38 +988,29 @@
         } catch (e) {
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'Добавить выбранных';
+                btn.textContent = `Добавить выбранных (${document.querySelectorAll('.ob-check:checked').length})`;
             }
             alert('Не удалось добавить: ' + e.message);
         }
     }
 
     async function triggerSnapshotBackfill() {
-        const backfillSection = document.getElementById('ob-backfill-section');
-        const doneBadge = document.getElementById('ob-backfill-done-badge');
-        if (backfillSection) {
-            backfillSection.classList.remove('hidden');
+        const loadingEl = document.getElementById('ob-final-loading');
+        const doneEl = document.getElementById('ob-final-done');
+        if (loadingEl) {
+            loadingEl.classList.remove('hidden');
+        }
+        if (doneEl) {
+            doneEl.classList.add('hidden');
         }
         try {
             await api('POST', '/settings/snapshots/backfill');
-            if (backfillSection) {
-                backfillSection.classList.add('hidden');
+            if (loadingEl) {
+                loadingEl.classList.add('hidden');
             }
-            if (doneBadge) {
-                doneBadge.classList.remove('hidden');
-            }
-            const step5 = document.getElementById('ob-step-5');
-            if (step5) {
-                step5.className = 'ob-step ob-step-done';
-                const numEl = step5.querySelector('.ob-step-num');
-                if (numEl) {
-                    numEl.textContent = '✓';
-                }
-            }
-            const cta = document.getElementById('ob-cta');
-            if (cta) {
-                const summaryEl = document.getElementById('ob-cta-summary');
-                if (summaryEl) {
+            if (doneEl) {
+                const statsEl = document.getElementById('ob-final-stats');
+                if (statsEl) {
                     const devsWord = obAddedDevs === 1 ? 'разработчик' : (obAddedDevs < 5 ? 'разработчика' : 'разработчиков');
                     const lines = [];
                     if (obAddedDevs > 0) {
@@ -850,13 +1020,14 @@
                         lines.push(`${obTotalMrs} MR загружено из GitLab`);
                     }
                     lines.push('Данные за последние 360 дней');
-                    summaryEl.innerHTML = lines.map(l => `<div class="ob-cta-stat">${escHtml(l)}</div>`).join('');
+                    statsEl.innerHTML = lines.map(l => `<div>${escHtml(l)}</div>`).join('');
                 }
-                cta.classList.remove('hidden');
+                doneEl.classList.remove('hidden');
             }
+            applyDot('ob-dot-6', 'ob-label-6', 'done', '✓');
         } catch (e) {
-            if (backfillSection) {
-                backfillSection.classList.add('hidden');
+            if (loadingEl) {
+                loadingEl.classList.add('hidden');
             }
             console.error('Backfill error:', e);
         }
@@ -1146,6 +1317,7 @@
             document.getElementById('user-email').value = '';
             OB_STATE.hasUsers = true;
             refreshOnboarding();
+            triggerSnapshotBackfill();
         } catch (e) {
             showError('user-error', e.message);
         }
@@ -1157,6 +1329,9 @@
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
         if (hasSyncCompleted && OB_STATE.hasProjects && !OB_STATE.hasUsers && !activeSyncRunning) {
             loadObDiscovery();
+        }
+        if (OB_STATE.hasUsers) {
+            triggerSnapshotBackfill();
         }
         refreshOnboarding();
     });

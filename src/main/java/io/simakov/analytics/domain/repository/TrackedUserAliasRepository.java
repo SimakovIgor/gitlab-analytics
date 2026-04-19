@@ -2,8 +2,6 @@ package io.simakov.analytics.domain.repository;
 
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -18,11 +16,4 @@ public interface TrackedUserAliasRepository extends JpaRepository<TrackedUserAli
 
     boolean existsByGitlabUserId(Long gitlabUserId);
 
-    List<TrackedUserAlias> findByGitlabUserIdIn(List<Long> gitlabUserIds);
-
-    @Query("SELECT a.email FROM TrackedUserAlias a WHERE a.email IS NOT NULL AND a.email <> ''")
-    List<String> findAllEmails();
-
-    @Query("SELECT a.email FROM TrackedUserAlias a WHERE a.trackedUserId IN :userIds AND a.email IS NOT NULL AND a.email <> ''")
-    List<String> findAllEmailsByTrackedUserIdIn(@Param("userIds") List<Long> userIds);
 }

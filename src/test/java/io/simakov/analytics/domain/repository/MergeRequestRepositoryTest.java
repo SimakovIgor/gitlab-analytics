@@ -55,19 +55,6 @@ class MergeRequestRepositoryTest extends BaseIT {
     }
 
     @Test
-    void findCreatedInPeriodReturnsOnlyMrsWithinWindow() {
-        saveMr(1L, baseTime.minus(10, ChronoUnit.DAYS), null);
-        saveMr(2L, baseTime.minus(40, ChronoUnit.DAYS), null); // outside window
-
-        Instant from = baseTime.minus(30, ChronoUnit.DAYS);
-        List<MergeRequest> result = mergeRequestRepository.findCreatedInPeriod(
-            List.of(projectId), from, baseTime);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().getGitlabMrId()).isEqualTo(1L);
-    }
-
-    @Test
     void findMergedInPeriodReturnsOnlyMergedMrsWithinWindow() {
         saveMr(10L, baseTime.minus(40, ChronoUnit.DAYS), baseTime.minus(5, ChronoUnit.DAYS));
         saveMr(11L, baseTime.minus(10, ChronoUnit.DAYS), null); // not merged
@@ -78,15 +65,6 @@ class MergeRequestRepositoryTest extends BaseIT {
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getGitlabMrId()).isEqualTo(10L);
-    }
-
-    @Test
-    void findCreatedInPeriodReturnsEmptyWhenNoMrsExist() {
-        Instant from = baseTime.minus(30, ChronoUnit.DAYS);
-        List<MergeRequest> result = mergeRequestRepository.findCreatedInPeriod(
-            List.of(projectId), from, baseTime);
-
-        assertThat(result).isEmpty();
     }
 
     @Test
@@ -222,79 +200,6 @@ class MergeRequestRepositoryTest extends BaseIT {
 
         int total = rows.stream().mapToInt(r -> ((Number) r[1]).intValue()).sum();
         assertThat(total).isEqualTo(1);
-    }
-
-    // ── findDistinctAuthorIdsByTrackedProjectIdIn ─────────────────────────────
-
-    @Test
-    void findDistinctAuthorIdsByTrackedProjectIdInReturnsAuthorsForMatchingProjects() {
-        MergeRequest mr1 = saveMr(30L, baseTime.minus(5, ChronoUnit.DAYS), null);
-        mr1.setAuthorGitlabUserId(111L);
-        mergeRequestRepository.save(mr1);
-
-        MergeRequest mr2 = saveMr(31L, baseTime.minus(3, ChronoUnit.DAYS), null);
-        mr2.setAuthorGitlabUserId(222L);
-        mergeRequestRepository.save(mr2);
-
-        List<Long> authorIds = mergeRequestRepository
-            .findDistinctAuthorIdsByTrackedProjectIdIn(List.of(projectId));
-
-        assertThat(authorIds).containsExactlyInAnyOrder(111L, 222L);
-    }
-
-    @Test
-    void findDistinctAuthorIdsByTrackedProjectIdInReturnsDistinctIds() {
-        // Same author — two MRs
-        MergeRequest mr1 = saveMr(40L, baseTime.minus(5, ChronoUnit.DAYS), null);
-        mr1.setAuthorGitlabUserId(333L);
-        mergeRequestRepository.save(mr1);
-
-        MergeRequest mr2 = saveMr(41L, baseTime.minus(3, ChronoUnit.DAYS), null);
-        mr2.setAuthorGitlabUserId(333L);
-        mergeRequestRepository.save(mr2);
-
-        List<Long> authorIds = mergeRequestRepository
-            .findDistinctAuthorIdsByTrackedProjectIdIn(List.of(projectId));
-
-        assertThat(authorIds).hasSize(1).containsExactly(333L);
-    }
-
-    @Test
-    void findDistinctAuthorIdsByTrackedProjectIdInReturnsEmptyForUnknownProject() {
-        saveMr(50L, baseTime.minus(1, ChronoUnit.DAYS), null);
-
-        List<Long> authorIds = mergeRequestRepository
-            .findDistinctAuthorIdsByTrackedProjectIdIn(List.of(99_999L));
-
-        assertThat(authorIds).isEmpty();
-    }
-
-    @Test
-    void findDistinctAuthorIdsByTrackedProjectIdInFiltersToRequestedProjects() {
-        GitSource source2 = gitSourceRepository.save(GitSource.builder()
-            .workspaceId(testWorkspaceId).name("other").baseUrl("https://other.example.com").build());
-        TrackedProject project2 = trackedProjectRepository.save(TrackedProject.builder()
-            .workspaceId(testWorkspaceId).gitSourceId(source2.getId()).gitlabProjectId(99L)
-            .pathWithNamespace("other/repo").name("other").tokenEncrypted("tok").enabled(true).build());
-
-        MergeRequest mrProject1 = saveMr(60L, baseTime.minus(2, ChronoUnit.DAYS), null);
-        mrProject1.setAuthorGitlabUserId(444L);
-        mergeRequestRepository.save(mrProject1);
-
-        MergeRequest mrProject2 = new MergeRequest();
-        mrProject2.setTrackedProjectId(project2.getId());
-        mrProject2.setGitlabMrId(61L);
-        mrProject2.setGitlabMrIid(61L);
-        mrProject2.setState(MrState.OPENED);
-        mrProject2.setCreatedAtGitlab(baseTime.minus(1, ChronoUnit.DAYS));
-        mrProject2.setAuthorGitlabUserId(555L);
-        mergeRequestRepository.save(mrProject2);
-
-        List<Long> authorIds = mergeRequestRepository
-            .findDistinctAuthorIdsByTrackedProjectIdIn(List.of(projectId));
-
-        assertThat(authorIds).containsExactly(444L);
-        assertThat(authorIds).doesNotContain(555L);
     }
 
     /**

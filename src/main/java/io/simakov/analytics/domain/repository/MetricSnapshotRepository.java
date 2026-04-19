@@ -7,16 +7,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 public interface MetricSnapshotRepository extends JpaRepository<MetricSnapshot, Long> {
-
-    Optional<MetricSnapshot> findByTrackedUserIdAndSnapshotDate(Long trackedUserId,
-                                                                LocalDate snapshotDate);
-
-    Optional<MetricSnapshot> findByWorkspaceIdAndTrackedUserIdAndSnapshotDate(Long workspaceId,
-                                                                              Long trackedUserId,
-                                                                              LocalDate snapshotDate);
 
     List<MetricSnapshot> findByWorkspaceIdAndSnapshotDateAndTrackedUserIdIn(Long workspaceId,
                                                                             LocalDate snapshotDate,

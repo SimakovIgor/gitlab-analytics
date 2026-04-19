@@ -129,8 +129,8 @@ class SnapshotTest extends BaseIT {
         post("/api/v1/snapshots/run", req, RunSnapshotResponse.class);
 
         MetricSnapshot saved = snapshotRepository
-            .findByTrackedUserIdAndSnapshotDate(aliceId, TODAY)
-            .orElseThrow();
+            .findByWorkspaceIdAndSnapshotDateAndTrackedUserIdIn(testWorkspaceId, TODAY, List.of(aliceId))
+            .stream().findFirst().orElseThrow();
         assertThat(saved.getWindowDays()).isEqualTo(90);
         assertThat(saved.getSnapshotDate()).isEqualTo(TODAY);
         assertThat(saved.getMetricsJson()).isNotBlank();
