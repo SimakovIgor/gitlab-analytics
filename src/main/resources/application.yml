@@ -93,6 +93,11 @@ management:
       hikaricp: true
       logback: true
       http: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
 
 springdoc:
   swagger-ui:

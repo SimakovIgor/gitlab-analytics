@@ -2,342 +2,330 @@
   "title": "GitLab Analytics — Spring Boot",
   "uid": "gitlab-analytics-jvm",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "templating": { "list": [] },
   "panels": [
-    {
-      "id": 1,
-      "title": "Uptime",
-      "type": "stat",
-      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "auto" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
-        }
-      },
+
+    { "id": 100, "title": "Summary", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+
+    { "id": 1, "title": "Uptime", "type": "stat",
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "s",
+        "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "process_uptime_seconds{application=\"gitlab-analytics\"}", "legendFormat": "uptime" }]
+    },
+
+    { "id": 2, "title": "CPU Usage", "type": "stat",
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 0.8 }
+        ]}
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "process_cpu_usage{application=\"gitlab-analytics\"}", "legendFormat": "cpu" }]
+    },
+
+    { "id": 3, "title": "JVM Heap Used %", "type": "stat",
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 0.6 }, { "color": "red", "value": 0.85 }
+        ]}
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\",area=\"heap\"}) / sum(jvm_memory_max_bytes{application=\"gitlab-analytics\",area=\"heap\"})",
+        "legendFormat": "heap %" }]
+    },
+
+    { "id": 4, "title": "HTTP RPS", "type": "stat",
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "reqps",
+        "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[1m]))",
+        "legendFormat": "rps" }]
+    },
+
+    { "id": 5, "title": "HTTP 5xx Rate", "type": "stat",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "reqps",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "red", "value": 0.001 }
+        ]}
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",outcome=\"SERVER_ERROR\"}[1m]))",
+        "legendFormat": "5xx" }]
+    },
+
+    { "id": 6, "title": "Active Sync Jobs", "type": "stat",
+      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }
+        ]}
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sync_jobs_active{application=\"gitlab-analytics\"}", "legendFormat": "active" }]
+    },
+
+    { "id": 101, "title": "HTTP Traffic", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
+
+    { "id": 7, "title": "Request Rate by Outcome", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps",
+        "custom": { "lineWidth": 2, "fillOpacity": 15, "stacking": { "mode": "normal", "group": "A" } }
+      }},
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "process_uptime_seconds{application=\"gitlab-analytics\"}",
-          "legendFormat": "uptime"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (outcome) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[1m]))",
+          "legendFormat": "{{outcome}}" }
       ]
     },
-    {
-      "id": 2,
-      "title": "CPU Usage",
-      "type": "stat",
-      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto" },
+
+    { "id": 8, "title": "4xx / 5xx Error Rate", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
       "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0, "max": 1,
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green", "value": null },
-            { "color": "yellow", "value": 0.5 },
-            { "color": "red", "value": 0.8 }
-          ]}
-        }
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 20 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "5xx" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "4xx" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
+        ]
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "process_cpu_usage{application=\"gitlab-analytics\"}",
-          "legendFormat": "cpu"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",outcome=\"SERVER_ERROR\",uri!~\"/actuator.*\"}[1m]))",
+          "legendFormat": "5xx" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",outcome=\"CLIENT_ERROR\",uri!~\"/actuator.*\"}[1m]))",
+          "legendFormat": "4xx" }
       ]
     },
-    {
-      "id": 3,
-      "title": "JVM Heap Used",
-      "type": "stat",
-      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green", "value": null },
-            { "color": "yellow", "value": 256000000 },
-            { "color": "red", "value": 512000000 }
-          ]}
-        }
-      },
+
+    { "id": 102, "title": "HTTP Errors by Endpoint", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
+
+    { "id": 9, "title": "4xx — by Endpoint + Status Code", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\", area=\"heap\"})",
-          "legendFormat": "heap used"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"4..\",uri!~\"/actuator.*\"}[2m]))",
+          "legendFormat": "{{status}} {{uri}}" }
       ]
     },
-    {
-      "id": 4,
-      "title": "HTTP RPS",
-      "type": "stat",
-      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "textMode": "auto" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
-        }
-      },
+
+    { "id": 10, "title": "5xx — by Endpoint + Status Code", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps",
+        "custom": { "lineWidth": 2, "fillOpacity": 20 },
+        "color": { "fixedColor": "red", "mode": "fixed" }
+      }},
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\"}[1m]))",
-          "legendFormat": "rps"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"5..\",uri!~\"/actuator.*\"}[2m]))",
+          "legendFormat": "{{status}} {{uri}}" }
       ]
     },
-    {
-      "id": 5,
-      "title": "HikariCP Active Connections",
-      "type": "stat",
-      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green", "value": null },
-            { "color": "yellow", "value": 5 },
-            { "color": "red", "value": 9 }
-          ]}
-        }
-      },
+
+    { "id": 103, "title": "HTTP Latency", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 } },
+
+    { "id": 11, "title": "Latency — p50 / p95 / p99 (aggregate)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_active{application=\"gitlab-analytics\"}",
-          "legendFormat": "active"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m])) by (le))",
+          "legendFormat": "p50" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m])) by (le))",
+          "legendFormat": "p95" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m])) by (le))",
+          "legendFormat": "p99" }
       ]
     },
-    {
-      "id": 6,
-      "title": "HTTP Request Rate",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
-      },
+
+    { "id": 12, "title": "Latency p95 — by Endpoint", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (uri, method, status) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\", uri!~\"/actuator.*\"}[1m]))",
-          "legendFormat": "{{method}} {{uri}} {{status}}"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum by (uri, le) (rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\",uri!~\"/swagger.*\",uri!~\"/v3.*\"}[2m])))",
+          "legendFormat": "{{uri}}" }
       ]
     },
-    {
-      "id": 7,
-      "title": "HTTP Latency (p50 / p95 / p99)",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } }
-      },
+
+    { "id": 104, "title": "Application", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 1 } },
+
+    { "id": 13, "title": "Sync Jobs — Active", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 33, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "custom": { "lineWidth": 2, "fillOpacity": 20 },
+        "color": { "mode": "thresholds" },
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }
+        ]}
+      }},
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\", uri!~\"/actuator.*\"}[1m])) by (le))",
-          "legendFormat": "p50"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\", uri!~\"/actuator.*\"}[1m])) by (le))",
-          "legendFormat": "p95"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\", uri!~\"/actuator.*\"}[1m])) by (le))",
-          "legendFormat": "p99"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sync_jobs_active{application=\"gitlab-analytics\"}", "legendFormat": "active jobs" }
       ]
     },
-    {
-      "id": 8,
-      "title": "JVM Memory — Heap",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
+
+    { "id": 14, "title": "Sync Jobs — Completed / Failed Rate", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 33, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": ".*failed.*" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byRegexp", "options": ".*completed.*" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\", area=\"heap\"})",
-          "legendFormat": "used"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_committed_bytes{application=\"gitlab-analytics\", area=\"heap\"})",
-          "legendFormat": "committed"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_max_bytes{application=\"gitlab-analytics\", area=\"heap\"})",
-          "legendFormat": "max"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(sync_job_completed_total{application=\"gitlab-analytics\"}[5m])", "legendFormat": "completed / s" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(sync_job_failed_total{application=\"gitlab-analytics\",reason=\"error\"}[5m])", "legendFormat": "failed (error) / s" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(sync_job_failed_total{application=\"gitlab-analytics\",reason=\"stale\"}[5m])", "legendFormat": "failed (stale) / s" }
       ]
     },
-    {
-      "id": 9,
-      "title": "JVM Memory — Non-Heap",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
-      },
+
+    { "id": 15, "title": "syncTaskExecutor — active / queued / pool (core=2, max=4, queue=10)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 41, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\", area=\"nonheap\"})",
-          "legendFormat": "used"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_committed_bytes{application=\"gitlab-analytics\", area=\"nonheap\"})",
-          "legendFormat": "committed"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_active_threads{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "active" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_queued_tasks{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "queued" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_pool_size_threads{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "pool size" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_pool_max_threads{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "pool max" }
       ]
     },
-    {
-      "id": 10,
-      "title": "CPU Usage",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0, "max": 1,
-          "custom": { "lineWidth": 2, "fillOpacity": 10 }
-        }
-      },
+
+    { "id": 16, "title": "mrProcessingExecutor — active / queued / pool (fixed=5, queue=500)", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 41, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "process_cpu_usage{application=\"gitlab-analytics\"}",
-          "legendFormat": "process cpu"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "system_cpu_usage{application=\"gitlab-analytics\"}",
-          "legendFormat": "system cpu"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_active_threads{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "active" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_queued_tasks{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "queued" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_pool_size_threads{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "pool size" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "executor_pool_max_threads{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "pool max" }
       ]
     },
-    {
-      "id": 11,
-      "title": "Process Memory",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
-      },
+
+    { "id": 105, "title": "JVM Memory", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 49, "w": 24, "h": 1 } },
+
+    { "id": 17, "title": "JVM Heap — used / committed / max", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 50, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "process_memory_virtual_bytes{application=\"gitlab-analytics\"}",
-          "legendFormat": "virtual"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\",area=\"heap\"})", "legendFormat": "used" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(jvm_memory_committed_bytes{application=\"gitlab-analytics\",area=\"heap\"})", "legendFormat": "committed" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(jvm_memory_max_bytes{application=\"gitlab-analytics\",area=\"heap\"})", "legendFormat": "max" }
       ]
     },
-    {
-      "id": 12,
-      "title": "GC Pause Rate",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
-      },
+
+    { "id": 18, "title": "JVM Non-Heap — used / committed", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 50, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (action, cause) (rate(jvm_gc_pause_seconds_count{application=\"gitlab-analytics\"}[1m]))",
-          "legendFormat": "{{action}} / {{cause}}"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\",area=\"nonheap\"})", "legendFormat": "used" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(jvm_memory_committed_bytes{application=\"gitlab-analytics\",area=\"nonheap\"})", "legendFormat": "committed" }
       ]
     },
-    {
-      "id": 13,
-      "title": "GC Pause Duration",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
-      },
+
+    { "id": 106, "title": "JVM Runtime", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 58, "w": 24, "h": 1 } },
+
+    { "id": 19, "title": "GC — Pause Rate & Memory Allocated", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 59, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (action, cause) (rate(jvm_gc_pause_seconds_sum{application=\"gitlab-analytics\"}[1m]))",
-          "legendFormat": "{{action}} / {{cause}}"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(jvm_gc_pause_seconds_count{application=\"gitlab-analytics\"}[1m])", "legendFormat": "GC pauses / s" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(jvm_gc_memory_allocated_bytes_total{application=\"gitlab-analytics\"}[1m])", "legendFormat": "allocated bytes / s" }
       ]
     },
-    {
-      "id": 14,
-      "title": "JVM Threads",
-      "type": "timeseries",
-      "gridPos": { "x": 0, "y": 36, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
-      },
+
+    { "id": 20, "title": "JVM Threads — live / daemon / peak", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 59, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_live_threads{application=\"gitlab-analytics\"}",
-          "legendFormat": "live"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_daemon_threads{application=\"gitlab-analytics\"}",
-          "legendFormat": "daemon"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_peak_threads{application=\"gitlab-analytics\"}",
-          "legendFormat": "peak"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "jvm_threads_live_threads{application=\"gitlab-analytics\"}", "legendFormat": "live" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "jvm_threads_daemon_threads{application=\"gitlab-analytics\"}", "legendFormat": "daemon" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "jvm_threads_peak_threads{application=\"gitlab-analytics\"}", "legendFormat": "peak" }
       ]
     },
-    {
-      "id": 15,
-      "title": "HikariCP Connection Pool",
-      "type": "timeseries",
-      "gridPos": { "x": 12, "y": 36, "w": 12, "h": 8 },
-      "fieldConfig": {
-        "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } }
-      },
+
+    { "id": 107, "title": "HikariCP", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 67, "w": 24, "h": 1 } },
+
+    { "id": 21, "title": "HikariCP — Connection Pool", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 68, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_active{application=\"gitlab-analytics\"}",
-          "legendFormat": "active"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_idle{application=\"gitlab-analytics\"}",
-          "legendFormat": "idle"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_pending{application=\"gitlab-analytics\"}",
-          "legendFormat": "pending"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections{application=\"gitlab-analytics\"}",
-          "legendFormat": "total"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "hikaricp_connections_active{application=\"gitlab-analytics\"}", "legendFormat": "active" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "hikaricp_connections_idle{application=\"gitlab-analytics\"}", "legendFormat": "idle" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "hikaricp_connections_pending{application=\"gitlab-analytics\"}", "legendFormat": "pending" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "hikaricp_connections{application=\"gitlab-analytics\"}", "legendFormat": "total" }
+      ]
+    },
+
+    { "id": 22, "title": "HikariCP — Acquire Time p50 / p99", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 68, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"gitlab-analytics\"}[1m])) by (le))",
+          "legendFormat": "p50" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"gitlab-analytics\"}[1m])) by (le))",
+          "legendFormat": "p99" }
       ]
     }
+
   ]
 }
