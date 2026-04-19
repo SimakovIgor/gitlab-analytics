@@ -2,11 +2,16 @@ package io.simakov.analytics.api.controller;
 
 import io.simakov.analytics.api.dto.request.ContributionReportRequest;
 import io.simakov.analytics.api.dto.response.ContributionReportResponse;
+import io.simakov.analytics.api.exception.ResourceNotFoundException;
+import io.simakov.analytics.domain.model.TrackedProject;
+import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.metrics.model.UserMetrics;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -35,11 +41,28 @@ public class ReportController {
 
     private final MetricCalculationService metricCalculationService;
     private final TrackedProjectRepository trackedProjectRepository;
+    private final TrackedUserRepository trackedUserRepository;
 
     @PostMapping("/contributions")
     @Operation(summary = "Calculate contribution report",
                description = "Returns engineering metrics per user for the requested period.")
     public ContributionReportResponse contributions(@RequestBody @Valid ContributionReportRequest request) {
+        Long workspaceId = WorkspaceContext.get();
+        Set<Long> workspaceProjectIds = trackedProjectRepository.findAllByWorkspaceId(workspaceId)
+            .stream().map(TrackedProject::getId).collect(Collectors.toSet());
+        for (Long pid : request.projectIds()) {
+            if (!workspaceProjectIds.contains(pid)) {
+                throw new ResourceNotFoundException("TrackedProject", pid);
+            }
+        }
+        Set<Long> workspaceUserIds = trackedUserRepository.findAllByWorkspaceId(workspaceId)
+            .stream().map(TrackedUser::getId).collect(Collectors.toSet());
+        for (Long uid : request.userIds()) {
+            if (!workspaceUserIds.contains(uid)) {
+                throw new ResourceNotFoundException("TrackedUser", uid);
+            }
+        }
+
         var period = resolvePeriod(request);
         Instant dateFrom = period[0];
         Instant dateTo = period[1];

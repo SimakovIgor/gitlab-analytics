@@ -13,6 +13,7 @@ import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -36,13 +37,15 @@ public class SnapshotHistoryService {
     private final TrackedUserRepository trackedUserRepository;
     private final ObjectMapper objectMapper;
 
-    public SnapshotHistoryResponse getHistory(List<Long> userIds,
+    @Transactional(readOnly = true)
+    public SnapshotHistoryResponse getHistory(Long workspaceId,
+                                              List<Long> userIds,
                                               LocalDate from,
                                               LocalDate to,
                                               TimeGroupBy groupBy) {
-        List<MetricSnapshot> snapshots = snapshotRepository.findHistory(userIds, from, to);
+        List<MetricSnapshot> snapshots = snapshotRepository.findHistoryByWorkspace(workspaceId, userIds, from, to);
 
-        Map<Long, String> userNames = loadUserNames(userIds);
+        Map<Long, String> userNames = loadUserNames(workspaceId, userIds);
 
         // Group snapshots by time period label, preserving insertion order
         Map<String, List<MetricSnapshot>> grouped = snapshots.stream()
@@ -97,8 +100,9 @@ public class SnapshotHistoryService {
         };
     }
 
-    private Map<Long, String> loadUserNames(List<Long> userIds) {
-        return trackedUserRepository.findAllById(userIds).stream()
+    private Map<Long, String> loadUserNames(Long workspaceId,
+                                            List<Long> userIds) {
+        return trackedUserRepository.findAllByWorkspaceIdAndIdIn(workspaceId, userIds).stream()
             .collect(Collectors.toMap(TrackedUser::getId, TrackedUser::getDisplayName));
     }
 

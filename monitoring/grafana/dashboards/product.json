@@ -1,0 +1,760 @@
+{
+  "title": "GitLab Analytics — Product Dashboard",
+  "uid": "gitlab-analytics-product",
+  "description": "Business metrics: entities, data volume, sync activity, growth over time",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "graphTooltip": 1,
+  "tags": ["product", "business"],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Technical Dashboard",
+      "url": "/d/gitlab-analytics-jvm",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Overview",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "panels": []
+    },
+
+    {
+      "id": 2,
+      "title": "Workspaces",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM workspace",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 3,
+      "title": "App Users",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM app_user",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "title": "GitLab Sources",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM git_source",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "title": "Tracked Projects (active)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM tracked_project WHERE enabled = true",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "Tracked Employees (active)",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM tracked_user WHERE enabled = true",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "title": "Data Volume",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 },
+      "panels": []
+    },
+
+    {
+      "id": 11,
+      "title": "Merge Requests",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 6, "w": 5, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM merge_request",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 12,
+      "title": "Commits",
+      "type": "stat",
+      "gridPos": { "x": 5, "y": 6, "w": 5, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM merge_request_commit",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 13,
+      "title": "Review Notes",
+      "type": "stat",
+      "gridPos": { "x": 10, "y": 6, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM merge_request_note WHERE system = false",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 14,
+      "title": "Approvals",
+      "type": "stat",
+      "gridPos": { "x": 14, "y": 6, "w": 5, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM merge_request_approval",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 15,
+      "title": "Metric Snapshots",
+      "type": "stat",
+      "gridPos": { "x": 19, "y": 6, "w": 5, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM metric_snapshot",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 20,
+      "title": "Sync Activity",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 1 },
+      "panels": []
+    },
+
+    {
+      "id": 21,
+      "title": "Total Sync Jobs",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 11, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "text" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "text", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM sync_job",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 22,
+      "title": "Successful Syncs",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 11, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM sync_job WHERE status = 'COMPLETED'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 23,
+      "title": "Failed Syncs",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 11, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COUNT(*) AS value FROM sync_job WHERE status = 'FAILED'",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 24,
+      "title": "Sync Success Rate",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 11, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "green", "value": 95 }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT CASE WHEN COUNT(*) = 0 THEN NULL ELSE ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'COMPLETED') / COUNT(*), 1) END AS value FROM sync_job",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 30,
+      "title": "Growth Over Time",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 },
+      "panels": []
+    },
+
+    {
+      "id": 31,
+      "title": "New Workspaces per Day",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 9 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "drawStyle": "bars"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT\n  date_trunc('day', created_at) AS time,\n  COUNT(*) AS \"New Workspaces\"\nFROM workspace\nWHERE $__timeFilter(created_at)\nGROUP BY 1\nORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 32,
+      "title": "New Tracked Employees per Day",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 9 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "drawStyle": "bars"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT\n  date_trunc('day', created_at) AS time,\n  COUNT(*) AS \"New Employees\"\nFROM tracked_user\nWHERE $__timeFilter(created_at)\nGROUP BY 1\nORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 33,
+      "title": "MRs Merged per Day",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 25, "w": 12, "h": 9 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "drawStyle": "bars"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT\n  date_trunc('day', merged_at_gitlab) AS time,\n  COUNT(*) AS \"MRs Merged\"\nFROM merge_request\nWHERE merged_at_gitlab IS NOT NULL\n  AND $__timeFilter(merged_at_gitlab)\nGROUP BY 1\nORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 34,
+      "title": "Sync Jobs per Day",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 25, "w": 12, "h": 9 },
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "drawStyle": "bars"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT\n  date_trunc('day', started_at) AS time,\n  COUNT(*) FILTER (WHERE status = 'COMPLETED') AS \"Successful\",\n  COUNT(*) FILTER (WHERE status = 'FAILED') AS \"Failed\",\n  COUNT(*) FILTER (WHERE status = 'STARTED') AS \"In Progress\"\nFROM sync_job\nWHERE $__timeFilter(started_at)\nGROUP BY 1\nORDER BY 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    }
+
+  ]
+}

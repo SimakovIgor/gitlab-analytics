@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -34,13 +36,14 @@ public class DoraService {
     }
 
     public List<TrackedProject> getAllProjects() {
-        return trackedProjectRepository.findAllByEnabledTrue();
+        return trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(WorkspaceContext.get());
     }
 
     /**
      * Lead time summary + weekly chart data for given projects and days back.
      * Returns map with keys: totalMrs, medianHours, p75Hours, p95Hours, chartJson.
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> buildLeadTimeData(List<Long> projectIds,
                                                  int days) {
         List<Long> resolvedIds = resolveProjectIds(projectIds);
@@ -70,10 +73,10 @@ public class DoraService {
     }
 
     private List<Long> resolveProjectIds(List<Long> requested) {
-        if (requested != null && !requested.isEmpty()) {
+        if (requested != null) {
             return requested;
         }
-        return trackedProjectRepository.findAllByEnabledTrue().stream()
+        return trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(WorkspaceContext.get()).stream()
             .map(TrackedProject::getId)
             .toList();
     }

@@ -1,13 +1,17 @@
 package io.simakov.analytics.web.controller;
 
 import io.simakov.analytics.BaseIT;
+import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.TrackedProject;
+import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.enums.MrState;
+import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +35,10 @@ class DoraControllerTest extends BaseIT {
     private final Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private AppUserRepository appUserRepository;
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
     @Autowired
     private GitSourceRepository gitSourceRepository;
     @Autowired
@@ -156,6 +164,28 @@ class DoraControllerTest extends BaseIT {
             .andReturn();
 
         assertThat(result.getResponse().getContentAsString()).contains("repo");
+    }
+
+    @Test
+    void doraPageDoesNotLeakProjectsFromOtherWorkspace() throws Exception {
+        AppUser otherOwner = appUserRepository.save(AppUser.builder()
+            .githubId(2L).githubLogin("other-owner").lastLoginAt(Instant.now()).build());
+        Workspace otherWorkspace = workspaceRepository.save(Workspace.builder()
+            .name("Other").slug("other-ws").ownerId(otherOwner.getId()).plan("FREE").apiToken("other-tok").build());
+        GitSource otherSource = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(otherWorkspace.getId()).name("other-gl").baseUrl("https://other.com").build());
+        trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(otherWorkspace.getId()).gitSourceId(otherSource.getId())
+            .gitlabProjectId(99L).pathWithNamespace("other/secret-repo").name("secret-repo")
+            .tokenEncrypted("tok").enabled(true).build());
+
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        assertThat(result.getResponse().getContentAsString())
+            .contains("repo")
+            .doesNotContain("secret-repo");
     }
 
     private void saveMergedMr(Long gitlabMrId,

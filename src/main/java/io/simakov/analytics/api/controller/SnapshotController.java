@@ -4,16 +4,19 @@ import io.simakov.analytics.api.dto.request.RunSnapshotRequest;
 import io.simakov.analytics.api.dto.request.SnapshotHistoryRequest;
 import io.simakov.analytics.api.dto.response.RunSnapshotResponse;
 import io.simakov.analytics.api.dto.response.SnapshotHistoryResponse;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.snapshot.SnapshotHistoryService;
 import io.simakov.analytics.snapshot.SnapshotService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,14 +39,13 @@ public class SnapshotController {
     }
 
     @PostMapping("/backfill")
+    @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "Daily snapshot backfill",
                description = "Creates daily snapshots for the last N days (step = 1 day). "
                    + "Intended for onboarding: call once after users are added to populate history. "
                    + "Default days=360. Already existing snapshots are overwritten with fresh data.")
-    public java.util.Map<String, Integer> backfill(
-        @RequestParam(defaultValue = "360") int days) {
-        int saved = snapshotService.runDailyBackfill(days);
-        return java.util.Map.of("snapshotsSaved", saved);
+    public void backfill(@RequestParam(defaultValue = "360") int days) {
+        snapshotService.runDailyBackfillAsync(WorkspaceContext.get(), days);
     }
 
     @PostMapping("/history")
@@ -52,6 +54,7 @@ public class SnapshotController {
                    + "Within each group the latest snapshot is used.")
     public SnapshotHistoryResponse history(@RequestBody @Valid SnapshotHistoryRequest request) {
         return snapshotHistoryService.getHistory(
+            WorkspaceContext.get(),
             request.userIds(),
             request.from(),
             request.to(),

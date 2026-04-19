@@ -28,6 +28,7 @@ import io.simakov.analytics.web.dto.CreatedProjectResult;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -64,10 +65,12 @@ public class SettingsService {
         return gitSourceRepository.save(source);
     }
 
+    @Transactional
     public void deleteSource(Long id) {
-        if (!gitSourceRepository.existsById(id)) {
-            throw new ResourceNotFoundException("GitSource", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        gitSourceRepository.findById(id)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("GitSource", id));
         gitSourceRepository.deleteById(id);
     }
 
@@ -76,7 +79,9 @@ public class SettingsService {
     @SuppressWarnings("checkstyle:IllegalCatch")
     public Map<String, Object> validateToken(Long sourceId,
                                              String token) {
+        Long workspaceId = WorkspaceContext.get();
         GitSource source = gitSourceRepository.findById(sourceId)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         try {
             var user = gitLabApiClient.getCurrentUser(source.getBaseUrl(), token);
@@ -91,44 +96,54 @@ public class SettingsService {
     public List<GitLabProjectDto> searchProjects(Long sourceId,
                                                  String q,
                                                  String token) {
+        Long workspaceId = WorkspaceContext.get();
         GitSource source = gitSourceRepository.findById(sourceId)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         return gitLabApiClient.searchProjects(source.getBaseUrl(), token, q);
     }
 
+    @Transactional
     public CreatedProjectResult createProject(CreateTrackedProjectRequest request) {
-        if (!gitSourceRepository.existsById(request.gitSourceId())) {
-            throw new ResourceNotFoundException("GitSource", request.gitSourceId());
-        }
+        Long workspaceId = WorkspaceContext.get();
+        gitSourceRepository.findById(request.gitSourceId())
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("GitSource", request.gitSourceId()));
         TrackedProject project = trackedProjectMapper.toEntity(request);
-        project.setWorkspaceId(WorkspaceContext.get());
+        project.setWorkspaceId(workspaceId);
         project.setTokenEncrypted(encryptionService.encrypt(request.token()));
         TrackedProject saved = trackedProjectRepository.save(project);
         SyncJobResponse job = triggerBackfill(saved.getId());
         return new CreatedProjectResult(saved, job.jobId());
     }
 
+    @Transactional
     public void deleteProject(Long id) {
-        if (!trackedProjectRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TrackedProject", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedProjectRepository.findById(id)
+            .filter(p -> workspaceId.equals(p.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedProject", id));
         trackedProjectRepository.deleteById(id);
     }
 
     public SyncJobResponse backfillProject(Long id) {
-        if (!trackedProjectRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TrackedProject", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedProjectRepository.findById(id)
+            .filter(p -> workspaceId.equals(p.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedProject", id));
         return triggerBackfill(id);
     }
 
     // ── Users ────────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<GitLabUserSearchDto> searchUsers(Long sourceId,
                                                  String q) {
+        Long workspaceId = WorkspaceContext.get();
         GitSource source = gitSourceRepository.findById(sourceId)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
-        TrackedProject project = trackedProjectRepository.findFirstByGitSourceId(sourceId)
+        TrackedProject project = trackedProjectRepository.findFirstByWorkspaceIdAndGitSourceId(workspaceId, sourceId)
             .orElseThrow(() -> new ResourceNotFoundException("TrackedProject for GitSource", sourceId));
         String token = encryptionService.decrypt(project.getTokenEncrypted());
         return gitLabApiClient.searchUsers(source.getBaseUrl(), token, q);
@@ -138,6 +153,7 @@ public class SettingsService {
         return contributorDiscoveryService.discover();
     }
 
+    @Transactional
     public List<TrackedUser> createUsersBulk(List<CreateTrackedUserRequest> requests) {
         Long workspaceId = WorkspaceContext.get();
         List<TrackedUser> saved = requests.stream()
@@ -168,34 +184,47 @@ public class SettingsService {
     public void linkGitlabAccount(Long userId,
                                   Long gitlabUserId,
                                   String username) {
-        if (!trackedUserRepository.existsById(userId)) {
-            throw new ResourceNotFoundException("TrackedUser", userId);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedUserRepository.findById(userId)
+            .filter(u -> workspaceId.equals(u.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", userId));
         userAliasService.linkGitlabAccount(userId, gitlabUserId, username);
     }
 
+    @Transactional
     public void deleteUser(Long id) {
-        if (!trackedUserRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TrackedUser", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedUserRepository.findById(id)
+            .filter(u -> workspaceId.equals(u.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", id));
         trackedUserRepository.deleteById(id);
     }
 
     // ── Snapshots ────────────────────────────────────────────────────────────
 
-    public int triggerSnapshotBackfill() {
-        return snapshotService.runDailyBackfill(BACKFILL_DAYS);
+    public void triggerSnapshotBackfill() {
+        snapshotService.runDailyBackfillAsync(WorkspaceContext.get(), BACKFILL_DAYS);
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────────
 
     public SyncJobResponse getSyncStatus(Long jobId) {
-        return SyncJobResponse.from(syncJobService.findById(jobId));
+        Long workspaceId = WorkspaceContext.get();
+        SyncJob job = syncJobService.findById(jobId);
+        if (!workspaceId.equals(job.getWorkspaceId())) {
+            throw new ResourceNotFoundException("SyncJob", jobId);
+        }
+        return SyncJobResponse.from(job);
     }
 
     public SyncJobResponse retrySync(Long jobId) {
+        Long workspaceId = WorkspaceContext.get();
+        SyncJob job = syncJobService.findById(jobId);
+        if (!workspaceId.equals(job.getWorkspaceId())) {
+            throw new ResourceNotFoundException("SyncJob", jobId);
+        }
         ManualSyncRequest request = syncJobService.getPayload(jobId);
-        SyncJob newJob = syncJobService.create(WorkspaceContext.get(), request);
+        SyncJob newJob = syncJobService.create(workspaceId, request);
         syncOrchestrator.orchestrateAsync(newJob.getId(), request);
         return SyncJobResponse.from(newJob);
     }

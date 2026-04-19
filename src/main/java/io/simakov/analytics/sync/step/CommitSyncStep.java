@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,12 +45,16 @@ class CommitSyncStep implements SyncStep {
             .map(MergeRequestCommit::getGitlabCommitSha)
             .collect(Collectors.toSet());
 
+        List<MergeRequestCommit> toSave = new ArrayList<>();
         for (GitLabCommitDto dto : commits) {
             if (!existingShas.contains(dto.id())) {
                 GitLabCommitDto withStats = gitLabApiClient
                     .getCommitWithStats(ctx.baseUrl(), ctx.token(), ctx.gitlabProjectId(), dto.id());
-                commitRepository.save(gitLabMapper.toCommit(withStats, mr.getId()));
+                toSave.add(gitLabMapper.toCommit(withStats, mr.getId()));
             }
+        }
+        if (!toSave.isEmpty()) {
+            commitRepository.saveAll(toSave);
         }
     }
 }

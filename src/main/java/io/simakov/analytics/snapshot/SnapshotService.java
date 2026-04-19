@@ -60,7 +60,7 @@ public class SnapshotService {
         return runDailyBackfill(WorkspaceContext.get(), days);
     }
 
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    @SuppressWarnings({"PMD.AvoidInstantiatingObjectsInLoops", "checkstyle:IllegalCatch"})
     public int runDailyBackfill(Long workspaceId,
                                 int days) {
         LocalDate today = DateTimeUtils.currentDateUtc();
@@ -68,9 +68,13 @@ public class SnapshotService {
         int total = 0;
         for (int d = days; d >= 0; d--) {
             LocalDate snapshotDate = today.minusDays(d);
-            RunSnapshotResponse resp = runSnapshotForWorkspace(
-                workspaceId, new RunSnapshotRequest(null, null, windowDays, snapshotDate));
-            total += resp.snapshotsCreated();
+            try {
+                RunSnapshotResponse resp = runSnapshotForWorkspace(
+                    workspaceId, new RunSnapshotRequest(null, null, windowDays, snapshotDate));
+                total += resp.snapshotsCreated();
+            } catch (Exception e) {
+                log.error("Backfill snapshot failed for workspace={}, date={}: {}", workspaceId, snapshotDate, e.getMessage(), e);
+            }
         }
         log.info("Daily backfill completed: workspace={}, {} snapshots for last {} days", workspaceId, total, days);
         return total;

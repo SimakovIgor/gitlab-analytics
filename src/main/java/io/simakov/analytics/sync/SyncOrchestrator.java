@@ -52,7 +52,11 @@ public class SyncOrchestrator {
             jobId, request.projectIds(), request.dateFrom(), request.dateTo());
         try {
             for (Long projectId : request.projectIds()) {
-                syncProject(jobId, projectId, request);
+                try {
+                    syncProject(jobId, projectId, request);
+                } catch (Exception e) {
+                    log.error("Sync job {} failed for project {}: {}", jobId, projectId, e.getMessage(), e);
+                }
             }
             syncJobService.complete(jobId);
         } catch (Exception e) {

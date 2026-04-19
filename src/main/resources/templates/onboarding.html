@@ -8,6 +8,13 @@
     <title>GitLab Analytics — Настройка</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
     <style>
+        .ob-start-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, .07);
+            padding: 2rem 2.5rem 2.5rem;
+        }
+
         @keyframes ob-fadein {
             from { opacity: 0; transform: translateY(8px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -38,13 +45,15 @@
             display: flex;
             align-items: center;
             gap: 0;
-            margin-bottom: 2.5rem;
+            margin-bottom: 3.5rem;
         }
         .ob-prog-step {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
+            flex-shrink: 0;
+            width: 28px;
         }
         .ob-prog-dot {
             width: 28px;
@@ -62,10 +71,15 @@
             box-shadow: 0 0 0 4px rgba(252,109,38,.2);
         }
         .ob-prog-dot-inactive {
-            background: #f0f0f0;
-            color: #ccc;
+            background: #f5f5f5;
+            color: #bbb;
+            border: 1.5px solid #d8d8d8;
         }
         .ob-prog-label {
+            position: absolute;
+            top: 32px;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: .65rem;
             color: #ccc;
             white-space: nowrap;
@@ -137,18 +151,26 @@
             margin-top: 1rem;
         }
         .ob-final-done {
-            background: #fff8f5;
-            border: 1.5px solid #fde8dc;
+            background: #f8f9fa;
+            border: 1.5px solid #e9ecef;
             border-radius: 14px;
             padding: 2rem 1.75rem;
             margin-top: 1rem;
             text-align: center;
         }
-        .ob-final-done-icon { font-size: 2.5rem; line-height: 1; margin-bottom: .75rem; }
+        .ob-final-done-icon {
+            width: 48px; height: 48px;
+            margin: 0 auto .75rem;
+            background: #FC6D26;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.35rem;
+        }
         .ob-final-done-title { font-size: 1.35rem; font-weight: 700; color: #1a1a1a; margin-bottom: .4rem; }
         .ob-final-done-sub { font-size: .9rem; color: #666; margin-bottom: 1.25rem; }
         .ob-final-stats { color: #888; font-size: .875rem; margin-bottom: 1.5rem; line-height: 1.8; }
         .ob-final-action { display: flex; justify-content: center; }
+        .ob-final-action a { text-decoration: none; }
 
         /* Discovery list улучшения */
         #ob-discovery-list .discovery-row {
@@ -410,7 +432,9 @@
                     </div>
                 </div>
                 <div class="ob-final-done hidden" id="ob-final-done">
-                    <div class="ob-final-done-icon">✅</div>
+                    <div class="ob-final-done-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
                     <div class="ob-final-done-title">Всё готово!</div>
                     <div class="ob-final-done-sub">Данные синхронизированы, история метрик за 360 дней загружена</div>
                     <div class="ob-final-stats" id="ob-final-stats"></div>
@@ -759,12 +783,12 @@
                     if (labelEl()) {
                         labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
                     }
-                    updateBanner(bannerId, 'ok', 'Синхронизация завершена');
+                    updateBanner(bannerId, 'ok', 'Синхронизация завершена', jobId);
                 } else if (job.status === 'FAILED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
                     activeSyncRunning = false;
-                    updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
+                    updateBanner(bannerId, 'error', job.errorMessage || 'Неизвестная ошибка', jobId);
                 }
             } catch (e) {
                 // продолжаем поллинг при сетевой ошибке
@@ -772,17 +796,50 @@
         }, 3000);
     }
 
-    function updateBanner(bannerId, type, message) {
+    function updateBanner(bannerId, type, message, jobId) {
         const el = document.getElementById(bannerId);
         if (!el) {
             return;
         }
         el.className = 'sync-banner sync-banner-' + (type === 'ok' ? 'done' : 'error');
-        el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
         if (type === 'ok') {
+            el.innerHTML = `<span>✓</span> ${escHtml(message)}`;
             setTimeout(() => el.remove(), 5000);
             if (!OB_STATE.hasUsers) {
                 onSyncCompletedInOnboarding();
+            }
+        } else {
+            el.innerHTML = `
+                <span>✕</span>
+                <div style="flex:1">
+                    <div style="font-weight:600;margin-bottom:4px;">Синхронизация не удалась</div>
+                    <div style="font-size:.8rem;color:#c0392b;">${escHtml(message)}</div>
+                    <div style="font-size:.8rem;color:#888;margin-top:4px;">Данные могли загрузиться частично — повтор продолжит с того места, где остановился</div>
+                </div>
+                <button onclick="retrySync(${jobId}, '${escHtml(bannerId)}')"
+                        style="flex-shrink:0;padding:6px 14px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;">
+                    Повторить
+                </button>`;
+        }
+    }
+
+    async function retrySync(jobId, oldBannerId) {
+        const oldEl = document.getElementById(oldBannerId);
+        if (oldEl) {
+            oldEl.remove();
+        }
+        try {
+            const result = await api('POST', '/settings/sync/' + jobId + '/retry');
+            showSyncBanner(result.jobId, result.name || 'репозиторий', true);
+            activeSyncRunning = true;
+            refreshOnboarding();
+        } catch (e) {
+            const banners = document.getElementById('sync-banners-ob');
+            if (banners) {
+                const div = document.createElement('div');
+                div.className = 'sync-banner sync-banner-error';
+                div.innerHTML = `<span>✕</span> Не удалось запустить повтор: ${escHtml(e.message)}`;
+                banners.prepend(div);
             }
         }
     }
@@ -954,6 +1011,24 @@
         updateObBtn();
     }
 
+    function setDiscoveryActionsLocked(locked) {
+        const actionsRow = document.getElementById('ob-discovery-actions');
+        if (!actionsRow) {
+            return;
+        }
+        actionsRow.querySelectorAll('button').forEach(b => {
+            b.disabled = locked;
+        });
+        const listEl = document.getElementById('ob-discovery-list');
+        if (listEl) {
+            listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.disabled = locked;
+            });
+            listEl.style.pointerEvents = locked ? 'none' : '';
+            listEl.style.opacity = locked ? '0.5' : '';
+        }
+    }
+
     async function addSelectedOb() {
         const checked = [...document.querySelectorAll('.ob-check:checked')];
         if (checked.length === 0) {
@@ -969,6 +1044,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="ob-btn-spinner"></span>Добавляем...';
         }
+        setDiscoveryActionsLocked(true);
         try {
             await api('POST', '/settings/users/bulk', requests);
             checked.forEach(cb => {
@@ -990,6 +1066,7 @@
             refreshOnboarding();
             triggerSnapshotBackfill();
         } catch (e) {
+            setDiscoveryActionsLocked(false);
             if (btn) {
                 btn.disabled = false;
                 btn.textContent = `Добавить выбранных (${document.querySelectorAll('.ob-check:checked').length})`;

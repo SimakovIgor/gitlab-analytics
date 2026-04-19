@@ -4,6 +4,7 @@ import io.simakov.analytics.BaseIT;
 import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.api.dto.response.SyncJobResponse;
 import io.simakov.analytics.domain.model.GitSource;
+import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
@@ -21,6 +22,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 @SuppressWarnings("PMD.JUnitTestContainsTooManyAsserts")
 class SyncControllerTest extends BaseIT {
@@ -138,6 +143,60 @@ class SyncControllerTest extends BaseIT {
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @SuppressWarnings("checkstyle:MagicNumber")
+    void syncJobCompletesEvenWhenOneProjectFails() throws InterruptedException {
+        TrackedProject project1 = createTrackedProjectWithGitlabId(1L);
+        TrackedProject project2 = createTrackedProjectWithGitlabId(2L);
+
+        when(gitLabApiClient.getMergeRequests(anyString(), anyString(), eq(1L), any(Instant.class), any(Instant.class)))
+            .thenThrow(new RuntimeException("GitLab API error for project 1"));
+        when(gitLabApiClient.getMergeRequests(anyString(), anyString(), eq(2L), any(Instant.class), any(Instant.class)))
+            .thenReturn(List.of());
+
+        ManualSyncRequest request = new ManualSyncRequest(
+            List.of(project1.getId(), project2.getId()),
+            Instant.now().minus(30, ChronoUnit.DAYS),
+            Instant.now(),
+            false, false, false
+        );
+
+        ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
+            "http://localhost:" + port + "/api/v1/sync/manual",
+            HttpMethod.POST,
+            new HttpEntity<>(request, authHeaders()),
+            SyncJobResponse.class
+        );
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        Long jobId = response.getBody().jobId();
+
+        SyncStatus finalStatus = SyncStatus.STARTED;
+        for (int i = 0; i < 100 && finalStatus == SyncStatus.STARTED; i++) {
+            Thread.sleep(100);
+            SyncJob job = syncJobRepository.findById(jobId).orElseThrow();
+            finalStatus = job.getStatus();
+        }
+
+        assertThat(finalStatus).isEqualTo(SyncStatus.COMPLETED);
+    }
+
+    private TrackedProject createTrackedProjectWithGitlabId(Long gitlabProjectId) {
+        GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
+            .name("source-" + gitlabProjectId)
+            .baseUrl("https://git.example.com")
+            .build());
+        return trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
+            .gitSourceId(source.getId())
+            .gitlabProjectId(gitlabProjectId)
+            .pathWithNamespace("team/repo-" + gitlabProjectId)
+            .name("repo-" + gitlabProjectId)
+            .tokenEncrypted("test-token")
+            .enabled(true)
+            .build());
     }
 
     private TrackedProject createTrackedProject() {

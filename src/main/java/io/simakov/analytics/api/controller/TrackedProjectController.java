@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,16 +43,18 @@ public class TrackedProjectController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Register a project for tracking")
     public TrackedProjectResponse create(@RequestBody @Valid CreateTrackedProjectRequest request) {
-        if (!gitSourceRepository.existsById(request.gitSourceId())) {
-            throw new ResourceNotFoundException("GitSource", request.gitSourceId());
-        }
+        Long workspaceId = WorkspaceContext.get();
+        gitSourceRepository.findById(request.gitSourceId())
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("GitSource", request.gitSourceId()));
         TrackedProject project = trackedProjectMapper.toEntity(request);
-        project.setWorkspaceId(WorkspaceContext.get());
+        project.setWorkspaceId(workspaceId);
         project.setTokenEncrypted(encryptionService.encrypt(request.token()));
         return trackedProjectMapper.toResponse(trackedProjectRepository.save(project));
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     @Operation(summary = "List all tracked projects")
     public List<TrackedProjectResponse> list() {
         Long workspaceId = WorkspaceContext.get();

@@ -7,6 +7,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,6 +45,12 @@ public class GlobalExceptionHandler {
         log.error("GitLab API error: {}", ex.getMessage());
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY,
             "GitLab API error: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResource(NoResourceFoundException ex) {
+        log.debug("Static resource not found: {}", ex.getResourcePath());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

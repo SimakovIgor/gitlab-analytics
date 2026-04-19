@@ -16,4 +16,6 @@ public interface TrackedUserAliasRepository extends JpaRepository<TrackedUserAli
 
     boolean existsByGitlabUserId(Long gitlabUserId);
 
+    boolean existsByTrackedUserIdAndGitlabUserId(Long trackedUserId, Long gitlabUserId);
+
 }

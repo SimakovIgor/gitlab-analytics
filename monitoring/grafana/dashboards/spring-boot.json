@@ -1,433 +1,3660 @@
 {
-  "title": "GitLab Analytics — Spring Boot",
+  "title": "GitLab Analytics",
   "uid": "gitlab-analytics-jvm",
   "schemaVersion": 38,
-  "version": 2,
+  "version": 5,
   "refresh": "30s",
-  "time": { "from": "now-1h", "to": "now" },
-  "templating": { "list": [] },
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
   "panels": [
-
-    { "id": 100, "title": "Summary", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
-
-    { "id": 1, "title": "Uptime", "type": "stat",
-      "gridPos": { "x": 0, "y": 1, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
-      "fieldConfig": { "defaults": { "unit": "s",
-        "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "process_uptime_seconds{application=\"gitlab-analytics\"}", "legendFormat": "uptime" }]
-    },
-
-    { "id": 2, "title": "CPU Usage", "type": "stat",
-      "gridPos": { "x": 4, "y": 1, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1,
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 0.8 }
-        ]}
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "process_cpu_usage{application=\"gitlab-analytics\"}", "legendFormat": "cpu" }]
-    },
-
-    { "id": 3, "title": "JVM Heap Used %", "type": "stat",
-      "gridPos": { "x": 8, "y": 1, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1,
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 0.6 }, { "color": "red", "value": 0.85 }
-        ]}
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\",area=\"heap\"}) / sum(jvm_memory_max_bytes{application=\"gitlab-analytics\",area=\"heap\"})",
-        "legendFormat": "heap %" }]
-    },
-
-    { "id": 4, "title": "HTTP RPS", "type": "stat",
-      "gridPos": { "x": 12, "y": 1, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "reqps",
-        "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[1m]))",
-        "legendFormat": "rps" }]
-    },
-
-    { "id": 5, "title": "HTTP 5xx Rate", "type": "stat",
-      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "reqps",
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "red", "value": 0.001 }
-        ]}
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",outcome=\"SERVER_ERROR\"}[1m]))",
-        "legendFormat": "5xx" }]
-    },
-
-    { "id": 6, "title": "Active Sync Jobs", "type": "stat",
-      "gridPos": { "x": 20, "y": 1, "w": 4, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
-      "fieldConfig": { "defaults": { "unit": "short",
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }
-        ]}
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sync_jobs_active{application=\"gitlab-analytics\"}", "legendFormat": "active" }]
-    },
-
-    { "id": 101, "title": "HTTP Traffic", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 } },
-
-    { "id": 7, "title": "Request Rate by Outcome", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "reqps",
-        "custom": { "lineWidth": 2, "fillOpacity": 15, "stacking": { "mode": "normal", "group": "A" } }
-      }},
-      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (outcome) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[1m]))",
-          "legendFormat": "{{outcome}}" }
-      ]
-    },
-
-    { "id": 8, "title": "4xx / 5xx Error Rate", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+    {
+      "id": 1,
+      "title": "Uptime",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
       "fieldConfig": {
-        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 20 } },
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_uptime_seconds{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "CPU Usage",
+      "type": "stat",
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_cpu_usage{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "JVM Heap",
+      "type": "stat",
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.85
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_used_bytes{area=\"heap\",application=\"gitlab-analytics\"}) / sum(jvm_memory_max_bytes{area=\"heap\",application=\"gitlab-analytics\"})",
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP RPS",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\"}[1m]))",
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "HTTP 5xx Rate",
+      "type": "stat",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "mappings": [],
+          "decimals": 1,
+          "noValue": "💚"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\"}[5m])) > 0 or vector(0)",
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Error Logs (1h)",
+      "type": "stat",
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "mappings": [],
+          "noValue": "💚"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(logback_events_total{application=\"gitlab-analytics\",level=\"error\"}[1h])) > 0 or vector(0)",
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "HTTP — Incoming",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 8,
+      "title": "RPS by Endpoint",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "mean"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (uri, method) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Latency p95 by Endpoint",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (uri, le) (rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m]))) and sum by (uri) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m])) > 0",
+          "refId": "A",
+          "legendFormat": "{{uri}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "5xx Error Rate by Endpoint",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 4,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "5xx" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "4xx" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "gte",
+                "reducer": "allIsZero",
+                "value": 0
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
         ]
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",outcome=\"SERVER_ERROR\",uri!~\"/actuator.*\"}[1m]))",
-          "legendFormat": "5xx" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",outcome=\"CLIENT_ERROR\",uri!~\"/actuator.*\"}[1m]))",
-          "legendFormat": "4xx" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * sum by (uri, method) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"5..\",uri!~\"/actuator.*\"}[5m])) / sum by (uri, method) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}}"
+        }
       ]
     },
-
-    { "id": 102, "title": "HTTP Errors by Endpoint", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 } },
-
-    { "id": 9, "title": "4xx — by Endpoint + Status Code", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+    {
+      "id": 50,
+      "title": "Latency Overall — p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"4..\",uri!~\"/actuator.*\"}[2m]))",
-          "legendFormat": "{{status}} {{uri}}" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])))",
+          "refId": "A",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])))",
+          "refId": "B",
+          "legendFormat": "p95"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])))",
+          "refId": "C",
+          "legendFormat": "p99"
+        }
       ]
     },
-
-    { "id": 10, "title": "5xx — by Endpoint + Status Code", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "reqps",
-        "custom": { "lineWidth": 2, "fillOpacity": 20 },
-        "color": { "fixedColor": "red", "mode": "fixed" }
-      }},
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"5..\",uri!~\"/actuator.*\"}[2m]))",
-          "legendFormat": "{{status}} {{uri}}" }
-      ]
-    },
-
-    { "id": 103, "title": "HTTP Latency", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 23, "w": 24, "h": 1 } },
-
-    { "id": 11, "title": "Latency — p50 / p95 / p99 (aggregate)", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m])) by (le))",
-          "legendFormat": "p50" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m])) by (le))",
-          "legendFormat": "p95" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[2m])) by (le))",
-          "legendFormat": "p99" }
-      ]
-    },
-
-    { "id": 12, "title": "Latency p95 — by Endpoint", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum by (uri, le) (rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\",uri!~\"/swagger.*\",uri!~\"/v3.*\"}[2m])))",
-          "legendFormat": "{{uri}}" }
-      ]
-    },
-
-    { "id": 104, "title": "Application", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 1 } },
-
-    { "id": 13, "title": "Sync Jobs — Active", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 33, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short",
-        "custom": { "lineWidth": 2, "fillOpacity": 20 },
-        "color": { "mode": "thresholds" },
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }
-        ]}
-      }},
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sync_jobs_active{application=\"gitlab-analytics\"}", "legendFormat": "active jobs" }
-      ]
-    },
-
-    { "id": 14, "title": "Sync Jobs — Completed / Failed Rate", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 33, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+    {
+      "id": 51,
+      "title": "Request Rate — 2xx / 4xx / 5xx",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 8,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": ".*failed.*" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
-          { "matcher": { "id": "byRegexp", "options": ".*completed.*" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#508642",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EAB839",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#BF1B00",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "gte",
+                "reducer": "allIsZero",
+                "value": 0
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
         ]
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(sync_job_completed_total{application=\"gitlab-analytics\"}[5m])", "legendFormat": "completed / s" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(sync_job_failed_total{application=\"gitlab-analytics\",reason=\"error\"}[5m])", "legendFormat": "failed (error) / s" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(sync_job_failed_total{application=\"gitlab-analytics\",reason=\"stale\"}[5m])", "legendFormat": "failed (stale) / s" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"2..\",uri!~\"/actuator.*\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "2xx"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"4..\",uri!~\"/actuator.*\"}[1m]))",
+          "refId": "B",
+          "legendFormat": "4xx"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"5..\"}[1m]))",
+          "refId": "C",
+          "legendFormat": "5xx"
+        }
       ]
     },
-
-    { "id": 15, "title": "syncTaskExecutor — active / queued / pool (core=2, max=4, queue=10)", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 41, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+    {
+      "id": 52,
+      "title": "Log Events by Level",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "opm",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#BF1B00",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "warn"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EAB839",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "info"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#508642",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "debug"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#1F78C1",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_active_threads{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "active" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_queued_tasks{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "queued" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_pool_size_threads{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "pool size" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_pool_max_threads{application=\"gitlab-analytics\",name=\"syncTaskExecutor\"}", "legendFormat": "pool max" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (level) (rate(logback_events_total{application=\"gitlab-analytics\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{level}}"
+        }
       ]
     },
-
-    { "id": 16, "title": "mrProcessingExecutor — active / queued / pool (fixed=5, queue=500)", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 41, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+    {
+      "id": 11,
+      "title": "4xx Errors by Endpoint",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "gte",
+                "reducer": "allIsZero",
+                "value": 0
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_active_threads{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "active" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_queued_tasks{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "queued" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_pool_size_threads{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "pool size" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "executor_pool_max_threads{application=\"gitlab-analytics\",name=\"mrProcessingExecutor\"}", "legendFormat": "pool max" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (uri, method, status) (increase(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"4..\",uri!~\"/actuator.*\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}} {{status}}"
+        }
       ]
     },
-
-    { "id": 105, "title": "JVM Memory", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 49, "w": 24, "h": 1 } },
-
-    { "id": 17, "title": "JVM Heap — used / committed / max", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 50, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+    {
+      "id": 12,
+      "title": "5xx Errors by Endpoint",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 20,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "gte",
+                "reducer": "allIsZero",
+                "value": 0
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": true,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\",area=\"heap\"})", "legendFormat": "used" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_committed_bytes{application=\"gitlab-analytics\",area=\"heap\"})", "legendFormat": "committed" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_max_bytes{application=\"gitlab-analytics\",area=\"heap\"})", "legendFormat": "max" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (uri, method, status) (increase(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"5..\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}} {{status}}"
+        }
       ]
     },
-
-    { "id": 18, "title": "JVM Non-Heap — used / committed", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 50, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+    {
+      "id": 18,
+      "title": "External HTTP — GitLab API",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 19,
+      "title": "Outgoing RPS",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "mean"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_used_bytes{application=\"gitlab-analytics\",area=\"nonheap\"})", "legendFormat": "used" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(jvm_memory_committed_bytes{application=\"gitlab-analytics\",area=\"nonheap\"})", "legendFormat": "committed" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (uri, method) (rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{method}} {{uri}}"
+        }
       ]
     },
-
-    { "id": 106, "title": "JVM Runtime", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 58, "w": 24, "h": 1 } },
-
-    { "id": 19, "title": "GC — Pause Rate & Memory Allocated", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 59, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+    {
+      "id": 20,
+      "title": "Latency — p50 / p95 / p99",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 45,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(jvm_gc_pause_seconds_count{application=\"gitlab-analytics\"}[1m])", "legendFormat": "GC pauses / s" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(jvm_gc_memory_allocated_bytes_total{application=\"gitlab-analytics\"}[1m])", "legendFormat": "allocated bytes / s" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[1m])))",
+          "refId": "A",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[1m])))",
+          "refId": "B",
+          "legendFormat": "p95"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[1m])))",
+          "refId": "C",
+          "legendFormat": "p99"
+        }
       ]
     },
-
-    { "id": 20, "title": "JVM Threads — live / daemon / peak", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 59, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+    {
+      "id": 21,
+      "title": "Outgoing Rate by Outcome",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 45,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_live_threads{application=\"gitlab-analytics\"}", "legendFormat": "live" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_daemon_threads{application=\"gitlab-analytics\"}", "legendFormat": "daemon" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "jvm_threads_peak_threads{application=\"gitlab-analytics\"}", "legendFormat": "peak" }
-      ]
-    },
-
-    { "id": 107, "title": "HikariCP", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 67, "w": 24, "h": 1 } },
-
-    { "id": 21, "title": "HikariCP — Connection Pool", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 68, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_active{application=\"gitlab-analytics\"}", "legendFormat": "active" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_idle{application=\"gitlab-analytics\"}", "legendFormat": "idle" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections_pending{application=\"gitlab-analytics\"}", "legendFormat": "pending" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "hikaricp_connections{application=\"gitlab-analytics\"}", "legendFormat": "total" }
-      ]
-    },
-
-    { "id": 22, "title": "HikariCP — Acquire Time p50 / p99", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 68, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"gitlab-analytics\"}[1m])) by (le))",
-          "legendFormat": "p50" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"gitlab-analytics\"}[1m])) by (le))",
-          "legendFormat": "p99" }
-      ]
-    },
-
-    { "id": 108, "title": "GitLab API — Outbound HTTP", "type": "row", "collapsed": false,
-      "gridPos": { "x": 0, "y": 76, "w": 24, "h": 1 } },
-
-    { "id": 23, "title": "GitLab API — Request Rate by Outcome", "type": "stat",
-      "gridPos": { "x": 0, "y": 77, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "reqps",
-        "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[1m]))",
-        "legendFormat": "rps" }]
-    },
-
-    { "id": 24, "title": "GitLab API — Error Rate (4xx + 5xx)", "type": "stat",
-      "gridPos": { "x": 6, "y": 77, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "reqps",
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "red", "value": 0.001 }
-        ]}
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(http_client_requests_seconds_count{application=\"gitlab-analytics\",outcome=~\"CLIENT_ERROR|SERVER_ERROR\"}[1m]))",
-        "legendFormat": "errors" }]
-    },
-
-    { "id": 25, "title": "GitLab API — p50 Latency", "type": "stat",
-      "gridPos": { "x": 12, "y": 77, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "s",
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }
-        ]}
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "histogram_quantile(0.50, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
-        "legendFormat": "p50" }]
-    },
-
-    { "id": 26, "title": "GitLab API — p95 Latency", "type": "stat",
-      "gridPos": { "x": 18, "y": 77, "w": 6, "h": 4 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
-      "fieldConfig": { "defaults": { "unit": "s",
-        "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 2 }, { "color": "red", "value": 10 }
-        ]}
-      }},
-      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "histogram_quantile(0.95, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
-        "legendFormat": "p95" }]
-    },
-
-    { "id": 27, "title": "GitLab API — Rate by Outcome", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 81, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "reqps",
-        "custom": { "lineWidth": 2, "fillOpacity": 15, "stacking": { "mode": "normal", "group": "A" } }
-      }},
-      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "sum by (outcome) (rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[1m]))",
-          "legendFormat": "{{outcome}}" }
+          "refId": "A",
+          "legendFormat": "{{outcome}}"
+        }
       ]
     },
-
-    { "id": 28, "title": "GitLab API — Latency p50 / p95 / p99", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 81, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+    {
+      "id": 22,
+      "title": "Top GitLab Endpoints by RPS",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "RPS",
+            "desc": true
+          }
+        ],
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uri"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 380
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "displayName",
+                "value": "RPS"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "le": true,
+              "exception": true,
+              "error": true,
+              "outcome": true,
+              "client_name": true,
+              "instance": true,
+              "job": true,
+              "exported_application": true
+            },
+            "indexByName": {
+              "uri": 0,
+              "method": 1,
+              "Value": 2,
+              "Time": 3
+            },
+            "renameByName": {}
+          }
+        }
+      ],
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
-          "legendFormat": "p50" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
-          "legendFormat": "p95" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
-          "legendFormat": "p99" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk(10, sum by (method, uri) (rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[2m])))",
+          "refId": "A",
+          "instant": true
+        }
       ]
     },
-
-    { "id": 29, "title": "GitLab API — Rate by URI", "type": "timeseries",
-      "gridPos": { "x": 0, "y": 89, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+    {
+      "id": 23,
+      "title": "Top GitLab Endpoints by Latency p95",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 53,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "p95",
+            "desc": true
+          }
+        ],
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "uri"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 380
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "method"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              },
+              {
+                "id": "displayName",
+                "value": "p95"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "le": true,
+              "status": true,
+              "exception": true,
+              "outcome": true,
+              "error": true,
+              "client_name": true,
+              "instance": true,
+              "job": true,
+              "exported_application": true
+            },
+            "indexByName": {
+              "uri": 0,
+              "method": 1,
+              "Value": 2,
+              "Time": 3
+            },
+            "renameByName": {}
+          }
+        }
+      ],
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (uri) (rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[2m]))",
-          "legendFormat": "{{uri}}" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "topk(10, histogram_quantile(0.95, sum by (uri, le) (rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m]))) and sum by (uri) (rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[2m])) > 0)",
+          "refId": "A",
+          "instant": true
+        }
       ]
     },
-
-    { "id": 30, "title": "GitLab API — Latency p95 by URI", "type": "timeseries",
-      "gridPos": { "x": 12, "y": 89, "w": 12, "h": 8 },
-      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+    {
+      "id": 24,
+      "title": "Database — HikariCP",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 61,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 25,
+      "title": "Connection Pool",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 62,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum by (uri, le) (rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])))",
-          "legendFormat": "{{uri}}" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_active{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": "active"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_idle{application=\"gitlab-analytics\"}",
+          "refId": "B",
+          "legendFormat": "idle"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_pending{application=\"gitlab-analytics\"}",
+          "refId": "C",
+          "legendFormat": "pending"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_max{application=\"gitlab-analytics\"}",
+          "refId": "D",
+          "legendFormat": "max"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Pool Utilization",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 62,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_active{application=\"gitlab-analytics\"} / hikaricp_connections_max{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": "utilization"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Acquire Time — p50 / p99",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 62,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(hikaricp_connections_acquire_seconds_bucket{application=\"gitlab-analytics\"}[1m])))",
+          "refId": "A",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(hikaricp_connections_acquire_seconds_bucket{application=\"gitlab-analytics\"}[1m])))",
+          "refId": "B",
+          "legendFormat": "p99"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "hikaricp_connections_timeout_total{application=\"gitlab-analytics\"}",
+          "refId": "C",
+          "legendFormat": "timeouts (total)"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "JVM Memory",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 70,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 29,
+      "title": "Heap — used / committed / max",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 71,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_used_bytes{area=\"heap\",application=\"gitlab-analytics\"})",
+          "refId": "A",
+          "legendFormat": "used"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_committed_bytes{area=\"heap\",application=\"gitlab-analytics\"})",
+          "refId": "B",
+          "legendFormat": "committed"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_max_bytes{area=\"heap\",application=\"gitlab-analytics\"})",
+          "refId": "C",
+          "legendFormat": "max"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "Heap Pools — Eden / Survivor / Old Gen",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 71,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "jvm_memory_used_bytes{area=\"heap\",id=~\".*Eden.*\",application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": "Eden"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "jvm_memory_used_bytes{area=\"heap\",id=~\".*Survivor.*\",application=\"gitlab-analytics\"}",
+          "refId": "B",
+          "legendFormat": "Survivor"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "jvm_memory_used_bytes{area=\"heap\",id=~\".*Old.*\",application=\"gitlab-analytics\"}",
+          "refId": "C",
+          "legendFormat": "Old Gen"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "title": "Non-Heap — used / committed",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 71,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_used_bytes{area=\"nonheap\",application=\"gitlab-analytics\"})",
+          "refId": "A",
+          "legendFormat": "used"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(jvm_memory_committed_bytes{area=\"nonheap\",application=\"gitlab-analytics\"})",
+          "refId": "B",
+          "legendFormat": "committed"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "GC — Garbage Collection",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 79,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 33,
+      "title": "GC Pause Rate",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (action, cause) (rate(jvm_gc_pause_seconds_count{application=\"gitlab-analytics\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "{{action}} {{cause}}"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "GC Pause Duration (p99 / avg)",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 80,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(jvm_gc_pause_seconds_bucket{application=\"gitlab-analytics\"}[1m])))",
+          "refId": "A",
+          "legendFormat": "p99"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(jvm_gc_pause_seconds_sum{application=\"gitlab-analytics\"}[1m])) / sum(rate(jvm_gc_pause_seconds_count{application=\"gitlab-analytics\"}[1m]))",
+          "refId": "B",
+          "legendFormat": "avg"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "title": "Allocation / Promotion Rate",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 80,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(jvm_gc_memory_allocated_bytes_total{application=\"gitlab-analytics\"}[1m]))",
+          "refId": "A",
+          "legendFormat": "allocation rate"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(jvm_gc_memory_promoted_bytes_total{application=\"gitlab-analytics\"}[1m]))",
+          "refId": "B",
+          "legendFormat": "promotion rate"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "JVM — CPU / Threads / Files",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 88,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 37,
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 89,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_cpu_usage{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": "process CPU"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "system_cpu_usage{application=\"gitlab-analytics\"}",
+          "refId": "B",
+          "legendFormat": "system CPU"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "title": "JVM Threads",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 89,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "jvm_threads_live_threads{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": "live"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "jvm_threads_daemon_threads{application=\"gitlab-analytics\"}",
+          "refId": "B",
+          "legendFormat": "daemon"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "jvm_threads_peak_threads{application=\"gitlab-analytics\"}",
+          "refId": "C",
+          "legendFormat": "peak"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "title": "File Descriptors",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 89,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_files_open_files{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": "open"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "process_files_max_files{application=\"gitlab-analytics\"}",
+          "refId": "B",
+          "legendFormat": "max"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Application — Sync Jobs & Executors",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 97,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 41,
+      "title": "Sync Jobs — Active",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 98,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sync_jobs_active{application=\"gitlab-analytics\"} or vector(0)",
+          "refId": "A",
+          "legendFormat": "active jobs"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "title": "Sync Jobs — Completed / Failed",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 98,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "max"
+          ],
+          "sortBy": "Max",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "completed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#508642",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "failed.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#BF1B00",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(sync_job_completed_total{application=\"gitlab-analytics\"}[1m]) or vector(0)",
+          "refId": "A",
+          "legendFormat": "completed"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(sync_job_failed_total{application=\"gitlab-analytics\",reason=\"error\"}[1m]) or vector(0)",
+          "refId": "B",
+          "legendFormat": "failed (error)"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "increase(sync_job_failed_total{application=\"gitlab-analytics\",reason=\"stale\"}[1m]) or vector(0)",
+          "refId": "C",
+          "legendFormat": "failed (stale)"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "title": "Executors — Active / Queued",
+      "type": "timeseries",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 98,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "pointSize": 5,
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "axisSoftMin": 0
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "executor_active_threads{application=\"gitlab-analytics\"}",
+          "refId": "A",
+          "legendFormat": "{{name}} active"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "executor_queued_tasks{application=\"gitlab-analytics\"}",
+          "refId": "B",
+          "legendFormat": "{{name}} queued"
+        }
       ]
     }
-
   ]
 }

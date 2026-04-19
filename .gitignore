@@ -22,4 +22,5 @@ out/
 ### OpenAPI Specification module ###
 **/spec/deps/
 .env.local
+.env.prod
 start.sh
