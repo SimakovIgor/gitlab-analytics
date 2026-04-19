@@ -85,10 +85,10 @@ fi
 
 # ── PostgreSQL ─────────────────────────────────────────────────────────────────
 info "Запускаем PostgreSQL..."
-docker compose -f "$ROOT_DIR/docker-compose.yml" up -d postgres
+docker compose -f "$ROOT_DIR/docker/docker-compose.yml" up -d postgres
 
 info "Ждём готовности PostgreSQL..."
-until docker compose -f "$ROOT_DIR/docker-compose.yml" exec -T postgres \
+until docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T postgres \
     pg_isready -U analytics -d gitlab_analytics -q 2>/dev/null; do
   sleep 1
 done
@@ -97,7 +97,7 @@ success "PostgreSQL готов → localhost:5432"
 # ── Prometheus + Grafana ───────────────────────────────────────────────────────
 if [[ "$WITH_MONITORING" == true ]]; then
   info "Запускаем Prometheus + Grafana..."
-  docker compose -f "$ROOT_DIR/docker-compose.monitoring.yml" up -d
+  docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" up -d
   success "Prometheus → http://localhost:9090"
   success "Grafana    → http://localhost:3000  (admin / admin)"
 fi
