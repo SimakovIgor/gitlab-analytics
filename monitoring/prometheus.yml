@@ -12,3 +12,28 @@ scrape_configs:
     relabel_configs:
       - target_label: application
         replacement: gitlab-analytics
+    # Normalize http_client_requests uri labels at scrape time:
+    # strip query params, replace numeric IDs and commit SHAs with placeholders.
+    # This avoids "vector cannot contain metrics with same labelset" in PromQL
+    # when using label_replace() on already-aggregated vectors.
+    metric_relabel_configs:
+      # Strip query params: /some/path?foo=bar → /some/path
+      - source_labels: [uri]
+        regex: '([^?]+)\?.*'
+        target_label: uri
+        replacement: '${1}'
+      # Replace first numeric path segment: /api/v4/projects/1538/... → /api/v4/projects/:id/...
+      - source_labels: [uri]
+        regex: '(/api/v4/[^/]+)/([0-9]+)(.*)'
+        target_label: uri
+        replacement: '${1}/:id${3}'
+      # Replace second numeric segment: .../merge_requests/:id/123/... → .../merge_requests/:id/:id/...
+      - source_labels: [uri]
+        regex: '(/api/v4/[^/]+/:id/[^/]+)/([0-9]+)(.*)'
+        target_label: uri
+        replacement: '${1}/:id${3}'
+      # Replace commit SHA (40 hex chars): .../commits/abc123... → .../commits/:sha
+      - source_labels: [uri]
+        regex: '(.*)/([0-9a-f]{7,40})$'
+        target_label: uri
+        replacement: '${1}/:sha'

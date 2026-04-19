@@ -30,6 +30,9 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
+    extra_hosts:
+      # allows Grafana to reach PostgreSQL running locally on the host (macOS / Linux)
+      - "host.docker.internal:host-gateway"
     depends_on:
       - prometheus
     restart: unless-stopped
