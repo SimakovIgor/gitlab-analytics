@@ -15,6 +15,7 @@ import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
+import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
@@ -148,16 +149,16 @@ public class ReportViewService {
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     private Map<String, Number> computeDelta(UserMetrics m, UserMetrics p) {
         Map<String, Number> d = new HashMap<>();
-        d.put("mrMerged", m.getMrMergedCount() - p.getMrMergedCount());
-        d.put("linesAdded", m.getLinesAdded() - p.getLinesAdded());
-        d.put("linesDeleted", m.getLinesDeleted() - p.getLinesDeleted());
-        d.put("commits", m.getCommitsInMrCount() - p.getCommitsInMrCount());
-        d.put("comments", m.getReviewCommentsWrittenCount() - p.getReviewCommentsWrittenCount());
-        d.put("reviewed", m.getMrsReviewedCount() - p.getMrsReviewedCount());
-        d.put("approvals", m.getApprovalsGivenCount() - p.getApprovalsGivenCount());
-        d.put("activeDays", m.getActiveDaysCount() - p.getActiveDaysCount());
+        d.put(Metric.MR_MERGED_COUNT.key(), m.getMrMergedCount() - p.getMrMergedCount());
+        d.put(Metric.LINES_ADDED.key(), m.getLinesAdded() - p.getLinesAdded());
+        d.put(Metric.LINES_DELETED.key(), m.getLinesDeleted() - p.getLinesDeleted());
+        d.put(Metric.COMMITS_IN_MR_COUNT.key(), m.getCommitsInMrCount() - p.getCommitsInMrCount());
+        d.put(Metric.REVIEW_COMMENTS_WRITTEN_COUNT.key(), m.getReviewCommentsWrittenCount() - p.getReviewCommentsWrittenCount());
+        d.put(Metric.MRS_REVIEWED_COUNT.key(), m.getMrsReviewedCount() - p.getMrsReviewedCount());
+        d.put(Metric.APPROVALS_GIVEN_COUNT.key(), m.getApprovalsGivenCount() - p.getApprovalsGivenCount());
+        d.put(Metric.ACTIVE_DAYS_COUNT.key(), m.getActiveDaysCount() - p.getActiveDaysCount());
         if (m.getAvgTimeToMergeMinutes() != null && p.getAvgTimeToMergeMinutes() != null) {
-            d.put("timeToMerge", m.getAvgTimeToMergeMinutes() - p.getAvgTimeToMergeMinutes());
+            d.put(Metric.AVG_TIME_TO_MERGE_MINUTES.key(), m.getAvgTimeToMergeMinutes() - p.getAvgTimeToMergeMinutes());
         }
         return d;
     }

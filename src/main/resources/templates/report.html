@@ -265,28 +265,28 @@
                             <span th:text="${m.mrMergedCount}">0</span>
                             <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
                                   th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['mrMerged']}"></span>
+                                  th:with="v=${d['mr_merged_count']}"></span>
                         </div>
                     </td>
                     <td class="num-cell positive">
                         <div class="metric-cell">
                             <span th:text="${m.linesAdded}">0</span>
-                            <span class="delta delta-neutral" th:if="${d != null and d['linesAdded'] != 0}"
-                                  th:text="${d['linesAdded'] > 0 ? '+' + d['linesAdded'] : d['linesAdded']}"></span>
+                            <span class="delta delta-neutral" th:if="${d != null and d['lines_added'] != 0}"
+                                  th:text="${d['lines_added'] > 0 ? '+' + d['lines_added'] : d['lines_added']}"></span>
                         </div>
                     </td>
                     <td class="num-cell negative">
                         <div class="metric-cell">
                             <span th:text="${m.linesDeleted}">0</span>
-                            <span class="delta delta-neutral" th:if="${d != null and d['linesDeleted'] != 0}"
-                                  th:text="${d['linesDeleted'] > 0 ? '+' + d['linesDeleted'] : d['linesDeleted']}"></span>
+                            <span class="delta delta-neutral" th:if="${d != null and d['lines_deleted'] != 0}"
+                                  th:text="${d['lines_deleted'] > 0 ? '+' + d['lines_deleted'] : d['lines_deleted']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
                         <div class="metric-cell">
                             <span th:text="${m.commitsInMrCount}">0</span>
-                            <span class="delta delta-neutral" th:if="${d != null and d['commits'] != 0}"
-                                  th:text="${d['commits'] > 0 ? '+' + d['commits'] : d['commits']}"></span>
+                            <span class="delta delta-neutral" th:if="${d != null and d['commits_in_mr_count'] != 0}"
+                                  th:text="${d['commits_in_mr_count'] > 0 ? '+' + d['commits_in_mr_count'] : d['commits_in_mr_count']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
@@ -294,7 +294,7 @@
                             <span th:text="${m.reviewCommentsWrittenCount}">0</span>
                             <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
                                   th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['comments']}"></span>
+                                  th:with="v=${d['review_comments_written_count']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
@@ -302,7 +302,7 @@
                             <span th:text="${m.mrsReviewedCount}">0</span>
                             <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
                                   th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['reviewed']}"></span>
+                                  th:with="v=${d['mrs_reviewed_count']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
@@ -310,7 +310,7 @@
                             <span th:text="${m.approvalsGivenCount}">0</span>
                             <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
                                   th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['approvals']}"></span>
+                                  th:with="v=${d['approvals_given_count']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
@@ -318,7 +318,7 @@
                             <span th:text="${m.activeDaysCount}">0</span>
                             <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
                                   th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['activeDays']}"></span>
+                                  th:with="v=${d['active_days_count']}"></span>
                         </div>
                     </td>
                     <td class="num-cell">
@@ -327,11 +327,11 @@
                                     ? #numbers.formatDecimal(m.avgTimeToMergeMinutes / 60.0, 1, 1) + ' ч'
                                     : '—'}">—</span>
                             <span th:class="${v < 0 ? 'delta delta-pos' : (v > 0 ? 'delta delta-neg' : 'delta delta-zero')}"
-                                  th:if="${d != null and d['timeToMerge'] != null}"
+                                  th:if="${d != null and d['avg_time_to_merge_minutes'] != null}"
                                   th:text="${v > 0
                                           ? '+' + #numbers.formatDecimal(v / 60.0, 1, 1) + ' ч'
                                           : #numbers.formatDecimal(v / 60.0, 1, 1) + ' ч'}"
-                                  th:with="v=${d['timeToMerge']}">
+                                  th:with="v=${d['avg_time_to_merge_minutes']}">
                                 </span>
                         </div>
                     </td>
