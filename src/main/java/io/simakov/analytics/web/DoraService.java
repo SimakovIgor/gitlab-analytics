@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,7 @@ public class DoraService {
     }
 
     public List<TrackedProject> getAllProjects() {
-        return trackedProjectRepository.findAllByEnabledTrue();
+        return trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(WorkspaceContext.get());
     }
 
     /**
@@ -73,7 +74,7 @@ public class DoraService {
         if (requested != null && !requested.isEmpty()) {
             return requested;
         }
-        return trackedProjectRepository.findAllByEnabledTrue().stream()
+        return trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(WorkspaceContext.get()).stream()
             .map(TrackedProject::getId)
             .toList();
     }

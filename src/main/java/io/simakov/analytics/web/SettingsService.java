@@ -65,9 +65,10 @@ public class SettingsService {
     }
 
     public void deleteSource(Long id) {
-        if (!gitSourceRepository.existsById(id)) {
-            throw new ResourceNotFoundException("GitSource", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        gitSourceRepository.findById(id)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("GitSource", id));
         gitSourceRepository.deleteById(id);
     }
 
@@ -109,9 +110,10 @@ public class SettingsService {
     }
 
     public void deleteProject(Long id) {
-        if (!trackedProjectRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TrackedProject", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedProjectRepository.findById(id)
+            .filter(p -> workspaceId.equals(p.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedProject", id));
         trackedProjectRepository.deleteById(id);
     }
 
@@ -175,9 +177,10 @@ public class SettingsService {
     }
 
     public void deleteUser(Long id) {
-        if (!trackedUserRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TrackedUser", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedUserRepository.findById(id)
+            .filter(u -> workspaceId.equals(u.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", id));
         trackedUserRepository.deleteById(id);
     }
 

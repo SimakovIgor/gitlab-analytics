@@ -2,14 +2,19 @@ package io.simakov.analytics.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.BaseIT;
+import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.Workspace;
+import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
+import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +49,12 @@ class SettingsControllerTest extends BaseIT {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private AppUserRepository appUserRepository;
+
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
 
     @Autowired
     private GitSourceRepository gitSourceRepository;
@@ -142,6 +153,20 @@ class SettingsControllerTest extends BaseIT {
 
         assertThat(gitSourceRepository.findById(savedSource.getId())).isEmpty();
         assertThat(trackedProjectRepository.findById(project.getId())).isEmpty();
+    }
+
+    @Test
+    @WithMockUser
+    void validateTokenReturns200WhenTokenIsValid() throws Exception {
+        when(gitLabApiClient.getCurrentUser(anyString(), anyString()))
+            .thenReturn(new GitLabUserDto(1L, "testuser", "Test User", null, null));
+
+        mockMvc.perform(get("/settings/sources/" + savedSource.getId() + "/token/validate")
+                .session(webSession)
+                .param("token", "glpat-test"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.valid").value(true))
+            .andExpect(jsonPath("$.username").value("testuser"));
     }
 
     @Test
@@ -355,6 +380,63 @@ class SettingsControllerTest extends BaseIT {
                 .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNotFound());
+    }
+
+    // ── Workspace isolation ──────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser
+    void deleteSourceReturns404ForSourceInAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        GitSource otherSource = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(otherWorkspaceId).name("other-gl").baseUrl("https://other.com").build());
+
+        mockMvc.perform(delete("/settings/sources/" + otherSource.getId())
+                .session(webSession).with(csrf()))
+            .andExpect(status().isNotFound());
+
+        assertThat(gitSourceRepository.findById(otherSource.getId())).isPresent();
+    }
+
+    @Test
+    @WithMockUser
+    void deleteProjectReturns404ForProjectInAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        GitSource otherSource = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(otherWorkspaceId).name("other-gl").baseUrl("https://other.com").build());
+        TrackedProject otherProject = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(otherWorkspaceId).gitSourceId(otherSource.getId())
+            .gitlabProjectId(99L).pathWithNamespace("other/repo").name("other-repo")
+            .tokenEncrypted("tok").enabled(true).build());
+
+        mockMvc.perform(delete("/settings/projects/" + otherProject.getId())
+                .session(webSession).with(csrf()))
+            .andExpect(status().isNotFound());
+
+        assertThat(trackedProjectRepository.findById(otherProject.getId())).isPresent();
+    }
+
+    @Test
+    @WithMockUser
+    void deleteUserReturns404ForUserInAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        TrackedUser otherUser = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(otherWorkspaceId).displayName("Secret User")
+            .email("secret@other.com").enabled(true).build());
+
+        mockMvc.perform(delete("/settings/users/" + otherUser.getId())
+                .session(webSession).with(csrf()))
+            .andExpect(status().isNotFound());
+
+        assertThat(trackedUserRepository.findById(otherUser.getId())).isPresent();
+    }
+
+    private Long createOtherWorkspaceId() {
+        AppUser otherOwner = appUserRepository.save(AppUser.builder()
+            .githubId(99L).githubLogin("other-owner").lastLoginAt(Instant.now()).build());
+        Workspace otherWorkspace = workspaceRepository.save(Workspace.builder()
+            .name("Other WS").slug("other-ws").ownerId(otherOwner.getId()).plan("FREE").apiToken("other-tok").build());
+        return otherWorkspace.getId();
     }
 
     // ── Sync status ──────────────────────────────────────────────────────────
