@@ -50,8 +50,8 @@ public class SnapshotService {
      * Использует текущий WorkspaceContext.
      */
     @Async("syncTaskExecutor")
-    public void runDailyBackfillAsync(int days) {
-        runDailyBackfill(WorkspaceContext.get(), days);
+    public void runDailyBackfillAsync(Long workspaceId, int days) {
+        runDailyBackfill(workspaceId, days);
     }
 
     public int runDailyBackfill(int days) {

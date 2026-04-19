@@ -30,6 +30,7 @@ public class NightlySyncScheduler {
     private final AppProperties appProperties;
 
     @Scheduled(cron = "${app.sync.cron:0 0 3 * * *}")
+    @SuppressWarnings("checkstyle:IllegalCatch")
     public void runNightlySync() {
         List<Workspace> workspaces = workspaceRepository.findAll();
         if (workspaces.isEmpty()) {
@@ -41,7 +42,11 @@ public class NightlySyncScheduler {
         Instant dateFrom = DateTimeUtils.minusDays(dateTo, windowDays);
 
         for (Workspace workspace : workspaces) {
-            syncForWorkspace(workspace, dateFrom, dateTo);
+            try {
+                syncForWorkspace(workspace, dateFrom, dateTo);
+            } catch (Exception e) {
+                log.error("Nightly sync failed for workspace={}: {}", workspace.getId(), e.getMessage(), e);
+            }
         }
     }
 

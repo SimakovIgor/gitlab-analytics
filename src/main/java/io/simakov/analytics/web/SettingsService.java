@@ -150,17 +150,18 @@ public class SettingsService {
                 return user;
             })
             .toList();
-        snapshotService.runDailyBackfillAsync(BACKFILL_DAYS);
+        snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
         return saved;
     }
 
     public TrackedUser createUser(CreateTrackedUserRequest request) {
+        Long workspaceId = WorkspaceContext.get();
         TrackedUser entity = trackedUserMapper.toEntity(request);
-        entity.setWorkspaceId(WorkspaceContext.get());
+        entity.setWorkspaceId(workspaceId);
         TrackedUser saved = trackedUserRepository.save(entity);
         userAliasService.saveAlias(saved.getId(), request.email());
         userAliasService.saveAliases(saved.getId(), request.aliasEmails());
-        snapshotService.runDailyBackfillAsync(BACKFILL_DAYS);
+        snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
         return saved;
     }
 

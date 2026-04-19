@@ -64,13 +64,15 @@ public class PlaceholderAliasDiscoveryService {
     @Async("syncTaskExecutor")
     public void discoverForAllProjectsAsync() {
         List<TrackedProject> projects = trackedProjectRepository.findAll();
+        var sourcesById = gitSourceRepository.findAll()
+            .stream().collect(Collectors.toMap(GitSource::getId, s -> s));
         for (TrackedProject project : projects) {
-            GitSource source = gitSourceRepository.findById(project.getGitSourceId()).orElse(null);
+            GitSource source = sourcesById.get(project.getGitSourceId());
             if (source == null) {
                 continue;
             }
             String token = encryptionService.decrypt(project.getTokenEncrypted());
-            discoverAndSave(project.getId(), source.getBaseUrl(), token);
+            discoverAndSave(project.getWorkspaceId(), project.getId(), source.getBaseUrl(), token);
         }
     }
 
@@ -78,10 +80,13 @@ public class PlaceholderAliasDiscoveryService {
      * Запускается после синка проекта. Находит неизвестные author_gitlab_user_id в MR проекта,
      * проверяет — не placeholder ли это, и если да — пытается привязать по имени.
      */
-    public void discoverAndSave(Long trackedProjectId,
+    public void discoverAndSave(Long workspaceId,
+                                Long trackedProjectId,
                                 String baseUrl,
                                 String token) {
-        Set<Long> knownIds = aliasRepository.findAll().stream()
+        List<TrackedUser> workspaceUsers = trackedUserRepository.findAllByWorkspaceId(workspaceId);
+        List<Long> userIds = workspaceUsers.stream().map(TrackedUser::getId).toList();
+        Set<Long> knownIds = aliasRepository.findByTrackedUserIdIn(userIds).stream()
             .map(TrackedUserAlias::getGitlabUserId)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
@@ -96,7 +101,7 @@ public class PlaceholderAliasDiscoveryService {
             return;
         }
 
-        List<TrackedUser> trackedUsers = trackedUserRepository.findAll();
+        List<TrackedUser> trackedUsers = workspaceUsers;
 
         for (Long unknownId : unknownAuthorIds) {
             GitLabUserDto user = gitLabApiClient.getUserById(baseUrl, token, unknownId);

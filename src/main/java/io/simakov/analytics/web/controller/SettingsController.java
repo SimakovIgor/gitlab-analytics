@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Controller
 @RequestMapping("/settings")
@@ -180,10 +181,17 @@ public class SettingsController {
     @ResponseBody
     public ResponseEntity<Void> linkGitlabAccount(@PathVariable Long id,
                                                   @RequestBody Map<String, Object> body) {
-        Long gitlabUserId = Long.valueOf(body.get("gitlabUserId").toString());
-        String username = body.containsKey("username")
-            ? body.get("username").toString()
-            : null;
+        Object raw = body.get("gitlabUserId");
+        if (raw == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        Long gitlabUserId;
+        try {
+            gitlabUserId = Long.valueOf(raw.toString());
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        String username = Objects.toString(body.get("username"), null);
         settingsService.linkGitlabAccount(id, gitlabUserId, username);
         return ResponseEntity.noContent().build();
     }
