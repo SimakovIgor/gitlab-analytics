@@ -96,7 +96,7 @@ class ReportControllerTest extends BaseIT {
 
     @Test
     void reportPageReturns200WithAuth() throws Exception {
-        mockMvc.perform(get("/report").with(oauth2Login()))
+        mockMvc.perform(get("/report").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk());
     }
 
@@ -111,7 +111,7 @@ class ReportControllerTest extends BaseIT {
 
     @Test
     void reportPageRendersSummaryBlock() throws Exception {
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -129,7 +129,7 @@ class ReportControllerTest extends BaseIT {
         saveMergedMr(2L, ALICE_GITLAB_ID);
         saveMergedMr(3L, BOB_GITLAB_ID);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -146,7 +146,7 @@ class ReportControllerTest extends BaseIT {
         // Alice has a merged MR (active), Bob has nothing (inactive)
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -163,7 +163,7 @@ class ReportControllerTest extends BaseIT {
         // Alice has a merged MR, Bob has nothing
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS")
                 .param("showInactive", "false"))
             .andExpect(status().isOk())
@@ -179,7 +179,7 @@ class ReportControllerTest extends BaseIT {
         // Only Alice has activity
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -193,7 +193,7 @@ class ReportControllerTest extends BaseIT {
 
     @Test
     void reportPageRendersProjectCheckboxes() throws Exception {
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -204,7 +204,7 @@ class ReportControllerTest extends BaseIT {
     void reportFilterByUnknownProjectIdReturnsNoData() throws Exception {
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS")
                 .param("projectIds", "99999")
                 .param("showInactive", "false"))
@@ -230,7 +230,7 @@ class ReportControllerTest extends BaseIT {
         old.setAuthorGitlabUserId(ALICE_GITLAB_ID);
         mergeRequestRepository.save(old);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS")
                 .param("showInactive", "false"))
             .andExpect(status().isOk())
@@ -244,7 +244,7 @@ class ReportControllerTest extends BaseIT {
     void reportPageShowsDeltaBaselineNote() throws Exception {
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -258,7 +258,7 @@ class ReportControllerTest extends BaseIT {
     void reportPageRendersChartMetricSelector() throws Exception {
         saveMergedMr(1L, ALICE_GITLAB_ID);
 
-        MvcResult result = mockMvc.perform(get("/report").with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/report").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
 

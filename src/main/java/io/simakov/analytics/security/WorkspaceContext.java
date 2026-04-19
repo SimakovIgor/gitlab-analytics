@@ -23,6 +23,10 @@ public final class WorkspaceContext {
         return id;
     }
 
+    public static boolean isSet() {
+        return WORKSPACE_ID.get() != null;
+    }
+
     public static void clear() {
         WORKSPACE_ID.remove();
     }

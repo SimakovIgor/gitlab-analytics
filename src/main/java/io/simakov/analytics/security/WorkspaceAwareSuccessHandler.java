@@ -35,13 +35,12 @@ public class WorkspaceAwareSuccessHandler implements AuthenticationSuccessHandle
         HttpSession session = request.getSession();
 
         if (memberships.isEmpty()) {
-            log.info("AppUser id={} has no workspace — redirecting to onboarding", appUserId);
-            response.sendRedirect("/onboarding");
+            log.info("AppUser id={} has no workspace — showing onboarding on report page", appUserId);
         } else {
             Long workspaceId = memberships.get(0).getWorkspaceId();
             session.setAttribute(SESSION_WORKSPACE_ID, workspaceId);
             log.debug("AppUser id={} logged in, workspaceId={}", appUserId, workspaceId);
-            response.sendRedirect("/dashboard");
         }
+        response.sendRedirect("/report");
     }
 }

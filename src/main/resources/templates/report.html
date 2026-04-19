@@ -53,16 +53,39 @@
 
     <div class="onboarding-wizard" id="onboarding-wizard">
         <div class="ob-wizard-header">
-            <h2 class="ob-wizard-title">Настройка за 5 шагов</h2>
+            <h2 class="ob-wizard-title">Настройка за 6 шагов</h2>
             <p class="ob-wizard-subtitle">После добавления репозитория система автоматически загрузит данные GitLab за последние 360 дней</p>
         </div>
 
         <div class="ob-steps">
 
-            <!-- Шаг 1: GitLab источник -->
-            <div id="ob-step-1" th:class="${hasSources} ? 'ob-step ob-step-done' : 'ob-step ob-step-active'">
+            <!-- Шаг 0: Создание workspace -->
+            <div id="ob-step-0" th:class="${hasWorkspace} ? 'ob-step ob-step-done' : 'ob-step ob-step-active'">
                 <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasSources} ? '✓' : '1'">1</div>
+                    <div class="ob-step-num" th:text="${hasWorkspace} ? '✓' : '1'">1</div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Назовите вашу команду</div>
+                    <div class="ob-step-desc">Это название вашего workspace — например, «Backend Team»</div>
+                    <div class="ob-step-action">
+                        <span class="ob-done-badge" th:if="${hasWorkspace}">Создан ✓</span>
+                        <form th:unless="${hasWorkspace}" method="post" th:action="@{/onboarding}"
+                              style="display:flex;gap:8px;align-items:center;">
+                            <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+                            <input type="text" name="workspaceName" placeholder="Название команды"
+                                   required maxlength="255"
+                                   style="padding:.5rem .75rem;font-size:.95rem;border:1px solid #d0d7de;border-radius:6px;width:220px;"/>
+                            <button type="submit" class="btn-primary">Создать →</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Шаг 1: GitLab источник -->
+            <div id="ob-step-1" th:class="${hasSources} ? 'ob-step ob-step-done' : (${hasWorkspace} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasSources} ? '✓' : '2'">2</div>
                     <div class="ob-step-line"></div>
                 </div>
                 <div class="ob-step-content">
@@ -81,7 +104,7 @@
             <div id="ob-step-2"
                  th:class="${hasProjects} ? 'ob-step ob-step-done' : (${hasSources} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
                 <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasProjects} ? '✓' : '2'">2</div>
+                    <div class="ob-step-num" th:text="${hasProjects} ? '✓' : '3'">3</div>
                     <div class="ob-step-line"></div>
                 </div>
                 <div class="ob-step-content">
@@ -112,7 +135,7 @@
                            : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
                 <div class="ob-step-indicator">
                     <div class="ob-step-num"
-                         th:text="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? '✓' : '3'">3
+                         th:text="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? '✓' : '4'">4
                     </div>
                     <div class="ob-step-line"></div>
                 </div>
@@ -144,7 +167,7 @@
                  th:class="${hasUsers} ? 'ob-step ob-step-done'
                            : (${hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
                 <div class="ob-step-indicator">
-                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '4'">4</div>
+                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '5'">5</div>
                     <div class="ob-step-line"></div>
                 </div>
                 <div class="ob-step-content">
@@ -191,7 +214,7 @@
             <div id="ob-step-5"
                  th:class="${hasUsers} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked'">
                 <div class="ob-step-indicator">
-                    <div class="ob-step-num">5</div>
+                    <div class="ob-step-num">6</div>
                 </div>
                 <div class="ob-step-content">
                     <div class="ob-step-title">История метрик</div>
