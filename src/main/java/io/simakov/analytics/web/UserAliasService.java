@@ -59,7 +59,7 @@ public class UserAliasService {
     public void linkGitlabAccount(Long userId,
                                   Long gitlabUserId,
                                   String username) {
-        if (aliasRepository.existsByGitlabUserId(gitlabUserId)) {
+        if (aliasRepository.existsByTrackedUserIdAndGitlabUserId(userId, gitlabUserId)) {
             return;
         }
         aliasRepository.save(TrackedUserAlias.builder()

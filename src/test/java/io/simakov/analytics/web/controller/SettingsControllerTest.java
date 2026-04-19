@@ -6,11 +6,13 @@ import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
@@ -64,6 +66,9 @@ class SettingsControllerTest extends BaseIT {
 
     @Autowired
     private TrackedUserRepository trackedUserRepository;
+
+    @Autowired
+    private TrackedUserAliasRepository aliasRepository;
 
     @Autowired
     private SyncJobRepository syncJobRepository;
@@ -482,6 +487,31 @@ class SettingsControllerTest extends BaseIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser
+    void linkGitlabAccountAllowsLinkingGitlabUserIdAlreadyUsedInAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        TrackedUser otherUser = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(otherWorkspaceId).displayName("Other User")
+            .email("other@example.com").enabled(true).build());
+        aliasRepository.save(TrackedUserAlias.builder()
+            .trackedUserId(otherUser.getId()).gitlabUserId(42L).build());
+
+        TrackedUser ownUser = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId).displayName("Own User")
+            .email("own@example.com").enabled(true).build());
+
+        mockMvc.perform(post("/settings/users/" + ownUser.getId() + "/link-gitlab")
+                .session(webSession).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"gitlabUserId\":42,\"username\":\"ownuser\"}"))
+            .andExpect(status().isNoContent());
+
+        assertThat(aliasRepository.findByTrackedUserId(ownUser.getId()))
+            .extracting(TrackedUserAlias::getGitlabUserId)
+            .contains(42L);
     }
 
     @Test
