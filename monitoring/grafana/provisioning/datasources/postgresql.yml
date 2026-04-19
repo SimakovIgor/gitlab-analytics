@@ -4,11 +4,11 @@ datasources:
   - name: PostgreSQL
     type: postgres
     uid: postgresql
-    url: host.docker.internal:5432
+    url: ${POSTGRES_HOST}:5432
     database: gitlab_analytics
     user: analytics
     secureJsonData:
-      password: analytics
+      password: $DB_PASSWORD
     jsonData:
       sslmode: disable
       maxOpenConns: 5

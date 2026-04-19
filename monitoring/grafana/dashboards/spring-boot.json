@@ -323,7 +323,7 @@
           },
           "mappings": [],
           "decimals": 1,
-          "noValue": "\ud83d\udc9a"
+          "noValue": "💚"
         },
         "overrides": []
       },
@@ -392,7 +392,7 @@
             ]
           },
           "mappings": [],
-          "noValue": "\ud83d\udc9a"
+          "noValue": "💚"
         },
         "overrides": []
       },
@@ -410,7 +410,7 @@
     },
     {
       "id": 7,
-      "title": "HTTP \u2014 Incoming",
+      "title": "HTTP — Incoming",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -729,7 +729,7 @@
     },
     {
       "id": 50,
-      "title": "Latency Overall \u2014 p50 / p95 / p99",
+      "title": "Latency Overall — p50 / p95 / p99",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -840,7 +840,7 @@
     },
     {
       "id": 51,
-      "title": "Request Rate \u2014 2xx / 4xx / 5xx",
+      "title": "Request Rate — 2xx / 4xx / 5xx",
       "type": "timeseries",
       "gridPos": {
         "x": 8,
@@ -1398,553 +1398,8 @@
       ]
     },
     {
-      "id": 14,
-      "title": "Top Endpoints by RPS",
-      "type": "table",
-      "gridPos": {
-        "x": 0,
-        "y": 28,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "options": {
-        "sortBy": [
-          {
-            "displayName": "RPS",
-            "desc": true
-          }
-        ],
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "uri"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 380
-              },
-              {
-                "id": "custom.align",
-                "value": "left"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "method"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 60
-              },
-              {
-                "id": "custom.align",
-                "value": "center"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "reqps"
-              },
-              {
-                "id": "decimals",
-                "value": 3
-              },
-              {
-                "id": "displayName",
-                "value": "RPS"
-              },
-              {
-                "id": "custom.width",
-                "value": 110
-              }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {
-            "mode": "columns"
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "le": true,
-              "exception": true,
-              "instance": true,
-              "job": true,
-              "exported_application": true
-            },
-            "indexByName": {
-              "uri": 0,
-              "method": 1,
-              "Value": 2,
-              "Time": 3
-            },
-            "renameByName": {}
-          }
-        }
-      ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "topk(10, sum by (method, uri) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[5m])))",
-          "refId": "A",
-          "instant": true
-        }
-      ]
-    },
-    {
-      "id": 15,
-      "title": "Top Endpoints by Latency p95",
-      "type": "table",
-      "gridPos": {
-        "x": 12,
-        "y": 28,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "options": {
-        "sortBy": [
-          {
-            "displayName": "p95",
-            "desc": true
-          }
-        ],
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "uri"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 380
-              },
-              {
-                "id": "custom.align",
-                "value": "left"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "method"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 60
-              },
-              {
-                "id": "custom.align",
-                "value": "center"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "s"
-              },
-              {
-                "id": "decimals",
-                "value": 3
-              },
-              {
-                "id": "displayName",
-                "value": "p95"
-              },
-              {
-                "id": "custom.width",
-                "value": 110
-              }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {
-            "mode": "columns"
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "le": true,
-              "status": true,
-              "exception": true,
-              "outcome": true,
-              "error": true,
-              "instance": true,
-              "job": true,
-              "exported_application": true
-            },
-            "indexByName": {
-              "uri": 0,
-              "method": 1,
-              "Value": 2,
-              "Time": 3
-            },
-            "renameByName": {}
-          }
-        }
-      ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "topk(10, histogram_quantile(0.95, sum by (uri, le) (rate(http_server_requests_seconds_bucket{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[5m]))) and sum by (uri) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",uri!~\"/actuator.*\"}[5m])) > 0)",
-          "refId": "A",
-          "instant": true
-        }
-      ]
-    },
-    {
-      "id": 16,
-      "title": "Top Endpoints by 4xx Rate",
-      "type": "table",
-      "gridPos": {
-        "x": 0,
-        "y": 36,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "options": {
-        "sortBy": [
-          {
-            "displayName": "4xx/s",
-            "desc": true
-          }
-        ],
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "uri"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 380
-              },
-              {
-                "id": "custom.align",
-                "value": "left"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "method"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 60
-              },
-              {
-                "id": "custom.align",
-                "value": "center"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "reqps"
-              },
-              {
-                "id": "decimals",
-                "value": 3
-              },
-              {
-                "id": "displayName",
-                "value": "4xx/s"
-              },
-              {
-                "id": "custom.width",
-                "value": 110
-              }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {
-            "mode": "columns"
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "le": true,
-              "exception": true,
-              "instance": true,
-              "job": true,
-              "exported_application": true
-            },
-            "indexByName": {
-              "uri": 0,
-              "status": 1,
-              "method": 2,
-              "Value": 3,
-              "Time": 4
-            },
-            "renameByName": {}
-          }
-        }
-      ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "topk(10, sum by (uri, status) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"4..\",uri!~\"/actuator.*\"}[5m])))",
-          "refId": "A",
-          "instant": true
-        }
-      ]
-    },
-    {
-      "id": 17,
-      "title": "Top Endpoints by 5xx Rate",
-      "type": "table",
-      "gridPos": {
-        "x": 12,
-        "y": 36,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "options": {
-        "sortBy": [
-          {
-            "displayName": "5xx/s",
-            "desc": true
-          }
-        ],
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "auto"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "uri"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 380
-              },
-              {
-                "id": "custom.align",
-                "value": "left"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "method"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 60
-              },
-              {
-                "id": "custom.align",
-                "value": "center"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "reqps"
-              },
-              {
-                "id": "decimals",
-                "value": 3
-              },
-              {
-                "id": "displayName",
-                "value": "5xx/s"
-              },
-              {
-                "id": "custom.width",
-                "value": 110
-              }
-            ]
-          }
-        ]
-      },
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {
-            "mode": "columns"
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "le": true,
-              "exception": true,
-              "instance": true,
-              "job": true,
-              "exported_application": true
-            },
-            "indexByName": {
-              "uri": 0,
-              "status": 1,
-              "method": 2,
-              "Value": 3,
-              "Time": 4
-            },
-            "renameByName": {}
-          }
-        }
-      ],
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "topk(10, sum by (uri, status) (rate(http_server_requests_seconds_count{application=\"gitlab-analytics\",status=~\"5..\"}[5m])))",
-          "refId": "A",
-          "instant": true
-        }
-      ]
-    },
-    {
       "id": 18,
-      "title": "External HTTP \u2014 GitLab API",
+      "title": "External HTTP — GitLab API",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -2052,7 +1507,7 @@
     },
     {
       "id": 20,
-      "title": "Latency \u2014 p50 / p95 / p99",
+      "title": "Latency — p50 / p95 / p99",
       "type": "timeseries",
       "description": "",
       "gridPos": {
@@ -2536,7 +1991,7 @@
     },
     {
       "id": 24,
-      "title": "Database \u2014 HikariCP",
+      "title": "Database — HikariCP",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -2765,7 +2220,7 @@
     },
     {
       "id": 27,
-      "title": "Acquire Time \u2014 p50 / p99",
+      "title": "Acquire Time — p50 / p99",
       "type": "timeseries",
       "description": "",
       "gridPos": {
@@ -2890,7 +2345,7 @@
     },
     {
       "id": 29,
-      "title": "Heap \u2014 used / committed / max",
+      "title": "Heap — used / committed / max",
       "type": "timeseries",
       "description": "",
       "gridPos": {
@@ -3000,7 +2455,7 @@
     },
     {
       "id": 30,
-      "title": "Heap Pools \u2014 Eden / Survivor / Old Gen",
+      "title": "Heap Pools — Eden / Survivor / Old Gen",
       "type": "timeseries",
       "description": "",
       "gridPos": {
@@ -3110,7 +2565,7 @@
     },
     {
       "id": 31,
-      "title": "Non-Heap \u2014 used / committed",
+      "title": "Non-Heap — used / committed",
       "type": "timeseries",
       "description": "",
       "gridPos": {
@@ -3211,7 +2666,7 @@
     },
     {
       "id": 32,
-      "title": "GC \u2014 Garbage Collection",
+      "title": "GC — Garbage Collection",
       "type": "row",
       "collapsed": true,
       "gridPos": {
@@ -3521,7 +2976,7 @@
     },
     {
       "id": 36,
-      "title": "JVM \u2014 CPU / Threads / Files",
+      "title": "JVM — CPU / Threads / Files",
       "type": "row",
       "collapsed": true,
       "gridPos": {
@@ -3850,7 +3305,7 @@
     },
     {
       "id": 40,
-      "title": "Application \u2014 Sync Jobs & Executors",
+      "title": "Application — Sync Jobs & Executors",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -3863,7 +3318,7 @@
     },
     {
       "id": 41,
-      "title": "Sync Jobs \u2014 Active",
+      "title": "Sync Jobs — Active",
       "type": "timeseries",
       "description": "",
       "gridPos": {
@@ -3956,7 +3411,7 @@
     },
     {
       "id": 42,
-      "title": "Sync Jobs \u2014 Completed / Failed",
+      "title": "Sync Jobs — Completed / Failed",
       "type": "timeseries",
       "description": "",
       "gridPos": {
@@ -4099,7 +3554,7 @@
     },
     {
       "id": 43,
-      "title": "Executors \u2014 Active / Queued",
+      "title": "Executors — Active / Queued",
       "type": "timeseries",
       "description": "",
       "gridPos": {

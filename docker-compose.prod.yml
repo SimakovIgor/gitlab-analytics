@@ -1,20 +1,64 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gitlab-analytics-postgres
+    environment:
+      POSTGRES_DB: gitlab_analytics
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U analytics -d gitlab_analytics" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: gitlab-analytics-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/gitlab_analytics
+      DB_USERNAME: analytics
+      DB_PASSWORD: ${DB_PASSWORD}
+      API_TOKEN: ${API_TOKEN}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: gitlab-analytics-node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.rootfs=/rootfs
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:v2.52.0
     container_name: gitlab-analytics-prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.time=30d
       - --web.enable-lifecycle
-    extra_hosts:
-      # allows Prometheus to reach the app running locally on the host (macOS / Linux)
-      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   loki:
@@ -36,8 +80,6 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/promtail-config.yml
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       - loki
     restart: unless-stopped
@@ -49,22 +91,21 @@ services:
       - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
-      POSTGRES_HOST: host.docker.internal
-      DB_PASSWORD: analytics
+      POSTGRES_HOST: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       - prometheus
       - loki
     restart: unless-stopped
 
 volumes:
+  postgres_data:
   prometheus_data:
   grafana_data:
   loki_data:
