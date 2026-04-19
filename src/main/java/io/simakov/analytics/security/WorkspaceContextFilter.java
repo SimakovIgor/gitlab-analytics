@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Sets WorkspaceContext from HTTP session for web (non-API) requests.
@@ -23,6 +25,9 @@ import java.io.IOException;
 @Component
 @Order(10)
 public class WorkspaceContextFilter extends OncePerRequestFilter {
+
+    private static final Set<String> EXEMPT_PATHS = Set.of("/onboarding", "/login", "/logout");
+    private static final List<String> EXEMPT_PREFIXES = List.of("/oauth2/", "/css/", "/js/", "/actuator/");
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -52,15 +57,9 @@ public class WorkspaceContextFilter extends OncePerRequestFilter {
         }
     }
 
-    @SuppressWarnings("checkstyle:BooleanExpressionComplexity")
     private static boolean requiresWorkspace(String uri) {
-        return !"/onboarding".equals(uri)
-            && !uri.startsWith("/oauth2/")
-            && !"/login".equals(uri)
-            && !"/logout".equals(uri)
-            && !uri.startsWith("/css/")
-            && !uri.startsWith("/js/")
-            && !uri.startsWith("/actuator/");
+        return !EXEMPT_PATHS.contains(uri)
+            && EXEMPT_PREFIXES.stream().noneMatch(uri::startsWith);
     }
 
     private static boolean isAuthenticated() {

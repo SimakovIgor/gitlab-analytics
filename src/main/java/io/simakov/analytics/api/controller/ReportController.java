@@ -105,17 +105,14 @@ public class ReportController {
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     private Map<String, List<Double>> collectTeamValues(Map<Long, UserMetrics> metricsByUser) {
-        Map<String, List<Double>> teamValues = new HashMap<>();
-        for (UserMetrics m : metricsByUser.values()) {
-            m.toMetricsMap().forEach((key, value) -> {
-                if (value instanceof Number n) {
-                    teamValues.computeIfAbsent(key, k -> new ArrayList<>()).add(n.doubleValue());
-                }
-            });
-        }
-        return teamValues;
+        return metricsByUser.values().stream()
+            .flatMap(m -> m.toMetricsMap().entrySet().stream())
+            .filter(e -> e.getValue() instanceof Number)
+            .collect(Collectors.groupingBy(
+                Map.Entry::getKey,
+                Collectors.mapping(e -> ((Number) e.getValue()).doubleValue(), Collectors.toList())
+            ));
     }
 
     private Map<String, Double> buildTeamComparison(UserMetrics m,

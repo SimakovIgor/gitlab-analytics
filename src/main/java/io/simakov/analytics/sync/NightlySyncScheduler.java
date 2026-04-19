@@ -50,7 +50,6 @@ public class NightlySyncScheduler {
         }
     }
 
-    @SuppressWarnings("checkstyle:ReturnCount")
     private void syncForWorkspace(Workspace workspace,
                                   Instant dateFrom,
                                   Instant dateTo) {
@@ -58,22 +57,20 @@ public class NightlySyncScheduler {
 
         List<Long> projectIds = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId)
             .stream().map(TrackedProject::getId).toList();
+        boolean alreadyRunning = !projectIds.isEmpty()
+            && syncJobRepository.existsByWorkspaceIdAndStatus(workspaceId, SyncStatus.STARTED);
+
         if (projectIds.isEmpty()) {
             log.debug("Nightly sync skipped for workspace={} — no enabled projects", workspaceId);
-            return;
-        }
-
-        boolean alreadyRunning = syncJobRepository.existsByWorkspaceIdAndStatus(workspaceId, SyncStatus.STARTED);
-        if (alreadyRunning) {
+        } else if (alreadyRunning) {
             log.warn("Nightly sync skipped for workspace={} — sync already running", workspaceId);
-            return;
+        } else {
+            ManualSyncRequest request = new ManualSyncRequest(
+                projectIds, dateFrom, dateTo, true, true, true
+            );
+            log.info("Starting nightly sync: workspace={}, projects={}", workspaceId, projectIds.size());
+            var job = syncJobService.create(workspaceId, request);
+            syncOrchestrator.orchestrateAsync(job.getId(), request);
         }
-
-        ManualSyncRequest request = new ManualSyncRequest(
-            projectIds, dateFrom, dateTo, true, true, true
-        );
-        log.info("Starting nightly sync: workspace={}, projects={}", workspaceId, projectIds.size());
-        var job = syncJobService.create(workspaceId, request);
-        syncOrchestrator.orchestrateAsync(job.getId(), request);
     }
 }

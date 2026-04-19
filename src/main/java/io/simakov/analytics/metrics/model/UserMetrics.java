@@ -53,13 +53,10 @@ public class UserMetrics {
     /**
      * Сотрудник считается неактивным, если все ключевые метрики за период равны нулю.
      */
-    @SuppressWarnings("checkstyle:BooleanExpressionComplexity")
     public boolean isInactive() {
-        return mrMergedCount == 0
-            && commitsInMrCount == 0
-            && activeDaysCount == 0
-            && mrsReviewedCount == 0
-            && approvalsGivenCount == 0;
+        boolean noDelivery = mrMergedCount == 0 && commitsInMrCount == 0 && activeDaysCount == 0;
+        boolean noReview = mrsReviewedCount == 0 && approvalsGivenCount == 0;
+        return noDelivery && noReview;
     }
 
     public Map<String, Object> toMetricsMap() {

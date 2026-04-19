@@ -146,7 +146,6 @@ public class ReportViewService {
         return result;
     }
 
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     private Map<String, Number> computeDelta(UserMetrics m, UserMetrics p) {
         Map<String, Number> d = new HashMap<>();
         d.put(Metric.MR_MERGED_COUNT.key(), m.getMrMergedCount() - p.getMrMergedCount());
@@ -210,7 +209,6 @@ public class ReportViewService {
             : values.get(mid);
     }
 
-    @SuppressWarnings("PMD.NPathComplexity")
     public List<MrSummaryDto> getUserMrs(Long userId,
                                          String period,
                                          List<Long> requestedProjectIds) {
@@ -244,8 +242,15 @@ public class ReportViewService {
                 .toList();
         }
 
-        // Fallback: gitlab_user_id не задан — ищем MR по email коммитов,
-        // зеркалируя логику MetricCalculationService.resolveAuthoredMrIds
+        return findMrsByEmailFallback(userId, aliases, projectIds, projectPathById, dateFrom, dateTo);
+    }
+
+    private List<MrSummaryDto> findMrsByEmailFallback(Long userId,
+                                                       List<TrackedUserAlias> aliases,
+                                                       List<Long> projectIds,
+                                                       Map<Long, String> projectPathById,
+                                                       Instant dateFrom,
+                                                       Instant dateTo) {
         TrackedUser user = trackedUserRepository.findById(userId).orElse(null);
         if (user == null) {
             return List.of();

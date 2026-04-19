@@ -110,31 +110,23 @@ public class HistoryViewService {
      * labels = отсортированные даты снапшотов,
      * datasets = по одному на каждого пользователя.
      */
-    @SuppressWarnings({"PMD.AvoidInstantiatingObjectsInLoops", "PMD.CyclomaticComplexity"})
     private String buildChartJson(List<MetricSnapshot> snapshots,
                                   List<TrackedUser> users,
                                   String metric,
                                   boolean showInactive) {
         // userId → (date → value)
-        Map<Long, Map<String, Object>> byUser = new LinkedHashMap<>();
-        for (TrackedUser u : users) {
-            byUser.put(u.getId(), new TreeMap<>());
-        }
+        Map<Long, Map<String, Object>> byUser = users.stream()
+            .collect(Collectors.toMap(
+                TrackedUser::getId,
+                u -> new TreeMap<>(),
+                (a, b) -> a,
+                LinkedHashMap::new
+            ));
 
         for (MetricSnapshot snap : snapshots) {
             Map<String, Object> dateValues = byUser.get(snap.getTrackedUserId());
-            if (dateValues == null) {
-                continue;
-            }
-            try {
-                Map<String, Object> metrics = objectMapper.readValue(snap.getMetricsJson(), MAP_TYPE);
-                Object value = metrics.get(metric);
-                if (MINUTES_METRICS.contains(metric) && value instanceof Number n) {
-                    value = Math.round(n.doubleValue() / 60.0 * 10.0) / 10.0;
-                }
-                dateValues.put(snap.getSnapshotDate().toString(), value);
-            } catch (JsonProcessingException e) {
-                log.warn("Failed to parse metrics_json for snapshot id={}", snap.getId());
+            if (dateValues != null) {
+                dateValues.put(snap.getSnapshotDate().toString(), extractMetricValue(snap, metric));
             }
         }
 
@@ -174,6 +166,20 @@ public class HistoryViewService {
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize chart data", e);
             return "{}";
+        }
+    }
+
+    private Object extractMetricValue(MetricSnapshot snap, String metric) {
+        try {
+            Map<String, Object> metrics = objectMapper.readValue(snap.getMetricsJson(), MAP_TYPE);
+            Object value = metrics.get(metric);
+            if (MINUTES_METRICS.contains(metric) && value instanceof Number n) {
+                return Math.round(n.doubleValue() / 60.0 * 10.0) / 10.0;
+            }
+            return value;
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to parse metrics_json for snapshot id={}", snap.getId());
+            return null;
         }
     }
 

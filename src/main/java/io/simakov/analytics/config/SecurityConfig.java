@@ -31,22 +31,18 @@ public class SecurityConfig {
      */
     @Bean
     @Order(1)
-    @SuppressWarnings("checkstyle:IllegalCatch")
-    public SecurityFilterChain apiFilterChain(HttpSecurity http) {
-        try {
-            return http
-                .securityMatcher("/api/**")
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .exceptionHandling(ex -> ex
-                    .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
-                )
-                .addFilterBefore(bearerTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher("/api/**")
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+            )
+            .addFilterBefore(bearerTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .build();
     }
 
     /**
@@ -55,36 +51,31 @@ public class SecurityConfig {
      */
     @Bean
     @Order(2)
-    @SuppressWarnings("checkstyle:IllegalCatch")
-    public SecurityFilterChain webFilterChain(HttpSecurity http) {
-        try {
-            return http
-                .authorizeHttpRequests(auth -> auth
-                    .requestMatchers(
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/v3/api-docs/**",
-                        "/actuator/**",
-                        "/login",
-                        "/onboarding",
-                        "/css/**",
-                        "/js/**",
-                        "/error"
-                    ).permitAll()
-                    .anyRequest().authenticated()
-                )
-                .oauth2Login(oauth2 -> oauth2
-                    .loginPage("/login")
-                    .userInfoEndpoint(ui -> ui.userService(appUserOauthService))
-                    .successHandler(workspaceAwareSuccessHandler)
-                    .failureUrl("/login?error")
-                )
-                .logout(logout -> logout
-                    .logoutSuccessUrl("/login?logout")
-                )
-                .build();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
+    public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/actuator/**",
+                    "/login",
+                    "/css/**",
+                    "/js/**",
+                    "/error"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .loginPage("/login")
+                .userInfoEndpoint(ui -> ui.userService(appUserOauthService))
+                .successHandler(workspaceAwareSuccessHandler)
+                .failureUrl("/login?error")
+            )
+            .logout(logout -> logout
+                .logoutSuccessUrl("/login?logout")
+            )
+            .build();
     }
 }
