@@ -1,7 +1,5 @@
 package io.simakov.analytics.web.controller;
 
-import io.simakov.analytics.metrics.model.Metric;
-import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.HistoryViewService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.ReportViewService;
@@ -53,23 +51,6 @@ public class WebController {
         if (authentication != null) {
             model.addAttribute("currentUser", userResolver.resolve(authentication));
         }
-
-        if (!WorkspaceContext.isSet()) {
-            model.addAttribute("onboardingMode", true);
-            model.addAttribute("hasWorkspace", false);
-            model.addAttribute("hasSources", false);
-            model.addAttribute("hasProjects", false);
-            model.addAttribute("hasUsers", false);
-            model.addAttribute("hasSyncCompleted", false);
-            model.addAttribute("activeJobIds", List.of());
-            model.addAttribute("sources", List.of());
-            model.addAttribute("metricOptions", Metric.chartOptions());
-            model.addAttribute("selectedMetric", metric);
-            model.addAttribute("metricLabel", "");
-            model.addAttribute("chartData", "[]");
-            return "report";
-        }
-        model.addAttribute("hasWorkspace", true);
 
         ReportPageData data = reportViewService.buildReportPage(period, projectIds, showInactive);
         model.addAttribute("sources", data.sources());

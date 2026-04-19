@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,8 +20,10 @@ public class OnboardingController {
     private final WorkspaceService workspaceService;
 
     @GetMapping("/onboarding")
-    public String showOnboarding() {
-        return "redirect:/report";
+    public String showOnboarding(Model model,
+                                 @AuthenticationPrincipal AppUserPrincipal principal) {
+        model.addAttribute("login", principal.getAppUser().getGithubLogin());
+        return "onboarding";
     }
 
     @PostMapping("/onboarding")

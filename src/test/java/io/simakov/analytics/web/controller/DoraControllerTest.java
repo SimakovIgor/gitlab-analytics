@@ -60,7 +60,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageReturns200() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
@@ -77,7 +77,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageRendersLeadTimeSectionAndTbdSections() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -92,7 +92,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageShowsZeroMrsWhenNoData() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
                 .param("days", "30"))
             .andExpect(status().isOk())
             .andReturn();
@@ -105,7 +105,7 @@ class DoraControllerTest extends BaseIT {
         saveMergedMr(1L, 4);
         saveMergedMr(2L, 8);
 
-        MvcResult result = mockMvc.perform(get("/dora").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
                 .param("days", "30"))
             .andExpect(status().isOk())
             .andReturn();
@@ -117,7 +117,7 @@ class DoraControllerTest extends BaseIT {
     void doraPageFiltersToSelectedProjectIds() throws Exception {
         saveMergedMr(1L, 4);
 
-        MvcResult result = mockMvc.perform(get("/dora").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
                 .param("projectIds", "99999")
                 .param("days", "30"))
             .andExpect(status().isOk())
@@ -141,7 +141,7 @@ class DoraControllerTest extends BaseIT {
         opened.setAuthorGitlabUserId(1L);
         mergeRequestRepository.save(opened);
 
-        MvcResult result = mockMvc.perform(get("/dora").with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
                 .param("days", "30"))
             .andExpect(status().isOk())
             .andReturn();
@@ -151,7 +151,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageShowsProjectCheckboxes() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
 
