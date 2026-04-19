@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # dev-start.sh — запускает всё локальное окружение для разработки:
-#   PostgreSQL + Prometheus + Grafana (Docker) → Spring Boot (gradle)
+#   PostgreSQL + Prometheus + Grafana (Docker) → Spring Boot (gradle bootRun)
 #
 # Использование:
-#   ./scripts/dev-start.sh
-#   ./scripts/dev-start.sh --no-monitoring    # без Prometheus/Grafana
-#   ./scripts/dev-start.sh --skip-build       # пропустить сборку, сразу bootRun
+#   ./scripts/dev-start.sh                  # полный запуск с мониторингом
+#   ./scripts/dev-start.sh --no-monitoring  # только PostgreSQL + приложение
+#   ./scripts/dev-start.sh --fast           # пропустить статический анализ (checkstyle/pmd/spotbugs)
+#   ./scripts/dev-start.sh --jar            # запустить собранный jar вместо bootRun (быстрее)
+#   ./scripts/dev-start.sh --fast --jar     # флаги можно комбинировать
 #
-# Обязательные переменные окружения (или .env в корне проекта):
-#   GITHUB_CLIENT_ID     — Client ID GitHub OAuth App
-#   GITHUB_CLIENT_SECRET — Client Secret GitHub OAuth App
-#
-# Опциональные:
+# Переменные окружения (из .env.local или .env в корне, или заданные напрямую):
+#   GITHUB_CLIENT_ID     — Client ID GitHub OAuth App  [обязательно]
+#   GITHUB_CLIENT_SECRET — Client Secret GitHub OAuth App  [обязательно]
 #   API_TOKEN            — Bearer-токен REST API (default: changeme-dev-only)
 
 set -euo pipefail
@@ -28,14 +28,16 @@ error()   { echo -e "${RED}[dev-start]${NC} $*" >&2; }
 
 # ── флаги ─────────────────────────────────────────────────────────────────────
 WITH_MONITORING=true
-SKIP_BUILD=false
+FAST=false
+USE_JAR=false
 
 for arg in "$@"; do
   case "$arg" in
     --no-monitoring) WITH_MONITORING=false ;;
-    --skip-build)    SKIP_BUILD=true ;;
+    --fast)          FAST=true ;;
+    --jar)           USE_JAR=true ;;
     --help|-h)
-      sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+      sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
       exit 0
       ;;
     *) error "Неизвестный аргумент: $arg"; exit 1 ;;
@@ -61,9 +63,8 @@ missing=()
 
 if [[ ${#missing[@]} -gt 0 ]]; then
   error "Не заданы обязательные переменные: ${missing[*]}"
-  error "Задайте их в окружении или создайте .env в корне проекта:"
-  error "  echo 'GITHUB_CLIENT_ID=...' >> .env"
-  error "  echo 'GITHUB_CLIENT_SECRET=...' >> .env"
+  error "Создайте .env.local в корне проекта:"
+  error "  cp .env.example .env.local  # и заполните значения"
   exit 1
 fi
 
@@ -89,26 +90,41 @@ fi
 # ── Spring Boot ───────────────────────────────────────────────────────────────
 cd "$ROOT_DIR"
 
-GRADLE_ARGS="-x test -x checkstyleMain -x pmdMain -x spotbugsMain"
-if [[ "$SKIP_BUILD" == true ]]; then
-  GRADLE_ARGS="$GRADLE_ARGS -x compileJava"
-fi
-
-info "Запускаем Spring Boot..."
 echo ""
 echo -e "  ${GREEN}App${NC}        → http://localhost:8080"
 echo -e "  ${GREEN}Swagger${NC}    → http://localhost:8080/swagger-ui.html"
 echo -e "  ${GREEN}Health${NC}     → http://localhost:8080/actuator/health"
-echo -e "  ${GREEN}Prometheus${NC} → http://localhost:8080/actuator/prometheus"
+echo -e "  ${GREEN}Metrics${NC}    → http://localhost:8080/actuator/prometheus"
 if [[ "$WITH_MONITORING" == true ]]; then
   echo -e "  ${GREEN}Grafana${NC}    → http://localhost:3000  (admin / admin)"
+  echo -e "              dashboards: JVM / Spring Boot 3.x · Application (sync jobs, HTTP)"
 fi
 echo ""
 
-GITHUB_CLIENT_ID="$GITHUB_CLIENT_ID" \
-GITHUB_CLIENT_SECRET="$GITHUB_CLIENT_SECRET" \
-DB_URL="jdbc:postgresql://localhost:5432/gitlab_analytics" \
-DB_USERNAME="analytics" \
-DB_PASSWORD="analytics" \
-API_TOKEN="${API_TOKEN:-changeme-dev-only}" \
-  ./gradlew bootRun $GRADLE_ARGS
+APP_ENV=(
+  GITHUB_CLIENT_ID="$GITHUB_CLIENT_ID"
+  GITHUB_CLIENT_SECRET="$GITHUB_CLIENT_SECRET"
+  DB_URL="jdbc:postgresql://localhost:5432/gitlab_analytics"
+  DB_USERNAME="analytics"
+  DB_PASSWORD="analytics"
+  API_TOKEN="${API_TOKEN:-changeme-dev-only}"
+)
+
+if [[ "$USE_JAR" == true ]]; then
+  JAR=$(ls "$ROOT_DIR"/build/libs/*.jar 2>/dev/null | grep -v plain | head -1)
+  if [[ -z "$JAR" ]]; then
+    warn "Jar не найден в build/libs, собираем сначала..."
+    ./gradlew build -x test -x jacocoTestReport -x jacocoTestCoverageVerification \
+      -x checkstyleMain -x pmdMain -x spotbugsMain -q
+    JAR=$(ls "$ROOT_DIR"/build/libs/*.jar | grep -v plain | head -1)
+  fi
+  info "Запускаем jar: $(basename "$JAR")"
+  env "${APP_ENV[@]}" java -jar "$JAR"
+else
+  GRADLE_ARGS="-x test -x jacocoTestReport -x jacocoTestCoverageVerification"
+  if [[ "$FAST" == true ]]; then
+    GRADLE_ARGS="$GRADLE_ARGS -x checkstyleMain -x pmdMain -x spotbugsMain"
+  fi
+  info "Запускаем Spring Boot (bootRun)..."
+  env "${APP_ENV[@]}" ./gradlew bootRun $GRADLE_ARGS
+fi
