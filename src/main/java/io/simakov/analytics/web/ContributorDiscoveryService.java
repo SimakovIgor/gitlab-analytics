@@ -1,14 +1,11 @@
 package io.simakov.analytics.web;
 
-import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
-import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -33,7 +30,6 @@ public class ContributorDiscoveryService {
 
     private final MergeRequestCommitRepository commitRepository;
     private final TrackedUserRepository trackedUserRepository;
-    private final TrackedUserAliasRepository aliasRepository;
 
     /**
      * Second pass: contributors sharing the same normalized display name are merged.
@@ -130,7 +126,6 @@ public class ContributorDiscoveryService {
         );
     }
 
-    @Transactional(readOnly = true)
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     public List<DiscoveredContributor> discover() {
         Long workspaceId = WorkspaceContext.get();
@@ -166,18 +161,8 @@ public class ContributorDiscoveryService {
     }
 
     private Set<String> buildTrackedEmailSet(Long workspaceId) {
-        Set<String> emails = trackedUserRepository.findAllEmailsByWorkspaceId(workspaceId).stream()
-            .map(e -> e.toLowerCase(Locale.ROOT).strip())
+        return trackedUserRepository.findAllTrackedEmailsByWorkspaceId(workspaceId).stream()
+            .map(String::strip)
             .collect(Collectors.toSet());
-
-        List<Long> userIds = trackedUserRepository.findAllByWorkspaceId(workspaceId)
-            .stream().map(TrackedUser::getId).toList();
-        if (!userIds.isEmpty()) {
-            aliasRepository.findAllEmailsByTrackedUserIdIn(userIds).stream()
-                .map(e -> e.toLowerCase(Locale.ROOT).strip())
-                .forEach(emails::add);
-        }
-
-        return emails;
     }
 }

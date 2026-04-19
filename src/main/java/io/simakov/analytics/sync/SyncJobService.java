@@ -88,7 +88,6 @@ public class SyncJobService {
      * Reads the original ManualSyncRequest from a job's payloadJson.
      * Used by callers who need the request to pass to the orchestrator.
      */
-    @Transactional(readOnly = true)
     public ManualSyncRequest getPayload(Long jobId) {
         SyncJob job = findOrThrow(jobId);
         if (job.getPayloadJson() == null) {
@@ -101,7 +100,6 @@ public class SyncJobService {
         }
     }
 
-    @Transactional(readOnly = true)
     public SyncJob findById(Long jobId) {
         return findOrThrow(jobId);
     }
