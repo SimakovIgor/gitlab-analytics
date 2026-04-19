@@ -19,6 +19,7 @@ import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.snapshot.SnapshotService;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
@@ -56,6 +57,7 @@ public class SettingsService {
 
     public GitSource createSource(CreateGitSourceRequest request) {
         GitSource source = GitSource.builder()
+            .workspaceId(WorkspaceContext.get())
             .name(request.name())
             .baseUrl(request.baseUrl().stripTrailing())
             .build();
@@ -96,6 +98,7 @@ public class SettingsService {
             throw new ResourceNotFoundException("GitSource", request.gitSourceId());
         }
         TrackedProject project = trackedProjectMapper.toEntity(request);
+        project.setWorkspaceId(WorkspaceContext.get());
         project.setTokenEncrypted(encryptionService.encrypt(request.token()));
         TrackedProject saved = trackedProjectRepository.save(project);
         SyncJobResponse job = triggerBackfill(saved.getId());
@@ -133,9 +136,12 @@ public class SettingsService {
     }
 
     public List<TrackedUser> createUsersBulk(List<CreateTrackedUserRequest> requests) {
+        Long workspaceId = WorkspaceContext.get();
         List<TrackedUser> saved = requests.stream()
             .map(req -> {
-                TrackedUser user = trackedUserRepository.save(trackedUserMapper.toEntity(req));
+                TrackedUser entity = trackedUserMapper.toEntity(req);
+                entity.setWorkspaceId(workspaceId);
+                TrackedUser user = trackedUserRepository.save(entity);
                 userAliasService.saveAlias(user.getId(), req.email());
                 userAliasService.saveAliases(user.getId(), req.aliasEmails());
                 return user;
@@ -146,7 +152,9 @@ public class SettingsService {
     }
 
     public TrackedUser createUser(CreateTrackedUserRequest request) {
-        TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(request));
+        TrackedUser entity = trackedUserMapper.toEntity(request);
+        entity.setWorkspaceId(WorkspaceContext.get());
+        TrackedUser saved = trackedUserRepository.save(entity);
         userAliasService.saveAlias(saved.getId(), request.email());
         userAliasService.saveAliases(saved.getId(), request.aliasEmails());
         snapshotService.runDailyBackfillAsync(BACKFILL_DAYS);
@@ -183,7 +191,7 @@ public class SettingsService {
 
     public SyncJobResponse retrySync(Long jobId) {
         ManualSyncRequest request = syncJobService.getPayload(jobId);
-        SyncJob newJob = syncJobService.create(request);
+        SyncJob newJob = syncJobService.create(WorkspaceContext.get(), request);
         syncOrchestrator.orchestrateAsync(newJob.getId(), request);
         return SyncJobResponse.from(newJob);
     }
@@ -196,7 +204,7 @@ public class SettingsService {
         ManualSyncRequest request = new ManualSyncRequest(
             List.of(trackedProjectId), dateFrom, dateTo, true, true, true
         );
-        SyncJob job = syncJobService.create(request);
+        SyncJob job = syncJobService.create(WorkspaceContext.get(), request);
         syncOrchestrator.orchestrateAsync(job.getId(), request);
         return SyncJobResponse.from(job);
     }

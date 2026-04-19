@@ -16,5 +16,9 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
 
     List<SyncJob> findTop30ByOrderByStartedAtDesc();
 
+    List<SyncJob> findTop30ByWorkspaceIdOrderByStartedAtDesc(Long workspaceId);
+
     boolean existsByStatus(SyncStatus status);
+
+    boolean existsByWorkspaceIdAndStatus(Long workspaceId, SyncStatus status);
 }

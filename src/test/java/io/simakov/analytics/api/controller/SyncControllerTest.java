@@ -142,11 +142,13 @@ class SyncControllerTest extends BaseIT {
 
     private TrackedProject createTrackedProject() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("test-source")
             .baseUrl("https://git.example.com")
             .build());
 
         return trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(source.getId())
             .gitlabProjectId(42L)
             .pathWithNamespace("team/repo")

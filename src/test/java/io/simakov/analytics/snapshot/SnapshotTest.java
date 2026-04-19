@@ -59,19 +59,23 @@ class SnapshotTest extends BaseIT {
     @BeforeEach
     void setUp() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("gl").baseUrl("https://git.test").build());
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(source.getId()).gitlabProjectId(1L)
             .pathWithNamespace("team/repo").name("repo").tokenEncrypted("tok").enabled(true).build());
         projectId = project.getId();
 
         TrackedUser alice = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Alice").email("alice@example.com").enabled(true).build());
         aliceId = alice.getId();
         aliasRepository.save(TrackedUserAlias.builder()
             .trackedUserId(aliceId).gitlabUserId(100L).email("alice@example.com").build());
 
         TrackedUser bob = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Bob").email("bob@example.com").enabled(true).build());
         bobId = bob.getId();
         aliasRepository.save(TrackedUserAlias.builder()
@@ -283,6 +287,7 @@ class SnapshotTest extends BaseIT {
                               LocalDate date,
                               String metricsJson) {
         snapshotRepository.save(MetricSnapshot.builder()
+            .workspaceId(testWorkspaceId)
             .trackedUserId(userId)
             .snapshotDate(date)
             .dateFrom(date.minusDays(30).atStartOfDay().toInstant(java.time.ZoneOffset.UTC))

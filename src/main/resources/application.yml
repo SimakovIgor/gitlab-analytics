@@ -40,11 +40,6 @@ spring:
       fail-on-unknown-properties: false
 
 app:
-  security:
-    # Bearer-токен для аутентификации API-запросов.
-    # В production переопределить через переменную окружения API_TOKEN.
-    api-token: ${API_TOKEN:changeme-in-production}
-
   encryption:
     # Шифрование токенов GitLab в базе данных.
     # false — токены хранятся в открытом виде (NoOpEncryptionService).

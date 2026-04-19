@@ -8,4 +8,8 @@ import java.util.List;
 public interface TrackedUserRepository extends JpaRepository<TrackedUser, Long> {
 
     List<TrackedUser> findAllByEnabledTrue();
+
+    List<TrackedUser> findAllByWorkspaceId(Long workspaceId);
+
+    List<TrackedUser> findAllByWorkspaceIdAndEnabledTrue(Long workspaceId);
 }

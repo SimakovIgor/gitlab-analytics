@@ -12,45 +12,32 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "tracked_user")
+@Table(name = "workspace_member")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class TrackedUser {
+public class WorkspaceMember {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "workspace_id", nullable = false)
+    @Column(nullable = false)
     private Long workspaceId;
 
-    @Column(name = "display_name",
-            nullable = false)
-    private String displayName;
-
-    @Column
-    private String email;
+    @Column(nullable = false)
+    private Long appUserId;
 
     @Column(nullable = false)
-    @Builder.Default
-    private boolean enabled = true;
+    private String role;
 
     @CreationTimestamp
-    @Column(name = "created_at",
-            nullable = false,
-            updatable = false)
-    private Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at",
-            nullable = false)
-    private Instant updatedAt;
+    @Column(nullable = false, updatable = false)
+    private Instant invitedAt;
 }

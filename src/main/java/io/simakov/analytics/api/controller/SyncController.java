@@ -3,6 +3,7 @@ package io.simakov.analytics.api.controller;
 import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.api.dto.response.SyncJobResponse;
 import io.simakov.analytics.domain.model.SyncJob;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,7 +36,7 @@ public class SyncController {
     @Operation(summary = "Start a manual sync for selected projects",
                description = "Starts an async sync job and returns the job ID for polling.")
     public SyncJobResponse startManualSync(@RequestBody @Valid ManualSyncRequest request) {
-        SyncJob job = syncJobService.create(request);
+        SyncJob job = syncJobService.create(WorkspaceContext.get(), request);
         log.info("Created sync job {} for {} projects", job.getId(), request.projectIds().size());
 
         syncOrchestrator.orchestrateAsync(job.getId(), request);

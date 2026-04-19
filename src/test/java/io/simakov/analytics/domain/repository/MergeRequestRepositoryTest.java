@@ -35,11 +35,13 @@ class MergeRequestRepositoryTest extends BaseIT {
     @BeforeEach
     void setUpProject() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("test-source")
             .baseUrl("https://git.example.com")
             .build());
 
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(source.getId())
             .gitlabProjectId(42L)
             .pathWithNamespace("team/repo")
@@ -169,9 +171,9 @@ class MergeRequestRepositoryTest extends BaseIT {
     @Test
     void findLeadTimeSummaryFiltersToRequestedProjects() {
         GitSource source2 = gitSourceRepository.save(GitSource.builder()
-            .name("other").baseUrl("https://other.com").build());
+            .workspaceId(testWorkspaceId).name("other").baseUrl("https://other.com").build());
         TrackedProject project2 = trackedProjectRepository.save(TrackedProject.builder()
-            .gitSourceId(source2.getId()).gitlabProjectId(99L)
+            .workspaceId(testWorkspaceId).gitSourceId(source2.getId()).gitlabProjectId(99L)
             .pathWithNamespace("other/repo").name("other-repo")
             .tokenEncrypted("tok").enabled(true).build());
 
@@ -270,9 +272,9 @@ class MergeRequestRepositoryTest extends BaseIT {
     @Test
     void findDistinctAuthorIdsByTrackedProjectIdInFiltersToRequestedProjects() {
         GitSource source2 = gitSourceRepository.save(GitSource.builder()
-            .name("other").baseUrl("https://other.example.com").build());
+            .workspaceId(testWorkspaceId).name("other").baseUrl("https://other.example.com").build());
         TrackedProject project2 = trackedProjectRepository.save(TrackedProject.builder()
-            .gitSourceId(source2.getId()).gitlabProjectId(99L)
+            .workspaceId(testWorkspaceId).gitSourceId(source2.getId()).gitlabProjectId(99L)
             .pathWithNamespace("other/repo").name("other").tokenEncrypted("tok").enabled(true).build());
 
         MergeRequest mrProject1 = saveMr(60L, baseTime.minus(2, ChronoUnit.DAYS), null);

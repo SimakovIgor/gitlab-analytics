@@ -61,9 +61,11 @@ class ReportControllerTest extends BaseIT {
     @BeforeEach
     void setUp() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("test-gl").baseUrl("https://git.example.com").build());
 
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(source.getId())
             .gitlabProjectId(1L)
             .pathWithNamespace("org/repo")
@@ -74,6 +76,7 @@ class ReportControllerTest extends BaseIT {
         projectId = project.getId();
 
         TrackedUser alice = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Alice").email("alice@example.com").enabled(true).build());
         aliceId = alice.getId();
         aliasRepository.save(TrackedUserAlias.builder()
@@ -81,6 +84,7 @@ class ReportControllerTest extends BaseIT {
             .email("alice@example.com").username("alice").build());
 
         TrackedUser bob = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Bob").email("bob@example.com").enabled(true).build());
         bobId = bob.getId();
         aliasRepository.save(TrackedUserAlias.builder()

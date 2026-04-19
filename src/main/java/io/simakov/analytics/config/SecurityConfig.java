@@ -1,6 +1,8 @@
 package io.simakov.analytics.config;
 
+import io.simakov.analytics.security.AppUserOauthService;
 import io.simakov.analytics.security.BearerTokenAuthFilter;
+import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,10 +22,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final BearerTokenAuthFilter bearerTokenAuthFilter;
+    private final AppUserOauthService appUserOauthService;
+    private final WorkspaceAwareSuccessHandler workspaceAwareSuccessHandler;
 
     /**
      * Filter chain for REST API endpoints (/api/**).
-     * Stateless, Bearer token authentication.
+     * Stateless, Bearer token authentication (workspace API token).
      */
     @Bean
     @Order(1)
@@ -47,7 +51,7 @@ public class SecurityConfig {
 
     /**
      * Filter chain for web UI routes.
-     * Session-based, OAuth2 login via GitLab.
+     * Session-based, OAuth2 login via GitHub.
      */
     @Bean
     @Order(2)
@@ -62,6 +66,7 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/actuator/**",
                         "/login",
+                        "/onboarding",
                         "/css/**",
                         "/js/**",
                         "/error"
@@ -70,7 +75,8 @@ public class SecurityConfig {
                 )
                 .oauth2Login(oauth2 -> oauth2
                     .loginPage("/login")
-                    .defaultSuccessUrl("/dashboard", true)
+                    .userInfoEndpoint(ui -> ui.userService(appUserOauthService))
+                    .successHandler(workspaceAwareSuccessHandler)
                     .failureUrl("/login?error")
                 )
                 .logout(logout -> logout

@@ -33,6 +33,9 @@ public class SyncJob {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "workspace_id", nullable = false)
+    private Long workspaceId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false,
             length = 50)

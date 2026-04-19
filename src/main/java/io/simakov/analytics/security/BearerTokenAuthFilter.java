@@ -1,7 +1,8 @@
 package io.simakov.analytics.security;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
-import io.simakov.analytics.config.AppProperties;
+import io.simakov.analytics.domain.model.Workspace;
+import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -23,7 +25,7 @@ public class BearerTokenAuthFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
-    private final AppProperties appProperties;
+    private final WorkspaceRepository workspaceRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -33,13 +35,19 @@ public class BearerTokenAuthFilter extends OncePerRequestFilter {
         String header = request.getHeader(AUTHORIZATION_HEADER);
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             String token = header.substring(BEARER_PREFIX.length());
-            if (appProperties.security().apiToken().equals(token)) {
+            Optional<Workspace> workspace = workspaceRepository.findByApiToken(token);
+            if (workspace.isPresent()) {
+                WorkspaceContext.set(workspace.get().getId());
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                     "api-client", null, List.of(new SimpleGrantedAuthority("ROLE_API")));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            WorkspaceContext.clear();
+        }
     }
 }

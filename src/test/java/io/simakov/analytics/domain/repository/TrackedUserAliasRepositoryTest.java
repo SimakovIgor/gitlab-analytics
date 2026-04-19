@@ -25,10 +25,12 @@ class TrackedUserAliasRepositoryTest extends BaseIT {
     @BeforeEach
     void setUp() {
         TrackedUser user1 = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Alice").email("alice@example.com").enabled(true).build());
         userId1 = user1.getId();
 
         TrackedUser user2 = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Bob").email("bob@example.com").enabled(true).build());
         userId2 = user2.getId();
     }

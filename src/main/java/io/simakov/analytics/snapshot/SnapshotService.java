@@ -8,13 +8,16 @@ import io.simakov.analytics.config.AppProperties;
 import io.simakov.analytics.domain.model.MetricSnapshot;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.model.enums.ScopeType;
 import io.simakov.analytics.domain.repository.MetricSnapshotRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,55 +41,69 @@ public class SnapshotService {
     private final MetricSnapshotRepository snapshotRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedProjectRepository trackedProjectRepository;
+    private final WorkspaceRepository workspaceRepository;
     private final ObjectMapper objectMapper;
     private final AppProperties appProperties;
 
     /**
      * Создаёт ежедневные снапшоты за последние {@code days} дней (шаг 1 день).
-     * Используется при онбординге для немедленного наполнения истории.
-     * Возвращает суммарное количество сохранённых снапшотов.
+     * Использует текущий WorkspaceContext.
      */
     @Async("syncTaskExecutor")
     public void runDailyBackfillAsync(int days) {
-        runDailyBackfill(days);
+        runDailyBackfill(WorkspaceContext.get(), days);
+    }
+
+    public int runDailyBackfill(int days) {
+        return runDailyBackfill(WorkspaceContext.get(), days);
     }
 
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
-    public int runDailyBackfill(int days) {
+    public int runDailyBackfill(Long workspaceId, int days) {
         LocalDate today = DateTimeUtils.currentDateUtc();
         int windowDays = appProperties.snapshot().windowDays();
         int total = 0;
         for (int d = days; d >= 0; d--) {
             LocalDate snapshotDate = today.minusDays(d);
-            RunSnapshotResponse resp = runSnapshot(
-                new RunSnapshotRequest(null, null, windowDays, snapshotDate));
+            RunSnapshotResponse resp = runSnapshotForWorkspace(
+                workspaceId, new RunSnapshotRequest(null, null, windowDays, snapshotDate));
             total += resp.snapshotsCreated();
         }
-        log.info("Daily backfill completed: {} snapshots saved for last {} days", total, days);
+        log.info("Daily backfill completed: workspace={}, {} snapshots for last {} days", workspaceId, total, days);
         return total;
     }
 
     @Scheduled(cron = "${app.snapshot.cron:0 0 2 * * *}")
     public void runDailySnapshot() {
-        log.info("Running daily metric snapshot");
-        run(null, null, appProperties.snapshot().windowDays(), DateTimeUtils.currentDateUtc());
+        log.info("Running daily metric snapshot for all workspaces");
+        List<Workspace> workspaces = workspaceRepository.findAll();
+        int windowDays = appProperties.snapshot().windowDays();
+        LocalDate today = DateTimeUtils.currentDateUtc();
+        for (Workspace workspace : workspaces) {
+            run(workspace.getId(), null, null, windowDays, today);
+        }
     }
 
     public RunSnapshotResponse runSnapshot(RunSnapshotRequest request) {
-        int windowDays = Objects.requireNonNullElse(request.windowDays(), appProperties.snapshot().windowDays());
-        LocalDate snapshotDate = Objects.requireNonNullElse(request.snapshotDate(), DateTimeUtils.currentDateUtc());
-        return run(request.userIds(), request.projectIds(), windowDays, snapshotDate);
+        return runSnapshotForWorkspace(WorkspaceContext.get(), request);
     }
 
-    private RunSnapshotResponse run(List<Long> userIds,
+    public RunSnapshotResponse runSnapshotForWorkspace(Long workspaceId, RunSnapshotRequest request) {
+        int windowDays = Objects.requireNonNullElse(request.windowDays(), appProperties.snapshot().windowDays());
+        LocalDate snapshotDate = Objects.requireNonNullElse(request.snapshotDate(), DateTimeUtils.currentDateUtc());
+        return run(workspaceId, request.userIds(), request.projectIds(), windowDays, snapshotDate);
+    }
+
+    private RunSnapshotResponse run(Long workspaceId,
+                                    List<Long> userIds,
                                     List<Long> projectIds,
                                     int windowDays,
                                     LocalDate snapshotDate) {
-        List<Long> resolvedUserIds = resolveUserIds(userIds);
-        List<Long> resolvedProjectIds = resolveProjectIds(projectIds);
+        List<Long> resolvedUserIds = resolveUserIds(workspaceId, userIds);
+        List<Long> resolvedProjectIds = resolveProjectIds(workspaceId, projectIds);
 
         if (resolvedUserIds.isEmpty() || resolvedProjectIds.isEmpty()) {
-            log.warn("No users or projects to snapshot — skipping");
+            log.warn("No users or projects to snapshot for workspace={} — skipping", workspaceId);
             return new RunSnapshotResponse(0, snapshotDate);
         }
 
@@ -98,16 +115,17 @@ public class SnapshotService {
 
         int saved = 0;
         for (Map.Entry<Long, UserMetrics> entry : metrics.entrySet()) {
-            if (saveSnapshot(entry.getKey(), snapshotDate, dateFrom, dateTo, windowDays, entry.getValue())) {
+            if (saveSnapshot(workspaceId, entry.getKey(), snapshotDate, dateFrom, dateTo, windowDays, entry.getValue())) {
                 saved++;
             }
         }
 
-        log.info("Saved {} snapshots for date={}, windowDays={}", saved, snapshotDate, windowDays);
+        log.info("Saved {} snapshots for workspace={}, date={}, windowDays={}", saved, workspaceId, snapshotDate, windowDays);
         return new RunSnapshotResponse(saved, snapshotDate);
     }
 
-    private boolean saveSnapshot(Long userId,
+    private boolean saveSnapshot(Long workspaceId,
+                                 Long userId,
                                  LocalDate snapshotDate,
                                  Instant dateFrom,
                                  Instant dateTo,
@@ -119,9 +137,10 @@ public class SnapshotService {
             String json = objectMapper.writeValueAsString(allMetrics);
 
             MetricSnapshot snapshot = snapshotRepository
-                .findByTrackedUserIdAndSnapshotDate(userId, snapshotDate)
+                .findByWorkspaceIdAndTrackedUserIdAndSnapshotDate(workspaceId, userId, snapshotDate)
                 .orElseGet(MetricSnapshot::new);
 
+            snapshot.setWorkspaceId(workspaceId);
             snapshot.setTrackedUserId(userId);
             snapshot.setSnapshotDate(snapshotDate);
             snapshot.setDateFrom(dateFrom);
@@ -138,20 +157,20 @@ public class SnapshotService {
         }
     }
 
-    private List<Long> resolveUserIds(List<Long> requested) {
+    private List<Long> resolveUserIds(Long workspaceId, List<Long> requested) {
         if (requested != null && !requested.isEmpty()) {
             return requested;
         }
-        return trackedUserRepository.findAllByEnabledTrue().stream()
+        return trackedUserRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId).stream()
             .map(TrackedUser::getId)
             .toList();
     }
 
-    private List<Long> resolveProjectIds(List<Long> requested) {
+    private List<Long> resolveProjectIds(Long workspaceId, List<Long> requested) {
         if (requested != null && !requested.isEmpty()) {
             return requested;
         }
-        return trackedProjectRepository.findAllByEnabledTrue().stream()
+        return trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId).stream()
             .map(TrackedProject::getId)
             .toList();
     }

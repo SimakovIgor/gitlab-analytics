@@ -35,6 +35,9 @@ public class MetricSnapshot {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "workspace_id", nullable = false)
+    private Long workspaceId;
+
     @Column(name = "tracked_user_id")
     private Long trackedUserId;
 

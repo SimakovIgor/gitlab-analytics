@@ -83,11 +83,13 @@ class MetricCalculationTest extends BaseIT {
     @BeforeEach
     void setUpFixtures() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("test-gitlab")
             .baseUrl("https://git.test")
             .build());
         gitSourceId = source.getId();
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(gitSourceId)
             .gitlabProjectId(42L)
             .pathWithNamespace("team/repo")
@@ -97,6 +99,7 @@ class MetricCalculationTest extends BaseIT {
             .build());
         projectId = project.getId();
         TrackedUser alice = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Alice")
             .email(ALICE_EMAIL)
             .enabled(true)
@@ -190,6 +193,7 @@ class MetricCalculationTest extends BaseIT {
     @Test
     void repositoriesTouchedCountAcrossMultipleProjects() {
         TrackedProject project2 = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(gitSourceId)
             .gitlabProjectId(99L).pathWithNamespace("team/repo2").name("repo2")
             .tokenEncrypted("tok").enabled(true)
@@ -601,6 +605,7 @@ class MetricCalculationTest extends BaseIT {
     @Test
     void userWithNoAliasesHasAllZeroMetrics() {
         TrackedUser noAlias = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("NoAlias").email("noalias@example.com").enabled(true)
             .build());
         saveMergedMrByAlice(T);
@@ -614,6 +619,7 @@ class MetricCalculationTest extends BaseIT {
     @Test
     void twoUsersMetricsAreCalculatedIndependently() {
         TrackedUser bob = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Bob").email("bob@example.com").enabled(true)
             .build());
         aliasRepository.save(TrackedUserAlias.builder()

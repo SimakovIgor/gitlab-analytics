@@ -62,6 +62,7 @@ class SettingsControllerTest extends BaseIT {
     @BeforeEach
     void setUp() {
         savedSource = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("prod-gitlab")
             .baseUrl("https://git.example.com")
             .build());
@@ -78,6 +79,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void createSourceReturns201AndPersistsToDb() throws Exception {
         mockMvc.perform(post("/settings/sources")
+                .session(webSession)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"corp-gl\",\"baseUrl\":\"https://gl.corp.com\"}"))
@@ -93,6 +95,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void createSourceReturns400WhenNameIsBlank() throws Exception {
         mockMvc.perform(post("/settings/sources")
+                .session(webSession)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"\",\"baseUrl\":\"https://gl.corp.com\"}"))
@@ -103,6 +106,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void deleteSourceReturns204AndRemovesFromDb() throws Exception {
         mockMvc.perform(delete("/settings/sources/" + savedSource.getId())
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNoContent());
 
@@ -113,6 +117,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void deleteSourceReturns404ForUnknownId() throws Exception {
         mockMvc.perform(delete("/settings/sources/99999")
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNotFound());
     }
@@ -121,6 +126,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void deleteSourceCascadesDeleteToTrackedProject() throws Exception {
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(savedSource.getId())
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
@@ -130,6 +136,7 @@ class SettingsControllerTest extends BaseIT {
             .build());
 
         mockMvc.perform(delete("/settings/sources/" + savedSource.getId())
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNoContent());
 
@@ -147,6 +154,7 @@ class SettingsControllerTest extends BaseIT {
             ));
 
         mockMvc.perform(get("/settings/sources/" + savedSource.getId() + "/projects/search")
+                .session(webSession)
                 .param("q", "back")
                 .param("token", "glpat-test"))
             .andExpect(status().isOk())
@@ -159,6 +167,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void searchProjectsReturns404WhenSourceNotFound() throws Exception {
         mockMvc.perform(get("/settings/sources/99999/projects/search")
+                .session(webSession)
                 .param("q", "repo")
                 .param("token", "glpat-test"))
             .andExpect(status().isNotFound());
@@ -178,6 +187,7 @@ class SettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/projects")
+                .session(webSession)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
@@ -203,6 +213,7 @@ class SettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/projects")
+                .session(webSession)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
@@ -215,6 +226,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void deleteProjectReturns204AndRemovesFromDb() throws Exception {
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(savedSource.getId())
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
@@ -224,6 +236,7 @@ class SettingsControllerTest extends BaseIT {
             .build());
 
         mockMvc.perform(delete("/settings/projects/" + project.getId())
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNoContent());
 
@@ -234,6 +247,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void deleteProjectReturns404ForUnknownId() throws Exception {
         mockMvc.perform(delete("/settings/projects/99999")
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNotFound());
     }
@@ -242,6 +256,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void backfillProjectReturns200WithStartedJob() throws Exception {
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(savedSource.getId())
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
@@ -251,6 +266,7 @@ class SettingsControllerTest extends BaseIT {
             .build());
 
         mockMvc.perform(post("/settings/projects/" + project.getId() + "/backfill")
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.jobId").isNumber())
@@ -263,6 +279,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void backfillProjectReturns404ForUnknownProject() throws Exception {
         mockMvc.perform(post("/settings/projects/99999/backfill")
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNotFound());
     }
@@ -273,6 +290,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void createUserReturns201AndPersistsToDb() throws Exception {
         mockMvc.perform(post("/settings/users")
+                .session(webSession)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"displayName\":\"Bob\",\"email\":\"bob@example.com\"}"))
@@ -289,6 +307,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void createUserWithoutEmailReturns201() throws Exception {
         mockMvc.perform(post("/settings/users")
+                .session(webSession)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"displayName\":\"Bob\"}"))
@@ -302,6 +321,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void createUserReturns400WhenDisplayNameIsBlank() throws Exception {
         mockMvc.perform(post("/settings/users")
+                .session(webSession)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"displayName\":\"\",\"email\":\"bob@example.com\"}"))
@@ -314,12 +334,14 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void deleteUserReturns204AndRemovesFromDb() throws Exception {
         TrackedUser user = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Charlie")
             .email("charlie@example.com")
             .enabled(true)
             .build());
 
         mockMvc.perform(delete("/settings/users/" + user.getId())
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNoContent());
 
@@ -330,6 +352,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void deleteUserReturns404ForUnknownId() throws Exception {
         mockMvc.perform(delete("/settings/users/99999")
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNotFound());
     }
@@ -340,6 +363,7 @@ class SettingsControllerTest extends BaseIT {
     @WithMockUser
     void getSyncStatusReturns200ForExistingJob() throws Exception {
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(savedSource.getId())
             .gitlabProjectId(10L)
             .pathWithNamespace("org/repo")
@@ -349,13 +373,15 @@ class SettingsControllerTest extends BaseIT {
             .build());
 
         String backfillResult = mockMvc.perform(post("/settings/projects/" + project.getId() + "/backfill")
+                .session(webSession)
                 .with(csrf()))
             .andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
 
         Long jobId = objectMapper.readTree(backfillResult).get("jobId").asLong();
 
-        mockMvc.perform(get("/settings/sync/" + jobId))
+        mockMvc.perform(get("/settings/sync/" + jobId)
+                .session(webSession))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.jobId").value(jobId));
     }
@@ -363,7 +389,8 @@ class SettingsControllerTest extends BaseIT {
     @Test
     @WithMockUser
     void getSyncStatusReturns404ForUnknownJob() throws Exception {
-        mockMvc.perform(get("/settings/sync/99999"))
+        mockMvc.perform(get("/settings/sync/99999")
+                .session(webSession))
             .andExpect(status().isNotFound());
     }
 

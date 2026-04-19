@@ -26,6 +26,7 @@ class TrackedUserControllerTest extends BaseIT {
     @BeforeEach
     void setUp() {
         TrackedUser user = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Alice")
             .email("alice@example.com")
             .enabled(true)

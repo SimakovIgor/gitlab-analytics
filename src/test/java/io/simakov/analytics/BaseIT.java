@@ -1,7 +1,15 @@
 package io.simakov.analytics;
 
+import io.simakov.analytics.domain.model.AppUser;
+import io.simakov.analytics.domain.model.Workspace;
+import io.simakov.analytics.domain.model.WorkspaceMember;
+import io.simakov.analytics.domain.repository.AppUserRepository;
+import io.simakov.analytics.domain.repository.WorkspaceMemberRepository;
+import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
+import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -10,7 +18,10 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
+
+import java.time.Instant;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -36,6 +47,46 @@ public abstract class BaseIT {
     @MockBean
     protected GitLabApiClient gitLabApiClient;
 
+    protected Long testWorkspaceId;
+    protected MockHttpSession webSession;
+
+    @Autowired
+    private AppUserRepository appUserRepository;
+
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
+
+    @Autowired
+    private WorkspaceMemberRepository workspaceMemberRepository;
+
+    @BeforeEach
+    void setUpWorkspace() {
+        AppUser owner = appUserRepository.save(AppUser.builder()
+            .githubId(1L)
+            .githubLogin("test-owner")
+            .lastLoginAt(Instant.now())
+            .build());
+
+        Workspace workspace = workspaceRepository.save(Workspace.builder()
+            .name("Test Workspace")
+            .slug("test-workspace")
+            .ownerId(owner.getId())
+            .plan("FREE")
+            .apiToken(TEST_TOKEN)
+            .build());
+
+        workspaceMemberRepository.save(WorkspaceMember.builder()
+            .workspaceId(workspace.getId())
+            .appUserId(owner.getId())
+            .role("OWNER")
+            .build());
+
+        testWorkspaceId = workspace.getId();
+
+        webSession = new MockHttpSession();
+        webSession.setAttribute(WorkspaceAwareSuccessHandler.SESSION_WORKSPACE_ID, testWorkspaceId);
+    }
+
     protected HttpHeaders authHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.AUTHORIZATION, BEARER_TEST_TOKEN);
@@ -55,5 +106,8 @@ public abstract class BaseIT {
         jdbcTemplate.execute("TRUNCATE TABLE tracked_user CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE tracked_project CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE git_source CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE workspace_member CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE workspace CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE app_user CASCADE");
     }
 }

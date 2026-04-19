@@ -46,9 +46,11 @@ class DoraControllerTest extends BaseIT {
     @BeforeEach
     void setUp() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("test-gl").baseUrl("https://git.example.com").build());
 
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(source.getId())
             .gitlabProjectId(1L)
             .pathWithNamespace("org/repo")

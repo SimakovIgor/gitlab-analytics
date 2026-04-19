@@ -17,54 +17,38 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(name = "tracked_project")
+@Table(name = "workspace")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class TrackedProject {
+public class Workspace {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "workspace_id", nullable = false)
-    private Long workspaceId;
-
-    @Column(name = "git_source_id",
-            nullable = false)
-    private Long gitSourceId;
-
-    @Column(name = "gitlab_project_id",
-            nullable = false)
-    private Long gitlabProjectId;
-
-    @Column(name = "path_with_namespace",
-            nullable = false,
-            length = 512)
-    private String pathWithNamespace;
-
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "token_encrypted",
-            nullable = false,
-            columnDefinition = "TEXT")
-    private String tokenEncrypted;
+    @Column(nullable = false, unique = true)
+    private String slug;
 
     @Column(nullable = false)
-    @Builder.Default
-    private boolean enabled = true;
+    private Long ownerId;
+
+    @Column(nullable = false)
+    private String plan;
+
+    @Column(nullable = false, unique = true)
+    private String apiToken;
 
     @CreationTimestamp
-    @Column(name = "created_at",
-            nullable = false,
-            updatable = false)
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at",
-            nullable = false)
+    @Column(nullable = false)
     private Instant updatedAt;
 }

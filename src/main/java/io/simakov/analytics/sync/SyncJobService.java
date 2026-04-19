@@ -24,8 +24,9 @@ public class SyncJobService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public SyncJob create(ManualSyncRequest request) {
+    public SyncJob create(Long workspaceId, ManualSyncRequest request) {
         SyncJob job = SyncJob.builder()
+            .workspaceId(workspaceId)
             .status(SyncStatus.STARTED)
             .dateFrom(request.dateFrom())
             .dateTo(request.dateTo())

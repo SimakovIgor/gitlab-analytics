@@ -13,8 +13,6 @@ spring:
     show-sql: true
 
 app:
-  security:
-    api-token: test-token
   encryption:
     enabled: false
   gitlab:

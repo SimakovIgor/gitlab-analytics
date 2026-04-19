@@ -46,11 +46,13 @@ class ReportControllerTest extends BaseIT {
     @BeforeEach
     void setUpData() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(testWorkspaceId)
             .name("test-source")
             .baseUrl("https://git.example.com")
             .build());
 
         TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
             .gitSourceId(source.getId())
             .gitlabProjectId(42L)
             .pathWithNamespace("team/repo")
@@ -61,6 +63,7 @@ class ReportControllerTest extends BaseIT {
         projectId = project.getId();
 
         TrackedUser user = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
             .displayName("Alice")
             .email("alice@example.com")
             .enabled(true)
