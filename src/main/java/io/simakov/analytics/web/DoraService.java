@@ -26,6 +26,13 @@ public class DoraService {
     private final TrackedProjectRepository trackedProjectRepository;
     private final ObjectMapper objectMapper;
 
+    private static double round(Number value) {
+        if (value == null) {
+            return 0.0;
+        }
+        return Math.round(value.doubleValue() * 10.0) / 10.0;
+    }
+
     public List<TrackedProject> getAllProjects() {
         return trackedProjectRepository.findAllByEnabledTrue();
     }
@@ -34,19 +41,30 @@ public class DoraService {
      * Lead time summary + weekly chart data for given projects and days back.
      * Returns map with keys: totalMrs, medianHours, p75Hours, p95Hours, chartJson.
      */
-    public Map<String, Object> buildLeadTimeData(List<Long> projectIds, int days) {
+    public Map<String, Object> buildLeadTimeData(List<Long> projectIds,
+                                                 int days) {
         List<Long> resolvedIds = resolveProjectIds(projectIds);
         Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
 
         List<Object[]> summaryRows = mergeRequestRepository.findLeadTimeSummary(resolvedIds, dateFrom);
-        Object[] summary = summaryRows.isEmpty() ? null : summaryRows.getFirst();
+        Object[] summary = summaryRows.isEmpty()
+            ? null
+            : summaryRows.getFirst();
         List<Object[]> weekly = mergeRequestRepository.findLeadTimeByWeek(resolvedIds, dateFrom);
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("totalMrs", summary != null ? ((Number) summary[0]).intValue() : 0);
-        result.put("medianHours", summary != null ? round((Number) summary[1]) : null);
-        result.put("p75Hours", summary != null ? round((Number) summary[2]) : null);
-        result.put("p95Hours", summary != null ? round((Number) summary[3]) : null);
+        result.put("totalMrs", summary != null
+            ? ((Number) summary[0]).intValue()
+            : 0);
+        result.put("medianHours", summary != null
+            ? round((Number) summary[1])
+            : null);
+        result.put("p75Hours", summary != null
+            ? round((Number) summary[2])
+            : null);
+        result.put("p95Hours", summary != null
+            ? round((Number) summary[3])
+            : null);
         result.put("chartJson", buildChartJson(weekly));
         return result;
     }
@@ -101,12 +119,5 @@ public class DoraService {
             log.warn("Failed to serialize DORA chart data", e);
             return "{}";
         }
-    }
-
-    private static double round(Number value) {
-        if (value == null) {
-            return 0.0;
-        }
-        return Math.round(value.doubleValue() * 10.0) / 10.0;
     }
 }

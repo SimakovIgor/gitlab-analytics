@@ -99,24 +99,25 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
      * Weekly lead time distribution (MR open → merge) for DORA chart.
      * Returns rows: [period_date, mr_count, median_hours, p75_hours, p95_hours]
      */
-    @Query(nativeQuery = true, value = """
-        SELECT
-          DATE_TRUNC('week', mr.merged_at_gitlab)::date              AS period,
-          COUNT(*)                                                     AS mr_count,
-          PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY
-            EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS median_hours,
-          PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
-            EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p75_hours,
-          PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY
-            EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p95_hours
-        FROM merge_request mr
-        WHERE mr.state = 'MERGED'
-          AND mr.tracked_project_id IN (:projectIds)
-          AND mr.merged_at_gitlab > mr.created_at_gitlab
-          AND mr.merged_at_gitlab >= :dateFrom
-        GROUP BY DATE_TRUNC('week', mr.merged_at_gitlab)
-        ORDER BY period
-        """)
+    @Query(nativeQuery = true,
+           value = """
+               SELECT
+                 DATE_TRUNC('week', mr.merged_at_gitlab)::date              AS period,
+                 COUNT(*)                                                     AS mr_count,
+                 PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS median_hours,
+                 PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p75_hours,
+                 PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p95_hours
+               FROM merge_request mr
+               WHERE mr.state = 'MERGED'
+                 AND mr.tracked_project_id IN (:projectIds)
+                 AND mr.merged_at_gitlab > mr.created_at_gitlab
+                 AND mr.merged_at_gitlab >= :dateFrom
+               GROUP BY DATE_TRUNC('week', mr.merged_at_gitlab)
+               ORDER BY period
+               """)
     List<Object[]> findLeadTimeByWeek(@Param("projectIds") List<Long> projectIds,
                                       @Param("dateFrom") Instant dateFrom);
 
@@ -124,21 +125,22 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
      * Overall lead time summary for the selected period.
      * Returns single row: [mr_count, median_hours, p75_hours, p95_hours]
      */
-    @Query(nativeQuery = true, value = """
-        SELECT
-          COUNT(*)                                                     AS mr_count,
-          PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY
-            EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS median_hours,
-          PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
-            EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p75_hours,
-          PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY
-            EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p95_hours
-        FROM merge_request mr
-        WHERE mr.state = 'MERGED'
-          AND mr.tracked_project_id IN (:projectIds)
-          AND mr.merged_at_gitlab > mr.created_at_gitlab
-          AND mr.merged_at_gitlab >= :dateFrom
-        """)
+    @Query(nativeQuery = true,
+           value = """
+               SELECT
+                 COUNT(*)                                                     AS mr_count,
+                 PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS median_hours,
+                 PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p75_hours,
+                 PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (mr.merged_at_gitlab - mr.created_at_gitlab)) / 3600) AS p95_hours
+               FROM merge_request mr
+               WHERE mr.state = 'MERGED'
+                 AND mr.tracked_project_id IN (:projectIds)
+                 AND mr.merged_at_gitlab > mr.created_at_gitlab
+                 AND mr.merged_at_gitlab >= :dateFrom
+               """)
     List<Object[]> findLeadTimeSummary(@Param("projectIds") List<Long> projectIds,
                                        @Param("dateFrom") Instant dateFrom);
 }

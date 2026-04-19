@@ -74,12 +74,15 @@ public class SettingsService {
     // ── Tracked Projects ─────────────────────────────────────────────────────
 
     @SuppressWarnings("checkstyle:IllegalCatch")
-    public Map<String, Object> validateToken(Long sourceId, String token) {
+    public Map<String, Object> validateToken(Long sourceId,
+                                             String token) {
         GitSource source = gitSourceRepository.findById(sourceId)
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         try {
             var user = gitLabApiClient.getCurrentUser(source.getBaseUrl(), token);
-            return Map.of("valid", true, "username", user.username() != null ? user.username() : "");
+            return Map.of("valid", true, "username", user.username() != null
+                ? user.username()
+                : "");
         } catch (Exception e) {
             return Map.of("valid", false, "error", "Токен недействителен или недостаточно прав");
         }

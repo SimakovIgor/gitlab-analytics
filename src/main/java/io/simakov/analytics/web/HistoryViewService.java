@@ -141,9 +141,9 @@ public class HistoryViewService {
         List<TrackedUser> visibleUsers = showInactive
             ? users
             : users.stream()
-                .filter(u -> byUser.getOrDefault(u.getId(), Map.of())
-                    .values().stream().anyMatch(Objects::nonNull))
-                .toList();
+              .filter(u -> byUser.getOrDefault(u.getId(), Map.of())
+                           .values().stream().anyMatch(Objects::nonNull))
+              .toList();
 
         // Все уникальные даты (отсортированы через TreeMap)
         List<String> labels = visibleUsers.stream()

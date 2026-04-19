@@ -297,12 +297,17 @@ class MergeRequestRepositoryTest extends BaseIT {
         assertThat(authorIds).doesNotContain(555L);
     }
 
-    /** Saves a MERGED MR with given lead time in hours, merged at baseTime. */
-    private void saveMergedMrWithLeadTime(Long gitlabMrId, int leadHours) {
+    /**
+     * Saves a MERGED MR with given lead time in hours, merged at baseTime.
+     */
+    private void saveMergedMrWithLeadTime(Long gitlabMrId,
+                                          int leadHours) {
         saveMergedMrAtTime(gitlabMrId, baseTime, leadHours);
     }
 
-    private void saveMergedMrAtTime(Long gitlabMrId, Instant mergedAt, int leadHours) {
+    private void saveMergedMrAtTime(Long gitlabMrId,
+                                    Instant mergedAt,
+                                    int leadHours) {
         MergeRequest mr = new MergeRequest();
         mr.setTrackedProjectId(projectId);
         mr.setGitlabMrId(gitlabMrId);

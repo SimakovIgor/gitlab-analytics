@@ -269,7 +269,8 @@ class ReportControllerTest extends BaseIT {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void saveMergedMr(Long gitlabMrId, long authorGitlabUserId) {
+    private void saveMergedMr(Long gitlabMrId,
+                              long authorGitlabUserId) {
         MergeRequest mr = new MergeRequest();
         mr.setTrackedProjectId(projectId);
         mr.setGitlabMrId(gitlabMrId);

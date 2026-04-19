@@ -32,7 +32,8 @@ public class Workspace {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false,
+            unique = true)
     private String slug;
 
     @Column(nullable = false)
@@ -41,11 +42,13 @@ public class Workspace {
     @Column(nullable = false)
     private String plan;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false,
+            unique = true)
     private String apiToken;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false,
+            updatable = false)
     private Instant createdAt;
 
     @UpdateTimestamp

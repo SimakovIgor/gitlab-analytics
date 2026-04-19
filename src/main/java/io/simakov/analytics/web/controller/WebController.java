@@ -80,7 +80,8 @@ public class WebController {
         return "report";
     }
 
-    @GetMapping(value = "/report/chart", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/report/chart",
+                produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public String chartJson(@RequestParam(defaultValue = "LAST_30_DAYS") String period,
                             @RequestParam(required = false) List<Long> projectIds,
@@ -89,7 +90,8 @@ public class WebController {
         return historyViewService.buildHistoryPage(metric, period, projectIds, showInactive).chartJson();
     }
 
-    @GetMapping(value = "/report/user/{id}/mrs", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/report/user/{id}/mrs",
+                produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<MrSummaryDto> userMrs(@PathVariable Long id,
                                       @RequestParam(defaultValue = "LAST_30_DAYS") String period,

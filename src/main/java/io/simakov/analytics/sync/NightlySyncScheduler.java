@@ -46,7 +46,9 @@ public class NightlySyncScheduler {
     }
 
     @SuppressWarnings("checkstyle:ReturnCount")
-    private void syncForWorkspace(Workspace workspace, Instant dateFrom, Instant dateTo) {
+    private void syncForWorkspace(Workspace workspace,
+                                  Instant dateFrom,
+                                  Instant dateTo) {
         Long workspaceId = workspace.getId();
 
         List<Long> projectIds = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId)

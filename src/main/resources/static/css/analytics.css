@@ -866,7 +866,9 @@ body {
     gap: 6px;
 }
 
-.data-notice summary::-webkit-details-marker { display: none; }
+.data-notice summary::-webkit-details-marker {
+    display: none;
+}
 
 .data-notice summary::before {
     content: "▶";

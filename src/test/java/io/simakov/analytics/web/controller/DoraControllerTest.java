@@ -28,20 +28,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SuppressWarnings("PMD.JUnitTestContainsTooManyAsserts")
 class DoraControllerTest extends BaseIT {
 
+    private final Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
     @Autowired
     private MockMvc mockMvc;
-
     @Autowired
     private GitSourceRepository gitSourceRepository;
-
     @Autowired
     private TrackedProjectRepository trackedProjectRepository;
-
     @Autowired
     private MergeRequestRepository mergeRequestRepository;
-
     private Long projectId;
-    private final Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
     @BeforeEach
     void setUp() {
@@ -162,7 +158,8 @@ class DoraControllerTest extends BaseIT {
         assertThat(result.getResponse().getContentAsString()).contains("repo");
     }
 
-    private void saveMergedMr(Long gitlabMrId, int leadHours) {
+    private void saveMergedMr(Long gitlabMrId,
+                              int leadHours) {
         MergeRequest mr = new MergeRequest();
         mr.setTrackedProjectId(projectId);
         mr.setGitlabMrId(gitlabMrId);

@@ -28,10 +28,12 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false,
+            unique = true)
     private Long githubId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false,
+            unique = true)
     private String githubLogin;
 
     private String name;
@@ -39,7 +41,8 @@ public class AppUser {
     private String email;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false,
+            updatable = false)
     private Instant createdAt;
 
     @Column(nullable = false)

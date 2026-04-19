@@ -15,7 +15,8 @@ public class AppUserPrincipal implements OAuth2User {
     private final AppUser appUser;
     private final OAuth2User delegate;
 
-    public AppUserPrincipal(AppUser appUser, OAuth2User delegate) {
+    public AppUserPrincipal(AppUser appUser,
+                            OAuth2User delegate) {
         this.appUser = appUser;
         this.delegate = delegate;
     }

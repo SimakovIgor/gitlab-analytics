@@ -264,16 +264,16 @@
                     <span class="job-status job-status-run" th:if="${job.status == 'STARTED'}">
                             <span class="sync-spinner-sm"></span> Выполняется
                         </span>
-                        <div class="job-progress-wrap" th:if="${job.status == 'STARTED'}"
-                             th:id="'job-progress-' + ${job.id}">
-                            <div class="job-progress-bar">
-                                <div class="job-progress-fill" th:id="'row-fill-' + ${job.id}"
-                                     style="width:0%"></div>
-                            </div>
-                            <span class="job-progress-label" th:id="'row-plabel-' + ${job.id}">
+                    <div class="job-progress-wrap" th:id="'job-progress-' + ${job.id}"
+                         th:if="${job.status == 'STARTED'}">
+                        <div class="job-progress-bar">
+                            <div class="job-progress-fill" style="width:0%"
+                                 th:id="'row-fill-' + ${job.id}"></div>
+                        </div>
+                        <span class="job-progress-label" th:id="'row-plabel-' + ${job.id}">
                                 получение списка MR...
                             </span>
-                        </div>
+                    </div>
                 </td>
                 <td class="job-time-cell" th:text="${job.startedAt}">—</td>
                 <td class="job-time-cell" th:text="${job.finishedAt ?: '—'}">—</td>
@@ -417,8 +417,8 @@
             <div class="form-group" style="margin-top:12px">
                 <label class="form-label">Или введите GitLab ID напрямую</label>
                 <div class="form-group-row">
-                    <input class="form-input" id="link-direct-id" placeholder="например: 1933"
-                           style="max-width:160px" type="number" oninput="onDirectIdInput()">
+                    <input class="form-input" id="link-direct-id" oninput="onDirectIdInput()"
+                           placeholder="например: 1933" style="max-width:160px" type="number">
                     <span class="form-hint" id="link-direct-label" style="align-self:center"></span>
                 </div>
                 <div class="form-hint">Используйте для привязки placeholder-аккаунтов, которые не находятся через поиск</div>

@@ -27,8 +27,21 @@ public class WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
 
+    private static String slugify(String input) {
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
+            .replaceAll("\\p{InCombiningDiacriticalMarks}", "");
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        String dashed = NON_SLUG_CHARS.matcher(lower).replaceAll("-");
+        String clean = CONSECUTIVE_DASHES.matcher(dashed).replaceAll("-").replaceAll("^-|-$", "");
+        if (clean.isEmpty()) {
+            clean = "workspace";
+        }
+        return clean.substring(0, Math.min(clean.length(), SLUG_MAX_LENGTH));
+    }
+
     @Transactional
-    public Workspace createWorkspace(String name, Long ownerAppUserId) {
+    public Workspace createWorkspace(String name,
+                                     Long ownerAppUserId) {
         String slug = generateUniqueSlug(name);
         String apiToken = UUID.randomUUID().toString().replace("-", "");
 
@@ -62,17 +75,5 @@ public class WorkspaceService {
                 + "-" + UUID.randomUUID().toString().substring(0, 4);
         } while (workspaceRepository.existsBySlug(candidate));
         return candidate;
-    }
-
-    private static String slugify(String input) {
-        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
-            .replaceAll("\\p{InCombiningDiacriticalMarks}", "");
-        String lower = normalized.toLowerCase(Locale.ROOT);
-        String dashed = NON_SLUG_CHARS.matcher(lower).replaceAll("-");
-        String clean = CONSECUTIVE_DASHES.matcher(dashed).replaceAll("-").replaceAll("^-|-$", "");
-        if (clean.isEmpty()) {
-            clean = "workspace";
-        }
-        return clean.substring(0, Math.min(clean.length(), SLUG_MAX_LENGTH));
     }
 }

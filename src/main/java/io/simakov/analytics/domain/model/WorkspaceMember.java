@@ -38,6 +38,7 @@ public class WorkspaceMember {
     private String role;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false,
+            updatable = false)
     private Instant invitedAt;
 }

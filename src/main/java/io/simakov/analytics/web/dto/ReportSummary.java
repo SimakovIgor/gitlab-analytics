@@ -10,4 +10,5 @@ public record ReportSummary(
     int totalComments,
     Integer deltaComments
 ) {
+
 }

@@ -97,7 +97,8 @@
             </div>
             <div class="dora-badge dora-badge-elite tooltip-hint"
                  data-tooltip="Elite: медиана Lead Time менее 1 часа. Лучший уровень по классификации DORA Research."
-                 th:if="${medianHours != null and medianHours <= 1}">Elite</div>
+                 th:if="${medianHours != null and medianHours <= 1}">Elite
+            </div>
             <div class="dora-badge dora-badge-high tooltip-hint"
                  data-tooltip="High: медиана Lead Time от 1 часа до 1 дня. Высокая скорость доставки изменений."
                  th:if="${medianHours != null and medianHours > 1 and medianHours <= 24}">High
@@ -108,7 +109,8 @@
             </div>
             <div class="dora-badge dora-badge-low tooltip-hint"
                  data-tooltip="Low: медиана Lead Time более 7 дней. Изменения долго доходят до основной ветки."
-                 th:if="${medianHours != null and medianHours > 168}">Low</div>
+                 th:if="${medianHours != null and medianHours > 168}">Low
+            </div>
         </div>
 
         <div class="dora-stats-row">
@@ -207,8 +209,8 @@
 </main>
 
 <script>
-    document.querySelectorAll('.period-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+    document.querySelectorAll('.period-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
             document.getElementById('daysHidden').disabled = true;
         });
     });

@@ -59,7 +59,8 @@ public class SnapshotService {
     }
 
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
-    public int runDailyBackfill(Long workspaceId, int days) {
+    public int runDailyBackfill(Long workspaceId,
+                                int days) {
         LocalDate today = DateTimeUtils.currentDateUtc();
         int windowDays = appProperties.snapshot().windowDays();
         int total = 0;
@@ -88,7 +89,8 @@ public class SnapshotService {
         return runSnapshotForWorkspace(WorkspaceContext.get(), request);
     }
 
-    public RunSnapshotResponse runSnapshotForWorkspace(Long workspaceId, RunSnapshotRequest request) {
+    public RunSnapshotResponse runSnapshotForWorkspace(Long workspaceId,
+                                                       RunSnapshotRequest request) {
         int windowDays = Objects.requireNonNullElse(request.windowDays(), appProperties.snapshot().windowDays());
         LocalDate snapshotDate = Objects.requireNonNullElse(request.snapshotDate(), DateTimeUtils.currentDateUtc());
         return run(workspaceId, request.userIds(), request.projectIds(), windowDays, snapshotDate);
@@ -157,7 +159,8 @@ public class SnapshotService {
         }
     }
 
-    private List<Long> resolveUserIds(Long workspaceId, List<Long> requested) {
+    private List<Long> resolveUserIds(Long workspaceId,
+                                      List<Long> requested) {
         if (requested != null && !requested.isEmpty()) {
             return requested;
         }
@@ -166,7 +169,8 @@ public class SnapshotService {
             .toList();
     }
 
-    private List<Long> resolveProjectIds(Long workspaceId, List<Long> requested) {
+    private List<Long> resolveProjectIds(Long workspaceId,
+                                         List<Long> requested) {
         if (requested != null && !requested.isEmpty()) {
             return requested;
         }

@@ -170,9 +170,15 @@ public class ReportViewService {
         int prevComments = prevList.stream().mapToInt(UserMetrics::getReviewCommentsWrittenCount).sum();
         Double prevMedian = computeMedianHours(prevList);
 
-        Integer deltaMr = previous.isEmpty() ? null : totalMrMerged - prevMrMerged;
-        Integer deltaComments = previous.isEmpty() ? null : totalComments - prevComments;
-        Double deltaMedian = (medianTtm != null && prevMedian != null) ? medianTtm - prevMedian : null;
+        Integer deltaMr = previous.isEmpty()
+            ? null
+            : totalMrMerged - prevMrMerged;
+        Integer deltaComments = previous.isEmpty()
+            ? null
+            : totalComments - prevComments;
+        Double deltaMedian = (medianTtm != null && prevMedian != null)
+            ? medianTtm - prevMedian
+            : null;
 
         return new ReportSummary(
             totalMrMerged, deltaMr,
@@ -199,7 +205,9 @@ public class ReportViewService {
     }
 
     @SuppressWarnings("PMD.NPathComplexity")
-    public List<MrSummaryDto> getUserMrs(Long userId, String period, List<Long> requestedProjectIds) {
+    public List<MrSummaryDto> getUserMrs(Long userId,
+                                         String period,
+                                         List<Long> requestedProjectIds) {
         List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserId(userId);
 
         List<Long> gitlabUserIds = aliases.stream()
@@ -255,15 +263,20 @@ public class ReportViewService {
             .toList();
     }
 
-    private MrSummaryDto toMrSummary(MergeRequest mr, Map<Long, String> projectPathById) {
+    private MrSummaryDto toMrSummary(MergeRequest mr,
+                                     Map<Long, String> projectPathById) {
         String projectPath = projectPathById.getOrDefault(mr.getTrackedProjectId(), "");
         Double hoursToMerge = null;
         if (mr.getMergedAtGitlab() != null && mr.getCreatedAtGitlab() != null) {
             long seconds = mr.getMergedAtGitlab().getEpochSecond() - mr.getCreatedAtGitlab().getEpochSecond();
             hoursToMerge = Math.round(seconds / 3600.0 * 10.0) / 10.0;
         }
-        String createdAt = mr.getCreatedAtGitlab() != null ? mr.getCreatedAtGitlab().toString() : null;
-        String mergedAt = mr.getMergedAtGitlab() != null ? mr.getMergedAtGitlab().toString() : null;
+        String createdAt = mr.getCreatedAtGitlab() != null
+            ? mr.getCreatedAtGitlab().toString()
+            : null;
+        String mergedAt = mr.getMergedAtGitlab() != null
+            ? mr.getMergedAtGitlab().toString()
+            : null;
         return new MrSummaryDto(mr.getTitle(), projectPath, mr.getWebUrl(), createdAt, mergedAt, hoursToMerge);
     }
 

@@ -78,39 +78,55 @@ Static assets: `src/main/resources/static/css/analytics.css`
 ## Key Patterns
 
 **Two Security filter chains** (order matters):
+
 - `@Order(1)` — API chain: `securityMatcher("/api/**")`, stateless, Bearer token, 401 on failure
 - `@Order(2)` — Web chain: OAuth2 login (GitHub), session-based, redirects to `/login`
 
-**Metric enum** (`metrics/model/Metric.java`) — single source of truth for all metrics. Every metric has `key()` (JSON/DB key), `label()` (Russian UI label), `description()` (Russian legend text), `category()`, `isInMinutes()`, `isChartVisible()`. Use `Metric.XXX.key()` everywhere instead of hardcoded strings. `Metric.chartOptions()` builds the history dropdown; `Metric.minuteKeys()` returns metrics stored in minutes.
+**Metric enum** (`metrics/model/Metric.java`) — single source of truth for all metrics. Every metric has `key()` (JSON/DB key), `label()` (Russian UI label), `description()` (Russian legend text),
+`category()`, `isInMinutes()`, `isChartVisible()`. Use `Metric.XXX.key()` everywhere instead of hardcoded strings. `Metric.chartOptions()` builds the history dropdown; `Metric.minuteKeys()` returns
+metrics stored in minutes.
 
-**PeriodType enum** — has `toDays()` method. Use `PeriodType.valueOf(str).toDays()` instead of switch statements. Values: `LAST_7_DAYS(7)`, `LAST_30_DAYS(30)`, `LAST_90_DAYS(90)`, `LAST_180_DAYS(180)`, `LAST_360_DAYS(360)`, `CUSTOM(0)`.
+**PeriodType enum** — has `toDays()` method. Use `PeriodType.valueOf(str).toDays()` instead of switch statements. Values: `LAST_7_DAYS(7)`, `LAST_30_DAYS(30)`, `LAST_90_DAYS(90)`,
+`LAST_180_DAYS(180)`, `LAST_360_DAYS(360)`, `CUSTOM(0)`.
 
 **jsonb columns**: Use `@JdbcTypeCode(SqlTypes.JSON)` on `String` fields mapped to `jsonb` PostgreSQL columns. Without it Hibernate 6 throws a type mismatch error.
 
-**Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy self-invocations.
+**Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy
+self-invocations.
 
 **Encryption**: `NoOpEncryptionService` stores tokens as plaintext. Set `app.encryption.enabled=true` and provide a real `EncryptionService` bean for production.
 
-**Commit stats**: The GitLab MR list and single-MR endpoints do not return `additions`/`deletions` on this GitLab instance. Stats are fetched individually via `GET /repository/commits/:sha` (one call per new commit during sync). `MetricCalculationService` computes `lines_added/deleted` from commit-level stats, not MR-level.
+**Commit stats**: The GitLab MR list and single-MR endpoints do not return `additions`/`deletions` on this GitLab instance. Stats are fetched individually via `GET /repository/commits/:sha` (one call
+per new commit during sync). `MetricCalculationService` computes `lines_added/deleted` from commit-level stats, not MR-level.
 
-**GitLab API timeout**: `app.gitlab.read-timeout-seconds` (default 30s). Increase to 120s+ for slow GitLab instances. A full sync with commits for 450+ MRs takes ~3-4 minutes with parallel processing (`mrProcessingExecutor` thread pool).
+**GitLab API timeout**: `app.gitlab.read-timeout-seconds` (default 30s). Increase to 120s+ for slow GitLab instances. A full sync with commits for 450+ MRs takes ~3-4 minutes with parallel
+processing (`mrProcessingExecutor` thread pool).
 
-**Commit attribution**: `isUserCommit` matches commits by email. It checks both `TrackedUser.email` and all `TrackedUserAlias.email` values (lowercased). Commit emails often differ from GitLab account emails — always register the correct commit email in the alias.
+**Commit attribution**: `isUserCommit` matches commits by email. It checks both `TrackedUser.email` and all `TrackedUserAlias.email` values (lowercased). Commit emails often differ from GitLab
+account emails — always register the correct commit email in the alias.
 
-**MR attribution**: Done by `author_gitlab_user_id` (stored on each `MergeRequest`). When a `TrackedUser` is added, `UserAliasService.saveAlias()` calls `GitLabApiClient.findUserIdByUsername()` using the username-prefix of the email (e.g., `a.upatov` from `a.upatov@uzum.com`) to resolve and store the `gitlab_user_id` in `tracked_user_alias`. If the email prefix doesn't match the GitLab username, `gitlab_user_id` will be null and MR attribution will fail for that user.
+**MR attribution**: Done by `author_gitlab_user_id` (stored on each `MergeRequest`). When a `TrackedUser` is added, `UserAliasService.saveAlias()` calls `GitLabApiClient.findUserIdByUsername()` using
+the username-prefix of the email (e.g., `a.upatov` from `a.upatov@uzum.com`) to resolve and store the `gitlab_user_id` in `tracked_user_alias`. If the email prefix doesn't match the GitLab username,
+`gitlab_user_id` will be null and MR attribution will fail for that user.
 
-**`ManualSyncRequest` field names**: `fetchNotes`, `fetchApprovals`, `fetchCommits` (not `syncNotes`/`syncCommits`). All default to `false` — must be explicitly set to `true` for a full sync. The `SettingsController.triggerBackfill()` sets all three to `true`.
+**`ManualSyncRequest` field names**: `fetchNotes`, `fetchApprovals`, `fetchCommits` (not `syncNotes`/`syncCommits`). All default to `false` — must be explicitly set to `true` for a full sync. The
+`SettingsController.triggerBackfill()` sets all three to `true`.
 
 **Snapshot backfill**: Snapshots are created daily by scheduler (`app.snapshot.cron`, default `0 0 2 * * *`). Two endpoints for manual control:
-- `POST /api/v1/snapshots/backfill?days=360` — creates weekly snapshots going back N days (step=7d). Auto-triggered from the UI when users are added during onboarding. This is the main backfill for History chart.
+
+- `POST /api/v1/snapshots/backfill?days=360` — creates weekly snapshots going back N days (step=7d). Auto-triggered from the UI when users are added during onboarding. This is the main backfill for
+  History chart.
 - `POST /api/v1/snapshots/run` — creates a single snapshot for a specific `snapshotDate` and `windowDays`.
-The History chart reads from `metric_snapshot` table — if data looks missing, check whether snapshots exist for the needed date range.
+  The History chart reads from `metric_snapshot` table — if data looks missing, check whether snapshots exist for the needed date range.
 
-**Thymeleaf + Chart.js**: History chart data is passed as a JSON string via model attribute `chartData`, injected into JS with `th:inline="javascript"` + `JSON.parse([[${chartData}]])`. Period filter on History page uses days (7/30/90/180/360), on Report page uses `PeriodType` string values.
+**Thymeleaf + Chart.js**: History chart data is passed as a JSON string via model attribute `chartData`, injected into JS with `th:inline="javascript"` + `JSON.parse([[${chartData}]])`. Period filter
+on History page uses days (7/30/90/180/360), on Report page uses `PeriodType` string values.
 
-**MR drill-down**: `GET /report/user/{id}/mrs?period=&projectIds=` — returns `List<MrSummaryDto>` (JSON). Resolves `gitlabUserId` via `TrackedUserAlias`, queries `MergeRequestRepository.findMergedInPeriodByAuthors()`. Called from report.html JS on row click, renders in modal.
+**MR drill-down**: `GET /report/user/{id}/mrs?period=&projectIds=` — returns `List<MrSummaryDto>` (JSON). Resolves `gitlabUserId` via `TrackedUserAlias`, queries
+`MergeRequestRepository.findMergedInPeriodByAuthors()`. Called from report.html JS on row click, renders in modal.
 
-**Report row click**: clicking a row opens a modal with the user's merged MRs for the current period/filters. The chart is NOT affected by row clicks (chart is controlled only by the metric selector and period buttons).
+**Report row click**: clicking a row opens a modal with the user's merged MRs for the current period/filters. The chart is NOT affected by row clicks (chart is controlled only by the metric selector
+and period buttons).
 
 ## Database
 
@@ -149,7 +165,8 @@ All integration tests extend `BaseIT`:
 
 Test naming: `*Test` (not `*IT`), even for integration tests.
 
-**`DatabaseStructureTest`** — pg-index-health checks using `pg-index-health-test-starter:0.20.3` (last version compatible with Spring Boot 3.3.x). Runs only static checks; skips `flyway_schema_history` via `SkipFlywayTablesPredicate.ofDefault()`.
+**`DatabaseStructureTest`** — pg-index-health checks using `pg-index-health-test-starter:0.20.3` (last version compatible with Spring Boot 3.3.x). Runs only static checks; skips
+`flyway_schema_history` via `SkipFlywayTablesPredicate.ofDefault()`.
 
 **OAuth2 in tests**: `application-test.yml` provides fake GitHub credentials (`test-github-client-id` / `test-github-client-secret`) so the app context starts without real OAuth2 config.
 
@@ -176,7 +193,8 @@ Spring Boot Actuator + Micrometer are configured. Exposed endpoints:
 
 All metrics carry the tag `application=gitlab-analytics` (set via `management.metrics.tags.application`). Enabled metric groups: JVM, process, system, HTTP server requests, HikariCP.
 
-The `/actuator/**` endpoints are exposed over HTTP without additional auth (appropriate for internal/local use). For production, add `management.endpoints.web.base-path` behind an internal network or add security.
+The `/actuator/**` endpoints are exposed over HTTP without additional auth (appropriate for internal/local use). For production, add `management.endpoints.web.base-path` behind an internal network or
+add security.
 
 ## Dependencies
 

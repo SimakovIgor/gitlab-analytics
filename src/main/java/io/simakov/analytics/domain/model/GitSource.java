@@ -29,7 +29,8 @@ public class GitSource {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "workspace_id", nullable = false)
+    @Column(name = "workspace_id",
+            nullable = false)
     private Long workspaceId;
 
     @Column(nullable = false)

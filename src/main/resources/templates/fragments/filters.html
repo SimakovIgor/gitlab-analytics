@@ -6,7 +6,7 @@
     Отображение выбранного диапазона дат под кнопками периода.
     Использование: <span th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
 -->
-<span th:fragment="dateRange(dateFrom, dateTo)" class="period-info">
+<span class="period-info" th:fragment="dateRange(dateFrom, dateTo)">
     <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
     &nbsp;→&nbsp;
     <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
@@ -16,8 +16,8 @@
     Фильтр по репозиториям для страниц с form-submit (История, DORA).
     Использование: <div th:replace="~{fragments/filters :: repoFilter(${allProjects}, ${selectedProjectIds})}"></div>
 -->
-<div th:fragment="repoFilter(projects, selectedIds)"
-     class="filter-group"
+<div class="filter-group"
+     th:fragment="repoFilter(projects, selectedIds)"
      th:if="${projects != null and !projects.isEmpty()}">
     <label class="filter-label">Репозитории</label>
     <div class="filter-checkboxes">
