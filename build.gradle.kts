@@ -5,6 +5,7 @@ plugins {
     checkstyle
     pmd
     id("com.github.spotbugs") version "6.0.9"
+    jacoco
 }
 
 group = "io.simakov.analytics"
@@ -118,5 +119,70 @@ tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+// ── JaCoCo ────────────────────────────────────────────────────────────────────
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+// Классы, исключённые из подсчёта покрытия:
+// - JPA entities, DTO records, Spring-конфиги, Lombok-генерация — тестировать нечего
+val jacocoExclusions = listOf(
+    "**/domain/model/**",        // JPA entities — boilerplate
+    "**/api/dto/**",             // request/response records
+    "**/gitlab/dto/**",          // GitLab API response DTOs
+    "**/web/dto/**",             // view-layer DTOs
+    "**/config/**",              // Spring configuration beans
+    "**/*Application*",          // Spring Boot entry point
+    "**/encryption/NoOpEncryptionService*",
+    "**/gitlab/client/**",       // WebClient-based; always @MockBean in tests
+    "**/gitlab/mapper/**"        // maps GitLab responses; mocked along with client
+)
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) { exclude(jacocoExclusions) }
+        })
+    )
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.jacocoTestReport)
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) { exclude(jacocoExclusions) }
+        })
+    )
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.60".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.45".toBigDecimal()
+            }
+            limit {
+                counter = "METHOD"
+                value = "COVEREDRATIO"
+                minimum = "0.69".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
