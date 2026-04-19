@@ -28,6 +28,7 @@ import io.simakov.analytics.web.dto.CreatedProjectResult;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -136,6 +137,7 @@ public class SettingsService {
                                                  String q) {
         Long workspaceId = WorkspaceContext.get();
         GitSource source = gitSourceRepository.findById(sourceId)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         TrackedProject project = trackedProjectRepository.findFirstByWorkspaceIdAndGitSourceId(workspaceId, sourceId)
             .orElseThrow(() -> new ResourceNotFoundException("TrackedProject for GitSource", sourceId));
@@ -147,6 +149,7 @@ public class SettingsService {
         return contributorDiscoveryService.discover();
     }
 
+    @Transactional
     public List<TrackedUser> createUsersBulk(List<CreateTrackedUserRequest> requests) {
         Long workspaceId = WorkspaceContext.get();
         List<TrackedUser> saved = requests.stream()
@@ -194,8 +197,8 @@ public class SettingsService {
 
     // ── Snapshots ────────────────────────────────────────────────────────────
 
-    public int triggerSnapshotBackfill() {
-        return snapshotService.runDailyBackfill(BACKFILL_DAYS);
+    public void triggerSnapshotBackfill() {
+        snapshotService.runDailyBackfillAsync(WorkspaceContext.get(), BACKFILL_DAYS);
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────────

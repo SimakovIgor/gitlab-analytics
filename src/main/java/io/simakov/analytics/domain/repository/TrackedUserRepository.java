@@ -13,6 +13,8 @@ public interface TrackedUserRepository extends JpaRepository<TrackedUser, Long> 
 
     List<TrackedUser> findAllByWorkspaceIdAndEnabledTrue(Long workspaceId);
 
+    List<TrackedUser> findAllByWorkspaceIdAndIdIn(Long workspaceId, List<Long> ids);
+
     /**
      * All tracked emails for a workspace in one query: user emails UNION alias emails.
      */

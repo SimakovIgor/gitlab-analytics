@@ -207,9 +207,9 @@ public class SettingsController {
 
     @PostMapping("/snapshots/backfill")
     @ResponseBody
-    public ResponseEntity<Map<String, Integer>> triggerSnapshotBackfill() {
-        int saved = settingsService.triggerSnapshotBackfill();
-        return ResponseEntity.ok(Map.of("snapshotsSaved", saved));
+    public ResponseEntity<Void> triggerSnapshotBackfill() {
+        settingsService.triggerSnapshotBackfill();
+        return ResponseEntity.accepted().build();
     }
 
     // ── Sync status polling ──────────────────────────────────────────────────

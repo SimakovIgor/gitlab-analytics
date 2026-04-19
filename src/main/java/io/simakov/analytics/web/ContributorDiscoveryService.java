@@ -6,6 +6,7 @@ import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -126,6 +127,7 @@ public class ContributorDiscoveryService {
         );
     }
 
+    @Transactional(readOnly = true)
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     public List<DiscoveredContributor> discover() {
         Long workspaceId = WorkspaceContext.get();
