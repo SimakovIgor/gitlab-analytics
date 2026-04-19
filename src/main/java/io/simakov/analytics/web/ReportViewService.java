@@ -55,7 +55,7 @@ public class ReportViewService {
                                           boolean showInactive) {
         Long workspaceId = WorkspaceContext.get();
         List<GitSource> sources = gitSourceRepository.findAllByWorkspaceId(workspaceId);
-        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId);
+        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceId(workspaceId);
         List<TrackedUser> allUsers = trackedUserRepository.findAllByWorkspaceId(workspaceId);
 
         boolean hasSources = !sources.isEmpty();
@@ -221,7 +221,7 @@ public class ReportViewService {
             .filter(Objects::nonNull)
             .toList();
 
-        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(WorkspaceContext.get());
+        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceId(WorkspaceContext.get());
         List<Long> projectIds = (requestedProjectIds == null || requestedProjectIds.isEmpty())
             ? allProjects.stream().map(TrackedProject::getId).toList()
             : requestedProjectIds;
