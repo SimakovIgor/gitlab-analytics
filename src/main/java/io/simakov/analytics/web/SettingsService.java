@@ -77,7 +77,9 @@ public class SettingsService {
     @SuppressWarnings("checkstyle:IllegalCatch")
     public Map<String, Object> validateToken(Long sourceId,
                                              String token) {
+        Long workspaceId = WorkspaceContext.get();
         GitSource source = gitSourceRepository.findById(sourceId)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         try {
             var user = gitLabApiClient.getCurrentUser(source.getBaseUrl(), token);
@@ -92,7 +94,9 @@ public class SettingsService {
     public List<GitLabProjectDto> searchProjects(Long sourceId,
                                                  String q,
                                                  String token) {
+        Long workspaceId = WorkspaceContext.get();
         GitSource source = gitSourceRepository.findById(sourceId)
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
         return gitLabApiClient.searchProjects(source.getBaseUrl(), token, q);
     }
@@ -197,12 +201,22 @@ public class SettingsService {
     // ── Sync ─────────────────────────────────────────────────────────────────
 
     public SyncJobResponse getSyncStatus(Long jobId) {
-        return SyncJobResponse.from(syncJobService.findById(jobId));
+        Long workspaceId = WorkspaceContext.get();
+        SyncJob job = syncJobService.findById(jobId);
+        if (!workspaceId.equals(job.getWorkspaceId())) {
+            throw new ResourceNotFoundException("SyncJob", jobId);
+        }
+        return SyncJobResponse.from(job);
     }
 
     public SyncJobResponse retrySync(Long jobId) {
+        Long workspaceId = WorkspaceContext.get();
+        SyncJob job = syncJobService.findById(jobId);
+        if (!workspaceId.equals(job.getWorkspaceId())) {
+            throw new ResourceNotFoundException("SyncJob", jobId);
+        }
         ManualSyncRequest request = syncJobService.getPayload(jobId);
-        SyncJob newJob = syncJobService.create(WorkspaceContext.get(), request);
+        SyncJob newJob = syncJobService.create(workspaceId, request);
         syncOrchestrator.orchestrateAsync(newJob.getId(), request);
         return SyncJobResponse.from(newJob);
     }

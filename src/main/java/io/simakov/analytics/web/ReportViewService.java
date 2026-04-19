@@ -1,5 +1,6 @@
 package io.simakov.analytics.web;
 
+import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.SyncJob;
@@ -215,6 +216,11 @@ public class ReportViewService {
     public List<MrSummaryDto> getUserMrs(Long userId,
                                          String period,
                                          List<Long> requestedProjectIds) {
+        Long workspaceId = WorkspaceContext.get();
+        trackedUserRepository.findById(userId)
+            .filter(u -> workspaceId.equals(u.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", userId));
+
         List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserId(userId);
 
         List<Long> gitlabUserIds = aliases.stream()
@@ -222,7 +228,7 @@ public class ReportViewService {
             .filter(Objects::nonNull)
             .toList();
 
-        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceId(WorkspaceContext.get());
+        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceId(workspaceId);
         List<Long> projectIds = (requestedProjectIds == null || requestedProjectIds.isEmpty())
             ? allProjects.stream().map(TrackedProject::getId).toList()
             : requestedProjectIds;
