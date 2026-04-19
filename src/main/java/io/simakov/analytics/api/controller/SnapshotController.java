@@ -11,10 +11,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -37,14 +39,13 @@ public class SnapshotController {
     }
 
     @PostMapping("/backfill")
+    @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "Daily snapshot backfill",
                description = "Creates daily snapshots for the last N days (step = 1 day). "
                    + "Intended for onboarding: call once after users are added to populate history. "
                    + "Default days=360. Already existing snapshots are overwritten with fresh data.")
-    public java.util.Map<String, Integer> backfill(
-        @RequestParam(defaultValue = "360") int days) {
-        int saved = snapshotService.runDailyBackfill(days);
-        return java.util.Map.of("snapshotsSaved", saved);
+    public void backfill(@RequestParam(defaultValue = "360") int days) {
+        snapshotService.runDailyBackfillAsync(WorkspaceContext.get(), days);
     }
 
     @PostMapping("/history")

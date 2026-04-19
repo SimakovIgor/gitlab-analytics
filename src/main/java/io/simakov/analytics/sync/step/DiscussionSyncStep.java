@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,21 +55,56 @@ class DiscussionSyncStep implements SyncStep {
             .map(MergeRequestNote::getGitlabNoteId)
             .collect(Collectors.toSet());
 
-        for (GitLabDiscussionDto discussionDto : discussions) {
-            MergeRequestDiscussion discussion = existingByGitlabId.containsKey(discussionDto.id())
-                ? existingByGitlabId.get(discussionDto.id())
-                : discussionRepository.save(gitLabMapper.toDiscussion(discussionDto, mr.getId()));
+        saveNewDiscussions(discussions, mr.getId(), existingByGitlabId);
+        saveNewNotes(discussions, mr.getId(), existingByGitlabId, existingNoteIds);
+    }
 
-            if (discussionDto.notes() == null) {
+    private void saveNewDiscussions(List<GitLabDiscussionDto> discussions,
+                                    Long mrId,
+                                    Map<String, MergeRequestDiscussion> existingByGitlabId) {
+        List<MergeRequestDiscussion> toSave = new ArrayList<>();
+        for (GitLabDiscussionDto dto : discussions) {
+            if (!existingByGitlabId.containsKey(dto.id())) {
+                toSave.add(gitLabMapper.toDiscussion(dto, mrId));
+            }
+        }
+        if (!toSave.isEmpty()) {
+            discussionRepository.saveAll(toSave).forEach(
+                saved -> existingByGitlabId.put(saved.getGitlabDiscussionId(), saved));
+        }
+    }
+
+    private void saveNewNotes(List<GitLabDiscussionDto> discussions,
+                              Long mrId,
+                              Map<String, MergeRequestDiscussion> existingByGitlabId,
+                              Set<Long> existingNoteIds) {
+        List<MergeRequestNote> toSave = new ArrayList<>();
+        for (GitLabDiscussionDto dto : discussions) {
+            if (dto.notes() == null) {
                 continue;
             }
-            for (GitLabNoteDto noteDto : discussionDto.notes()) {
-                if (noteDto == null || noteDto.id() == null) {
-                    continue;
-                }
-                if (!existingNoteIds.contains(noteDto.id())) {
-                    noteRepository.save(gitLabMapper.toNote(noteDto, mr.getId(), discussion.getId()));
-                }
+            MergeRequestDiscussion discussion = existingByGitlabId.get(dto.id());
+            if (discussion == null) {
+                continue;
+            }
+            collectNewNotes(dto.notes(), mrId, discussion.getId(), existingNoteIds, toSave);
+        }
+        if (!toSave.isEmpty()) {
+            noteRepository.saveAll(toSave);
+        }
+    }
+
+    private void collectNewNotes(List<GitLabNoteDto> notes,
+                                 Long mrId,
+                                 Long discussionId,
+                                 Set<Long> existingNoteIds,
+                                 List<MergeRequestNote> toSave) {
+        for (GitLabNoteDto noteDto : notes) {
+            if (noteDto == null || noteDto.id() == null) {
+                continue;
+            }
+            if (!existingNoteIds.contains(noteDto.id())) {
+                toSave.add(gitLabMapper.toNote(noteDto, mrId, discussionId));
             }
         }
     }

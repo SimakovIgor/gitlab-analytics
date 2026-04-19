@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -55,14 +56,18 @@ class ApprovalSyncStep implements SyncStep {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
+            List<MergeRequestApproval> toSave = new ArrayList<>();
             for (GitLabApprovalsDto.ApproverEntry entry : approvalsDto.approvedBy()) {
                 GitLabUserDto user = entry.user();
                 if (user == null || user.id() == null) {
                     continue;
                 }
                 if (!existingApproverIds.contains(user.id())) {
-                    approvalRepository.save(gitLabMapper.toApproval(user, mr.getId()));
+                    toSave.add(gitLabMapper.toApproval(user, mr.getId()));
                 }
+            }
+            if (!toSave.isEmpty()) {
+                approvalRepository.saveAll(toSave);
             }
         } catch (GitLabApiException e) {
             log.warn("Approvals not available for MR {} (mrIid={}): {}",

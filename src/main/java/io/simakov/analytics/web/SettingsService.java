@@ -133,6 +133,7 @@ public class SettingsService {
 
     // ── Users ────────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<GitLabUserSearchDto> searchUsers(Long sourceId,
                                                  String q) {
         Long workspaceId = WorkspaceContext.get();
