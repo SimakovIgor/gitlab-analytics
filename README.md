@@ -26,29 +26,44 @@
 - Docker
 - GitHub OAuth App ([создать](https://github.com/settings/applications/new), callback URL: `http://localhost:8080/login/oauth2/code/github`)
 
-### 1. Запустить PostgreSQL
+### 1. Создать .env.local
 
 ```bash
-docker run -d --name gitlab-analytics-pg \
-  -e POSTGRES_DB=gitlab_analytics \
-  -e POSTGRES_USER=analytics \
-  -e POSTGRES_PASSWORD=analytics \
-  -p 5432:5432 \
-  postgres:16-alpine
+cp .env.example .env.local   # или создайте вручную
 ```
 
-### 2. Запустить приложение
+```dotenv
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+```
+
+### 2. Запустить всё одной командой
 
 ```bash
-GITHUB_CLIENT_ID=your-github-client-id \
-GITHUB_CLIENT_SECRET=your-github-client-secret \
-DB_URL=jdbc:postgresql://localhost:5432/gitlab_analytics \
-DB_USERNAME=analytics \
-DB_PASSWORD=analytics \
-./gradlew bootRun -x test -x checkstyleMain -x pmdMain -x spotbugsMain
+./scripts/dev-start.sh
+```
+
+Скрипт запустит PostgreSQL + Prometheus + Grafana (Docker) и затем приложение через `./gradlew bootRun`.
+
+```bash
+./scripts/dev-start.sh --no-monitoring   # только PostgreSQL + приложение
+./scripts/dev-start.sh --help            # все опции
 ```
 
 Открыть `http://localhost:8080` — войти через GitHub.
+
+<details>
+<summary>Запуск вручную (без скрипта)</summary>
+
+```bash
+docker compose up -d postgres
+
+GITHUB_CLIENT_ID=your-github-client-id \
+GITHUB_CLIENT_SECRET=your-github-client-secret \
+./gradlew bootRun -x test -x checkstyleMain -x pmdMain -x spotbugsMain
+```
+
+</details>
 
 ---
 
