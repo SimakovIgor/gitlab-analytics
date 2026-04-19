@@ -91,6 +91,8 @@ management:
       process: true
       system: true
       hikaricp: true
+      logback: true
+      http: true
 
 springdoc:
   swagger-ui:
