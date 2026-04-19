@@ -80,10 +80,12 @@ public class MetricCalculationService {
             .stream().collect(Collectors.groupingBy(MergeRequestCommit::getMergeRequestId));
 
         Map<Long, AliasData> aliasDataByUser = resolveAliasData(userIds);
+        Map<Long, TrackedUser> usersById = trackedUserRepository.findAllById(userIds)
+            .stream().collect(Collectors.toMap(TrackedUser::getId, u -> u));
 
         Map<Long, UserMetrics> results = new LinkedHashMap<>();
         for (Long userId : userIds) {
-            TrackedUser user = trackedUserRepository.findById(userId).orElse(null);
+            TrackedUser user = usersById.get(userId);
             if (user == null) {
                 continue;
             }

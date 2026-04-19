@@ -14,6 +14,7 @@ import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.model.Metric;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.dto.HistoryPageData;
 import lombok.RequiredArgsConstructor;
@@ -62,12 +63,13 @@ public class HistoryViewService {
             periodType = PeriodType.LAST_360_DAYS;
         }
 
-        List<TrackedProject> allProjects = trackedProjectRepository.findAll();
+        Long workspaceId = WorkspaceContext.get();
+        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceId(workspaceId);
         List<Long> selectedProjectIds = (requestedProjectIds == null || requestedProjectIds.isEmpty())
             ? List.of()
             : requestedProjectIds;
 
-        List<TrackedUser> users = trackedUserRepository.findAllByEnabledTrue();
+        List<TrackedUser> users = trackedUserRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId);
 
         if (!selectedProjectIds.isEmpty()) {
             List<Long> gitlabUserIds = mergeRequestRepository

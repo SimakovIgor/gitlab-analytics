@@ -11,6 +11,7 @@ import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,21 +51,25 @@ public class SettingsViewService {
     }
 
     public SettingsPageData buildSettingsPage() {
-        List<GitSource> sources = gitSourceRepository.findAll();
-        List<TrackedProject> projects = trackedProjectRepository.findAll();
-        List<TrackedUser> users = trackedUserRepository.findAll();
+        Long workspaceId = WorkspaceContext.get();
+        List<GitSource> sources = gitSourceRepository.findAllByWorkspaceId(workspaceId);
+        List<TrackedProject> projects = trackedProjectRepository.findAllByWorkspaceId(workspaceId);
+        List<TrackedUser> users = trackedUserRepository.findAllByWorkspaceId(workspaceId);
 
         Map<Long, String> sourceNames = new HashMap<>();
         for (GitSource s : sources) {
             sourceNames.put(s.getId(), s.getName());
         }
 
+        List<Long> userIds = users.stream().map(TrackedUser::getId).toList();
+        Map<Long, List<TrackedUserAlias>> aliasesByUserId = aliasRepository.findByTrackedUserIdIn(userIds)
+            .stream().collect(Collectors.groupingBy(TrackedUserAlias::getTrackedUserId));
+
         List<Map<String, Object>> usersWithAliases = users.stream()
             .map(u -> {
-                List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserId(u.getId());
                 Map<String, Object> entry = new HashMap<>();
                 entry.put("user", u);
-                entry.put("aliases", aliases);
+                entry.put("aliases", aliasesByUserId.getOrDefault(u.getId(), List.of()));
                 return entry;
             })
             .toList();
@@ -72,10 +78,11 @@ public class SettingsViewService {
         boolean hasProjects = !projects.isEmpty();
         boolean hasUsers = !users.isEmpty();
 
-        List<Long> activeJobIds = syncJobRepository.findByStatusOrderByStartedAtDesc(SyncStatus.STARTED)
+        List<Long> activeJobIds = syncJobRepository
+            .findByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED)
             .stream().map(SyncJob::getId).toList();
 
-        List<SyncJob> rawJobs = syncJobRepository.findTop30ByOrderByStartedAtDesc();
+        List<SyncJob> rawJobs = syncJobRepository.findTop30ByWorkspaceIdOrderByStartedAtDesc(workspaceId);
 
         long maxNonFailedId = rawJobs.stream()
             .filter(j -> j.getStatus() != SyncStatus.FAILED)

@@ -3,6 +3,7 @@ package io.simakov.analytics.domain.repository;
 import io.simakov.analytics.domain.model.MergeRequestCommit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,4 +35,22 @@ public interface MergeRequestCommitRepository extends JpaRepository<MergeRequest
                ORDER BY commit_count DESC
                """)
     List<Object[]> findContributorRows();
+
+    @Query(nativeQuery = true,
+           value = """
+               SELECT mrc.author_email   AS author_email,
+                      mrc.author_name    AS author_name,
+                      COUNT(mrc.id)      AS commit_count,
+                      tp.name            AS repo_name
+               FROM merge_request_commit mrc
+               JOIN merge_request  mr ON mr.id  = mrc.merge_request_id
+               JOIN tracked_project tp ON tp.id = mr.tracked_project_id
+               WHERE mrc.author_email IS NOT NULL
+                 AND mrc.author_email <> ''
+                 AND mr.state = 'MERGED'
+                 AND tp.workspace_id = :workspaceId
+               GROUP BY mrc.author_email, mrc.author_name, tp.name
+               ORDER BY commit_count DESC
+               """)
+    List<Object[]> findContributorRowsByWorkspaceId(@Param("workspaceId") Long workspaceId);
 }

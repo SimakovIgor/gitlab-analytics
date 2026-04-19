@@ -1,8 +1,10 @@
 package io.simakov.analytics.web;
 
+import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -131,14 +133,15 @@ public class ContributorDiscoveryService {
     @Transactional(readOnly = true)
     @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     public List<DiscoveredContributor> discover() {
-        Set<String> trackedEmails = buildTrackedEmailSet();
+        Long workspaceId = WorkspaceContext.get();
+        Set<String> trackedEmails = buildTrackedEmailSet(workspaceId);
 
         // email → {name → totalCommits}
         Map<String, Map<String, Long>> nameCommits = new LinkedHashMap<>();
         // email → repos
         Map<String, Set<String>> emailRepos = new LinkedHashMap<>();
 
-        for (Object[] row : commitRepository.findContributorRows()) {
+        for (Object[] row : commitRepository.findContributorRowsByWorkspaceId(workspaceId)) {
             String email = ((String) row[0]).toLowerCase(Locale.ROOT).strip();
             String name = row[1] != null
                 ? (String) row[1]
@@ -162,14 +165,18 @@ public class ContributorDiscoveryService {
         return mergeByName(byEmail);
     }
 
-    private Set<String> buildTrackedEmailSet() {
-        Set<String> emails = trackedUserRepository.findAllEmails().stream()
+    private Set<String> buildTrackedEmailSet(Long workspaceId) {
+        Set<String> emails = trackedUserRepository.findAllEmailsByWorkspaceId(workspaceId).stream()
             .map(e -> e.toLowerCase(Locale.ROOT).strip())
             .collect(Collectors.toSet());
 
-        aliasRepository.findAllEmails().stream()
-            .map(e -> e.toLowerCase(Locale.ROOT).strip())
-            .forEach(emails::add);
+        List<Long> userIds = trackedUserRepository.findAllByWorkspaceId(workspaceId)
+            .stream().map(TrackedUser::getId).toList();
+        if (!userIds.isEmpty()) {
+            aliasRepository.findAllEmailsByTrackedUserIdIn(userIds).stream()
+                .map(e -> e.toLowerCase(Locale.ROOT).strip())
+                .forEach(emails::add);
+        }
 
         return emails;
     }

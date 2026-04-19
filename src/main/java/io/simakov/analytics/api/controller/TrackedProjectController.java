@@ -9,6 +9,7 @@ import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.encryption.EncryptionService;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -52,7 +53,8 @@ public class TrackedProjectController {
     @GetMapping
     @Operation(summary = "List all tracked projects")
     public List<TrackedProjectResponse> list() {
-        return trackedProjectRepository.findAll().stream()
+        Long workspaceId = WorkspaceContext.get();
+        return trackedProjectRepository.findAllByWorkspaceId(workspaceId).stream()
             .map(trackedProjectMapper::toResponse)
             .toList();
     }

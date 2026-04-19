@@ -7,8 +7,10 @@ import io.simakov.analytics.api.dto.response.TrackedUserResponse;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.api.mapper.TrackedUserMapper;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +26,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -47,8 +51,14 @@ public class TrackedUserController {
     @GetMapping
     @Operation(summary = "List all tracked users with their aliases")
     public List<TrackedUserResponse> list() {
-        return trackedUserRepository.findAll().stream()
-            .map(user -> trackedUserMapper.toResponse(user, aliasRepository.findByTrackedUserId(user.getId())))
+        Long workspaceId = WorkspaceContext.get();
+        List<TrackedUser> users = trackedUserRepository.findAllByWorkspaceId(workspaceId);
+        List<Long> userIds = users.stream().map(TrackedUser::getId).toList();
+        Map<Long, List<TrackedUserAlias>> aliasesByUserId = aliasRepository.findByTrackedUserIdIn(userIds)
+            .stream().collect(Collectors.groupingBy(TrackedUserAlias::getTrackedUserId));
+        return users.stream()
+            .map(user -> trackedUserMapper.toResponse(
+                user, aliasesByUserId.getOrDefault(user.getId(), List.of())))
             .toList();
     }
 
