@@ -29,8 +29,10 @@ public class WebClientConfig {
         };
     }
 
+    // Inject WebClient.Builder — Spring Boot auto-applies ObservationWebClientCustomizer,
+    // which records http_client_requests_seconds_* metrics via Micrometer.
     @Bean
-    public WebClient gitLabWebClient(AppProperties props) {
+    public WebClient gitLabWebClient(AppProperties props, WebClient.Builder builder) {
         AppProperties.Gitlab gitlab = props.gitlab();
         int connectMs = gitlab.connectTimeoutSeconds() * 1000;
         int readSec = gitlab.readTimeoutSeconds();
@@ -41,7 +43,7 @@ public class WebClientConfig {
                 .addHandlerLast(new ReadTimeoutHandler(readSec, TimeUnit.SECONDS))
                 .addHandlerLast(new WriteTimeoutHandler(readSec, TimeUnit.SECONDS)));
 
-        return WebClient.builder()
+        return builder
             .clientConnector(new ReactorClientHttpConnector(httpClient))
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
             .filter(gitLabLoggingFilter())

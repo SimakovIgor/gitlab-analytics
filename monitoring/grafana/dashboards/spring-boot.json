@@ -325,6 +325,108 @@
           "expr": "histogram_quantile(0.99, sum(rate(hikaricp_connections_acquire_seconds_bucket{application=\"gitlab-analytics\"}[1m])) by (le))",
           "legendFormat": "p99" }
       ]
+    },
+
+    { "id": 108, "title": "GitLab API — Outbound HTTP", "type": "row", "collapsed": false,
+      "gridPos": { "x": 0, "y": 76, "w": 24, "h": 1 } },
+
+    { "id": 23, "title": "GitLab API — Request Rate by Outcome", "type": "stat",
+      "gridPos": { "x": 0, "y": 77, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "reqps",
+        "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[1m]))",
+        "legendFormat": "rps" }]
+    },
+
+    { "id": 24, "title": "GitLab API — Error Rate (4xx + 5xx)", "type": "stat",
+      "gridPos": { "x": 6, "y": 77, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "reqps",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "red", "value": 0.001 }
+        ]}
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "sum(rate(http_client_requests_seconds_count{application=\"gitlab-analytics\",outcome=~\"CLIENT_ERROR|SERVER_ERROR\"}[1m]))",
+        "legendFormat": "errors" }]
+    },
+
+    { "id": 25, "title": "GitLab API — p50 Latency", "type": "stat",
+      "gridPos": { "x": 12, "y": 77, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "s",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }
+        ]}
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "histogram_quantile(0.50, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
+        "legendFormat": "p50" }]
+    },
+
+    { "id": 26, "title": "GitLab API — p95 Latency", "type": "stat",
+      "gridPos": { "x": 18, "y": 77, "w": 6, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "s",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 2 }, { "color": "red", "value": 10 }
+        ]}
+      }},
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "expr": "histogram_quantile(0.95, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
+        "legendFormat": "p95" }]
+    },
+
+    { "id": 27, "title": "GitLab API — Rate by Outcome", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 81, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps",
+        "custom": { "lineWidth": 2, "fillOpacity": 15, "stacking": { "mode": "normal", "group": "A" } }
+      }},
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (outcome) (rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[1m]))",
+          "legendFormat": "{{outcome}}" }
+      ]
+    },
+
+    { "id": 28, "title": "GitLab API — Latency p50 / p95 / p99", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 81, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
+          "legendFormat": "p50" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
+          "legendFormat": "p95" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])) by (le))",
+          "legendFormat": "p99" }
+      ]
+    },
+
+    { "id": 29, "title": "GitLab API — Rate by URI", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 89, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (uri) (rate(http_client_requests_seconds_count{application=\"gitlab-analytics\"}[2m]))",
+          "legendFormat": "{{uri}}" }
+      ]
+    },
+
+    { "id": 30, "title": "GitLab API — Latency p95 by URI", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 89, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 5 } } },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum by (uri, le) (rate(http_client_requests_seconds_bucket{application=\"gitlab-analytics\"}[2m])))",
+          "legendFormat": "{{uri}}" }
+      ]
     }
 
   ]

@@ -130,15 +130,11 @@
         /* Финальный блок шага 6 — единый */
         .ob-final-loading {
             display: flex;
-            align-items: center;
-            gap: 12px;
             padding: 18px 20px;
             background: #f8f9fa;
             border: 1.5px solid #e9ecef;
             border-radius: 10px;
             margin-top: 1rem;
-            color: #555;
-            font-size: .95rem;
         }
         .ob-final-done {
             background: #fff8f5;
@@ -402,8 +398,16 @@
                 <h2 class="ob-start-title">История метрик</h2>
                 <p class="ob-start-subtitle">Создаём снапшоты за 360 дней — займёт несколько секунд</p>
                 <div class="ob-final-loading" id="ob-final-loading">
-                    <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666;flex-shrink:0"></span>
-                    <span>Готовим историю метрик...</span>
+                    <div style="flex:1">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <span style="font-size:.9rem;color:#444;">Создаём снапшоты метрик...</span>
+                            <a href="/report" style="color:#FC6D26;font-size:.8rem;text-decoration:none;white-space:nowrap;margin-left:12px;">Пропустить →</a>
+                        </div>
+                        <div style="height:5px;background:#e9ecef;border-radius:3px;overflow:hidden;">
+                            <div id="ob-backfill-bar" style="height:100%;background:#FC6D26;border-radius:3px;width:0%;transition:width .5s ease;"></div>
+                        </div>
+                        <div style="margin-top:6px;font-size:.78rem;color:#aaa;">Снапшоты за 360 дней для всех участников</div>
+                    </div>
                 </div>
                 <div class="ob-final-done hidden" id="ob-final-done">
                     <div class="ob-final-done-icon">✅</div>
@@ -994,42 +998,66 @@
         }
     }
 
-    async function triggerSnapshotBackfill() {
+    function showBackfillDone() {
         const loadingEl = document.getElementById('ob-final-loading');
         const doneEl = document.getElementById('ob-final-done');
+        if (loadingEl) {
+            loadingEl.classList.add('hidden');
+        }
+        if (doneEl) {
+            const statsEl = document.getElementById('ob-final-stats');
+            if (statsEl && obAddedDevs > 0) {
+                const devsWord = obAddedDevs === 1 ? 'разработчик' : (obAddedDevs < 5 ? 'разработчика' : 'разработчиков');
+                const lines = [`${obAddedDevs} ${devsWord} добавлено в трекинг`];
+                if (obTotalMrs > 0) {
+                    lines.push(`${obTotalMrs} MR загружено из GitLab`);
+                }
+                lines.push('Данные за последние 360 дней');
+                statsEl.innerHTML = lines.map(l => `<div>${escHtml(l)}</div>`).join('');
+            }
+            doneEl.classList.remove('hidden');
+        }
+        applyDot('ob-dot-6', 'ob-label-6', 'done', '✓');
+    }
+
+    async function triggerSnapshotBackfill() {
+        // Если backfill уже выполнен в этой сессии — сразу показываем success
+        if (sessionStorage.getItem('ob_backfill_done')) {
+            showBackfillDone();
+            return;
+        }
+        const loadingEl = document.getElementById('ob-final-loading');
+        const doneEl = document.getElementById('ob-final-done');
+        const barEl = document.getElementById('ob-backfill-bar');
         if (loadingEl) {
             loadingEl.classList.remove('hidden');
         }
         if (doneEl) {
             doneEl.classList.add('hidden');
         }
+
+        // Анимируем прогресс-бар: быстро до 30%, медленно до 85% (~25 сек)
+        let pct = 0;
+        const progressTimer = setInterval(() => {
+            const increment = pct < 30 ? 3 : pct < 60 ? 1.5 : pct < 85 ? 0.4 : 0;
+            pct = Math.min(pct + increment, 85);
+            if (barEl) {
+                barEl.style.width = pct + '%';
+            }
+        }, 500);
+
         try {
             await api('POST', '/settings/snapshots/backfill');
-            if (loadingEl) {
-                loadingEl.classList.add('hidden');
+            clearInterval(progressTimer);
+            sessionStorage.setItem('ob_backfill_done', '1');
+            if (barEl) {
+                barEl.style.width = '100%';
             }
-            if (doneEl) {
-                const statsEl = document.getElementById('ob-final-stats');
-                if (statsEl) {
-                    const devsWord = obAddedDevs === 1 ? 'разработчик' : (obAddedDevs < 5 ? 'разработчика' : 'разработчиков');
-                    const lines = [];
-                    if (obAddedDevs > 0) {
-                        lines.push(`${obAddedDevs} ${devsWord} добавлено в трекинг`);
-                    }
-                    if (obTotalMrs > 0) {
-                        lines.push(`${obTotalMrs} MR загружено из GitLab`);
-                    }
-                    lines.push('Данные за последние 360 дней');
-                    statsEl.innerHTML = lines.map(l => `<div>${escHtml(l)}</div>`).join('');
-                }
-                doneEl.classList.remove('hidden');
-            }
-            applyDot('ob-dot-6', 'ob-label-6', 'done', '✓');
+            setTimeout(showBackfillDone, 350);
         } catch (e) {
-            if (loadingEl) {
-                loadingEl.classList.add('hidden');
-            }
+            clearInterval(progressTimer);
             console.error('Backfill error:', e);
+            setTimeout(showBackfillDone, 350);
         }
     }
 

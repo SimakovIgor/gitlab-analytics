@@ -96,8 +96,10 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        http.client.requests: true
       slo:
         http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
+        http.client.requests: 100ms,500ms,1s,2s,5s,10s
 
 springdoc:
   swagger-ui:
