@@ -1,7 +1,5 @@
 package io.simakov.analytics.web;
 
-import io.simakov.analytics.domain.model.TrackedUser;
-import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
@@ -165,15 +163,11 @@ public class ContributorDiscoveryService {
     }
 
     private Set<String> buildTrackedEmailSet() {
-        Set<String> emails = trackedUserRepository.findAll().stream()
-            .map(TrackedUser::getEmail)
-            .filter(e -> e != null && !e.isBlank())
+        Set<String> emails = trackedUserRepository.findAllEmails().stream()
             .map(e -> e.toLowerCase(Locale.ROOT).strip())
             .collect(Collectors.toSet());
 
-        aliasRepository.findAll().stream()
-            .map(TrackedUserAlias::getEmail)
-            .filter(e -> e != null && !e.isBlank())
+        aliasRepository.findAllEmails().stream()
             .map(e -> e.toLowerCase(Locale.ROOT).strip())
             .forEach(emails::add);
 

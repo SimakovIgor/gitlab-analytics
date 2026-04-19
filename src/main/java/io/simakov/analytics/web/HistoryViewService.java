@@ -67,8 +67,7 @@ public class HistoryViewService {
             ? List.of()
             : requestedProjectIds;
 
-        List<TrackedUser> users = trackedUserRepository.findAll()
-            .stream().filter(TrackedUser::isEnabled).toList();
+        List<TrackedUser> users = trackedUserRepository.findAllByEnabledTrue();
 
         if (!selectedProjectIds.isEmpty()) {
             List<Long> gitlabUserIds = mergeRequestRepository
@@ -159,21 +158,9 @@ public class HistoryViewService {
             List<Object> data = labels.stream()
                 .map(date -> dateValues.getOrDefault(date, null))
                 .toList();
-
             String color = PALETTE.get(colorIdx % PALETTE.size());
             colorIdx++;
-
-            Map<String, Object> dataset = new LinkedHashMap<>();
-            dataset.put("label", user.getDisplayName());
-            dataset.put("data", data);
-            dataset.put("borderColor", color);
-            dataset.put("backgroundColor", color + "22");
-            dataset.put("tension", 0.3);
-            dataset.put("spanGaps", true);
-            dataset.put("borderWidth", 1.5);
-            dataset.put("pointRadius", 2);
-            dataset.put("pointHoverRadius", 5);
-            datasets.add(dataset);
+            datasets.add(buildDataset(user.getDisplayName(), data, color));
         }
 
         Map<String, Object> chartData = new LinkedHashMap<>();
@@ -186,5 +173,19 @@ public class HistoryViewService {
             log.error("Failed to serialize chart data", e);
             return "{}";
         }
+    }
+
+    private Map<String, Object> buildDataset(String label, List<Object> data, String color) {
+        Map<String, Object> dataset = new LinkedHashMap<>();
+        dataset.put("label", label);
+        dataset.put("data", data);
+        dataset.put("borderColor", color);
+        dataset.put("backgroundColor", color + "22");
+        dataset.put("tension", 0.3);
+        dataset.put("spanGaps", true);
+        dataset.put("borderWidth", 1.5);
+        dataset.put("pointRadius", 2);
+        dataset.put("pointHoverRadius", 5);
+        return dataset;
     }
 }
