@@ -431,6 +431,75 @@ class SettingsControllerTest extends BaseIT {
         assertThat(trackedUserRepository.findById(otherUser.getId())).isPresent();
     }
 
+    @Test
+    @WithMockUser
+    void backfillProjectReturns404ForProjectInAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        GitSource otherSource = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(otherWorkspaceId).name("other-gl").baseUrl("https://other.com").build());
+        TrackedProject otherProject = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(otherWorkspaceId).gitSourceId(otherSource.getId())
+            .gitlabProjectId(99L).pathWithNamespace("other/repo").name("other-repo")
+            .tokenEncrypted("tok").enabled(true).build());
+
+        mockMvc.perform(post("/settings/projects/" + otherProject.getId() + "/backfill")
+                .session(webSession).with(csrf()))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser
+    void linkGitlabAccountReturns404ForUserInAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        TrackedUser otherUser = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(otherWorkspaceId).displayName("Other User")
+            .email("other@example.com").enabled(true).build());
+
+        mockMvc.perform(post("/settings/users/" + otherUser.getId() + "/link-gitlab")
+                .session(webSession).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"gitlabUserId\":42,\"username\":\"other\"}"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser
+    void createProjectReturns404WhenGitSourceBelongsToAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        GitSource otherSource = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(otherWorkspaceId).name("other-gl").baseUrl("https://other.com").build());
+
+        String body = objectMapper.writeValueAsString(Map.of(
+            "gitSourceId", otherSource.getId(),
+            "gitlabProjectId", 1L,
+            "pathWithNamespace", "org/repo",
+            "name", "repo",
+            "token", "glpat-test"
+        ));
+
+        mockMvc.perform(post("/settings/projects")
+                .session(webSession).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser
+    void searchUsersReturns404WhenSourceBelongsToAnotherWorkspace() throws Exception {
+        Long otherWorkspaceId = createOtherWorkspaceId();
+        GitSource otherSource = gitSourceRepository.save(GitSource.builder()
+            .workspaceId(otherWorkspaceId).name("other-gl").baseUrl("https://other.com").build());
+        trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(otherWorkspaceId).gitSourceId(otherSource.getId())
+            .gitlabProjectId(99L).pathWithNamespace("other/repo").name("other-repo")
+            .tokenEncrypted("tok").enabled(true).build());
+
+        mockMvc.perform(get("/settings/sources/" + otherSource.getId() + "/users/search")
+                .session(webSession).param("q", "alice"))
+            .andExpect(status().isNotFound());
+    }
+
     private Long createOtherWorkspaceId() {
         AppUser otherOwner = appUserRepository.save(AppUser.builder()
             .githubId(99L).githubLogin("other-owner").lastLoginAt(Instant.now()).build());

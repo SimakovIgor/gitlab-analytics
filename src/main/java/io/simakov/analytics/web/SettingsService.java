@@ -98,11 +98,12 @@ public class SettingsService {
     }
 
     public CreatedProjectResult createProject(CreateTrackedProjectRequest request) {
-        if (!gitSourceRepository.existsById(request.gitSourceId())) {
-            throw new ResourceNotFoundException("GitSource", request.gitSourceId());
-        }
+        Long workspaceId = WorkspaceContext.get();
+        gitSourceRepository.findById(request.gitSourceId())
+            .filter(s -> workspaceId.equals(s.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("GitSource", request.gitSourceId()));
         TrackedProject project = trackedProjectMapper.toEntity(request);
-        project.setWorkspaceId(WorkspaceContext.get());
+        project.setWorkspaceId(workspaceId);
         project.setTokenEncrypted(encryptionService.encrypt(request.token()));
         TrackedProject saved = trackedProjectRepository.save(project);
         SyncJobResponse job = triggerBackfill(saved.getId());
@@ -118,9 +119,10 @@ public class SettingsService {
     }
 
     public SyncJobResponse backfillProject(Long id) {
-        if (!trackedProjectRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TrackedProject", id);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedProjectRepository.findById(id)
+            .filter(p -> workspaceId.equals(p.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedProject", id));
         return triggerBackfill(id);
     }
 
@@ -128,9 +130,10 @@ public class SettingsService {
 
     public List<GitLabUserSearchDto> searchUsers(Long sourceId,
                                                  String q) {
+        Long workspaceId = WorkspaceContext.get();
         GitSource source = gitSourceRepository.findById(sourceId)
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", sourceId));
-        TrackedProject project = trackedProjectRepository.findFirstByGitSourceId(sourceId)
+        TrackedProject project = trackedProjectRepository.findFirstByWorkspaceIdAndGitSourceId(workspaceId, sourceId)
             .orElseThrow(() -> new ResourceNotFoundException("TrackedProject for GitSource", sourceId));
         String token = encryptionService.decrypt(project.getTokenEncrypted());
         return gitLabApiClient.searchUsers(source.getBaseUrl(), token, q);
@@ -170,9 +173,10 @@ public class SettingsService {
     public void linkGitlabAccount(Long userId,
                                   Long gitlabUserId,
                                   String username) {
-        if (!trackedUserRepository.existsById(userId)) {
-            throw new ResourceNotFoundException("TrackedUser", userId);
-        }
+        Long workspaceId = WorkspaceContext.get();
+        trackedUserRepository.findById(userId)
+            .filter(u -> workspaceId.equals(u.getWorkspaceId()))
+            .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", userId));
         userAliasService.linkGitlabAccount(userId, gitlabUserId, username);
     }
 

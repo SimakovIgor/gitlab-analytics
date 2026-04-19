@@ -5,19 +5,23 @@ import io.simakov.analytics.api.dto.request.RunSnapshotRequest;
 import io.simakov.analytics.api.dto.request.SnapshotHistoryRequest;
 import io.simakov.analytics.api.dto.response.RunSnapshotResponse;
 import io.simakov.analytics.api.dto.response.SnapshotHistoryResponse;
+import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MetricSnapshot;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
+import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.model.enums.ScopeType;
 import io.simakov.analytics.domain.model.enums.TimeGroupBy;
+import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MetricSnapshotRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +45,10 @@ class SnapshotTest extends BaseIT {
     private static final LocalDate TODAY = LocalDate.of(2026, 4, 17);
     private static final String METRICS_JSON = "{\"mr_merged_count\":5,\"lines_added\":100.0}";
 
+    @Autowired
+    private AppUserRepository appUserRepository;
+    @Autowired
+    private WorkspaceRepository workspaceRepository;
     @Autowired
     private GitSourceRepository gitSourceRepository;
     @Autowired
@@ -258,6 +266,33 @@ class SnapshotTest extends BaseIT {
 
         assertThat(resp.points()).isEmpty();
         assertThat(resp.groupBy()).isEqualTo("MONTH");
+    }
+
+    @Test
+    void historyDoesNotLeakSnapshotsFromOtherWorkspace() {
+        AppUser otherOwner = appUserRepository.save(AppUser.builder()
+            .githubId(99L).githubLogin("other-owner").lastLoginAt(java.time.Instant.now()).build());
+        Workspace otherWorkspace = workspaceRepository.save(Workspace.builder()
+            .name("Other WS").slug("other-ws").ownerId(otherOwner.getId()).plan("FREE").apiToken("other-tok").build());
+        TrackedUser otherUser = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(otherWorkspace.getId()).displayName("Other User")
+            .email("other@example.com").enabled(true).build());
+
+        snapshotRepository.save(MetricSnapshot.builder()
+            .workspaceId(otherWorkspace.getId())
+            .trackedUserId(otherUser.getId())
+            .snapshotDate(TODAY)
+            .dateFrom(TODAY.minusDays(30).atStartOfDay().toInstant(java.time.ZoneOffset.UTC))
+            .dateTo(TODAY.atStartOfDay().toInstant(java.time.ZoneOffset.UTC))
+            .windowDays(30)
+            .periodType(PeriodType.CUSTOM)
+            .scopeType(ScopeType.USER)
+            .metricsJson(METRICS_JSON)
+            .build());
+
+        SnapshotHistoryResponse resp = history(List.of(otherUser.getId()), TODAY, TODAY, TimeGroupBy.DAY);
+
+        assertThat(resp.points()).isEmpty();
     }
 
     @Test

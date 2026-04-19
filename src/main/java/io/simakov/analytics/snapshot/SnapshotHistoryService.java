@@ -36,11 +36,12 @@ public class SnapshotHistoryService {
     private final TrackedUserRepository trackedUserRepository;
     private final ObjectMapper objectMapper;
 
-    public SnapshotHistoryResponse getHistory(List<Long> userIds,
+    public SnapshotHistoryResponse getHistory(Long workspaceId,
+                                              List<Long> userIds,
                                               LocalDate from,
                                               LocalDate to,
                                               TimeGroupBy groupBy) {
-        List<MetricSnapshot> snapshots = snapshotRepository.findHistory(userIds, from, to);
+        List<MetricSnapshot> snapshots = snapshotRepository.findHistoryByWorkspace(workspaceId, userIds, from, to);
 
         Map<Long, String> userNames = loadUserNames(userIds);
 

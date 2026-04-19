@@ -4,6 +4,7 @@ import io.simakov.analytics.api.dto.request.RunSnapshotRequest;
 import io.simakov.analytics.api.dto.request.SnapshotHistoryRequest;
 import io.simakov.analytics.api.dto.response.RunSnapshotResponse;
 import io.simakov.analytics.api.dto.response.SnapshotHistoryResponse;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.snapshot.SnapshotHistoryService;
 import io.simakov.analytics.snapshot.SnapshotService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,6 +53,7 @@ public class SnapshotController {
                    + "Within each group the latest snapshot is used.")
     public SnapshotHistoryResponse history(@RequestBody @Valid SnapshotHistoryRequest request) {
         return snapshotHistoryService.getHistory(
+            WorkspaceContext.get(),
             request.userIds(),
             request.from(),
             request.to(),
