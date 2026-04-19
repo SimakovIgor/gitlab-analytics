@@ -13,6 +13,7 @@ import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -36,6 +37,7 @@ public class SnapshotHistoryService {
     private final TrackedUserRepository trackedUserRepository;
     private final ObjectMapper objectMapper;
 
+    @Transactional(readOnly = true)
     public SnapshotHistoryResponse getHistory(Long workspaceId,
                                               List<Long> userIds,
                                               LocalDate from,

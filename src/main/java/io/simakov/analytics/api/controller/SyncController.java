@@ -2,6 +2,7 @@ package io.simakov.analytics.api.controller;
 
 import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.api.dto.response.SyncJobResponse;
+import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
@@ -47,6 +48,10 @@ public class SyncController {
     @GetMapping("/jobs/{jobId}")
     @Operation(summary = "Get sync job status")
     public SyncJobResponse getJobStatus(@PathVariable Long jobId) {
-        return SyncJobResponse.from(syncJobService.findById(jobId));
+        SyncJob job = syncJobService.findById(jobId);
+        if (!WorkspaceContext.get().equals(job.getWorkspaceId())) {
+            throw new ResourceNotFoundException("SyncJob", jobId);
+        }
+        return SyncJobResponse.from(job);
     }
 }

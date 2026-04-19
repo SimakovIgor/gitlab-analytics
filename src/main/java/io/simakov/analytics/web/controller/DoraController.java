@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -30,11 +32,12 @@ public class DoraController {
         }
 
         List<TrackedProject> allProjects = doraService.getAllProjects();
+        Set<Long> workspaceIds = allProjects.stream().map(TrackedProject::getId).collect(Collectors.toSet());
         List<Long> effectiveProjectIds = (projectIds != null && !projectIds.isEmpty())
-            ? projectIds
+            ? projectIds.stream().filter(workspaceIds::contains).toList()
             : allProjects.stream().map(TrackedProject::getId).toList();
 
-        Map<String, Object> leadTime = doraService.buildLeadTimeData(projectIds, days);
+        Map<String, Object> leadTime = doraService.buildLeadTimeData(effectiveProjectIds, days);
 
         model.addAttribute("projects", allProjects);
         model.addAttribute("selectedProjectIds", effectiveProjectIds);
