@@ -137,6 +137,9 @@ public class ContributorDiscoveryService {
         Map<String, Set<String>> emailRepos = new LinkedHashMap<>();
 
         for (Object[] row : commitRepository.findContributorRowsByWorkspaceId(workspaceId)) {
+            if (row[0] == null) {
+                continue;
+            }
             String email = ((String) row[0]).toLowerCase(Locale.ROOT).strip();
             String name = row[1] != null
                 ? (String) row[1]

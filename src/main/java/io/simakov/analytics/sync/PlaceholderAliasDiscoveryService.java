@@ -47,6 +47,7 @@ public class PlaceholderAliasDiscoveryService {
 
     private static final String PLACEHOLDER_MARKER = "_placeholder_";
     private static final String PLACEHOLDER_NAME_PREFIX = "Placeholder ";
+    private static final int MAX_UNKNOWN_ID_LOOKUPS = 50;
 
     private final GitLabApiClient gitLabApiClient;
     private final MergeRequestRepository mergeRequestRepository;
@@ -62,17 +63,22 @@ public class PlaceholderAliasDiscoveryService {
      * чтобы привязать placeholder-аккаунты к новым пользователям.
      */
     @Async("syncTaskExecutor")
+    @SuppressWarnings("checkstyle:IllegalCatch")
     public void discoverForAllProjectsAsync() {
         List<TrackedProject> projects = trackedProjectRepository.findAll();
         var sourcesById = gitSourceRepository.findAll()
             .stream().collect(Collectors.toMap(GitSource::getId, s -> s));
         for (TrackedProject project : projects) {
-            GitSource source = sourcesById.get(project.getGitSourceId());
-            if (source == null) {
-                continue;
+            try {
+                GitSource source = sourcesById.get(project.getGitSourceId());
+                if (source == null) {
+                    continue;
+                }
+                String token = encryptionService.decrypt(project.getTokenEncrypted());
+                discoverAndSave(project.getWorkspaceId(), project.getId(), source.getBaseUrl(), token);
+            } catch (Exception e) {
+                log.error("Placeholder discovery failed for project={}: {}", project.getId(), e.getMessage(), e);
             }
-            String token = encryptionService.decrypt(project.getTokenEncrypted());
-            discoverAndSave(project.getWorkspaceId(), project.getId(), source.getBaseUrl(), token);
         }
     }
 
@@ -101,9 +107,16 @@ public class PlaceholderAliasDiscoveryService {
             return;
         }
 
+        List<Long> lookupIds = unknownAuthorIds;
+        if (unknownAuthorIds.size() > MAX_UNKNOWN_ID_LOOKUPS) {
+            log.warn("Too many unknown author IDs ({}) for project={}, limiting lookup to {}",
+                unknownAuthorIds.size(), trackedProjectId, MAX_UNKNOWN_ID_LOOKUPS);
+            lookupIds = unknownAuthorIds.subList(0, MAX_UNKNOWN_ID_LOOKUPS);
+        }
+
         List<TrackedUser> trackedUsers = workspaceUsers;
 
-        for (Long unknownId : unknownAuthorIds) {
+        for (Long unknownId : lookupIds) {
             GitLabUserDto user = gitLabApiClient.getUserById(baseUrl, token, unknownId);
             if (user == null || !isPlaceholder(user)) {
                 continue;

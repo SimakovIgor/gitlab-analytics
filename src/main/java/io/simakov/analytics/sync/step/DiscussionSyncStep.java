@@ -63,6 +63,9 @@ class DiscussionSyncStep implements SyncStep {
                 continue;
             }
             for (GitLabNoteDto noteDto : discussionDto.notes()) {
+                if (noteDto == null || noteDto.id() == null) {
+                    continue;
+                }
                 if (!existingNoteIds.contains(noteDto.id())) {
                     noteRepository.save(gitLabMapper.toNote(noteDto, mr.getId(), discussion.getId()));
                 }

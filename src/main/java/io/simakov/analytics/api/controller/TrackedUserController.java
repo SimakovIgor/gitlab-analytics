@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -51,6 +52,7 @@ public class TrackedUserController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     @Operation(summary = "List all tracked users with their aliases")
     public List<TrackedUserResponse> list() {
         Long workspaceId = WorkspaceContext.get();
