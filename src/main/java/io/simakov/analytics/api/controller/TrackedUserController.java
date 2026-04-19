@@ -44,7 +44,9 @@ public class TrackedUserController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a tracked user")
     public TrackedUserResponse create(@RequestBody @Valid CreateTrackedUserRequest request) {
-        TrackedUser saved = trackedUserRepository.save(trackedUserMapper.toEntity(request));
+        TrackedUser entity = trackedUserMapper.toEntity(request);
+        entity.setWorkspaceId(WorkspaceContext.get());
+        TrackedUser saved = trackedUserRepository.save(entity);
         return trackedUserMapper.toResponse(saved, List.of());
     }
 
@@ -68,7 +70,9 @@ public class TrackedUserController {
                    + "Use enabled=false to disable a user without deleting them.")
     public TrackedUserResponse update(@PathVariable Long id,
                                       @RequestBody @Valid UpdateTrackedUserRequest request) {
+        Long workspaceId = WorkspaceContext.get();
         TrackedUser user = trackedUserRepository.findById(id)
+            .filter(u -> workspaceId.equals(u.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", id));
         trackedUserMapper.updateEntity(request, user);
         trackedUserRepository.save(user);
@@ -80,7 +84,9 @@ public class TrackedUserController {
     @Operation(summary = "Add a GitLab identity alias to a tracked user")
     public TrackedUserResponse addAlias(@PathVariable Long id,
                                         @RequestBody @Valid AddUserAliasRequest request) {
+        Long workspaceId = WorkspaceContext.get();
         TrackedUser user = trackedUserRepository.findById(id)
+            .filter(u -> workspaceId.equals(u.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("TrackedUser", id));
         aliasRepository.save(trackedUserMapper.toAlias(request, user));
         return trackedUserMapper.toResponse(user, aliasRepository.findByTrackedUserId(id));

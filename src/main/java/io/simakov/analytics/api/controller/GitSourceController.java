@@ -5,6 +5,7 @@ import io.simakov.analytics.api.dto.response.GitSourceResponse;
 import io.simakov.analytics.api.mapper.GitSourceMapper;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,6 +32,7 @@ public class GitSourceController {
     @Operation(summary = "Register a GitLab source")
     public GitSourceResponse create(@RequestBody @Valid CreateGitSourceRequest request) {
         GitSource source = GitSource.builder()
+            .workspaceId(WorkspaceContext.get())
             .name(request.name())
             .baseUrl(request.baseUrl().stripTrailing())
             .build();

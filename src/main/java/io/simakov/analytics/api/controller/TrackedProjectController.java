@@ -46,6 +46,7 @@ public class TrackedProjectController {
             throw new ResourceNotFoundException("GitSource", request.gitSourceId());
         }
         TrackedProject project = trackedProjectMapper.toEntity(request);
+        project.setWorkspaceId(WorkspaceContext.get());
         project.setTokenEncrypted(encryptionService.encrypt(request.token()));
         return trackedProjectMapper.toResponse(trackedProjectRepository.save(project));
     }
@@ -63,7 +64,9 @@ public class TrackedProjectController {
     @Operation(summary = "Enable or disable a tracked project")
     public TrackedProjectResponse enable(@PathVariable Long id,
                                          @RequestBody @Valid EnableProjectRequest request) {
+        Long workspaceId = WorkspaceContext.get();
         TrackedProject project = trackedProjectRepository.findById(id)
+            .filter(p -> workspaceId.equals(p.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("TrackedProject", id));
         project.setEnabled(request.enabled());
         return trackedProjectMapper.toResponse(trackedProjectRepository.save(project));
