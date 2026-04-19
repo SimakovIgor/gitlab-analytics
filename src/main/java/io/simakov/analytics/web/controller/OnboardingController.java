@@ -3,6 +3,9 @@ package io.simakov.analytics.web.controller;
 import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.security.AppUserPrincipal;
 import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
+import io.simakov.analytics.security.WorkspaceContext;
+import io.simakov.analytics.web.ReportViewService;
+import io.simakov.analytics.web.dto.ReportPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +21,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class OnboardingController {
 
     private final WorkspaceService workspaceService;
+    private final ReportViewService reportViewService;
 
     @GetMapping("/onboarding")
     public String showOnboarding(Model model,
                                  @AuthenticationPrincipal AppUserPrincipal principal) {
-        model.addAttribute("login", principal.getAppUser().getGithubLogin());
+        if (!WorkspaceContext.isSet()) {
+            model.addAttribute("workspaceReady", false);
+            model.addAttribute("login", principal.getAppUser().getGithubLogin());
+            return "onboarding";
+        }
+
+        ReportPageData data = reportViewService.buildReportPage("LAST_30_DAYS", null, true);
+        model.addAttribute("workspaceReady", true);
+        model.addAttribute("hasSources", data.hasSources());
+        model.addAttribute("hasProjects", data.hasProjects());
+        model.addAttribute("hasUsers", data.hasUsers());
+        model.addAttribute("hasSyncCompleted", data.hasSyncCompleted());
+        model.addAttribute("activeJobIds", data.activeJobIds());
+        model.addAttribute("sources", data.sources());
         return "onboarding";
     }
 
@@ -33,6 +50,6 @@ public class OnboardingController {
         Long appUserId = principal.getAppUser().getId();
         Workspace workspace = workspaceService.createWorkspace(workspaceName.trim(), appUserId);
         session.setAttribute(WorkspaceAwareSuccessHandler.SESSION_WORKSPACE_ID, workspace.getId());
-        return "redirect:/report";
+        return "redirect:/onboarding";
     }
 }

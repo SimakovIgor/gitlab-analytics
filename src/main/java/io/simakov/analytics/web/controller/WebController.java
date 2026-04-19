@@ -48,17 +48,16 @@ public class WebController {
                          @RequestParam(defaultValue = "true") boolean showInactive,
                          @RequestParam(defaultValue = "mr_merged_count") String metric,
                          Model model) {
+        ReportPageData data = reportViewService.buildReportPage(period, projectIds, showInactive);
+        if (data.onboardingMode()) {
+            return "redirect:/onboarding";
+        }
+
         if (authentication != null) {
             model.addAttribute("currentUser", userResolver.resolve(authentication));
         }
-
-        ReportPageData data = reportViewService.buildReportPage(period, projectIds, showInactive);
         model.addAttribute("sources", data.sources());
-        model.addAttribute("hasSources", data.hasSources());
         model.addAttribute("hasProjects", data.hasProjects());
-        model.addAttribute("hasUsers", data.hasUsers());
-        model.addAttribute("onboardingMode", data.onboardingMode());
-        model.addAttribute("hasSyncCompleted", data.hasSyncCompleted());
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("usersWithAliases", data.usersWithAliases());
         model.addAttribute("allProjects", data.allProjects());

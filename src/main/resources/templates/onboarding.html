@@ -3,12 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GitLab Analytics — Добро пожаловать</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>GitLab Analytics — Настройка</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
 </head>
-<body class="login-page">
+<body th:class="${workspaceReady} ? 'app-layout' : 'login-page'">
 
-<div class="login-card">
+<!-- Topbar — только в режиме визарда -->
+<header class="topbar" th:if="${workspaceReady}">
+    <span class="topbar-brand">
+        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
+                fill="#FC6D26"/>
+        </svg>
+        GitLab Analytics
+    </span>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════
+     РЕЖИМ A: создание workspace
+     ══════════════════════════════════════════════════════════ -->
+<div class="login-card" th:if="${!workspaceReady}">
 
     <div class="login-icon">
         <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
@@ -46,6 +63,1106 @@
     <p class="login-hint">После этого подключите GitLab и добавьте репозитории</p>
 
 </div>
+
+<!-- ══════════════════════════════════════════════════════════
+     РЕЖИМ B: визард настройки (workspace уже создан)
+     ══════════════════════════════════════════════════════════ -->
+<div class="main-content" th:if="${workspaceReady}">
+
+    <div class="onboarding-wizard" id="onboarding-wizard">
+        <div class="ob-wizard-header">
+            <h2 class="ob-wizard-title">Настройка за 5 шагов</h2>
+            <p class="ob-wizard-subtitle">После добавления репозитория система автоматически загрузит данные GitLab за последние 360 дней</p>
+        </div>
+
+        <div class="ob-steps">
+
+            <!-- Шаг 1: GitLab источник -->
+            <div id="ob-step-1" th:class="${hasSources} ? 'ob-step ob-step-done' : 'ob-step ob-step-active'">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasSources} ? '✓' : '1'">1</div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Подключите GitLab</div>
+                    <div class="ob-step-desc">Укажите URL вашего инстанса GitLab</div>
+                    <div class="ob-step-action">
+                        <span class="ob-done-badge" th:if="${hasSources}">Добавлено ✓</span>
+                        <button class="btn-primary" onclick="openModal('modal-source')" th:unless="${hasSources}">
+                            + Добавить источник
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Шаг 2: Репозитории -->
+            <div id="ob-step-2"
+                 th:class="${hasProjects} ? 'ob-step ob-step-done' : (${hasSources} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasProjects} ? '✓' : '2'">2</div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Добавьте репозитории</div>
+                    <div class="ob-step-desc">Данные за 360 дней загрузятся сразу после добавления.</div>
+                    <div class="ob-step-action">
+                        <span class="ob-done-badge" th:if="${hasProjects}">Добавлено ✓</span>
+                        <button class="btn-primary" onclick="openModal('modal-project')"
+                                th:if="${!hasProjects and hasSources}">
+                            + Добавить репозиторий
+                        </button>
+                        <span class="ob-locked-hint" th:if="${!hasProjects and !hasSources}">
+                            Сначала добавьте GitLab источник
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Шаг 3: Синхронизация -->
+            <div id="ob-step-3"
+                 th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-step ob-step-done'
+                           : (${hasProjects} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num"
+                         th:text="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? '✓' : '3'">3
+                    </div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Дождитесь синхронизации</div>
+                    <div id="ob-sync-section"
+                         th:class="${hasProjects and !activeJobIds.isEmpty()} ? 'ob-sync-section' : 'ob-sync-section hidden'">
+                        <div class="ob-sync-desc">Идёт загрузка MR, коммитов и ревью за 360 дней. После завершения станет доступен следующий шаг.</div>
+                        <div id="sync-banners-ob"></div>
+                    </div>
+                    <span id="ob-sync-done-badge"
+                          th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-done-badge' : 'ob-done-badge hidden'">
+                        Синхронизировано ✓
+                    </span>
+                    <span class="ob-locked-hint" th:if="${!hasProjects}">Сначала добавьте репозиторий</span>
+                </div>
+            </div>
+
+            <!-- Шаг 4: Выберите сотрудников -->
+            <div id="ob-step-4"
+                 th:class="${hasUsers} ? 'ob-step ob-step-done'
+                           : (${hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked')">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num" th:text="${hasUsers} ? '✓' : '4'">4</div>
+                    <div class="ob-step-line"></div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">Выберите сотрудников</div>
+                    <div id="ob-select-section"
+                         th:class="${hasSyncCompleted and activeJobIds.isEmpty() and !hasUsers} ? '' : 'hidden'">
+                        <div class="ob-step-desc" style="margin-bottom:4px">
+                            Участники найдены по commit email и GitLab User ID из синхронизированных репозиториев.
+                        </div>
+                        <div class="ob-step-hint" style="margin-bottom:14px">
+                            Выберите, кого отслеживать. Добавить или убрать можно в любой момент в Настройках.
+                        </div>
+                        <div class="discovery-loading hidden" id="ob-discovery-loading">
+                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+                            Ищем участников...
+                        </div>
+                        <div class="discovery-list" id="ob-discovery-list" style="max-height:320px;overflow-y:auto"></div>
+                        <div class="discovery-actions hidden" id="ob-discovery-actions" style="margin-top:12px">
+                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
+                            <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
+                            <button class="btn-sm btn-secondary" id="ob-filter-active-btn" onclick="toggleObActivityFilter()">Только с коммитами</button>
+                            <button class="btn-sm btn-primary" id="ob-btn-add" onclick="addSelectedOb()">Добавить выбранных</button>
+                            <button class="btn-sm btn-secondary" onclick="openModal('modal-user')">+ Вручную</button>
+                        </div>
+                    </div>
+                    <span class="ob-done-badge" th:if="${hasUsers}">Добавлено ✓</span>
+                    <span class="ob-locked-hint"
+                          th:if="${!hasUsers and (!hasSyncCompleted or !activeJobIds.isEmpty())}"
+                          th:text="${!hasProjects} ? 'Сначала добавьте репозиторий'
+                                   : (!hasSyncCompleted ? 'Дождитесь окончания синхронизации'
+                                   : 'Дождитесь окончания синхронизации')">
+                    </span>
+                </div>
+            </div>
+
+            <!-- Шаг 5: Бэкфилл истории -->
+            <div id="ob-step-5"
+                 th:class="${hasUsers} ? 'ob-step ob-step-active' : 'ob-step ob-step-locked'">
+                <div class="ob-step-indicator">
+                    <div class="ob-step-num">5</div>
+                </div>
+                <div class="ob-step-content">
+                    <div class="ob-step-title">История метрик</div>
+                    <div class="ob-sync-section hidden" id="ob-backfill-section">
+                        <div class="discovery-loading" id="ob-backfill-progress">
+                            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+                            <span>
+                                Готовим историю метрик
+                                <span class="ob-backfill-hint-sub">Обычно занимает несколько секунд</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="ob-backfill-done hidden" id="ob-backfill-done-badge">
+                        <span class="ob-done-badge">Сформировано ✓</span>
+                        <span class="ob-step-desc">Снапшоты за 360 дней загружены — график динамики готов</span>
+                    </div>
+                    <span class="ob-locked-hint" th:if="${!hasUsers}">Сначала добавьте сотрудников</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Финальный блок -->
+        <div class="ob-footer hidden" id="ob-cta">
+            <div class="ob-cta-body">
+                <div class="ob-cta-title">Готово</div>
+                <div class="ob-cta-summary" id="ob-cta-summary"></div>
+            </div>
+            <a class="btn-primary ob-cta-btn" href="/report">Перейти к аналитике команды →</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ Модалки (только в режиме визарда) ═══════════════ -->
+
+<!-- Добавить источник -->
+<div class="modal-overlay hidden" id="modal-source" onclick="handleOverlayClick(event, 'modal-source')" th:if="${workspaceReady}">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Новый GitLab Source</span>
+            <button class="modal-close" onclick="closeModal('modal-source')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="source-error"></div>
+            <div class="form-group">
+                <label class="form-label">Название</label>
+                <input class="form-input" id="source-name" placeholder="Production GitLab" type="text">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Base URL</label>
+                <input class="form-input" id="source-url" placeholder="https://gitlab.example.com" type="url">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-source')">Отмена</button>
+            <button class="btn-primary" onclick="createSource()">Добавить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Добавить репозиторий -->
+<div class="modal-overlay hidden" id="modal-project" onclick="handleOverlayClick(event, 'modal-project')" th:if="${workspaceReady}">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Добавить репозиторий</span>
+            <button class="modal-close" onclick="closeModal('modal-project')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="project-error"></div>
+            <div class="form-group">
+                <label class="form-label">GitLab Source</label>
+                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
+                    <option value="">— выберите источник —</option>
+                    <option th:each="source : ${sources}"
+                            th:text="${source.name}"
+                            th:value="${source.id}">Source
+                    </option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Project Access Token</label>
+                <input class="form-input" id="project-token"
+                       oninput="clearProjectSearch(); scheduleTokenValidate()"
+                       placeholder="glpat-..." type="password">
+                <div class="token-validate-status" id="token-validate-status"></div>
+                <div class="form-hint token-hint">
+                    <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Репозиторий</label>
+                <div class="search-input-wrap">
+                    <span class="search-input-icon">🔍</span>
+                    <input autocomplete="off" class="form-input search-input-with-icon" id="project-search"
+                           oninput="debounceSearch(this.value)"
+                           placeholder="Начните вводить название..."
+                           type="search">
+                </div>
+            </div>
+            <div class="search-results hidden" id="project-search-results"></div>
+            <div class="selected-project hidden" id="project-selected">
+                <div class="selected-project-card">
+                    <span id="project-selected-name"></span>
+                    <span class="repo-path" id="project-selected-path"></span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
+            <button class="btn-primary" disabled id="btn-add-project" onclick="addProject()">Добавить и синхронизировать</button>
+        </div>
+    </div>
+</div>
+
+<!-- Добавить сотрудника -->
+<div class="modal-overlay hidden" id="modal-user" onclick="handleOverlayClick(event, 'modal-user')" th:if="${workspaceReady}">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Новый сотрудник</span>
+            <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="user-error"></div>
+            <div class="form-group" th:if="${hasProjects}">
+                <label class="form-label">Найти в GitLab</label>
+                <div class="form-group-row">
+                    <select class="form-input form-input-sm" id="user-search-source">
+                        <option th:each="source : ${sources}"
+                                th:text="${source.name}"
+                                th:value="${source.id}">Источник
+                        </option>
+                    </select>
+                    <div class="search-input-wrap" style="flex:1">
+                        <span class="search-input-icon">
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21"
+                                                                                                                                                                    y2="16.65"/></svg>
+                        </span>
+                        <input autocomplete="off" class="form-input search-input-with-icon" id="user-gl-search"
+                               oninput="debounceUserSearch(this.value)"
+                               placeholder="Имя или username..."
+                               type="search">
+                    </div>
+                </div>
+                <div class="search-results hidden" id="user-search-results"></div>
+                <div class="form-hint">Выберите — имя и email подтянутся автоматически</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Имя <span class="form-required">*</span></label>
+                <input class="form-input" id="user-name" placeholder="Иван Иванов" type="text">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email (для атрибуции коммитов) <span class="form-required">*</span></label>
+                <input class="form-input" id="user-email" placeholder="ivan@example.com" type="email">
+                <div class="form-hint">Должен совпадать с email в git-коммитах</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-user')">Отмена</button>
+            <button class="btn-primary" onclick="createUser()">Добавить</button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript" th:if="${workspaceReady}">
+    /*<![CDATA[*/
+
+    const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
+    const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
+
+    const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+
+    const OB_STATE = {
+        hasSources:  /*[[${hasSources}]]*/ false,
+        hasProjects: /*[[${hasProjects}]]*/ false,
+        hasUsers:    /*[[${hasUsers}]]*/ false
+    };
+
+    let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
+    let hasSyncCompleted = /*[[${hasSyncCompleted}]]*/ false;
+    let obAddedDevs = 0;
+    let obTotalMrs = parseInt(sessionStorage.getItem('ob_total_mrs') || '0', 10);
+
+    // ── Утилиты ──────────────────────────────────────────────────────────────
+
+    async function api(method, url, body) {
+        const headers = {'Content-Type': 'application/json'};
+        headers[CSRF_HEADER] = CSRF_TOKEN;
+        const resp = await fetch(url, {
+            method,
+            headers,
+            body: body != null ? JSON.stringify(body) : undefined
+        });
+        if (resp.status === 204) {
+            return null;
+        }
+        const data = await resp.json().catch(() => ({message: resp.statusText}));
+        if (!resp.ok) {
+            throw new Error(data.message || 'Ошибка ' + resp.status);
+        }
+        return data;
+    }
+
+    function escHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+        const errId = id.replace('modal-', '') + '-error';
+        clearModalError(errId);
+    }
+
+    function handleOverlayClick(e, id) {
+        if (e.target === e.currentTarget) {
+            closeModal(id);
+        }
+    }
+
+    function showError(errorId, msg) {
+        const el = document.getElementById(errorId);
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+
+    function clearModalError(errorId) {
+        const el = document.getElementById(errorId);
+        if (el) {
+            el.textContent = '';
+            el.classList.add('hidden');
+        }
+    }
+
+    // ── Баннеры синхронизации ─────────────────────────────────────────────────
+
+    function buildBannerHtml(jobId, descHtml) {
+        return `
+        <span class="sync-spinner"></span>
+        <div class="sync-main">
+            <span class="sync-text">${descHtml}</span>
+            <div class="sync-progress-row">
+                <div class="sync-progress-bar">
+                    <div class="sync-progress-fill" id="sync-fill-${jobId}" style="width:0%"></div>
+                </div>
+                <span class="sync-progress-label" id="sync-plabel-${jobId}">получение списка MR...</span>
+            </div>
+        </div>
+        <span class="sync-duration" id="sync-duration-${jobId}"></span>
+    `;
+    }
+
+    function showSyncBanner(jobId, projectName, isRetry) {
+        const banners = document.getElementById('sync-banners-ob');
+        const id = 'sync-banner-' + jobId;
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-banner sync-banner-running';
+        const desc = isRetry
+            ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
+            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем данные за 360 дней`;
+        div.innerHTML = buildBannerHtml(jobId, desc);
+        banners.prepend(div);
+        startBannerTimers(jobId, id, Date.now());
+    }
+
+    function restoreSyncBanner(jobId) {
+        const banners = document.getElementById('sync-banners-ob');
+        if (!banners) {
+            return;
+        }
+        const id = 'sync-banner-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-banner sync-banner-running';
+        div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...');
+        banners.prepend(div);
+        startBannerTimers(jobId, id, null);
+    }
+
+    function startBannerTimers(jobId, bannerId, localStartMs) {
+        let serverStartMs = localStartMs;
+        const durationEl = document.getElementById('sync-duration-' + jobId);
+        const durationTimer = setInterval(() => {
+            if (!serverStartMs) {
+                return;
+            }
+            const sec = Math.floor((Date.now() - serverStartMs) / 1000);
+            durationEl.textContent = formatSec(sec);
+        }, 1000);
+        pollSyncJob(jobId, bannerId, durationTimer, (startedAt) => {
+            if (!serverStartMs) {
+                serverStartMs = new Date(startedAt).getTime();
+            }
+        });
+    }
+
+    function formatSec(sec) {
+        if (sec < 60) {
+            return sec + ' с';
+        }
+        return Math.floor(sec / 60) + ' м ' + (sec % 60) + ' с';
+    }
+
+    function formatEta(sec) {
+        if (sec < 10) {
+            return 'почти готово';
+        }
+        if (sec < 60) {
+            return '~' + sec + ' с';
+        }
+        return '~' + Math.round(sec / 60) + ' мин';
+    }
+
+    function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
+        const fillEl = () => document.getElementById('sync-fill-' + jobId);
+        const labelEl = () => document.getElementById('sync-plabel-' + jobId);
+
+        const interval = setInterval(async () => {
+            try {
+                const job = await api('GET', '/settings/sync/' + jobId);
+                if (onStartedAt && job.startedAt) {
+                    onStartedAt(job.startedAt);
+                }
+                if (job.status === 'STARTED' && job.totalMrs > 0) {
+                    const pct = Math.round(job.processedMrs / job.totalMrs * 100);
+                    if (fillEl()) {
+                        fillEl().style.width = pct + '%';
+                    }
+                    const serverStartMs = new Date(job.startedAt).getTime();
+                    const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
+                    let label = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
+                    if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
+                        const rate = job.processedMrs / elapsedSec;
+                        const etaSec = Math.round((job.totalMrs - job.processedMrs) / rate);
+                        label += ' • ETA ' + formatEta(etaSec);
+                    }
+                    if (labelEl()) {
+                        labelEl().textContent = label;
+                    }
+                } else if (job.status === 'STARTED' && job.totalMrs === 0) {
+                    if (labelEl()) {
+                        labelEl().textContent = 'получение списка MR...';
+                    }
+                }
+                if (job.status === 'COMPLETED') {
+                    clearInterval(interval);
+                    clearInterval(durationTimer);
+                    activeSyncRunning = false;
+                    if (job.totalMrs > 0) {
+                        obTotalMrs = job.totalMrs;
+                        sessionStorage.setItem('ob_total_mrs', String(obTotalMrs));
+                    }
+                    if (fillEl()) {
+                        fillEl().style.width = '100%';
+                    }
+                    if (labelEl()) {
+                        labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
+                    }
+                    updateBanner(bannerId, 'ok', 'Синхронизация завершена');
+                } else if (job.status === 'FAILED') {
+                    clearInterval(interval);
+                    clearInterval(durationTimer);
+                    activeSyncRunning = false;
+                    updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
+                }
+            } catch (e) {
+                // продолжаем поллинг при сетевой ошибке
+            }
+        }, 3000);
+    }
+
+    function updateBanner(bannerId, type, message) {
+        const el = document.getElementById(bannerId);
+        if (!el) {
+            return;
+        }
+        el.className = 'sync-banner sync-banner-' + (type === 'ok' ? 'done' : 'error');
+        el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
+        if (type === 'ok') {
+            setTimeout(() => el.remove(), 5000);
+            if (!OB_STATE.hasUsers) {
+                onSyncCompletedInOnboarding();
+            }
+        }
+    }
+
+    // ── Онбординг ─────────────────────────────────────────────────────────────
+
+    function refreshOnboarding() {
+        const s = OB_STATE;
+
+        setObStep('ob-step-1', s.hasSources, true, s.hasSources ? '✓' : '1',
+            s.hasSources
+                ? '<span class="ob-done-badge">Добавлено ✓</span>'
+                : '<button class="btn-primary" onclick="openModal(\'modal-source\')">+ Добавить источник</button>'
+        );
+        setObStep('ob-step-2', s.hasProjects, s.hasSources, s.hasProjects ? '✓' : '2',
+            s.hasProjects
+                ? '<span class="ob-done-badge">Добавлено ✓</span>'
+                : s.hasSources
+                    ? '<button class="btn-primary" onclick="openModal(\'modal-project\')">+ Добавить репозиторий</button>'
+                    : '<span class="ob-locked-hint">Сначала добавьте GitLab источник</span>'
+        );
+
+        const syncDone = s.hasProjects && hasSyncCompleted && !activeSyncRunning;
+        const step3 = document.getElementById('ob-step-3');
+        if (step3) {
+            step3.className = 'ob-step ' + (syncDone ? 'ob-step-done' : s.hasProjects ? 'ob-step-active' : 'ob-step-locked');
+            const numEl = step3.querySelector('.ob-step-num');
+            if (numEl) {
+                numEl.textContent = syncDone ? '✓' : '3';
+            }
+            const syncSection = document.getElementById('ob-sync-section');
+            if (syncSection) {
+                syncSection.classList.toggle('hidden', !activeSyncRunning || !s.hasProjects);
+            }
+            const syncDoneBadge = document.getElementById('ob-sync-done-badge');
+            if (syncDoneBadge) {
+                syncDoneBadge.classList.toggle('hidden', !syncDone);
+            }
+            step3.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.toggle('hidden', s.hasProjects));
+        }
+
+        const step4 = document.getElementById('ob-step-4');
+        if (step4) {
+            step4.className = 'ob-step ' + (s.hasUsers ? 'ob-step-done' : syncDone ? 'ob-step-active' : 'ob-step-locked');
+            const numEl = step4.querySelector('.ob-step-num');
+            if (numEl) {
+                numEl.textContent = s.hasUsers ? '✓' : '4';
+            }
+            if (s.hasUsers) {
+                const selectSection = document.getElementById('ob-select-section');
+                if (selectSection) {
+                    selectSection.classList.add('hidden');
+                }
+            }
+            const selectSection = document.getElementById('ob-select-section');
+            if (selectSection && !s.hasUsers) {
+                selectSection.classList.toggle('hidden', !syncDone);
+            }
+            step4.querySelectorAll('.ob-locked-hint').forEach(el => {
+                if (syncDone) {
+                    el.classList.add('hidden');
+                } else if (s.hasProjects) {
+                    el.classList.remove('hidden');
+                    el.textContent = 'Дождитесь окончания синхронизации';
+                }
+            });
+        }
+
+        const step5 = document.getElementById('ob-step-5');
+        if (step5) {
+            step5.className = 'ob-step ' + (s.hasUsers ? 'ob-step-active' : 'ob-step-locked');
+            if (s.hasUsers) {
+                step5.querySelectorAll('.ob-locked-hint').forEach(el => el.classList.add('hidden'));
+            }
+        }
+    }
+
+    function setObStep(stepId, done, active, numText, actionHtml) {
+        const el = document.getElementById(stepId);
+        if (!el) {
+            return;
+        }
+        el.className = 'ob-step ' + (done ? 'ob-step-done' : active ? 'ob-step-active' : 'ob-step-locked');
+        el.querySelector('.ob-step-num').textContent = numText;
+        el.querySelector('.ob-step-action').innerHTML = actionHtml;
+    }
+
+    function onSyncCompletedInOnboarding() {
+        activeSyncRunning = false;
+        hasSyncCompleted = true;
+        refreshOnboarding();
+        loadObDiscovery();
+    }
+
+    async function loadObDiscovery() {
+        const loading = document.getElementById('ob-discovery-loading');
+        const listEl = document.getElementById('ob-discovery-list');
+        const actions = document.getElementById('ob-discovery-actions');
+        if (!listEl) {
+            return;
+        }
+        if (loading) {
+            loading.classList.remove('hidden');
+        }
+        try {
+            const contributors = await api('GET', '/settings/users/discovered');
+            if (loading) {
+                loading.classList.add('hidden');
+            }
+            const untracked = contributors.filter(c => !c.alreadyTracked);
+            if (untracked.length === 0) {
+                listEl.innerHTML = '<div class="empty-state" style="padding:16px">Все участники уже отслеживаются</div>';
+                return;
+            }
+            listEl.innerHTML = contributors.map(c => renderObRow(c)).join('');
+            updateObBtn();
+            if (actions) {
+                actions.classList.remove('hidden');
+            }
+        } catch (e) {
+            if (loading) {
+                loading.classList.add('hidden');
+            }
+            console.error('Ошибка загрузки контрибьютеров:', e);
+        }
+    }
+
+    function renderObRow(c) {
+        const letter = (c.primaryName || c.email)[0].toUpperCase();
+        const repos = (c.repoNames || []).map(r => `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
+        const merged = (c.mergedEmails || []).length > 0
+            ? `<span class="discovery-alt-names" title="Объединённые email: ${escHtml((c.mergedEmails || []).join(', '))}">+${c.mergedEmails.length} email</span>`
+            : '';
+        if (c.alreadyTracked) {
+            return `<div class="discovery-row discovery-row-tracked">
+            <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+            <div class="discovery-info">
+                <span class="discovery-name">${escHtml(c.primaryName)}</span>
+                <span class="discovery-email">${escHtml(c.email)}</span>
+                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
+            </div>
+            <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+        </div>`;
+        }
+        const mergedData = c.mergedEmails && c.mergedEmails.length > 0
+            ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
+        return `<label class="discovery-row discovery-row-selectable" data-commits="${c.commitCount || 0}">
+        <input type="checkbox" class="ob-check" value="${escHtml(c.email)}"
+               data-name="${escHtml(c.primaryName)}" ${mergedData}
+               onchange="updateObBtn()" checked>
+        <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+        <div class="discovery-info">
+            <span class="discovery-name">${escHtml(c.primaryName)}</span>${merged}
+            <span class="discovery-email">${escHtml(c.email)}</span>
+            <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
+        </div>
+    </label>`;
+    }
+
+    function updateObBtn() {
+        const count = document.querySelectorAll('.ob-check:checked').length;
+        const btn = document.getElementById('ob-btn-add');
+        if (btn) {
+            btn.textContent = count > 0 ? `Добавить выбранных (${count})` : 'Добавить выбранных';
+        }
+    }
+
+    function toggleAllOb(checked) {
+        document.querySelectorAll('#ob-discovery-list .discovery-row-selectable:not([style*="display: none"])').forEach(row => {
+            const cb = row.querySelector('.ob-check');
+            if (cb) {
+                cb.checked = checked;
+            }
+        });
+        updateObBtn();
+    }
+
+    let obActivityFilterActive = false;
+
+    function toggleObActivityFilter() {
+        obActivityFilterActive = !obActivityFilterActive;
+        const btn = document.getElementById('ob-filter-active-btn');
+        if (btn) {
+            btn.classList.toggle('btn-primary', obActivityFilterActive);
+            btn.classList.toggle('btn-secondary', !obActivityFilterActive);
+        }
+        document.querySelectorAll('#ob-discovery-list .discovery-row-selectable').forEach(row => {
+            const commits = parseInt(row.dataset.commits || '0', 10);
+            row.style.display = obActivityFilterActive && commits === 0 ? 'none' : '';
+        });
+        updateObBtn();
+    }
+
+    async function addSelectedOb() {
+        const checked = [...document.querySelectorAll('.ob-check:checked')];
+        if (checked.length === 0) {
+            return;
+        }
+        const requests = checked.map(cb => ({
+            displayName: cb.dataset.name || cb.value,
+            email: cb.value,
+            aliasEmails: cb.dataset.merged ? JSON.parse(cb.dataset.merged) : []
+        }));
+        const btn = document.getElementById('ob-btn-add');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Добавляем...';
+        }
+        try {
+            await api('POST', '/settings/users/bulk', requests);
+            checked.forEach(cb => {
+                const row = cb.closest('.discovery-row');
+                if (row) {
+                    const letter = (cb.dataset.name || cb.value)[0].toUpperCase();
+                    row.outerHTML = `<div class="discovery-row discovery-row-tracked">
+                    <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+                    <div class="discovery-info">
+                        <span class="discovery-name">${escHtml(cb.dataset.name)}</span>
+                        <span class="discovery-email">${escHtml(cb.value)}</span>
+                    </div>
+                    <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+                </div>`;
+                }
+            });
+            obAddedDevs = checked.length;
+            OB_STATE.hasUsers = true;
+            refreshOnboarding();
+            triggerSnapshotBackfill();
+        } catch (e) {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Добавить выбранных';
+            }
+            alert('Не удалось добавить: ' + e.message);
+        }
+    }
+
+    async function triggerSnapshotBackfill() {
+        const backfillSection = document.getElementById('ob-backfill-section');
+        const doneBadge = document.getElementById('ob-backfill-done-badge');
+        if (backfillSection) {
+            backfillSection.classList.remove('hidden');
+        }
+        try {
+            await api('POST', '/settings/snapshots/backfill');
+            if (backfillSection) {
+                backfillSection.classList.add('hidden');
+            }
+            if (doneBadge) {
+                doneBadge.classList.remove('hidden');
+            }
+            const step5 = document.getElementById('ob-step-5');
+            if (step5) {
+                step5.className = 'ob-step ob-step-done';
+                const numEl = step5.querySelector('.ob-step-num');
+                if (numEl) {
+                    numEl.textContent = '✓';
+                }
+            }
+            const cta = document.getElementById('ob-cta');
+            if (cta) {
+                const summaryEl = document.getElementById('ob-cta-summary');
+                if (summaryEl) {
+                    const devsWord = obAddedDevs === 1 ? 'разработчик' : (obAddedDevs < 5 ? 'разработчика' : 'разработчиков');
+                    const lines = [];
+                    if (obAddedDevs > 0) {
+                        lines.push(`${obAddedDevs} ${devsWord} добавлено в трекинг`);
+                    }
+                    if (obTotalMrs > 0) {
+                        lines.push(`${obTotalMrs} MR загружено из GitLab`);
+                    }
+                    lines.push('Данные за последние 360 дней');
+                    summaryEl.innerHTML = lines.map(l => `<div class="ob-cta-stat">${escHtml(l)}</div>`).join('');
+                }
+                cta.classList.remove('hidden');
+            }
+        } catch (e) {
+            if (backfillSection) {
+                backfillSection.classList.add('hidden');
+            }
+            console.error('Backfill error:', e);
+        }
+    }
+
+    // ── Sources ───────────────────────────────────────────────────────────────
+
+    async function createSource() {
+        const name = document.getElementById('source-name').value.trim();
+        const url = document.getElementById('source-url').value.trim();
+        if (!name || !url) {
+            showError('source-error', 'Заполните все поля');
+            return;
+        }
+        try {
+            const source = await api('POST', '/settings/sources', {name, baseUrl: url});
+            closeModal('modal-source');
+            document.getElementById('source-name').value = '';
+            document.getElementById('source-url').value = '';
+            const sel = document.getElementById('project-source-id');
+            if (sel) {
+                const opt = document.createElement('option');
+                opt.value = source.id;
+                opt.textContent = source.name;
+                sel.appendChild(opt);
+            }
+            OB_STATE.hasSources = true;
+            refreshOnboarding();
+        } catch (e) {
+            showError('source-error', e.message);
+        }
+    }
+
+    // ── Projects ──────────────────────────────────────────────────────────────
+
+    let selectedProject = null;
+    let searchDebounceTimer = null;
+    let tokenValidateTimer = null;
+    let tokenIsValid = false;
+
+    function updateAddProjectBtn() {
+        const sourceId = document.getElementById('project-source-id').value;
+        const btn = document.getElementById('btn-add-project');
+        btn.disabled = !(sourceId && tokenIsValid && selectedProject);
+    }
+
+    function scheduleTokenValidate() {
+        clearTimeout(tokenValidateTimer);
+        const token = document.getElementById('project-token').value.trim();
+        const statusEl = document.getElementById('token-validate-status');
+        const inputEl = document.getElementById('project-token');
+        const hintEl = inputEl?.closest('.form-group')?.querySelector('.token-hint');
+        if (!token) {
+            tokenIsValid = false;
+            if (statusEl) {
+                statusEl.className = 'token-validate-status';
+                statusEl.textContent = '';
+            }
+            if (inputEl) {
+                inputEl.classList.remove('token-ok', 'token-error');
+            }
+            if (hintEl) {
+                hintEl.style.display = '';
+            }
+            updateAddProjectBtn();
+            return;
+        }
+        if (statusEl) {
+            statusEl.className = 'token-validate-status tv-loading';
+            statusEl.textContent = 'Проверяем токен...';
+        }
+        tokenValidateTimer = setTimeout(() => validateToken(token, statusEl, inputEl, hintEl), 600);
+    }
+
+    async function validateToken(token, statusEl, inputEl, hintEl) {
+        const sourceId = document.getElementById('project-source-id').value;
+        if (!sourceId) {
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-loading';
+                statusEl.textContent = 'Сначала выберите GitLab Source';
+            }
+            return;
+        }
+        try {
+            const result = await api('GET',
+                '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
+            if (result.valid) {
+                tokenIsValid = true;
+                if (statusEl) {
+                    statusEl.className = 'token-validate-status tv-ok';
+                    statusEl.textContent = '✓ Токен действителен · используется только для чтения';
+                }
+                if (inputEl) {
+                    inputEl.classList.remove('token-error');
+                    inputEl.classList.add('token-ok');
+                }
+                if (hintEl) {
+                    hintEl.style.display = 'none';
+                }
+            } else {
+                tokenIsValid = false;
+                if (statusEl) {
+                    statusEl.className = 'token-validate-status tv-error';
+                    statusEl.textContent = '✕ ' + (result.error || 'Токен недействителен');
+                }
+                if (inputEl) {
+                    inputEl.classList.remove('token-ok');
+                    inputEl.classList.add('token-error');
+                }
+                if (hintEl) {
+                    hintEl.style.display = '';
+                }
+            }
+        } catch (e) {
+            tokenIsValid = false;
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-error';
+                statusEl.textContent = '✕ Не удалось проверить токен';
+            }
+        }
+        updateAddProjectBtn();
+    }
+
+    function clearProjectSearch() {
+        const searchEl = document.getElementById('project-search');
+        if (searchEl) {
+            searchEl.value = '';
+        }
+        document.getElementById('project-search-results').innerHTML = '';
+        document.getElementById('project-search-results').classList.add('hidden');
+        selectedProject = null;
+        document.getElementById('project-selected').classList.add('hidden');
+        updateAddProjectBtn();
+    }
+
+    function debounceSearch(q) {
+        clearTimeout(searchDebounceTimer);
+        if (!q || q.length < 2) {
+            document.getElementById('project-search-results').classList.add('hidden');
+            return;
+        }
+        searchDebounceTimer = setTimeout(() => searchProjects(q), 400);
+    }
+
+    async function searchProjects(q) {
+        const sourceId = document.getElementById('project-source-id').value;
+        const token = document.getElementById('project-token').value.trim();
+        if (!sourceId) {
+            showError('project-error', 'Сначала выберите GitLab Source');
+            return;
+        }
+        if (!token) {
+            showError('project-error', 'Введите Project Access Token');
+            return;
+        }
+        clearModalError('project-error');
+        const resultsEl = document.getElementById('project-search-results');
+        resultsEl.innerHTML = '<div class="search-loading">Поиск...</div>';
+        resultsEl.classList.remove('hidden');
+        try {
+            const projects = await api('GET',
+                '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q)
+                + '&token=' + encodeURIComponent(token));
+            if (!projects.length) {
+                resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
+                return;
+            }
+            resultsEl.innerHTML = projects.slice(0, 20).map(p => `
+            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
+                <div class="search-item-name">${escHtml(p.name)}</div>
+                <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
+            </div>`).join('');
+        } catch (e) {
+            resultsEl.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
+        }
+    }
+
+    function selectProject(id, name, path) {
+        selectedProject = {id, name, path};
+        document.getElementById('project-search-results').classList.add('hidden');
+        document.getElementById('project-selected').classList.remove('hidden');
+        document.getElementById('project-selected-name').textContent = name;
+        document.getElementById('project-selected-path').textContent = path;
+        updateAddProjectBtn();
+    }
+
+    async function addProject() {
+        if (!selectedProject) {
+            return;
+        }
+        const sourceId = document.getElementById('project-source-id').value;
+        const token = document.getElementById('project-token').value.trim();
+        if (!sourceId) {
+            showError('project-error', 'Выберите GitLab Source');
+            return;
+        }
+        if (!token) {
+            showError('project-error', 'Введите Project Access Token');
+            return;
+        }
+        const btn = document.getElementById('btn-add-project');
+        btn.disabled = true;
+        btn.textContent = 'Синхронизируем...';
+        try {
+            const result = await api('POST', '/settings/projects', {
+                gitSourceId: parseInt(sourceId),
+                gitlabProjectId: selectedProject.id,
+                pathWithNamespace: selectedProject.path,
+                name: selectedProject.name,
+                token
+            });
+            closeModal('modal-project');
+            clearProjectSearch();
+            document.getElementById('project-token').value = '';
+            btn.disabled = false;
+            btn.textContent = 'Добавить и синхронизировать';
+            showSyncBanner(result.jobId, result.name, false);
+            OB_STATE.hasProjects = true;
+            activeSyncRunning = true;
+            refreshOnboarding();
+        } catch (e) {
+            showError('project-error', e.message);
+            btn.disabled = false;
+            btn.textContent = 'Добавить и синхронизировать';
+        }
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+
+    let userSearchTimer = null;
+
+    function debounceUserSearch(q) {
+        clearTimeout(userSearchTimer);
+        if (q.length < 2) {
+            document.getElementById('user-search-results').classList.add('hidden');
+            return;
+        }
+        userSearchTimer = setTimeout(() => doUserSearch(q), 350);
+    }
+
+    async function doUserSearch(q) {
+        const sourceId = document.getElementById('user-search-source')?.value;
+        if (!sourceId) {
+            return;
+        }
+        const results = document.getElementById('user-search-results');
+        results.innerHTML = '<div class="search-loading">Поиск...</div>';
+        results.classList.remove('hidden');
+        try {
+            const users = await api('GET', `/settings/sources/${sourceId}/users/search?q=${encodeURIComponent(q)}`);
+            if (users.length === 0) {
+                results.innerHTML = '<div class="search-empty">Пользователи не найдены</div>';
+                return;
+            }
+            results.innerHTML = users.slice(0, 10).map(u => `
+            <div class="search-result-item" onclick="selectGitLabUser(${JSON.stringify(u).replace(/"/g, '&quot;')})">
+                <img src="${escHtml(u.avatar_url || '')}" class="search-result-avatar" onerror="this.style.display='none'">
+                <div class="search-result-info">
+                    <div class="search-result-name">${escHtml(u.name)}</div>
+                    <div class="search-result-sub">@${escHtml(u.username)}${u.public_email ? ' · ' + escHtml(u.public_email) : ''}</div>
+                </div>
+                ${u.public_email ? '<span class="search-result-email-badge">email ✓</span>' : ''}
+            </div>`).join('');
+        } catch (e) {
+            results.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
+        }
+    }
+
+    function selectGitLabUser(user) {
+        document.getElementById('user-name').value = user.name || '';
+        document.getElementById('user-email').value = user.public_email || '';
+        document.getElementById('user-search-results').classList.add('hidden');
+        document.getElementById('user-gl-search').value = '';
+    }
+
+    async function createUser() {
+        const name = document.getElementById('user-name').value.trim();
+        const email = document.getElementById('user-email').value.trim();
+        if (!name) {
+            showError('user-error', 'Введите имя сотрудника');
+            return;
+        }
+        try {
+            await api('POST', '/settings/users', {displayName: name, email: email || null});
+            closeModal('modal-user');
+            document.getElementById('user-name').value = '';
+            document.getElementById('user-email').value = '';
+            OB_STATE.hasUsers = true;
+            refreshOnboarding();
+        } catch (e) {
+            showError('user-error', e.message);
+        }
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    document.addEventListener('DOMContentLoaded', () => {
+        ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
+        if (hasSyncCompleted && OB_STATE.hasProjects && !OB_STATE.hasUsers && !activeSyncRunning) {
+            loadObDiscovery();
+        }
+        refreshOnboarding();
+    });
+
+    /*]]>*/
+</script>
 
 </body>
 </html>
