@@ -7,6 +7,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -14,6 +17,7 @@ import java.io.IOException;
 
 /**
  * Sets WorkspaceContext from HTTP session for web (non-API) requests.
+ * Authenticated users without a workspace are redirected to /onboarding.
  * API requests are handled by BearerTokenAuthFilter.
  */
 @Component
@@ -30,16 +34,37 @@ public class WorkspaceContextFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-        if (session != null) {
-            Long workspaceId = (Long) session.getAttribute(WorkspaceAwareSuccessHandler.SESSION_WORKSPACE_ID);
-            if (workspaceId != null) {
-                WorkspaceContext.set(workspaceId);
-            }
+        Long workspaceId = session == null
+            ? null
+            : (Long) session.getAttribute(WorkspaceAwareSuccessHandler.SESSION_WORKSPACE_ID);
+
+        if (workspaceId != null) {
+            WorkspaceContext.set(workspaceId);
+        } else if (requiresWorkspace(request.getRequestURI()) && isAuthenticated()) {
+            response.sendRedirect("/onboarding");
+            return;
         }
+
         try {
             filterChain.doFilter(request, response);
         } finally {
             WorkspaceContext.clear();
         }
+    }
+
+    @SuppressWarnings("checkstyle:BooleanExpressionComplexity")
+    private static boolean requiresWorkspace(String uri) {
+        return !"/onboarding".equals(uri)
+            && !uri.startsWith("/oauth2/")
+            && !"/login".equals(uri)
+            && !"/logout".equals(uri)
+            && !uri.startsWith("/css/")
+            && !uri.startsWith("/js/")
+            && !uri.startsWith("/actuator/");
+    }
+
+    private static boolean isAuthenticated() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken);
     }
 }

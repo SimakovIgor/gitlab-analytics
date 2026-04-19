@@ -20,6 +20,7 @@ import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
 import io.simakov.analytics.web.dto.ReportSummary;
+import io.simakov.analytics.web.dto.UserWithAliases;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -65,7 +66,7 @@ public class ReportViewService {
 
         boolean hasSyncCompleted = syncJobRepository.existsByStatus(SyncStatus.COMPLETED);
 
-        List<Map<String, Object>> usersWithAliases = buildUsersWithAliases(allUsers);
+        List<UserWithAliases> usersWithAliases = buildUsersWithAliases(allUsers);
 
         if (onboardingMode) {
             return new ReportPageData(
@@ -119,42 +120,44 @@ public class ReportViewService {
         );
     }
 
-    private List<Map<String, Object>> buildUsersWithAliases(List<TrackedUser> users) {
+    private List<UserWithAliases> buildUsersWithAliases(List<TrackedUser> users) {
+        List<Long> userIds = users.stream().map(TrackedUser::getId).toList();
+        Map<Long, List<TrackedUserAlias>> aliasesByUserId = aliasRepository
+            .findByTrackedUserIdIn(userIds)
+            .stream()
+            .collect(Collectors.groupingBy(TrackedUserAlias::getTrackedUserId));
         return users.stream()
-            .map(u -> {
-                List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserId(u.getId());
-                Map<String, Object> entry = new HashMap<>();
-                entry.put("user", u);
-                entry.put("aliases", aliases);
-                return entry;
-            })
+            .map(u -> new UserWithAliases(u, aliasesByUserId.getOrDefault(u.getId(), List.of())))
             .toList();
     }
 
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     private Map<Long, Map<String, Number>> buildDeltas(List<UserMetrics> current,
                                                        Map<Long, UserMetrics> prev) {
         Map<Long, Map<String, Number>> result = new HashMap<>();
         for (UserMetrics m : current) {
             UserMetrics p = prev.get(m.getTrackedUserId());
-            if (p == null) {
-                continue;
+            if (p != null) {
+                result.put(m.getTrackedUserId(), computeDelta(m, p));
             }
-            Map<String, Number> d = new HashMap<>();
-            d.put("mrMerged", m.getMrMergedCount() - p.getMrMergedCount());
-            d.put("linesAdded", m.getLinesAdded() - p.getLinesAdded());
-            d.put("linesDeleted", m.getLinesDeleted() - p.getLinesDeleted());
-            d.put("commits", m.getCommitsInMrCount() - p.getCommitsInMrCount());
-            d.put("comments", m.getReviewCommentsWrittenCount() - p.getReviewCommentsWrittenCount());
-            d.put("reviewed", m.getMrsReviewedCount() - p.getMrsReviewedCount());
-            d.put("approvals", m.getApprovalsGivenCount() - p.getApprovalsGivenCount());
-            d.put("activeDays", m.getActiveDaysCount() - p.getActiveDaysCount());
-            if (m.getAvgTimeToMergeMinutes() != null && p.getAvgTimeToMergeMinutes() != null) {
-                d.put("timeToMerge", m.getAvgTimeToMergeMinutes() - p.getAvgTimeToMergeMinutes());
-            }
-            result.put(m.getTrackedUserId(), d);
         }
         return result;
+    }
+
+    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+    private Map<String, Number> computeDelta(UserMetrics m, UserMetrics p) {
+        Map<String, Number> d = new HashMap<>();
+        d.put("mrMerged", m.getMrMergedCount() - p.getMrMergedCount());
+        d.put("linesAdded", m.getLinesAdded() - p.getLinesAdded());
+        d.put("linesDeleted", m.getLinesDeleted() - p.getLinesDeleted());
+        d.put("commits", m.getCommitsInMrCount() - p.getCommitsInMrCount());
+        d.put("comments", m.getReviewCommentsWrittenCount() - p.getReviewCommentsWrittenCount());
+        d.put("reviewed", m.getMrsReviewedCount() - p.getMrsReviewedCount());
+        d.put("approvals", m.getApprovalsGivenCount() - p.getApprovalsGivenCount());
+        d.put("activeDays", m.getActiveDaysCount() - p.getActiveDaysCount());
+        if (m.getAvgTimeToMergeMinutes() != null && p.getAvgTimeToMergeMinutes() != null) {
+            d.put("timeToMerge", m.getAvgTimeToMergeMinutes() - p.getAvgTimeToMergeMinutes());
+        }
+        return d;
     }
 
     private ReportSummary buildSummary(List<UserMetrics> metrics,
