@@ -15,6 +15,7 @@ import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -50,6 +51,7 @@ public class SettingsViewService {
         return (secs / 60) + " м " + (secs % 60) + " с";
     }
 
+    @Transactional(readOnly = true)
     public SettingsPageData buildSettingsPage() {
         Long workspaceId = WorkspaceContext.get();
         List<GitSource> sources = gitSourceRepository.findAllByWorkspaceId(workspaceId);

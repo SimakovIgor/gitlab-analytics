@@ -27,10 +27,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -120,33 +122,39 @@ public class SnapshotService {
         Map<Long, UserMetrics> metrics = metricCalculationService.calculate(
             resolvedProjectIds, resolvedUserIds, dateFrom, dateTo);
 
-        int saved = 0;
+        Map<Long, MetricSnapshot> existingByUserId = snapshotRepository
+            .findByWorkspaceIdAndSnapshotDateAndTrackedUserIdIn(workspaceId, snapshotDate, resolvedUserIds)
+            .stream().collect(Collectors.toMap(MetricSnapshot::getTrackedUserId, s -> s));
+
+        List<MetricSnapshot> toSave = new ArrayList<>();
         for (Map.Entry<Long, UserMetrics> entry : metrics.entrySet()) {
-            if (saveSnapshot(workspaceId, entry.getKey(), snapshotDate, dateFrom, dateTo, windowDays, entry.getValue())) {
-                saved++;
+            MetricSnapshot built = buildSnapshot(workspaceId, entry.getKey(), snapshotDate,
+                dateFrom, dateTo, windowDays, entry.getValue(),
+                existingByUserId.get(entry.getKey()));
+            if (built != null) {
+                toSave.add(built);
             }
         }
+        snapshotRepository.saveAll(toSave);
 
-        log.info("Saved {} snapshots for workspace={}, date={}, windowDays={}", saved, workspaceId, snapshotDate, windowDays);
-        return new RunSnapshotResponse(saved, snapshotDate);
+        log.info("Saved {} snapshots for workspace={}, date={}, windowDays={}", toSave.size(), workspaceId, snapshotDate, windowDays);
+        return new RunSnapshotResponse(toSave.size(), snapshotDate);
     }
 
-    private boolean saveSnapshot(Long workspaceId,
-                                 Long userId,
-                                 LocalDate snapshotDate,
-                                 Instant dateFrom,
-                                 Instant dateTo,
-                                 int windowDays,
-                                 UserMetrics userMetrics) {
+    private MetricSnapshot buildSnapshot(Long workspaceId,
+                                         Long userId,
+                                         LocalDate snapshotDate,
+                                         Instant dateFrom,
+                                         Instant dateTo,
+                                         int windowDays,
+                                         UserMetrics userMetrics,
+                                         MetricSnapshot existing) {
         try {
             Map<String, Object> allMetrics = new LinkedHashMap<>(userMetrics.toMetricsMap());
             allMetrics.putAll(userMetrics.toNormalizedMap());
             String json = objectMapper.writeValueAsString(allMetrics);
 
-            MetricSnapshot snapshot = snapshotRepository
-                .findByWorkspaceIdAndTrackedUserIdAndSnapshotDate(workspaceId, userId, snapshotDate)
-                .orElseGet(MetricSnapshot::new);
-
+            MetricSnapshot snapshot = existing != null ? existing : new MetricSnapshot();
             snapshot.setWorkspaceId(workspaceId);
             snapshot.setTrackedUserId(userId);
             snapshot.setSnapshotDate(snapshotDate);
@@ -156,11 +164,10 @@ public class SnapshotService {
             snapshot.setPeriodType(PeriodType.CUSTOM);
             snapshot.setScopeType(ScopeType.USER);
             snapshot.setMetricsJson(json);
-            snapshotRepository.save(snapshot);
-            return true;
+            return snapshot;
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize metrics for user {}", userId, e);
-            return false;
+            return null;
         }
     }
 

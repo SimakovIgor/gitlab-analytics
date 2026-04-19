@@ -46,7 +46,7 @@ public class WebController {
                          @RequestParam(defaultValue = "LAST_30_DAYS") String period,
                          @RequestParam(required = false) List<Long> projectIds,
                          @RequestParam(defaultValue = "true") boolean showInactive,
-                         @RequestParam(defaultValue = "mr_merged_count") String metric,
+                         @RequestParam(required = false) String metric,
                          Model model) {
         ReportPageData data = reportViewService.buildReportPage(period, projectIds, showInactive);
         if (data.onboardingMode()) {
@@ -85,7 +85,7 @@ public class WebController {
     public String chartJson(@RequestParam(defaultValue = "LAST_30_DAYS") String period,
                             @RequestParam(required = false) List<Long> projectIds,
                             @RequestParam(defaultValue = "false") boolean showInactive,
-                            @RequestParam(defaultValue = "mr_merged_count") String metric) {
+                            @RequestParam(required = false) String metric) {
         return historyViewService.buildHistoryPage(metric, period, projectIds, showInactive).chartJson();
     }
 

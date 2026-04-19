@@ -18,6 +18,10 @@ public interface MetricSnapshotRepository extends JpaRepository<MetricSnapshot, 
                                                                               Long trackedUserId,
                                                                               LocalDate snapshotDate);
 
+    List<MetricSnapshot> findByWorkspaceIdAndSnapshotDateAndTrackedUserIdIn(Long workspaceId,
+                                                                            LocalDate snapshotDate,
+                                                                            List<Long> userIds);
+
     @Query("""
         SELECT s FROM MetricSnapshot s
         WHERE s.trackedUserId IN :userIds

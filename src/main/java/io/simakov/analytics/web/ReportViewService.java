@@ -25,6 +25,7 @@ import io.simakov.analytics.web.dto.ReportSummary;
 import io.simakov.analytics.web.dto.UserWithAliases;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -50,6 +51,7 @@ public class ReportViewService {
     private final MetricCalculationService metricCalculationService;
     private final MergeRequestRepository mergeRequestRepository;
 
+    @Transactional(readOnly = true)
     public ReportPageData buildReportPage(String period,
                                           List<Long> requestedProjectIds,
                                           boolean showInactive) {
@@ -209,6 +211,7 @@ public class ReportViewService {
             : values.get(mid);
     }
 
+    @Transactional(readOnly = true)
     public List<MrSummaryDto> getUserMrs(Long userId,
                                          String period,
                                          List<Long> requestedProjectIds) {

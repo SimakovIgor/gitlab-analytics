@@ -20,4 +20,20 @@ public interface TrackedUserRepository extends JpaRepository<TrackedUser, Long> 
 
     @Query("SELECT u.email FROM TrackedUser u WHERE u.workspaceId = :workspaceId AND u.email IS NOT NULL AND u.email <> ''")
     List<String> findAllEmailsByWorkspaceId(@Param("workspaceId") Long workspaceId);
+
+    /**
+     * Returns IDs of enabled tracked users who authored at least one MR in the given projects.
+     * Replaces a 3-query chain: findDistinctAuthorIds → findByGitlabUserIdIn → filter by tracked user.
+     */
+    @Query(value = """
+        SELECT DISTINCT tu.id
+        FROM tracked_user tu
+        JOIN tracked_user_alias tua ON tua.tracked_user_id = tu.id
+        JOIN merge_request mr ON mr.author_gitlab_user_id = tua.gitlab_user_id
+        WHERE mr.tracked_project_id IN (:projectIds)
+          AND tu.workspace_id = :workspaceId
+          AND tu.enabled = true
+        """, nativeQuery = true)
+    List<Long> findEnabledIdsByWorkspaceIdAndProjectIds(@Param("workspaceId") Long workspaceId,
+                                                        @Param("projectIds") List<Long> projectIds);
 }

@@ -6,12 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.domain.model.MetricSnapshot;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
-import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.PeriodType;
-import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.MetricSnapshotRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
-import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.security.WorkspaceContext;
@@ -47,8 +44,6 @@ public class HistoryViewService {
 
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedProjectRepository trackedProjectRepository;
-    private final TrackedUserAliasRepository trackedUserAliasRepository;
-    private final MergeRequestRepository mergeRequestRepository;
     private final MetricSnapshotRepository metricSnapshotRepository;
     private final ObjectMapper objectMapper;
 
@@ -56,6 +51,7 @@ public class HistoryViewService {
                                             String period,
                                             List<Long> requestedProjectIds,
                                             boolean showInactive) {
+        String effectiveMetric = (metric != null && !metric.isBlank()) ? metric : Metric.MR_MERGED_COUNT.key();
         PeriodType periodType;
         try {
             periodType = PeriodType.valueOf(period);
@@ -69,16 +65,14 @@ public class HistoryViewService {
             ? List.of()
             : requestedProjectIds;
 
-        List<TrackedUser> users = trackedUserRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId);
-
-        if (!selectedProjectIds.isEmpty()) {
-            List<Long> gitlabUserIds = mergeRequestRepository
-                .findDistinctAuthorIdsByTrackedProjectIdIn(selectedProjectIds);
-            Set<Long> trackedUserIds = trackedUserAliasRepository
-                .findByGitlabUserIdIn(gitlabUserIds)
-                .stream().map(TrackedUserAlias::getTrackedUserId)
-                .collect(Collectors.toSet());
-            users = users.stream().filter(u -> trackedUserIds.contains(u.getId())).toList();
+        List<TrackedUser> allEnabledUsers = trackedUserRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId);
+        List<TrackedUser> users;
+        if (selectedProjectIds.isEmpty()) {
+            users = allEnabledUsers;
+        } else {
+            Set<Long> activeUserIds = Set.copyOf(
+                trackedUserRepository.findEnabledIdsByWorkspaceIdAndProjectIds(workspaceId, selectedProjectIds));
+            users = allEnabledUsers.stream().filter(u -> activeUserIds.contains(u.getId())).toList();
         }
 
         LocalDate dateTo = DateTimeUtils.currentDateUtc();
@@ -87,15 +81,16 @@ public class HistoryViewService {
         String chartJson = "{}";
         if (!users.isEmpty()) {
             List<Long> userIds = users.stream().map(TrackedUser::getId).toList();
-            List<MetricSnapshot> snapshots = metricSnapshotRepository.findHistory(userIds, dateFrom, dateTo);
-            chartJson = buildChartJson(snapshots, users, metric, showInactive);
+            List<MetricSnapshot> snapshots = metricSnapshotRepository
+                .findHistoryByWorkspace(workspaceId, userIds, dateFrom, dateTo);
+            chartJson = buildChartJson(snapshots, users, effectiveMetric, showInactive);
         }
 
         return new HistoryPageData(
             chartJson,
-            metric,
+            effectiveMetric,
             periodType.name(),
-            METRIC_OPTIONS.getOrDefault(metric, metric),
+            METRIC_OPTIONS.getOrDefault(effectiveMetric, effectiveMetric),
             METRIC_OPTIONS,
             dateFrom,
             dateTo,
