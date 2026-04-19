@@ -185,6 +185,16 @@ DB_PASSWORD=analytics \
 
 ## Observability
 
+### Порты
+
+| Сервис       | Порт   | URL                          |
+|--------------|--------|------------------------------|
+| Приложение   | `8080` | http://localhost:8080        |
+| Prometheus   | `9090` | http://localhost:9090        |
+| Grafana      | `3000` | http://localhost:3000        |
+
+### Health / Actuator endpoints
+
 | Endpoint                     | Описание                                     |
 |------------------------------|----------------------------------------------|
 | `/actuator/health`           | Полный health: БД, диск, liveness, readiness |
@@ -193,7 +203,19 @@ DB_PASSWORD=analytics \
 | `/actuator/metrics`          | Список всех метрик Micrometer                |
 | `/actuator/prometheus`       | Scrape endpoint для Prometheus               |
 
-Метрики включены: JVM, process, system, HTTP server requests, HikariCP. Все метрики содержат тег `application=gitlab-analytics`.
+Метрики включены: JVM, process, system, HTTP server requests, HikariCP, Logback. Все метрики содержат тег `application=gitlab-analytics`.
+
+### Локальный мониторинг (Prometheus + Grafana)
+
+```bash
+docker compose -f docker-compose.monitoring.yml up -d
+```
+
+Grafana: http://localhost:3000 — логин `admin` / пароль `admin`.
+Datasource и dashboard (Spring Boot — 15 панелей) provisioned автоматически.
+
+> По умолчанию Prometheus scrape-ит `host.docker.internal:8080` — работает, когда приложение запущено локально (`./gradlew bootRun`).
+> Если приложение запущено в Docker (`docker compose up`), смени target в `monitoring/prometheus.yml` на `app:8080`.
 
 ---
 
