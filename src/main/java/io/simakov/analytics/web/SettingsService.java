@@ -65,6 +65,7 @@ public class SettingsService {
         return gitSourceRepository.save(source);
     }
 
+    @Transactional
     public void deleteSource(Long id) {
         Long workspaceId = WorkspaceContext.get();
         gitSourceRepository.findById(id)
@@ -102,6 +103,7 @@ public class SettingsService {
         return gitLabApiClient.searchProjects(source.getBaseUrl(), token, q);
     }
 
+    @Transactional
     public CreatedProjectResult createProject(CreateTrackedProjectRequest request) {
         Long workspaceId = WorkspaceContext.get();
         gitSourceRepository.findById(request.gitSourceId())
@@ -115,6 +117,7 @@ public class SettingsService {
         return new CreatedProjectResult(saved, job.jobId());
     }
 
+    @Transactional
     public void deleteProject(Long id) {
         Long workspaceId = WorkspaceContext.get();
         trackedProjectRepository.findById(id)
@@ -188,6 +191,7 @@ public class SettingsService {
         userAliasService.linkGitlabAccount(userId, gitlabUserId, username);
     }
 
+    @Transactional
     public void deleteUser(Long id) {
         Long workspaceId = WorkspaceContext.get();
         trackedUserRepository.findById(id)

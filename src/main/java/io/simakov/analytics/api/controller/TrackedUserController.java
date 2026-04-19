@@ -67,6 +67,7 @@ public class TrackedUserController {
     }
 
     @PatchMapping("/{id}")
+    @Transactional
     @Operation(summary = "Update a tracked user",
                description = "Partial update — only provided fields are changed. "
                    + "Use enabled=false to disable a user without deleting them.")
@@ -82,6 +83,7 @@ public class TrackedUserController {
     }
 
     @PostMapping("/{id}/aliases")
+    @Transactional
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Add a GitLab identity alias to a tracked user")
     public TrackedUserResponse addAlias(@PathVariable Long id,

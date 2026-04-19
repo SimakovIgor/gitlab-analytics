@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
@@ -69,7 +70,7 @@ class HistoryChartTest extends BaseIT {
             .trackedUserId(alice.getId())
             .periodType(PeriodType.LAST_30_DAYS)
             .scopeType(ScopeType.USER)
-            .snapshotDate(LocalDate.now())
+            .snapshotDate(LocalDate.now(ZoneOffset.UTC))
             .windowDays(30)
             .dateFrom(Instant.now().minusSeconds(30L * 86_400))
             .dateTo(Instant.now())
