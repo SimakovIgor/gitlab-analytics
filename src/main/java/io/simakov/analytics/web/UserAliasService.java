@@ -74,6 +74,7 @@ public class UserAliasService {
      * Например, для "a.upatov@uzum.com" ищет username="a.upatov".
      * Возвращает null если проект ещё не настроен или username не найден.
      */
+    @SuppressWarnings("checkstyle:IllegalCatch")
     private Long resolveGitlabUserId(String email) {
         if (!email.contains("@")) {
             return null;
@@ -94,10 +95,15 @@ public class UserAliasService {
         }
         String token = encryptionService.decrypt(project.getTokenEncrypted());
         String username = email.substring(0, email.indexOf('@'));
-        Long resolved = gitLabApiClient.findUserIdByUsername(source.getBaseUrl(), token, username).orElse(null);
-        if (resolved == null) {
-            log.debug("Could not resolve GitLab user ID for email {} (username={})", email, username);
+        try {
+            Long resolved = gitLabApiClient.findUserIdByUsername(source.getBaseUrl(), token, username).orElse(null);
+            if (resolved == null) {
+                log.debug("Could not resolve GitLab user ID for email {} (username={})", email, username);
+            }
+            return resolved;
+        } catch (RuntimeException e) {
+            log.warn("Failed to resolve GitLab user ID for email {} (username={}): {}", email, username, e.getMessage());
+            return null;
         }
-        return resolved;
     }
 }
