@@ -13,27 +13,30 @@ import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.model.UserMetrics;
-import io.simakov.analytics.util.DateTimeUtils;
+import io.simakov.analytics.metrics.provider.MetricProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Facade that loads data from repositories and delegates metric computation
+ * to the registered {@link MetricProvider} implementations.
+ *
+ * <p>Spring collects all {@code MetricProvider} beans in {@link org.springframework.core.annotation.Order}
+ * order and injects them as {@code List<MetricProvider>}. To add a new metric group,
+ * create a new {@code @Component} that implements {@code MetricProvider} — no changes here needed.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -45,6 +48,7 @@ public class MetricCalculationService {
     private final MergeRequestCommitRepository commitRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
+    private final List<MetricProvider> metricProviders;
 
     /**
      * Calculate metrics for all requested users over the given period.
@@ -53,7 +57,7 @@ public class MetricCalculationService {
      * @param userIds    tracked user IDs to calculate metrics for
      * @param dateFrom   start of period (inclusive)
      * @param dateTo     end of period (inclusive)
-     * @return map of trackedUserId → UserMetrics
+     * @return map of trackedUserId -> UserMetrics
      */
     @Transactional(readOnly = true)
     public Map<Long, UserMetrics> calculate(List<Long> projectIds,
@@ -67,7 +71,7 @@ public class MetricCalculationService {
 
         List<Long> mrIds = allMrs.stream().map(MergeRequest::getId).toList();
 
-        // Загружаем все связанные данные одним batch-запросом, чтобы избежать N+1
+        // Batch-load all related data to avoid N+1
         Map<Long, List<MergeRequestNote>> notesByMrId = noteRepository.findByMergeRequestIdIn(mrIds)
             .stream().collect(Collectors.groupingBy(MergeRequestNote::getMergeRequestId));
         Map<Long, List<MergeRequestApproval>> approvalsByMrId = approvalRepository.findByMergeRequestIdIn(mrIds)
@@ -85,146 +89,57 @@ public class MetricCalculationService {
             }
             AliasData alias = aliasDataByUser.getOrDefault(userId, AliasData.empty());
             if (alias.gitlabIds().isEmpty() && alias.emails().isEmpty() && user.getEmail() == null) {
-                log.warn("TrackedUser {} has no email and no aliases — metrics will be empty", userId);
+                log.warn("TrackedUser {} has no email and no aliases -- metrics will be empty", userId);
             }
-            results.put(userId, calculateForUser(user, alias, allMrs, notesByMrId, approvalsByMrId, commitsByMrId));
+
+            Set<String> aliasEmails = buildAliasEmails(user, alias);
+            List<MergeRequest> authoredMrs = resolveAuthoredMrs(
+                alias.gitlabIds(), aliasEmails, allMrs, commitsByMrId);
+            List<MergeRequestCommit> userCommits = collectUserCommits(
+                authoredMrs, commitsByMrId, user, aliasEmails);
+
+            @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+            MetricContext ctx = new MetricContext(
+                user, aliasEmails, alias.gitlabIds(),
+                authoredMrs, userCommits,
+                notesByMrId, approvalsByMrId, commitsByMrId
+            );
+
+            UserMetrics.UserMetricsBuilder builder = UserMetrics.builder()
+                .trackedUserId(user.getId())
+                .displayName(user.getDisplayName());
+
+            metricProviders.forEach(p -> p.populate(ctx, builder));
+            results.put(userId, builder.build());
         }
         return results;
     }
 
-    private UserMetrics calculateForUser(TrackedUser user,
-                                         AliasData alias,
-                                         List<MergeRequest> allMrs,
-                                         Map<Long, List<MergeRequestNote>> notesByMrId,
-                                         Map<Long, List<MergeRequestApproval>> approvalsByMrId,
-                                         Map<Long, List<MergeRequestCommit>> commitsByMrId) {
-        Set<Long> gitlabIds = alias.gitlabIds();
-        // Включаем основной email TrackedUser в сет поиска: alias-записи создаются только
-        // при добавлении через discovery/bulk, а вручную добавленный пользователь имеет
-        // email только в TrackedUser.email — без этого все метрики будут нулями.
-        Set<String> aliasEmails = new HashSet<>(alias.emails());
+    // ---- Data preparation helpers ------------------------------------------
+
+    private Set<String> buildAliasEmails(TrackedUser user, AliasData alias) {
+        Set<String> emails = new HashSet<>(alias.emails());
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
-            aliasEmails.add(user.getEmail().toLowerCase(Locale.ROOT));
+            emails.add(user.getEmail().toLowerCase(Locale.ROOT));
         }
+        return emails;
+    }
 
-        // --- Authored MRs ---
-        final Set<Long> finalAuthoredMrIds = resolveAuthoredMrIds(
-            aliasEmails, gitlabIds, allMrs, commitsByMrId);
-        List<MergeRequest> authoredMrs = allMrs.stream()
-            .filter(mr -> finalAuthoredMrIds.contains(mr.getId()))
+    private List<MergeRequest> resolveAuthoredMrs(Set<Long> gitlabIds,
+                                                  Set<String> aliasEmails,
+                                                  List<MergeRequest> allMrs,
+                                                  Map<Long, List<MergeRequestCommit>> commitsByMrId) {
+        Set<Long> authoredMrIds = resolveAuthoredMrIds(gitlabIds, aliasEmails, allMrs, commitsByMrId);
+        return allMrs.stream()
+            .filter(mr -> authoredMrIds.contains(mr.getId()))
             .toList();
-        int mrMergedCount = (int) authoredMrs.stream().filter(mr -> mr.getMergedAtGitlab() != null).count();
-        Set<Long> projectsTouched = authoredMrs.stream()
-            .map(MergeRequest::getTrackedProjectId).collect(Collectors.toSet());
-
-        // --- Commits & volume ---
-        List<MergeRequestCommit> userCommits =
-            collectUserCommits(finalAuthoredMrIds, commitsByMrId, user, aliasEmails);
-        ChangeVolume volume = computeChangeVolume(userCommits, authoredMrs, commitsByMrId);
-        // --- Notes & approvals ---
-        List<MergeRequestNote> userNotes = notesByMrId.values().stream()
-            .flatMap(Collection::stream)
-            .filter(n -> gitlabIds.contains(n.getAuthorGitlabUserId()))
-            .toList();
-        List<MergeRequestApproval> userApprovals = approvalsByMrId.values().stream()
-            .flatMap(Collection::stream)
-            .filter(a -> gitlabIds.contains(a.getApprovedByGitlabUserId()))
-            .toList();
-
-        int activeDaysCount = collectActiveDays(userCommits, userNotes, userApprovals).size();
-        // MR считается просмотренным, если пользователь оставил хотя бы один
-        // не-системный комментарий ИЛИ подтвердил (approve) чужой MR
-        List<MergeRequestNote> reviewNotes = userNotes.stream()
-            .filter(n -> !n.isSystem() && !finalAuthoredMrIds.contains(n.getMergeRequestId()))
-            .toList();
-        Set<Long> reviewedMrIds = reviewNotes.stream()
-            .map(MergeRequestNote::getMergeRequestId)
-            .collect(Collectors.toCollection(HashSet::new));
-        userApprovals.stream()
-            .map(MergeRequestApproval::getMergeRequestId)
-            .filter(id -> !finalAuthoredMrIds.contains(id))
-            .forEach(reviewedMrIds::add);
-        int mrsReviewedCount = reviewedMrIds.size();
-        int approvalsGivenCount = (int) userApprovals.stream()
-            .filter(a -> !finalAuthoredMrIds.contains(a.getMergeRequestId())).count();
-
-        // --- Flow ---
-        FlowResult flow = computeFlowMetrics(authoredMrs, gitlabIds, user, aliasEmails,
-            notesByMrId, approvalsByMrId, commitsByMrId);
-
-        double reworkRatio = mrMergedCount > 0
-            ? (double) flow.reworkMrCount() / mrMergedCount
-            : 0.0;
-        double mrMergedPerActiveDay = activeDaysCount > 0
-            ? (double) mrMergedCount / activeDaysCount
-            : 0.0;
-        double commentsPerReviewedMr = mrsReviewedCount > 0
-            ? (double) reviewNotes.size() / mrsReviewedCount
-            : 0.0;
-
-        return UserMetrics.builder()
-            .trackedUserId(user.getId())
-            .displayName(user.getDisplayName())
-            // Delivery
-            .mrOpenedCount(authoredMrs.size())
-            .mrMergedCount(mrMergedCount)
-            .activeDaysCount(activeDaysCount)
-            .repositoriesTouchedCount(projectsTouched.size())
-            .commitsInMrCount(userCommits.size())
-            // Change volume
-            .linesAdded(volume.linesAdded())
-            .linesDeleted(volume.linesDeleted())
-            .linesChanged(volume.linesAdded() + volume.linesDeleted())
-            .filesChanged(volume.filesChanged())
-            .avgMrSizeLines(volume.avgMrSizeLines())
-            .medianMrSizeLines(volume.medianMrSizeLines())
-            .avgMrSizeFiles(volume.avgMrSizeFiles())
-            // Review
-            .reviewCommentsWrittenCount(reviewNotes.size())
-            .mrsReviewedCount(mrsReviewedCount)
-            .approvalsGivenCount(approvalsGivenCount)
-            .reviewThreadsStartedCount((int) countReviewThreadsStarted(reviewNotes, notesByMrId))
-            // Flow
-            .avgTimeToFirstReviewMinutes(MetricsMathUtils.optMean(flow.timeToFirstReview()))
-            .medianTimeToFirstReviewMinutes(MetricsMathUtils.optMedian(flow.timeToFirstReview()))
-            .avgTimeToMergeMinutes(MetricsMathUtils.optMean(flow.timeToMerge()))
-            .medianTimeToMergeMinutes(MetricsMathUtils.optMedian(flow.timeToMerge()))
-            .reworkMrCount(flow.reworkMrCount())
-            .reworkRatio(MetricsMathUtils.round2(reworkRatio))
-            // Normalized
-            .mrMergedPerActiveDay(MetricsMathUtils.round2(mrMergedPerActiveDay))
-            .commentsPerReviewedMr(MetricsMathUtils.round2(commentsPerReviewedMr))
-            .build();
     }
 
     /**
-     * Возвращает дедуплицированный (по SHA) список коммитов пользователя в его MR.
-     * Один коммит может присутствовать в нескольких MR (dev→stage→master цепочки) —
-     * без дедупликации строки и счётчик коммитов были бы задвоены/затроены.
+     * MR attribution: by author_gitlab_user_id (primary) or by first commit email (fallback).
      */
-    private List<MergeRequestCommit> collectUserCommits(Set<Long> authoredMrIds,
-                                                        Map<Long, List<MergeRequestCommit>> commitsByMrId,
-                                                        TrackedUser user,
-                                                        Set<String> aliasEmails) {
-        return commitsByMrId.entrySet().stream()
-            .filter(e -> authoredMrIds.contains(e.getKey()))
-            .flatMap(e -> e.getValue().stream())
-            .filter(c -> isUserCommit(c, user, aliasEmails))
-            .collect(Collectors.toMap(
-                MergeRequestCommit::getGitlabCommitSha,
-                c -> c,
-                (a, b) -> a
-            ))
-            .values().stream().toList();
-    }
-
-    /**
-     * MR считается авторским по полю author_gitlab_user_id — это явный атрибут GitLab,
-     * точнее любых эвристик по коммитам. Email используется только для подсчёта строк.
-     * Fallback на email-эвристику (первый коммит) если gitlabIds не заданы.
-     */
-    private Set<Long> resolveAuthoredMrIds(Set<String> aliasEmails,
-                                           Set<Long> gitlabIds,
+    private Set<Long> resolveAuthoredMrIds(Set<Long> gitlabIds,
+                                           Set<String> aliasEmails,
                                            List<MergeRequest> allMrs,
                                            Map<Long, List<MergeRequestCommit>> commitsByMrId) {
         if (!gitlabIds.isEmpty()) {
@@ -233,7 +148,7 @@ public class MetricCalculationService {
                 .map(MergeRequest::getId)
                 .collect(Collectors.toSet());
         }
-        // Fallback: gitlabUserId не задан — ищем по первому коммиту в MR
+        // Fallback: no GitLab user ID -- identify by earliest commit email in each MR
         return commitsByMrId.entrySet().stream()
             .filter(e -> {
                 MergeRequestCommit first = e.getValue().stream()
@@ -248,149 +163,29 @@ public class MetricCalculationService {
             .collect(Collectors.toSet());
     }
 
-    private ChangeVolume computeChangeVolume(List<MergeRequestCommit> userCommits,
-                                             List<MergeRequest> authoredMrs,
-                                             Map<Long, List<MergeRequestCommit>> commitsByMrId) {
-        int linesAdded = userCommits.stream().mapToInt(MergeRequestCommit::getAdditions).sum();
-        int linesDeleted = userCommits.stream().mapToInt(MergeRequestCommit::getDeletions).sum();
-        int filesChanged = userCommits.stream().mapToInt(MergeRequestCommit::getFilesChangedCount).sum();
-
-        // Размер MR в строках — сумма по всем коммитам MR (не только коммитам пользователя).
-        // MR без коммитов (size=0) исключаются, чтобы не занижать среднее
-        List<Integer> mrSizesLines = authoredMrs.stream()
-            .map(mr -> commitsByMrId.getOrDefault(mr.getId(), List.of()).stream()
-                .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
-            .filter(size -> size > 0)
-            .sorted()
-            .toList();
-
-        // Размер MR в файлах берётся с уровня MR-сущности (GitLab отдаёт напрямую)
-        List<Integer> mrSizesFiles = authoredMrs.stream()
-            .map(MergeRequest::getFilesChangedCount)
-            .sorted()
-            .toList();
-
-        return new ChangeVolume(
-            linesAdded, linesDeleted, filesChanged,
-            MetricsMathUtils.round2(mrSizesLines.isEmpty()
-                ? 0
-                : MetricsMathUtils.mean(mrSizesLines)),
-            MetricsMathUtils.round2(mrSizesLines.isEmpty()
-                ? 0
-                : MetricsMathUtils.median(mrSizesLines)),
-            MetricsMathUtils.round2(mrSizesFiles.isEmpty()
-                ? 0
-                : MetricsMathUtils.mean(mrSizesFiles))
-        );
-    }
-
-    private Set<String> collectActiveDays(List<MergeRequestCommit> userCommits,
-                                          List<MergeRequestNote> userNotes,
-                                          List<MergeRequestApproval> userApprovals) {
-        Set<String> activeDays = new HashSet<>();
-        userCommits.stream().map(MergeRequestCommit::getAuthoredDate)
-            .filter(Objects::nonNull).map(DateTimeUtils::toDateString).forEach(activeDays::add);
-        userNotes.stream().map(MergeRequestNote::getCreatedAtGitlab)
-            .filter(Objects::nonNull).map(DateTimeUtils::toDateString).forEach(activeDays::add);
-        userApprovals.stream().map(MergeRequestApproval::getApprovedAtGitlab)
-            .filter(Objects::nonNull).map(DateTimeUtils::toDateString).forEach(activeDays::add);
-        return activeDays;
-    }
-
-    private FlowResult computeFlowMetrics(List<MergeRequest> authoredMrs,
-                                          Set<Long> gitlabIds,
-                                          TrackedUser user,
-                                          Set<String> aliasEmails,
-                                          Map<Long, List<MergeRequestNote>> notesByMrId,
-                                          Map<Long, List<MergeRequestApproval>> approvalsByMrId,
-                                          Map<Long, List<MergeRequestCommit>> commitsByMrId) {
-        List<Long> timeToFirstReview = new ArrayList<>();
-        List<Long> timeToMerge = new ArrayList<>();
-        int reworkMrCount = 0;
-
-        for (MergeRequest mr : authoredMrs) {
-            List<MergeRequestNote> mrNotes = notesByMrId.getOrDefault(mr.getId(), List.of());
-            List<MergeRequestApproval> mrApprovals = approvalsByMrId.getOrDefault(mr.getId(), List.of());
-            List<MergeRequestCommit> mrCommits = commitsByMrId.getOrDefault(mr.getId(), List.of());
-
-            Optional<Instant> firstExternalReview = findFirstExternalReviewEvent(gitlabIds, mrNotes, mrApprovals);
-
-            if (firstExternalReview.isPresent()) {
-                long minutes = DateTimeUtils.minutesBetween(mr.getCreatedAtGitlab(), firstExternalReview.get());
-                if (minutes >= 0) {
-                    timeToFirstReview.add(minutes);
-                }
-                if (isReworked(mrCommits, user, aliasEmails, firstExternalReview.get())) {
-                    reworkMrCount++;
-                }
-            }
-
-            collectTimeToMerge(mr, timeToMerge);
-        }
-
-        return new FlowResult(timeToFirstReview, timeToMerge, reworkMrCount);
-    }
-
     /**
-     * Первое внешнее событие ревью: не-системная заметка ИЛИ апрув от участника,
-     * который не является автором MR. Оба источника учитываются, берётся
-     * наиболее ранний timestamp.
+     * Deduplicated (by SHA) commits authored by the user in their MRs.
+     * One SHA can appear in multiple MRs (squash chains) -- deduplication prevents double-counting.
      */
-    private Optional<Instant> findFirstExternalReviewEvent(Set<Long> authorGitlabIds,
-                                                           List<MergeRequestNote> notes,
-                                                           List<MergeRequestApproval> approvals) {
-        Optional<Instant> firstNote = notes.stream()
-            .filter(n -> !n.isSystem())
-            .filter(n -> n.getAuthorGitlabUserId() != null
-                && !authorGitlabIds.contains(n.getAuthorGitlabUserId()))
-            .map(MergeRequestNote::getCreatedAtGitlab)
-            .filter(Objects::nonNull)
-            .min(Instant::compareTo);
-
-        Optional<Instant> firstApproval = approvals.stream()
-            .filter(a -> a.getApprovedByGitlabUserId() != null
-                && !authorGitlabIds.contains(a.getApprovedByGitlabUserId()))
-            .map(MergeRequestApproval::getApprovedAtGitlab)
-            .filter(Objects::nonNull)
-            .min(Instant::compareTo);
-
-        if (firstNote.isEmpty()) {
-            return firstApproval;
-        }
-        return firstApproval
-            .map(instant -> firstNote.get().isBefore(instant)
-                ? firstNote.get()
-                : instant)
-            .or(() -> firstNote);
+    private List<MergeRequestCommit> collectUserCommits(List<MergeRequest> authoredMrs,
+                                                        Map<Long, List<MergeRequestCommit>> commitsByMrId,
+                                                        TrackedUser user,
+                                                        Set<String> aliasEmails) {
+        Set<Long> authoredMrIds = authoredMrs.stream()
+            .map(MergeRequest::getId)
+            .collect(Collectors.toSet());
+        return commitsByMrId.entrySet().stream()
+            .filter(e -> authoredMrIds.contains(e.getKey()))
+            .flatMap(e -> e.getValue().stream())
+            .filter(c -> isUserCommit(c, user, aliasEmails))
+            .collect(Collectors.toMap(
+                MergeRequestCommit::getGitlabCommitSha,
+                c -> c,
+                (a, b) -> a
+            ))
+            .values().stream().toList();
     }
 
-    /**
-     * Тред считается начатым пользователем, если его заметка — самая ранняя
-     * в рамках данного discussionId среди всех MR. Это позволяет отличить
-     * инициатора обсуждения от участника, который отвечает в уже существующем треде.
-     */
-    private long countReviewThreadsStarted(List<MergeRequestNote> reviewNotes,
-                                           Map<Long, List<MergeRequestNote>> notesByMrId) {
-        Map<Long, Instant> firstNoteByDiscussion = new HashMap<>();
-        notesByMrId.values().stream()
-            .flatMap(Collection::stream)
-            .filter(n -> n.getDiscussionId() != null && n.getCreatedAtGitlab() != null)
-            .forEach(n -> firstNoteByDiscussion.merge(n.getDiscussionId(), n.getCreatedAtGitlab(),
-                (a, b) -> a.isBefore(b)
-                    ? a
-                    : b));
-
-        return reviewNotes.stream()
-            .filter(n -> n.getDiscussionId() != null && n.getCreatedAtGitlab() != null)
-            .filter(n -> n.getCreatedAtGitlab().equals(firstNoteByDiscussion.get(n.getDiscussionId())))
-            .count();
-    }
-
-    /**
-     * Коммит считается принадлежащим пользователю по email автора коммита.
-     * GitLab не проставляет gitlabUserId на коммитах — только email. Поэтому
-     * сравниваем с основным email TrackedUser и всеми alias-email'ами.
-     */
     private boolean isUserCommit(MergeRequestCommit commit,
                                  TrackedUser user,
                                  Set<String> aliasEmails) {
@@ -403,12 +198,10 @@ public class MetricCalculationService {
     }
 
     /**
-     * Загружает алиасы всех пользователей одним запросом в БД, чтобы избежать N+1
-     * при итерации по списку userIds. Возвращает сгруппированные gitlabIds и email'ы.
+     * Loads all aliases in one batch to avoid N+1 per user.
      */
     private Map<Long, AliasData> resolveAliasData(List<Long> userIds) {
         List<TrackedUserAlias> aliases = aliasRepository.findByTrackedUserIdIn(userIds);
-
         Map<Long, Set<Long>> gitlabIdsByUser = aliases.stream()
             .filter(a -> a.getGitlabUserId() != null)
             .collect(Collectors.groupingBy(
@@ -421,7 +214,6 @@ public class MetricCalculationService {
                 TrackedUserAlias::getTrackedUserId,
                 Collectors.mapping(a -> a.getEmail().toLowerCase(Locale.ROOT), Collectors.toSet())
             ));
-
         return userIds.stream().collect(Collectors.toMap(
             id -> id,
             id -> new AliasData(
@@ -431,54 +223,10 @@ public class MetricCalculationService {
         ));
     }
 
-    private void collectTimeToMerge(MergeRequest mr,
-                                    List<Long> timeToMerge) {
-        if (mr.getMergedAtGitlab() == null) {
-            return;
-        }
-        long minutes = DateTimeUtils.minutesBetween(mr.getCreatedAtGitlab(), mr.getMergedAtGitlab());
-        if (minutes >= 0) {
-            timeToMerge.add(minutes);
-        }
-    }
-
-    /**
-     * Rework — автор залил коммит ПОСЛЕ первого внешнего ревью.
-     * Сигнализирует, что изменения потребовали доработки по итогам code review.
-     */
-    private boolean isReworked(List<MergeRequestCommit> mrCommits,
-                               TrackedUser user,
-                               Set<String> aliasEmails,
-                               Instant firstExternalReview) {
-        return mrCommits.stream()
-            .filter(c -> isUserCommit(c, user, aliasEmails))
-            .filter(c -> c.getAuthoredDate() != null)
-            .anyMatch(c -> c.getAuthoredDate().isAfter(firstExternalReview));
-    }
-
-    // -----------------------------------------------------------------------
-    // Inner types
-    // -----------------------------------------------------------------------
-
     private record AliasData(Set<Long> gitlabIds, Set<String> emails) {
 
         static AliasData empty() {
             return new AliasData(Set.of(), Set.of());
         }
-    }
-
-    private record ChangeVolume(int linesAdded,
-                                int linesDeleted,
-                                int filesChanged,
-                                double avgMrSizeLines,
-                                double medianMrSizeLines,
-                                double avgMrSizeFiles) {
-
-    }
-
-    private record FlowResult(List<Long> timeToFirstReview,
-                              List<Long> timeToMerge,
-                              int reworkMrCount) {
-
     }
 }

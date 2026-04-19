@@ -9,7 +9,7 @@ import java.util.List;
  * Все методы — чистые функции без состояния.
  */
 @UtilityClass
-final class MetricsMathUtils {
+public final class MetricsMathUtils {
 
     /**
      * Среднее арифметическое списка чисел.
