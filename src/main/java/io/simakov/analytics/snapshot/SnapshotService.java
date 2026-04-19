@@ -75,13 +75,18 @@ public class SnapshotService {
     }
 
     @Scheduled(cron = "${app.snapshot.cron:0 0 2 * * *}")
+    @SuppressWarnings("checkstyle:IllegalCatch")
     public void runDailySnapshot() {
         log.info("Running daily metric snapshot for all workspaces");
         List<Workspace> workspaces = workspaceRepository.findAll();
         int windowDays = appProperties.snapshot().windowDays();
         LocalDate today = DateTimeUtils.currentDateUtc();
         for (Workspace workspace : workspaces) {
-            run(workspace.getId(), null, null, windowDays, today);
+            try {
+                run(workspace.getId(), null, null, windowDays, today);
+            } catch (Exception e) {
+                log.error("Daily snapshot failed for workspace={}: {}", workspace.getId(), e.getMessage(), e);
+            }
         }
     }
 

@@ -241,8 +241,12 @@ public class GitLabApiClient {
             if (nextPage == null || nextPage.isBlank()) {
                 break;
             }
-
-            page = Integer.parseInt(nextPage);
+            try {
+                page = Integer.parseInt(nextPage);
+            } catch (NumberFormatException e) {
+                log.warn("Unexpected X-Next-Page header value '{}', stopping pagination", nextPage);
+                break;
+            }
         }
 
         return all;
