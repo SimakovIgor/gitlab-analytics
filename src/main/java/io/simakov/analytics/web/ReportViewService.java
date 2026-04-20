@@ -42,6 +42,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("PMD.GodClass")
 @Service
 @RequiredArgsConstructor
 public class ReportViewService {
@@ -311,8 +312,12 @@ public class ReportViewService {
             if (!userEmails.isEmpty() && !userEmails.contains(email)) {
                 continue;
             }
+            // Merge commits (parent_ids > 1) carry inflated stats from the merged branch —
+            // they must not contribute to line counts (commit count still includes them).
+            int additions = c.isMergeCommit() ? 0 : c.getAdditions();
+            int deletions = c.isMergeCommit() ? 0 : c.getDeletions();
             result.merge(c.getMergeRequestId(),
-                new MrCommitStats(c.getAdditions(), c.getDeletions(), 1),
+                new MrCommitStats(additions, deletions, 1),
                 MrCommitStats::merge);
         }
         return result;

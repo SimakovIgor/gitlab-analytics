@@ -45,6 +45,9 @@ dependencies {
     // Metrics
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
+    // Loki log shipping
+    implementation("com.github.loki4j:loki-logback-appender:1.5.2")
+
     // Database
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")

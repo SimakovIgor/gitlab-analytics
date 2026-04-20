@@ -27,6 +27,7 @@ import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.dto.CreatedProjectResult;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SettingsService {
@@ -164,7 +166,7 @@ public class SettingsService {
                 return user;
             })
             .toList();
-        snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
+        scheduleBackfill(workspaceId);
         return saved;
     }
 
@@ -175,7 +177,7 @@ public class SettingsService {
         TrackedUser saved = trackedUserRepository.save(entity);
         userAliasService.saveAlias(saved.getId(), request.email());
         userAliasService.saveAliases(saved.getId(), request.aliasEmails());
-        snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
+        scheduleBackfill(workspaceId);
         return saved;
     }
 
@@ -201,7 +203,17 @@ public class SettingsService {
     // ── Snapshots ────────────────────────────────────────────────────────────
 
     public void triggerSnapshotBackfill() {
-        snapshotService.runDailyBackfillAsync(WorkspaceContext.get(), BACKFILL_DAYS);
+        scheduleBackfill(WorkspaceContext.get());
+    }
+
+    private void scheduleBackfill(Long workspaceId) {
+        try {
+            snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
+        } catch (Exception e) {
+            // snapshotExecutor uses DiscardPolicy, but guard defensively: a rejected backfill must
+            // never propagate into @Transactional callers and trigger an unexpected rollback.
+            log.warn("Snapshot backfill could not be scheduled for workspace={}: {}", workspaceId, e.getMessage());
+        }
     }
 
     // ── Sync ─────────────────────────────────────────────────────────────────

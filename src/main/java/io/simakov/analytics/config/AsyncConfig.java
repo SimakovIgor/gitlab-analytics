@@ -38,14 +38,31 @@ public class AsyncConfig {
         return executor;
     }
 
+    @Bean(name = "snapshotExecutor")
+    public Executor snapshotExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // Backfill is low-priority background work; kept separate from syncTaskExecutor so that
+        // snapshot tasks never compete with sync jobs for threads or trigger RejectedExecutionException
+        // inside @Transactional callers.  DiscardPolicy: if a backfill is already queued/running
+        // the new duplicate is silently dropped — idempotent reruns cover the same data anyway.
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(10);
+        executor.setThreadNamePrefix("snapshot-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(120);
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "commitStatsExecutor")
     public Executor commitStatsExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // I/O-bound: each thread blocks on a single GitLab HTTP call (GET /repository/commits/:sha).
-        // 7 threads × ~5 calls/s ≈ 2100 req/min — stays within GitLab.com limit (2000 req/min).
-        // Self-managed instances typically have higher or no rate limits, so this is conservative.
-        executor.setCorePoolSize(7);
-        executor.setMaxPoolSize(7);
+        // 6 threads × ~5 calls/s ≈ 1800 req/min — below GitLab rate limit with headroom for retries.
+        executor.setCorePoolSize(6);
+        executor.setMaxPoolSize(6);
         executor.setQueueCapacity(2000);
         executor.setThreadNamePrefix("commit-stats-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());

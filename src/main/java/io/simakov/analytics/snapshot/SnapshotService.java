@@ -51,7 +51,7 @@ public class SnapshotService {
      * Создаёт ежедневные снапшоты за последние {@code days} дней (шаг 1 день).
      * Использует текущий WorkspaceContext.
      */
-    @Async("syncTaskExecutor")
+    @Async("snapshotExecutor")
     public void runDailyBackfillAsync(Long workspaceId, int days) {
         runDailyBackfill(workspaceId, days);
     }

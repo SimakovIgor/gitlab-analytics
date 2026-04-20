@@ -367,6 +367,29 @@ class SettingsControllerTest extends BaseIT {
 
     @Test
     @WithMockUser
+    void createUsersBulkReturns201AndPersistsAllUsers() throws Exception {
+        String body = objectMapper.writeValueAsString(List.of(
+            Map.of("displayName", "Alice", "email", "alice@example.com"),
+            Map.of("displayName", "Bob", "email", "bob@example.com"),
+            Map.of("displayName", "Charlie")
+        ));
+
+        mockMvc.perform(post("/settings/users/bulk")
+                .session(webSession)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.created.length()").value(3))
+            .andExpect(jsonPath("$.created[0].displayName").value("Alice"))
+            .andExpect(jsonPath("$.created[1].displayName").value("Bob"))
+            .andExpect(jsonPath("$.created[2].displayName").value("Charlie"));
+
+        assertThat(trackedUserRepository.findAll()).hasSize(3);
+    }
+
+    @Test
+    @WithMockUser
     void createUserReturns201AndPersistsToDb() throws Exception {
         mockMvc.perform(post("/settings/users")
                 .session(webSession)
