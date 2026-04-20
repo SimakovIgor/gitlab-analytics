@@ -11,7 +11,7 @@ chmod +x scripts/*.sh
 ## Предварительные условия
 
 ### Локальная разработка
-- [OrbStack](https://orbstack.dev/) — используется как Docker-движок
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — используется как Docker-движок
 - Файл `.env.local` в корне проекта (скопируйте из `.env.example`)
 
 ### Работа с удалённым сервером

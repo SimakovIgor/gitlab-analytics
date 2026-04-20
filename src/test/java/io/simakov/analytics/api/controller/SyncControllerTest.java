@@ -1,5 +1,7 @@
 package io.simakov.analytics.api.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.BaseIT;
 import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.api.dto.response.SyncJobResponse;
@@ -37,6 +39,9 @@ class SyncControllerTest extends BaseIT {
 
     @Autowired
     private GitSourceRepository gitSourceRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void startManualSyncReturns202AndCreatesJob() {
@@ -178,6 +183,122 @@ class SyncControllerTest extends BaseIT {
         }
 
         assertThat(finalStatus).isEqualTo(SyncStatus.COMPLETED);
+    }
+
+    // ── Idempotency: duplicate sync protection ────────────────────────────────
+
+    @Test
+    void startManualSync_whenActiveJobExists_returnsExistingJobWithoutCreatingDuplicate() {
+        TrackedProject project = createTrackedProject();
+        SyncJob existingJob = seedStartedJob(List.of(project.getId()));
+
+        ManualSyncRequest request = new ManualSyncRequest(
+            List.of(project.getId()),
+            Instant.now().minus(30, ChronoUnit.DAYS),
+            Instant.now(),
+            true, true, true
+        );
+
+        ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
+            "/api/v1/sync/manual",
+            HttpMethod.POST,
+            new HttpEntity<>(request, authHeaders()),
+            SyncJobResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody().jobId()).isEqualTo(existingJob.getId());
+        assertThat(response.getBody().status()).isEqualTo(SyncStatus.STARTED);
+        assertThat(syncJobRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void startManualSync_whenActiveJobExistsForOverlappingProject_returnsExistingJob() {
+        TrackedProject project1 = createTrackedProjectWithGitlabId(1L);
+        TrackedProject project2 = createTrackedProjectWithGitlabId(2L);
+        TrackedProject project3 = createTrackedProjectWithGitlabId(3L);
+        // Running job covers project1 + project2
+        SyncJob existingJob = seedStartedJob(List.of(project1.getId(), project2.getId()));
+
+        // New request overlaps on project2
+        ManualSyncRequest request = new ManualSyncRequest(
+            List.of(project2.getId(), project3.getId()),
+            Instant.now().minus(30, ChronoUnit.DAYS),
+            Instant.now(),
+            false, false, false
+        );
+
+        ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
+            "/api/v1/sync/manual",
+            HttpMethod.POST,
+            new HttpEntity<>(request, authHeaders()),
+            SyncJobResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody().jobId()).isEqualTo(existingJob.getId());
+        assertThat(syncJobRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void startManualSync_whenOnlyCompletedJobExists_createsNewJob() {
+        TrackedProject project = createTrackedProject();
+        seedCompletedJob(List.of(project.getId()));
+
+        when(gitLabApiClient.getMergeRequests(anyString(), anyString(), any(), any(Instant.class), any(Instant.class)))
+            .thenReturn(List.of());
+
+        ManualSyncRequest request = new ManualSyncRequest(
+            List.of(project.getId()),
+            Instant.now().minus(30, ChronoUnit.DAYS),
+            Instant.now(),
+            false, false, false
+        );
+
+        ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
+            "/api/v1/sync/manual",
+            HttpMethod.POST,
+            new HttpEntity<>(request, authHeaders()),
+            SyncJobResponse.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody().status()).isEqualTo(SyncStatus.STARTED);
+        assertThat(syncJobRepository.count()).isEqualTo(2); // old completed + new started
+    }
+
+    private SyncJob seedStartedJob(List<Long> projectIds) {
+        return syncJobRepository.save(SyncJob.builder()
+            .workspaceId(testWorkspaceId)
+            .status(SyncStatus.STARTED)
+            .dateFrom(Instant.now().minus(30, ChronoUnit.DAYS))
+            .dateTo(Instant.now())
+            .payloadJson(toPayloadJson(projectIds))
+            .build());
+    }
+
+    private void seedCompletedJob(List<Long> projectIds) {
+        syncJobRepository.save(SyncJob.builder()
+            .workspaceId(testWorkspaceId)
+            .status(SyncStatus.COMPLETED)
+            .dateFrom(Instant.now().minus(30, ChronoUnit.DAYS))
+            .dateTo(Instant.now())
+            .payloadJson(toPayloadJson(projectIds))
+            .build());
+    }
+
+    private String toPayloadJson(List<Long> projectIds) {
+        try {
+            ManualSyncRequest payload = new ManualSyncRequest(
+                projectIds,
+                Instant.now().minus(30, ChronoUnit.DAYS),
+                Instant.now(),
+                false, false, false
+            );
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize payload", e);
+        }
     }
 
     private TrackedProject createTrackedProjectWithGitlabId(Long gitlabProjectId) {

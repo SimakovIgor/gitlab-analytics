@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # dev-start.sh — запускает всё локальное окружение для разработки:
-#   PostgreSQL + Prometheus + Grafana (OrbStack) → Spring Boot (gradle bootRun)
+#   PostgreSQL + Prometheus + Grafana (Docker) → Spring Boot (gradle bootRun)
 #
 # Использование:
 #   ./scripts/dev-start.sh                  # полный запуск с мониторингом
@@ -68,19 +68,10 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# ── OrbStack / Docker ─────────────────────────────────────────────────────────
-# Используем контекст orbstack; если не запущен — просим открыть вручную
-export DOCKER_CONTEXT=orbstack
-ORB_CLI="$HOME/.orbstack/bin/orb"
-if ! "$ORB_CLI" status 2>/dev/null | grep -q Running; then
-  warn "OrbStack VM не запущен. Запускаем..."
-  "$ORB_CLI" start
-  info "Ожидаем готовности OrbStack (до 20 сек)..."
-  for i in $(seq 1 20); do
-    sleep 1
-    "$ORB_CLI" status 2>/dev/null | grep -q Running && break
-    [[ $i -eq 20 ]] && { error "OrbStack не запустился. Попробуйте вручную: ~/.orbstack/bin/orb start"; exit 1; }
-  done
+# ── Docker ────────────────────────────────────────────────────────────────────
+if ! docker info > /dev/null 2>&1; then
+  error "Docker не запущен. Запустите Docker Desktop и повторите попытку."
+  exit 1
 fi
 
 # ── PostgreSQL ─────────────────────────────────────────────────────────────────

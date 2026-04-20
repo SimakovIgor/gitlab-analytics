@@ -28,8 +28,6 @@ for arg in "$@"; do
   esac
 done
 
-export DOCKER_CONTEXT=orbstack
-
 # Убеждаемся что postgres запущен
 if ! docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T postgres \
     pg_isready -U analytics -q 2>/dev/null; then

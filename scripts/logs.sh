@@ -49,7 +49,6 @@ if [[ "$REMOTE" == true ]]; then
   ssh -t "${SERVER_USER}@${SERVER_IP}" \
     "docker compose -f ${REMOTE_DIR}/docker/docker-compose.prod.yml logs -f --tail=${TAIL_LINES} ${SERVICE}"
 else
-  export DOCKER_CONTEXT=orbstack
   info "Локальные логи ${SERVICE} (tail=${TAIL_LINES}, follow)..."
   docker compose -f "${PROJECT_DIR}/docker/docker-compose.yml" \
     -f "${PROJECT_DIR}/docker/docker-compose.monitoring.yml" \

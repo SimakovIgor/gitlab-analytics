@@ -1,6 +1,6 @@
 # dev-reset
 
-Перезапуск: очищает БД и перезапускает только приложение (OrbStack уже запущен).
+Перезапуск: очищает БД и перезапускает только приложение (Docker уже запущен).
 
 Выполни шаги по порядку:
 
@@ -10,18 +10,18 @@
 lsof -ti :8080 | xargs kill -9 2>/dev/null; pkill -f "gitlab-analytics" 2>/dev/null; sleep 2; echo "stopped"
 ```
 
-## 2. Убедиться что OrbStack запущен, поднять postgres если нужно
+## 2. Убедиться что Docker запущен, поднять postgres если нужно
 
 ```bash
-~/.orbstack/bin/orb status | grep -q Running || (~/.orbstack/bin/orb start && sleep 6)
-docker --context orbstack compose up -d postgres 2>&1 | tail -2
+docker info > /dev/null 2>&1 || (echo "Docker не запущен, запустите Docker Desktop" && exit 1)
+docker compose up -d postgres 2>&1 | tail -2
 sleep 3
 ```
 
 ## 3. Очистить БД
 
 ```bash
-docker --context orbstack exec gitlab-analytics-postgres psql -U analytics -d gitlab_analytics -c "
+docker exec gitlab-analytics-postgres psql -U analytics -d gitlab_analytics -c "
 DROP TABLE IF EXISTS merge_request_approval, merge_request_note, merge_request_discussion,
   merge_request_commit, merge_request, tracked_user_alias, metric_snapshot, sync_job,
   tracked_project, tracked_user, git_source, workspace_member, workspace, app_user CASCADE;

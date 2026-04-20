@@ -1,13 +1,17 @@
 package io.simakov.analytics.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.BaseIT;
+import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.GitSource;
+import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.Workspace;
+import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
@@ -26,6 +30,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -311,6 +316,51 @@ class SettingsControllerTest extends BaseIT {
                 .session(webSession)
                 .with(csrf()))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser
+    void backfillProject_whenActiveJobExists_returnsExistingJobWithoutCreatingDuplicate() throws Exception {
+        TrackedProject project = trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
+            .gitSourceId(savedSource.getId())
+            .gitlabProjectId(10L)
+            .pathWithNamespace("org/repo")
+            .name("repo")
+            .tokenEncrypted("tok")
+            .enabled(true)
+            .build());
+
+        SyncJob existingJob = syncJobRepository.save(SyncJob.builder()
+            .workspaceId(testWorkspaceId)
+            .status(SyncStatus.STARTED)
+            .dateFrom(Instant.now().minus(365, ChronoUnit.DAYS))
+            .dateTo(Instant.now())
+            .payloadJson(toPayloadJson(List.of(project.getId())))
+            .build());
+
+        mockMvc.perform(post("/settings/projects/" + project.getId() + "/backfill")
+                .session(webSession)
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.jobId").value(existingJob.getId()))
+            .andExpect(jsonPath("$.status").value("STARTED"));
+
+        assertThat(syncJobRepository.count()).isEqualTo(1);
+    }
+
+    private String toPayloadJson(List<Long> projectIds) {
+        try {
+            ManualSyncRequest payload = new ManualSyncRequest(
+                projectIds,
+                Instant.now().minus(365, ChronoUnit.DAYS),
+                Instant.now(),
+                true, true, true
+            );
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize payload", e);
+        }
     }
 
     // ── Tracked Users ────────────────────────────────────────────────────────
