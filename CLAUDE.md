@@ -1,230 +1,214 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Этот файл содержит инструкции для Claude Code (claude.ai/code) при работе с данным репозиторием.
 
-## Build Commands
+## Команды сборки
 
 ```bash
-# Full build with all checks and tests
+# Полная сборка со всеми проверками и тестами
 ./gradlew build
 
-# Build without tests
+# Сборка без тестов
 ./gradlew build -x test
 
-# Run all tests
+# Запустить все тесты
 ./gradlew test
 
-# Run static analysis only (Checkstyle + PMD + SpotBugs)
+# Только статический анализ (Checkstyle + PMD + SpotBugs)
 ./gradlew check -x test
 
-# Run a single test class
+# Запустить один тестовый класс
 ./gradlew test --tests "io.simakov.analytics.api.controller.SyncControllerTest"
 
-# Clean build (use when Flyway migration conflicts appear in tests)
+# Чистая сборка (использовать при конфликтах Flyway-миграций в тестах)
 ./gradlew clean build
 ```
 
-## Code Quality
+## Качество кода
 
-Static analysis runs automatically during build:
+Статический анализ запускается автоматически при сборке:
 
 - **Checkstyle 10.17.0**: `config/checkstyle/checkstyle.xml`
 - **PMD 7.4.0**: `config/pmd/pmd-rules.xml`
 - **SpotBugs 4.8.6**: `config/spotbugs/spotbugs-exclude.xml`
 
-### Key Checkstyle Rules
+### Ключевые правила Checkstyle
 
-- `LineLength max=199` (imports and URLs are excluded)
-- `NeedBraces` — braces required for all control flow (`if`, `for`, `while`, etc.)
-- `OperatorWrap option=NL` — binary operators go on the **next** line when wrapping
-- `SeparatorWrap DOT option=nl` — `.` in method chains goes on the next line
-- `AvoidStarImport` — explicit imports only
-- `CustomImportOrder`: `THIRD_PARTY_PACKAGE ### STANDARD_JAVA_PACKAGE ### STATIC` (alphabetically within groups, blank line between groups)
-- `IllegalCatch` — suppress with `@SuppressWarnings("checkstyle:IllegalCatch")` where needed
+- `LineLength max=199` (импорты и URL исключены)
+- `NeedBraces` — фигурные скобки обязательны для всех управляющих конструкций (`if`, `for`, `while` и т.д.)
+- `OperatorWrap option=NL` — бинарные операторы переносятся на **следующую** строку
+- `SeparatorWrap DOT option=nl` — `.` в цепочках методов переносится на следующую строку
+- `AvoidStarImport` — только явные импорты
+- `CustomImportOrder`: `THIRD_PARTY_PACKAGE ### STANDARD_JAVA_PACKAGE ### STATIC` (алфавитный порядок внутри групп, пустая строка между группами)
+- `IllegalCatch` — подавлять через `@SuppressWarnings("checkstyle:IllegalCatch")` там, где необходимо
 - `MethodLength max=100`, `JavaNCSS methodMaximum=60`, `CyclomaticComplexity max=15`
-- Banned imports: `javax.transaction.Transactional`, JUnit 4, Hamcrest, `org.junit.jupiter.api.Assertions.*`
-- Allowed abbreviations: `SSD, ID, DTO, API, MR, IT, DB, URL, UTC`
+- Запрещённые импорты: `javax.transaction.Transactional`, JUnit 4, Hamcrest, `org.junit.jupiter.api.Assertions.*`
+- Разрешённые аббревиатуры: `SSD, ID, DTO, API, MR, IT, DB, URL, UTC`
 
-Use `@SuppressWarnings("checkstyle:RuleName")` for annotation-based suppression (enabled via `SuppressWarningsFilter`).
+Для подавления через аннотацию: `@SuppressWarnings("checkstyle:RuleName")` (работает через `SuppressWarningsFilter`).
 
-## Architecture
+## Архитектура
 
-Layered package structure (no ArchUnit enforcement):
+Слоистая структура пакетов (без ArchUnit-проверок):
 
 ```
 Controller → Service → Repository → Model
 ```
 
-- **`api/controller/`** — REST endpoints (`/api/v1/**`), delegate to services
-- **`api/dto/`** — request/response DTOs (no JPA entities exposed directly)
-- **`api/exception/`** — `GlobalExceptionHandler`, custom exceptions
-- **`config/`** — Spring configuration beans
-- **`domain/model/`** — JPA entities + enums
-- **`domain/repository/`** — Spring Data JPA repositories
-- **`gitlab/client/`** — `GitLabApiClient` (WebClient-based, reactive)
-- **`gitlab/dto/`** — GitLab API response DTOs
+- **`api/controller/`** — REST-эндпоинты (`/api/v1/**`), делегируют в сервисы
+- **`api/dto/`** — request/response DTO (JPA-сущности наружу не выставляются)
+- **`api/exception/`** — `GlobalExceptionHandler`, кастомные исключения
+- **`config/`** — Spring-конфигурация
+- **`domain/model/`** — JPA-сущности + enum-ы
+- **`domain/repository/`** — Spring Data JPA репозитории
+- **`gitlab/client/`** — `GitLabApiClient` (WebClient, реактивный)
+- **`gitlab/dto/`** — DTO ответов GitLab API
 - **`metrics/`** — `MetricCalculationService`, `Metric` enum
-- **`snapshot/`** — `SnapshotService` (daily scheduler + manual API), `SnapshotHistoryService`
+- **`snapshot/`** — `SnapshotService` (ежедневный планировщик + ручной API), `SnapshotHistoryService`
 - **`sync/`** — `SyncOrchestrator`, `SyncJobService`
-- **`web/controller/`** — Thymeleaf web UI controllers (`WebController`, `HistoryController`, `SettingsController`)
+- **`web/controller/`** — Thymeleaf-контроллеры (`WebController`, `HistoryController`, `SettingsController`)
 - **`web/`** — `ContributorDiscoveryService`, `UserAliasService`, `ReportViewService`
-- **`web/dto/`** — `ReportPageData`, `MrSummaryDto`, `HistoryPageData`, `SettingsPageData`, etc.
+- **`web/dto/`** — `ReportPageData`, `MrSummaryDto`, `HistoryPageData`, `SettingsPageData` и др.
 - **`security/`** — `BearerTokenAuthFilter`
-- **`encryption/`** — `EncryptionService` interface + `NoOpEncryptionService`
+- **`encryption/`** — интерфейс `EncryptionService` + `NoOpEncryptionService`
 
-Templates: `src/main/resources/templates/` (login, report, history, settings)
-Static assets: `src/main/resources/static/css/analytics.css`
+Шаблоны: `src/main/resources/templates/` (login, report, history, settings)
+Статика: `src/main/resources/static/css/analytics.css`
 
-## Key Patterns
+## Ключевые паттерны
 
-**Two Security filter chains** (order matters):
+**Два Security filter chain** (порядок важен):
 
-- `@Order(1)` — API chain: `securityMatcher("/api/**")`, stateless, Bearer token, 401 on failure
-- `@Order(2)` — Web chain: OAuth2 login (GitHub), session-based, redirects to `/login`
+- `@Order(1)` — API-цепочка: `securityMatcher("/api/**")`, stateless, Bearer-токен, 401 при неудаче
+- `@Order(2)` — Web-цепочка: OAuth2 через GitHub, сессионная, редирект на `/login`
 
-**Metric enum** (`metrics/model/Metric.java`) — single source of truth for all metrics. Every metric has `key()` (JSON/DB key), `label()` (Russian UI label), `description()` (Russian legend text),
-`category()`, `isInMinutes()`, `isChartVisible()`. Use `Metric.XXX.key()` everywhere instead of hardcoded strings. `Metric.chartOptions()` builds the history dropdown; `Metric.minuteKeys()` returns
-metrics stored in minutes.
+**Metric enum** (`metrics/model/Metric.java`) — единственный источник истины для всех метрик. Каждая метрика имеет `key()` (ключ JSON/БД), `label()` (русская метка в UI), `description()` (русский текст легенды), `category()`, `isInMinutes()`, `isChartVisible()`. Везде использовать `Metric.XXX.key()` вместо строковых литералов. `Metric.chartOptions()` строит выпадающий список истории; `Metric.minuteKeys()` возвращает метрики, хранящиеся в минутах.
 
-**PeriodType enum** — has `toDays()` method. Use `PeriodType.valueOf(str).toDays()` instead of switch statements. Values: `LAST_7_DAYS(7)`, `LAST_30_DAYS(30)`, `LAST_90_DAYS(90)`,
-`LAST_180_DAYS(180)`, `LAST_360_DAYS(360)`, `CUSTOM(0)`.
+**PeriodType enum** — имеет метод `toDays()`. Использовать `PeriodType.valueOf(str).toDays()` вместо switch-выражений. Значения: `LAST_7_DAYS(7)`, `LAST_30_DAYS(30)`, `LAST_90_DAYS(90)`, `LAST_180_DAYS(180)`, `LAST_360_DAYS(360)`, `CUSTOM(0)`.
 
-**jsonb columns**: Use `@JdbcTypeCode(SqlTypes.JSON)` on `String` fields mapped to `jsonb` PostgreSQL columns. Without it Hibernate 6 throws a type mismatch error.
+**jsonb-колонки**: использовать `@JdbcTypeCode(SqlTypes.JSON)` на `String`-полях, маппящихся в `jsonb`-колонки PostgreSQL. Без этого Hibernate 6 бросает ошибку несовпадения типов.
 
-**Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy
-self-invocations.
+**Асинхронный синк**: `SyncOrchestrator.orchestrateAsync` выполняется в отдельном пуле потоков (настроен в `AsyncConfig`). Избегать `@Transactional` на `private`-методах — Spring AOP не может проксировать self-invocations.
 
-**Thread pools** (configured in `AsyncConfig`):
-- `mrProcessingExecutor` — 10 threads, queue 500, **CallerRunsPolicy** (calling thread executes when queue is full — prevents task loss for repos with 3000+ MRs).
-- `commitStatsExecutor` — 7 threads (I/O-bound), used by `CommitSyncStep` for parallel `GET /repository/commits/:sha` calls (~2100 req/min, within GitLab rate limit). Replaces the old sequential loop that caused ~37 min syncs for large repos.
+**Пулы потоков** (настраиваются в `AsyncConfig`):
+- `mrProcessingExecutor` — 10 потоков, очередь 500, **CallerRunsPolicy** (вызывающий поток выполняет задачу при заполнении очереди — предотвращает потерю задач для репозиториев с 3000+ MR).
+- `commitStatsExecutor` — 7 потоков (I/O-bound), используется `CommitSyncStep` для параллельных вызовов `GET /repository/commits/:sha` (~2100 запросов/мин, в пределах лимита GitLab). Заменил последовательный цикл, который давал ~37 мин синка на больших репозиториях.
 
-**Idempotent sync**: `SyncJobService.findActiveJobForProjects()` checks for a STARTED job with overlapping `projectIds` before creating a new one. `SyncController` and `SettingsService.triggerBackfill()` both call this check — double-click or two browser tabs return the existing job instead of launching a duplicate (which would cause `DataIntegrityViolationException` race conditions on unique constraints).
+**Идемпотентный синк**: `SyncJobService.findActiveJobForProjects()` проверяет наличие STARTED-джоба с пересекающимися `projectIds` перед созданием нового. `SyncController` и `SettingsService.triggerBackfill()` оба вызывают эту проверку — двойной клик или две вкладки браузера возвращают существующий джоб вместо запуска дубля (который вызвал бы гонку `DataIntegrityViolationException` на уникальных ограничениях).
 
-**Sync progress page**: `GET /settings/sync/progress/{jobId}` — full-screen Thymeleaf page that polls every 3 seconds. Shows indeterminate bar → precise progress once MR count is known, ETA, elapsed time, done/error states with retry. Onboarding redirects here after `addProject()` instead of showing the inline banner (which was invisible on large repos).
+**Страница прогресса синка**: `GET /settings/sync/progress/{jobId}` — полноэкранная Thymeleaf-страница с поллингом каждые 3 секунды. Показывает неопределённый прогресс → точный прогресс после получения количества MR, ETA, прошедшее время, состояния завершения/ошибки с кнопкой повтора. Онбординг перенаправляет сюда после `addProject()` вместо inline-баннера (который был невидим на больших репозиториях).
 
-**Encryption**: `NoOpEncryptionService` stores tokens as plaintext. Set `app.encryption.enabled=true` and provide a real `EncryptionService` bean for production.
+**Шифрование**: `NoOpEncryptionService` хранит токены в открытом виде. Установить `app.encryption.enabled=true` и предоставить настоящий бин `EncryptionService` для продакшна.
 
-**Commit stats**: The GitLab MR list and single-MR endpoints do not return `additions`/`deletions` on this GitLab instance. Stats are fetched individually via `GET /repository/commits/:sha` (one call
-per new commit during sync). `MetricCalculationService` computes `lines_added/deleted` from commit-level stats, not MR-level.
+**Статистика коммитов**: эндпоинты GitLab для списка MR и одного MR не возвращают `additions`/`deletions` на этом инстансе GitLab. Статистика запрашивается по одному через `GET /repository/commits/:sha` (один вызов на каждый новый коммит при синке). `MetricCalculationService` вычисляет `lines_added/deleted` из статистики коммитов, а не MR.
 
-**GitLab API timeout**: `app.gitlab.read-timeout-seconds` (default 30s). Increase to 120s+ for slow GitLab instances. A full sync with commits for 450+ MRs takes ~3-4 minutes with parallel
-processing (`mrProcessingExecutor` thread pool).
+**Таймаут GitLab API**: `app.gitlab.read-timeout-seconds` (по умолчанию 30с). Увеличить до 120с+ для медленных инстансов GitLab. Полный синк с коммитами для 450+ MR занимает ~3–4 минуты при параллельной обработке (пул `mrProcessingExecutor`).
 
-**Commit attribution**: `isUserCommit` matches commits by email. It checks both `TrackedUser.email` and all `TrackedUserAlias.email` values (lowercased). Commit emails often differ from GitLab
-account emails — always register the correct commit email in the alias.
+**Атрибуция коммитов**: `isUserCommit` сопоставляет коммиты по email. Проверяет как `TrackedUser.email`, так и все значения `TrackedUserAlias.email` (в нижнем регистре). Email в коммитах часто отличается от email GitLab-аккаунта — всегда регистрировать правильный email коммита в алиасе.
 
-**MR attribution**: Done by `author_gitlab_user_id` (stored on each `MergeRequest`). When a `TrackedUser` is added, `UserAliasService.saveAlias()` calls `GitLabApiClient.findUserIdByUsername()` using
-the username-prefix of the email (e.g., `a.upatov` from `a.upatov@uzum.com`) to resolve and store the `gitlab_user_id` in `tracked_user_alias`. If the email prefix doesn't match the GitLab username,
-`gitlab_user_id` will be null and MR attribution will fail for that user.
+**Атрибуция MR**: выполняется по `author_gitlab_user_id` (хранится в каждом `MergeRequest`). При добавлении `TrackedUser` метод `UserAliasService.saveAlias()` вызывает `GitLabApiClient.findUserIdByUsername()`, используя username-часть email (например, `a.upatov` из `a.upatov@uzum.com`), чтобы найти и сохранить `gitlab_user_id` в `tracked_user_alias`. Если префикс email не совпадает с GitLab-именем пользователя — `gitlab_user_id` будет null и атрибуция MR не сработает.
 
-**`ManualSyncRequest` field names**: `fetchNotes`, `fetchApprovals`, `fetchCommits` (not `syncNotes`/`syncCommits`). All default to `false` — must be explicitly set to `true` for a full sync. The
-`SettingsController.triggerBackfill()` sets all three to `true`.
+**Поля `ManualSyncRequest`**: `fetchNotes`, `fetchApprovals`, `fetchCommits` (не `syncNotes`/`syncCommits`). По умолчанию все `false` — нужно явно устанавливать `true` для полного синка. `SettingsController.triggerBackfill()` устанавливает все три в `true`.
 
-**Snapshot backfill**: Snapshots are created daily by scheduler (`app.snapshot.cron`, default `0 0 2 * * *`). Two endpoints for manual control:
+**Бэкфилл снапшотов**: снапшоты создаются ежедневно планировщиком (`app.snapshot.cron`, по умолчанию `0 0 2 * * *`). Два эндпоинта для ручного управления:
 
-- `POST /api/v1/snapshots/backfill?days=360` — creates weekly snapshots going back N days (step=7d). Auto-triggered from the UI when users are added during onboarding. This is the main backfill for
-  History chart.
-- `POST /api/v1/snapshots/run` — creates a single snapshot for a specific `snapshotDate` and `windowDays`.
-  The History chart reads from `metric_snapshot` table — if data looks missing, check whether snapshots exist for the needed date range.
+- `POST /api/v1/snapshots/backfill?days=360` — создаёт еженедельные снапшоты за последние N дней (шаг=7д). Автоматически запускается из UI при добавлении пользователей в онбординге. Основной бэкфилл для графика Истории.
+- `POST /api/v1/snapshots/run` — создаёт один снапшот для конкретной `snapshotDate` и `windowDays`.
+  График Истории читает из таблицы `metric_snapshot` — если данные кажутся пропущенными, проверить наличие снапшотов за нужный диапазон дат.
 
-**Thymeleaf + Chart.js**: History chart data is passed as a JSON string via model attribute `chartData`, injected into JS with `th:inline="javascript"` + `JSON.parse([[${chartData}]])`. Period filter
-on History page uses days (7/30/90/180/360), on Report page uses `PeriodType` string values.
+**Thymeleaf + Chart.js**: данные графика Истории передаются как JSON-строка через атрибут модели `chartData`, инжектируются в JS через `th:inline="javascript"` + `JSON.parse([[${chartData}]])`. Фильтр периода на странице Истории использует дни (7/30/90/180/360), на странице Отчёта — строковые значения `PeriodType`.
 
-**MR drill-down**: `GET /report/user/{id}/mrs?period=&projectIds=` — returns `List<MrSummaryDto>` (JSON). Resolves `gitlabUserId` via `TrackedUserAlias`, queries
-`MergeRequestRepository.findMergedInPeriodByAuthors()`. Called from report.html JS on row click, renders in modal.
+**MR drill-down**: `GET /report/user/{id}/mrs?period=&projectIds=` — возвращает `List<MrSummaryDto>` (JSON). Разрешает `gitlabUserId` через `TrackedUserAlias`, запрашивает `MergeRequestRepository.findMergedInPeriodByAuthors()`. Вызывается JS в report.html по клику на строку, рендерится в модальном окне.
 
-**Report row click**: clicking a row opens a modal with the user's merged MRs for the current period/filters. The chart is NOT affected by row clicks (chart is controlled only by the metric selector
-and period buttons).
+**Клик по строке отчёта**: открывает модальное окно со списком смёрженных MR пользователя за текущий период/фильтры. График при этом НЕ меняется (управляется только селектором метрики и кнопками периода).
 
-## Database
+## База данных
 
-PostgreSQL + Flyway. Migrations in `src/main/resources/db/migration/`:
+PostgreSQL + Flyway. Миграции в `src/main/resources/db/migration/`:
 
-- `V1__initial_schema.sql` — full schema
-- `V2__fix_indexes.sql` — index fixes (redundant indexes dropped, partial indexes on nullable FK columns)
-- `V3__add_snapshot_fields.sql` — adds `window_days`, `date_from`, `date_to`, `scope_type` to `metric_snapshot`
-- `V4__drop_report_mode.sql` — removes `report_mode` column (always MERGED_IN_PERIOD now)
-- `V5__cascade_deletes.sql` — cascade deletes on FK constraints
+- `V1__initial_schema.sql` — полная схема
+- `V2__fix_indexes.sql` — исправление индексов (удалены дублирующие, добавлены частичные индексы на nullable FK-колонки)
+- `V3__add_snapshot_fields.sql` — добавляет `window_days`, `date_from`, `date_to`, `scope_type` в `metric_snapshot`
+- `V4__drop_report_mode.sql` — удаляет колонку `report_mode` (теперь всегда MERGED_IN_PERIOD)
+- `V5__cascade_deletes.sql` — каскадные удаления на FK-ограничениях
 
-Hibernate DDL is set to `validate` — all schema changes must go through Flyway migrations.
+Hibernate DDL установлен в `validate` — все изменения схемы только через Flyway-миграции.
 
-**Flyway conflict warning**: If tests fail with "Found more than one migration with version N", run `./gradlew clean` to clear stale build artifacts, then rebuild.
+**Конфликт Flyway**: если тесты падают с "Found more than one migration with version N", запустить `./gradlew clean` для очистки устаревших артефактов сборки, затем пересобрать.
 
-### Index Conventions
+### Соглашения по именованию индексов
 
-| Type              | Pattern                    |
+| Тип               | Паттерн                    |
 |-------------------|----------------------------|
-| Index             | `idx_<table>_<column>`     |
-| Unique constraint | `uq_<table>_<col1>_<col2>` |
-| Foreign key       | `fk_<table>_<column>`      |
+| Индекс            | `idx_<table>_<column>`     |
+| Уникальное огр-е  | `uq_<table>_<col1>_<col2>` |
+| Внешний ключ      | `fk_<table>_<column>`      |
 
-Partial indexes (`WHERE col IS NOT NULL`) are required for nullable columns to avoid flagging by pg-index-health.
+Частичные индексы (`WHERE col IS NOT NULL`) обязательны для nullable-колонок во избежание срабатывания pg-index-health.
 
-## Testing
+## Тестирование
 
-All integration tests extend `BaseIT`:
+Все интеграционные тесты наследуют `BaseIT`:
 
 - `@SpringBootTest(webEnvironment = RANDOM_PORT)`
 - `@ActiveProfiles("test")`
-- Testcontainers `PostgreSQLContainer` with `@ServiceConnection`
-- `TestRestTemplate` for HTTP calls
-- `@MockBean GitLabApiClient` — GitLab is always mocked in IT
-- `@AfterEach cleanUpDatabase()` — truncates all tables; add new tables here when creating migrations
+- Testcontainers `PostgreSQLContainer` с `@ServiceConnection`
+- `TestRestTemplate` для HTTP-вызовов
+- `@MockBean GitLabApiClient` — GitLab всегда мокируется в IT
+- `@AfterEach cleanUpDatabase()` — очищает все таблицы; добавлять новые таблицы сюда при создании миграций
 
-Test naming: `*Test` (not `*IT`), even for integration tests.
+Именование тестов: `*Test` (не `*IT`), даже для интеграционных тестов.
 
-**`DatabaseStructureTest`** — pg-index-health checks using `pg-index-health-test-starter:0.20.3` (last version compatible with Spring Boot 3.3.x). Runs only static checks; skips
-`flyway_schema_history` via `SkipFlywayTablesPredicate.ofDefault()`.
+**`DatabaseStructureTest`** — проверки pg-index-health через `pg-index-health-test-starter:0.20.3` (последняя версия, совместимая со Spring Boot 3.3.x). Запускает только статические проверки; пропускает `flyway_schema_history` через `SkipFlywayTablesPredicate.ofDefault()`.
 
-**OAuth2 in tests**: `application-test.yml` provides fake GitHub credentials (`test-github-client-id` / `test-github-client-secret`) so the app context starts without real OAuth2 config.
+**OAuth2 в тестах**: `application-test.yml` предоставляет фиктивные GitHub-credentials (`test-github-client-id` / `test-github-client-secret`), чтобы контекст приложения запускался без реальной OAuth2-конфигурации.
 
-## Key Configuration
+## Ключевая конфигурация
 
-`src/main/resources/application.yml` — central config.
-`src/test/resources/application-test.yml` — test overrides.
+`src/main/resources/application.yml` — центральная конфигурация.
+`src/test/resources/application-test.yml` — переопределения для тестов.
 
-Environment variables:
+Переменные окружения:
 
-- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` — database connection
-- `API_TOKEN` — bearer token for REST API authentication (default: `changeme-in-production`)
-- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — GitHub OAuth2 app credentials for web UI login
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` — подключение к базе данных
+- `API_TOKEN` — Bearer-токен для аутентификации REST API (по умолчанию: `changeme-in-production`)
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — credentials GitHub OAuth2 App для входа в веб-UI
 
 ## Observability
 
-Spring Boot Actuator + Micrometer are configured. Exposed endpoints:
+Spring Boot Actuator + Micrometer настроены. Доступные эндпоинты:
 
-- `GET /actuator/health` — full health (DB, disk, liveness, readiness). `show-details: always`.
+- `GET /actuator/health` — полный health: БД, диск, liveness, readiness. `show-details: always`.
 - `GET /actuator/health/liveness` — liveness probe
 - `GET /actuator/health/readiness` — readiness probe
-- `GET /actuator/metrics` — Micrometer metric list
-- `GET /actuator/prometheus` — Prometheus scrape endpoint
+- `GET /actuator/metrics` — список метрик Micrometer
+- `GET /actuator/prometheus` — scrape-эндпоинт для Prometheus
 
-All metrics carry the tag `application=gitlab-analytics` (set via `management.metrics.tags.application`). Enabled metric groups: JVM, process, system, HTTP server requests, HikariCP.
+Все метрики содержат тег `application=gitlab-analytics` (задаётся через `management.metrics.tags.application`). Включённые группы метрик: JVM, process, system, HTTP server requests, HikariCP.
 
-The `/actuator/**` endpoints are exposed over HTTP without additional auth (appropriate for internal/local use). For production, add `management.endpoints.web.base-path` behind an internal network or
-add security.
+Эндпоинты `/actuator/**` открыты по HTTP без дополнительной аутентификации (допустимо для внутреннего/локального использования). В продакшне — разместить за внутренней сетью или добавить защиту.
 
-### Monitoring stack (local: `docker-compose.monitoring.yml`, prod: `docker-compose.prod.yml`)
+### Стек мониторинга (локально: `docker-compose.monitoring.yml`, прод: `docker-compose.prod.yml`)
 
-| Service    | Port | Notes |
-|------------|------|-------|
-| Prometheus | 9090 | scrapes `host.docker.internal:8080/actuator/prometheus` (local) or `app:8080` (prod) |
-| Grafana    | 3000 | admin/admin — dashboards auto-provisioned from `monitoring/grafana/dashboards/` |
-| Loki       | 3100 | log storage — fed by Promtail reading Docker container logs |
-| Promtail   | —    | reads `/var/lib/docker/containers` + Docker socket, ships logs to Loki |
-| Portainer  | 9000 | Docker UI — all containers (running + stopped), logs, restart. First login creates admin password (≥12 chars). |
+| Сервис     | Порт | Описание |
+|------------|------|----------|
+| Prometheus | 9090 | scrape-ит `host.docker.internal:8080/actuator/prometheus` (локально) или `app:8080` (прод) |
+| Grafana    | 3000 | admin/admin — дашборды auto-provisioned из `monitoring/grafana/dashboards/` |
+| Loki       | 3100 | хранилище логов — заполняется Promtail, читающим логи Docker-контейнеров |
+| Promtail   | —    | читает `/var/lib/docker/containers` + Docker socket, отправляет логи в Loki |
+| Portainer  | 9000 | Docker UI — все контейнеры (running + stopped), логи, перезапуск. При первом входе создаётся admin-пароль (≥12 символов). |
 
-**cAdvisor was removed** — Portainer covers container visibility. No container-level Prometheus metrics are collected (node-exporter covers host metrics in prod).
+**cAdvisor удалён** — Portainer закрывает задачу видимости контейнеров. Метрики контейнеров на уровне Prometheus не собираются (node-exporter покрывает метрики хоста в продакшне).
 
-## Dependencies
+## Зависимости
 
 Spring Boot 3.3.4, Java 21, Gradle Kotlin DSL.
 
-Notable non-BOM dependencies (pin versions manually):
+Зависимости вне BOM (версии фиксировать вручную):
 
-- `spring-boot-starter-oauth2-client` — GitHub OAuth2 login for web UI
-- `spring-boot-starter-thymeleaf` + `thymeleaf-extras-springsecurity6` — server-side templates
-- `micrometer-registry-prometheus` — Prometheus metrics export (`runtimeOnly`)
+- `spring-boot-starter-oauth2-client` — вход через GitHub OAuth2 для веб-UI
+- `spring-boot-starter-thymeleaf` + `thymeleaf-extras-springsecurity6` — серверные шаблоны
+- `micrometer-registry-prometheus` — экспорт метрик в Prometheus (`runtimeOnly`)
 - `springdoc-openapi-starter-webmvc-ui:2.6.0`
 - `pg-index-health-test-starter:0.20.3`
 - `spotbugs-annotations:4.8.6`
