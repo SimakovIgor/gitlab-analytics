@@ -109,25 +109,25 @@ class MergeRequestRepositoryTest extends BaseIT {
         saveMr(3L, baseTime.minus(1, ChronoUnit.DAYS), null);
 
         Instant dateFrom = baseTime.minus(30, ChronoUnit.DAYS);
-        List<Object[]> rows = mergeRequestRepository.findLeadTimeSummary(List.of(projectId), dateFrom);
+        List<LeadTimeSummaryProjection> rows = mergeRequestRepository.findLeadTimeSummary(List.of(projectId), dateFrom);
 
         assertThat(rows).hasSize(1);
-        Object[] row = rows.getFirst();
-        assertThat(((Number) row[0]).intValue()).isEqualTo(2);
+        LeadTimeSummaryProjection row = rows.getFirst();
+        assertThat(row.getMrCount().intValue()).isEqualTo(2);
         // median of [2, 4] = 3.0
-        assertThat(((Number) row[1]).doubleValue()).isCloseTo(3.0, within(0.1));
+        assertThat(row.getMedianHours()).isCloseTo(3.0, within(0.1));
     }
 
     @Test
     void findLeadTimeSummaryReturnsEmptyWhenNoMergedMrs() {
         saveMr(1L, baseTime.minus(5, ChronoUnit.DAYS), null);
 
-        List<Object[]> rows = mergeRequestRepository.findLeadTimeSummary(
+        List<LeadTimeSummaryProjection> rows = mergeRequestRepository.findLeadTimeSummary(
             List.of(projectId), baseTime.minus(30, ChronoUnit.DAYS));
 
         assertThat(rows).hasSize(1);
         // COUNT = 0, percentiles are null when no rows match
-        assertThat(((Number) rows.getFirst()[0]).intValue()).isZero();
+        assertThat(rows.getFirst().getMrCount().intValue()).isZero();
     }
 
     @Test
@@ -139,10 +139,10 @@ class MergeRequestRepositoryTest extends BaseIT {
         old.setMergedAtGitlab(baseTime.minus(60, ChronoUnit.DAYS));
         mergeRequestRepository.save(old);
 
-        List<Object[]> rows = mergeRequestRepository.findLeadTimeSummary(
+        List<LeadTimeSummaryProjection> rows = mergeRequestRepository.findLeadTimeSummary(
             List.of(projectId), baseTime.minus(30, ChronoUnit.DAYS));
 
-        assertThat(((Number) rows.getFirst()[0]).intValue()).isEqualTo(1);
+        assertThat(rows.getFirst().getMrCount().intValue()).isEqualTo(1);
     }
 
     @Test
@@ -166,10 +166,10 @@ class MergeRequestRepositoryTest extends BaseIT {
         other.setAuthorGitlabUserId(200L);
         mergeRequestRepository.save(other);
 
-        List<Object[]> rows = mergeRequestRepository.findLeadTimeSummary(
+        List<LeadTimeSummaryProjection> rows = mergeRequestRepository.findLeadTimeSummary(
             List.of(projectId), baseTime.minus(30, ChronoUnit.DAYS));
 
-        assertThat(((Number) rows.getFirst()[0]).intValue()).isEqualTo(1);
+        assertThat(rows.getFirst().getMrCount().intValue()).isEqualTo(1);
     }
 
     @Test
@@ -180,12 +180,12 @@ class MergeRequestRepositoryTest extends BaseIT {
         // week 2: 1 MR
         saveMergedMrAtTime(3L, baseTime.minus(3, ChronoUnit.DAYS), 6);
 
-        List<Object[]> rows = mergeRequestRepository.findLeadTimeByWeek(
+        List<LeadTimeWeekProjection> rows = mergeRequestRepository.findLeadTimeByWeek(
             List.of(projectId), baseTime.minus(30, ChronoUnit.DAYS));
 
         assertThat(rows).hasSizeGreaterThanOrEqualTo(2);
         // total across all weeks
-        int total = rows.stream().mapToInt(r -> ((Number) r[1]).intValue()).sum();
+        long total = rows.stream().mapToLong(LeadTimeWeekProjection::getMrCount).sum();
         assertThat(total).isEqualTo(3);
     }
 
@@ -194,10 +194,10 @@ class MergeRequestRepositoryTest extends BaseIT {
         saveMergedMrWithLeadTime(1L, 3);
         saveMr(2L, baseTime.minus(5, ChronoUnit.DAYS), null); // opened
 
-        List<Object[]> rows = mergeRequestRepository.findLeadTimeByWeek(
+        List<LeadTimeWeekProjection> rows = mergeRequestRepository.findLeadTimeByWeek(
             List.of(projectId), baseTime.minus(30, ChronoUnit.DAYS));
 
-        int total = rows.stream().mapToInt(r -> ((Number) r[1]).intValue()).sum();
+        long total = rows.stream().mapToLong(LeadTimeWeekProjection::getMrCount).sum();
         assertThat(total).isEqualTo(1);
     }
 

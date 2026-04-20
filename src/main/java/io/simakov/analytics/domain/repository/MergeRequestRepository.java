@@ -18,6 +18,21 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     List<Long> findDistinctAuthorIdsByTrackedProjectId(@Param("projectId") Long projectId);
 
     /**
+     * Returns distinct MR authors for a set of projects.
+     * Used for auto-discovery of team members after Phase 1 (FAST) sync completes.
+     */
+    @Query("""
+        SELECT DISTINCT mr.authorGitlabUserId AS authorGitlabUserId,
+                        mr.authorName         AS authorName,
+                        mr.authorUsername     AS authorUsername
+        FROM MergeRequest mr
+        WHERE mr.trackedProjectId IN :projectIds
+        AND mr.authorGitlabUserId IS NOT NULL
+        AND mr.authorUsername IS NOT NULL
+        """)
+    List<MrAuthorProjection> findDistinctAuthorsByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    /**
      * MRs merged within the given period for the given projects
      */
     @Query("""
@@ -87,8 +102,8 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                GROUP BY DATE_TRUNC('week', mr.merged_at_gitlab)
                ORDER BY period
                """)
-    List<Object[]> findLeadTimeByWeek(@Param("projectIds") List<Long> projectIds,
-                                      @Param("dateFrom") Instant dateFrom);
+    List<LeadTimeWeekProjection> findLeadTimeByWeek(@Param("projectIds") List<Long> projectIds,
+                                                    @Param("dateFrom") Instant dateFrom);
 
     /**
      * Overall lead time summary for the selected period.
@@ -110,6 +125,6 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                  AND mr.merged_at_gitlab > mr.created_at_gitlab
                  AND mr.merged_at_gitlab >= :dateFrom
                """)
-    List<Object[]> findLeadTimeSummary(@Param("projectIds") List<Long> projectIds,
-                                       @Param("dateFrom") Instant dateFrom);
+    List<LeadTimeSummaryProjection> findLeadTimeSummary(@Param("projectIds") List<Long> projectIds,
+                                                        @Param("dateFrom") Instant dateFrom);
 }

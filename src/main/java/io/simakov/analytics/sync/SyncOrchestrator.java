@@ -5,6 +5,7 @@ import io.simakov.analytics.api.exception.GitLabApiException;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.TrackedProject;
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
@@ -40,6 +41,7 @@ public class SyncOrchestrator {
     private final MergeRequestRepository mergeRequestRepository;
 
     private final SyncJobService syncJobService;
+    private final MrAuthorDiscoveryService authorDiscoveryService;
     private final List<SyncStep> syncSteps;
 
     @Qualifier("mrProcessingExecutor")
@@ -47,9 +49,10 @@ public class SyncOrchestrator {
 
     @Async("syncTaskExecutor")
     public void orchestrateAsync(Long jobId,
-                                 ManualSyncRequest request) {
-        log.info("Starting sync job {} for projects {} from {} to {}",
-            jobId, request.projectIds(), request.dateFrom(), request.dateTo());
+                                 ManualSyncRequest request,
+                                 SyncJobPhase phase) {
+        log.info("Starting sync job {} (phase={}) for projects {} from {} to {}",
+            jobId, phase, request.projectIds(), request.dateFrom(), request.dateTo());
         try {
             for (Long projectId : request.projectIds()) {
                 try {
@@ -59,9 +62,36 @@ public class SyncOrchestrator {
                 }
             }
             syncJobService.complete(jobId);
+
+            if (phase == SyncJobPhase.FAST) {
+                chainEnrichmentPhase(jobId, request);
+            }
         } catch (Exception e) {
             log.error("Sync job {} failed with error: {}", jobId, e.getMessage(), e);
             syncJobService.fail(jobId, e.getMessage());
+        }
+    }
+
+    /**
+     * After FAST phase: auto-discover authors from MR data, then start ENRICH phase.
+     * Both run in the background — user is already on the dashboard by now.
+     */
+    private void chainEnrichmentPhase(Long fastJobId,
+                                      ManualSyncRequest fastRequest) {
+        try {
+            Long workspaceId = syncJobService.findById(fastJobId).getWorkspaceId();
+            int discovered = authorDiscoveryService.discoverAndSave(workspaceId, fastRequest.projectIds());
+            log.info("Phase 1 complete for job {}: auto-discovered {} author(s)", fastJobId, discovered);
+
+            ManualSyncRequest enrichRequest = new ManualSyncRequest(
+                fastRequest.projectIds(), fastRequest.dateFrom(), fastRequest.dateTo(),
+                true, true, true, true
+            );
+            var enrichJob = syncJobService.create(workspaceId, enrichRequest, SyncJobPhase.ENRICH);
+            log.info("Auto-starting ENRICH phase as job {}", enrichJob.getId());
+            orchestrateAsync(enrichJob.getId(), enrichRequest, SyncJobPhase.ENRICH);
+        } catch (Exception e) {
+            log.error("Failed to start ENRICH phase after job {}: {}", fastJobId, e.getMessage(), e);
         }
     }
 

@@ -5,6 +5,7 @@ import io.simakov.analytics.api.dto.response.SyncJobResponse;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
@@ -58,9 +59,9 @@ public class SyncController {
             return SyncJobResponse.from(activeJob.get());
         }
 
-        SyncJob job = syncJobService.create(workspaceId, request);
+        SyncJob job = syncJobService.create(workspaceId, request, SyncJobPhase.ENRICH);
         log.info("Created sync job {} for {} projects", job.getId(), request.projectIds().size());
-        syncOrchestrator.orchestrateAsync(job.getId(), request);
+        syncOrchestrator.orchestrateAsync(job.getId(), request, SyncJobPhase.ENRICH);
 
         return SyncJobResponse.from(job);
     }

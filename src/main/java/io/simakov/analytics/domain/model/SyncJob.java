@@ -1,5 +1,6 @@
 package io.simakov.analytics.domain.model;
 
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -41,6 +42,11 @@ public class SyncJob {
     @Column(nullable = false,
             length = 50)
     private SyncStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "phase",
+            length = 20)
+    private SyncJobPhase phase;
 
     @CreationTimestamp
     @Column(name = "started_at",

@@ -1,6 +1,7 @@
 package io.simakov.analytics.domain.repository;
 
 import io.simakov.analytics.domain.model.SyncJob;
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -29,4 +30,7 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
 
     Optional<SyncJob> findTopByWorkspaceIdAndStatusOrderByStartedAtDesc(Long workspaceId,
                                                                          SyncStatus status);
+
+    Optional<SyncJob> findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(
+        Long workspaceId, SyncStatus status, SyncJobPhase phase);
 }

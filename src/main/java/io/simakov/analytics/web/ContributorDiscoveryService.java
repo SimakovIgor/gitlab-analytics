@@ -1,5 +1,6 @@
 package io.simakov.analytics.web;
 
+import io.simakov.analytics.domain.repository.CommitContributorProjection;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.security.WorkspaceContext;
@@ -136,17 +137,17 @@ public class ContributorDiscoveryService {
         // email → repos
         Map<String, Set<String>> emailRepos = new LinkedHashMap<>();
 
-        for (Object[] row : commitRepository.findContributorRowsByWorkspaceId(workspaceId)) {
-            if (row[0] == null) {
+        for (CommitContributorProjection row : commitRepository.findContributorRowsByWorkspaceId(workspaceId)) {
+            if (row.getAuthorEmail() == null) {
                 continue;
             }
-            String email = ((String) row[0]).toLowerCase(Locale.ROOT).strip();
-            String name = row[1] != null
-                ? (String) row[1]
+            String email = row.getAuthorEmail().toLowerCase(Locale.ROOT).strip();
+            String name = row.getAuthorName() != null
+                ? row.getAuthorName()
                 : "";
-            long count = ((Number) row[2]).longValue();
-            String repo = row[3] != null
-                ? (String) row[3]
+            long count = row.getCommitCount();
+            String repo = row.getRepoName() != null
+                ? row.getRepoName()
                 : "";
 
             nameCommits.computeIfAbsent(email, k -> new HashMap<>())
