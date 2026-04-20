@@ -17,6 +17,7 @@ public record ReportPageData(
     boolean hasSyncCompleted,
     List<Long> activeJobIds,
     Long lastFailedSyncJobId,
+    Long enrichmentJobId,
     List<UserWithAliases> usersWithAliases,
     List<TrackedProject> allProjects,
     List<Long> selectedProjectIds,

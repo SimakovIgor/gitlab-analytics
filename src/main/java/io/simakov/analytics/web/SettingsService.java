@@ -12,6 +12,7 @@ import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
@@ -240,8 +241,9 @@ public class SettingsService {
             throw new ResourceNotFoundException("SyncJob", jobId);
         }
         ManualSyncRequest request = syncJobService.getPayload(jobId);
-        SyncJob newJob = syncJobService.create(workspaceId, request);
-        syncOrchestrator.orchestrateAsync(newJob.getId(), request);
+        SyncJobPhase phase = job.getPhase() != null ? job.getPhase() : SyncJobPhase.ENRICH;
+        SyncJob newJob = syncJobService.create(workspaceId, request, phase);
+        syncOrchestrator.orchestrateAsync(newJob.getId(), request, phase);
         return SyncJobResponse.from(newJob);
     }
 
@@ -256,11 +258,12 @@ public class SettingsService {
         }
         Instant dateTo = DateTimeUtils.now();
         Instant dateFrom = dateTo.minus(BACKFILL_DAYS, ChronoUnit.DAYS);
+        // Phase 1: MR list only — fast (~2-5 min). Phase 2 (ENRICH) starts automatically after.
         ManualSyncRequest request = new ManualSyncRequest(
-            List.of(trackedProjectId), dateFrom, dateTo, true, true, true, true
+            List.of(trackedProjectId), dateFrom, dateTo, false, false, false, false
         );
-        SyncJob job = syncJobService.create(workspaceId, request);
-        syncOrchestrator.orchestrateAsync(job.getId(), request);
+        SyncJob job = syncJobService.create(workspaceId, request, SyncJobPhase.FAST);
+        syncOrchestrator.orchestrateAsync(job.getId(), request, SyncJobPhase.FAST);
         return SyncJobResponse.from(job);
     }
 }

@@ -21,6 +21,7 @@ import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.security.WorkspaceContext;
+import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
@@ -52,6 +53,7 @@ public class ReportViewService {
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
     private final SyncJobRepository syncJobRepository;
+    private final SyncJobService syncJobService;
     private final MetricCalculationService metricCalculationService;
     private final MergeRequestRepository mergeRequestRepository;
     private final MergeRequestCommitRepository commitRepository;
@@ -83,12 +85,16 @@ public class ReportViewService {
                 .orElse(null)
             : null;
 
+        Long enrichmentJobId = syncJobService.findActiveEnrichmentJob(workspaceId)
+            .map(SyncJob::getId)
+            .orElse(null);
+
         List<UserWithAliases> usersWithAliases = buildUsersWithAliases(allUsers);
 
         if (onboardingMode) {
             return new ReportPageData(
                 sources, hasSources, hasProjects, hasUsers, true, hasSyncCompleted,
-                activeJobIds, lastFailedSyncJobId, usersWithAliases, allProjects,
+                activeJobIds, lastFailedSyncJobId, enrichmentJobId, usersWithAliases, allProjects,
                 List.of(), period, showInactive,
                 null, null, List.of(), Map.of(), null
             );
@@ -131,7 +137,7 @@ public class ReportViewService {
 
         return new ReportPageData(
             sources, hasSources, hasProjects, hasUsers, false, hasSyncCompleted,
-            activeJobIds, lastFailedSyncJobId, usersWithAliases, allProjects,
+            activeJobIds, lastFailedSyncJobId, enrichmentJobId, usersWithAliases, allProjects,
             selectedProjectIds, period, showInactive,
             dateFrom, dateTo, metrics, deltas, summary
         );

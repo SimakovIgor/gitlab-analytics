@@ -4,6 +4,7 @@ import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.config.AppProperties;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.Workspace;
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
@@ -68,8 +69,8 @@ public class NightlySyncScheduler {
                 projectIds, dateFrom, dateTo, true, true, true, true
             );
             log.info("Starting nightly sync: workspace={}, projects={}", workspaceId, projectIds.size());
-            var job = syncJobService.create(workspaceId, request);
-            syncOrchestrator.orchestrateAsync(job.getId(), request);
+            var job = syncJobService.create(workspaceId, request, SyncJobPhase.ENRICH);
+            syncOrchestrator.orchestrateAsync(job.getId(), request, SyncJobPhase.ENRICH);
         }
     }
 }

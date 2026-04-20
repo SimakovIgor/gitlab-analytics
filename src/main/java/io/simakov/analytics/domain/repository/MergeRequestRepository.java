@@ -18,6 +18,21 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     List<Long> findDistinctAuthorIdsByTrackedProjectId(@Param("projectId") Long projectId);
 
     /**
+     * Returns distinct MR authors for a set of projects.
+     * Used for auto-discovery of team members after Phase 1 (FAST) sync completes.
+     */
+    @Query("""
+        SELECT DISTINCT mr.authorGitlabUserId AS authorGitlabUserId,
+                        mr.authorName         AS authorName,
+                        mr.authorUsername     AS authorUsername
+        FROM MergeRequest mr
+        WHERE mr.trackedProjectId IN :projectIds
+        AND mr.authorGitlabUserId IS NOT NULL
+        AND mr.authorUsername IS NOT NULL
+        """)
+    List<MrAuthorProjection> findDistinctAuthorsByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    /**
      * MRs merged within the given period for the given projects
      */
     @Query("""

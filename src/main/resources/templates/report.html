@@ -485,6 +485,7 @@
     const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
 
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+    const ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
     const SELECTED_PERIOD = /*[[${selectedPeriod}]]*/ 'LAST_30_DAYS';
     const SELECTED_METRIC = /*[[${selectedMetric}]]*/ 'mr_merged_count';
     const SHOW_INACTIVE = /*[[${showInactive}]]*/ false;
@@ -1071,10 +1072,30 @@
         list.appendChild(div);
     }
 
+    function restoreEnrichmentBanner(jobId) {
+        const banners = document.getElementById('sync-banners');
+        if (!banners) {
+            return;
+        }
+        const id = 'sync-banner-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-banner sync-banner-running';
+        div.innerHTML = buildBannerHtml(jobId, 'Обогащение данных — загружаем коммиты, комментарии и аппрувы...');
+        banners.prepend(div);
+        startBannerTimers(jobId, id, null);
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────
 
     document.addEventListener('DOMContentLoaded', () => {
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
+        if (ENRICHMENT_JOB_ID && !ACTIVE_JOB_IDS.includes(ENRICHMENT_JOB_ID)) {
+            restoreEnrichmentBanner(ENRICHMENT_JOB_ID);
+        }
     });
 
     /*]]>*/

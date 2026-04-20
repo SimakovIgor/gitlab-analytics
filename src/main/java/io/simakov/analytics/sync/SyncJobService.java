@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.SyncJob;
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +30,12 @@ public class SyncJobService {
 
     @Transactional
     public SyncJob create(Long workspaceId,
-                          ManualSyncRequest request) {
+                          ManualSyncRequest request,
+                          SyncJobPhase phase) {
         SyncJob job = SyncJob.builder()
             .workspaceId(workspaceId)
             .status(SyncStatus.STARTED)
+            .phase(phase)
             .dateFrom(request.dateFrom())
             .dateTo(request.dateTo())
             .payloadJson(toJson(request))
@@ -126,6 +129,11 @@ public class SyncJobService {
                 }
             })
             .findFirst();
+    }
+
+    public Optional<SyncJob> findActiveEnrichmentJob(Long workspaceId) {
+        return syncJobRepository.findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(
+            workspaceId, SyncStatus.STARTED, SyncJobPhase.ENRICH);
     }
 
     public SyncJob findById(Long jobId) {
