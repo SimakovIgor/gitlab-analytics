@@ -6,9 +6,11 @@ import io.simakov.analytics.gitlab.dto.GitLabApprovalsDto;
 import io.simakov.analytics.gitlab.dto.GitLabCommitDto;
 import io.simakov.analytics.gitlab.dto.GitLabDiscussionDto;
 import io.simakov.analytics.gitlab.dto.GitLabMergeRequestDto;
+import io.simakov.analytics.gitlab.dto.GitLabMrDiffFileDto;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
+import io.simakov.analytics.gitlab.dto.MrNetDiffStats;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
@@ -181,6 +183,34 @@ public class GitLabApiClient {
     }
 
     /**
+     * Fetch net diff stats for an MR by parsing the diffs endpoint.
+     * Matches what GitLab UI shows on the Changes tab (net diff vs base branch).
+     * Files with too_large flag contribute 0 to both counters.
+     */
+    public MrNetDiffStats getMrNetDiffStats(String baseUrl,
+                                            String token,
+                                            Long gitlabProjectId,
+                                            Long mrIid) {
+        String path = "/api/v4/projects/" + gitlabProjectId + "/merge_requests/" + mrIid + "/diffs";
+        List<GitLabMrDiffFileDto> diffs = fetchAllPages(baseUrl, token, path, GitLabMrDiffFileDto[].class, "");
+        int additions = 0;
+        int deletions = 0;
+        for (GitLabMrDiffFileDto file : diffs) {
+            if (file.tooLarge() || file.diff() == null) {
+                continue;
+            }
+            for (String line : file.diff().split("\n", -1)) {
+                if (line.startsWith("+") && !line.startsWith("+++")) {
+                    additions++;
+                } else if (line.startsWith("-") && !line.startsWith("---")) {
+                    deletions++;
+                }
+            }
+        }
+        return new MrNetDiffStats(additions, deletions);
+    }
+
+    /**
      * Fetch approvals for an MR.
      * GitLab approvals API may return 403 if not available on the plan — callers should handle gracefully.
      */
@@ -253,8 +283,23 @@ public class GitLabApiClient {
 
     private Retry retrySpec() {
         int maxRetries = appProperties.gitlab().maxRetries();
-        return Retry.backoff(maxRetries, Duration.ofSeconds(2))
+        int backoffSeconds = appProperties.gitlab().retryBackoffSeconds();
+        return Retry.backoff(maxRetries, Duration.ofSeconds(backoffSeconds))
             .filter(e -> e instanceof GitLabApiException && ((GitLabApiException) e).isTransient())
+            .doBeforeRetry(signal -> {
+                Throwable failure = signal.failure();
+                int attempt = (int) signal.totalRetries() + 1;
+                if (failure instanceof GitLabApiException glEx
+                        && glEx.getStatusCode() != null
+                        && glEx.getStatusCode().value() == 429) {
+                    log.warn("GitLab rate limit (429) hit, retry attempt {}/{}", attempt, maxRetries);
+                } else {
+                    log.warn("GitLab transient error ({}), retry attempt {}/{}: {}",
+                        failure instanceof GitLabApiException glEx2 && glEx2.getStatusCode() != null
+                            ? glEx2.getStatusCode().value() : "?",
+                        attempt, maxRetries, failure.getMessage());
+                }
+            })
             .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) ->
                 new GitLabApiException("GitLab API failed after " + maxRetries + " retries: " + retrySignal.failure().getMessage()));
     }

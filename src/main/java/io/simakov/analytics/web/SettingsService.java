@@ -202,7 +202,13 @@ public class SettingsService {
 
     // ── Snapshots ────────────────────────────────────────────────────────────
 
-    public void triggerSnapshotBackfill() {
+    /** Synchronous: blocks until all snapshots are created, returns count. Used by onboarding. */
+    public int triggerSnapshotBackfill() {
+        return snapshotService.runDailyBackfill(WorkspaceContext.get(), BACKFILL_DAYS);
+    }
+
+    /** Async: submits backfill to snapshotExecutor and returns immediately. Used by settings page. */
+    public void scheduleSnapshotBackfill() {
         scheduleBackfill(WorkspaceContext.get());
     }
 
@@ -251,7 +257,7 @@ public class SettingsService {
         Instant dateTo = DateTimeUtils.now();
         Instant dateFrom = dateTo.minus(BACKFILL_DAYS, ChronoUnit.DAYS);
         ManualSyncRequest request = new ManualSyncRequest(
-            List.of(trackedProjectId), dateFrom, dateTo, true, true, true
+            List.of(trackedProjectId), dateFrom, dateTo, true, true, true, true
         );
         SyncJob job = syncJobService.create(workspaceId, request);
         syncOrchestrator.orchestrateAsync(job.getId(), request);
