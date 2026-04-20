@@ -16,6 +16,7 @@ public record ReportPageData(
     boolean onboardingMode,
     boolean hasSyncCompleted,
     List<Long> activeJobIds,
+    Long lastFailedSyncJobId,
     List<UserWithAliases> usersWithAliases,
     List<TrackedProject> allProjects,
     List<Long> selectedProjectIds,

@@ -42,6 +42,7 @@ public class OnboardingController {
         model.addAttribute("hasUsers", data.hasUsers());
         model.addAttribute("hasSyncCompleted", data.hasSyncCompleted());
         model.addAttribute("activeJobIds", data.activeJobIds());
+        model.addAttribute("lastFailedSyncJobId", data.lastFailedSyncJobId());
         model.addAttribute("sources", data.sources());
         return "onboarding";
     }

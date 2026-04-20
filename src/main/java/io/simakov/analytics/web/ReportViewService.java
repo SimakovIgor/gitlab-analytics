@@ -76,12 +76,19 @@ public class ReportViewService {
 
         boolean hasSyncCompleted = syncJobRepository.existsByWorkspaceIdAndStatus(workspaceId, SyncStatus.COMPLETED);
 
+        Long lastFailedSyncJobId = activeJobIds.isEmpty() && !hasSyncCompleted
+            ? syncJobRepository
+                .findTopByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.FAILED)
+                .map(SyncJob::getId)
+                .orElse(null)
+            : null;
+
         List<UserWithAliases> usersWithAliases = buildUsersWithAliases(allUsers);
 
         if (onboardingMode) {
             return new ReportPageData(
                 sources, hasSources, hasProjects, hasUsers, true, hasSyncCompleted,
-                activeJobIds, usersWithAliases, allProjects,
+                activeJobIds, lastFailedSyncJobId, usersWithAliases, allProjects,
                 List.of(), period, showInactive,
                 null, null, List.of(), Map.of(), null
             );
@@ -124,7 +131,7 @@ public class ReportViewService {
 
         return new ReportPageData(
             sources, hasSources, hasProjects, hasUsers, false, hasSyncCompleted,
-            activeJobIds, usersWithAliases, allProjects,
+            activeJobIds, lastFailedSyncJobId, usersWithAliases, allProjects,
             selectedProjectIds, period, showInactive,
             dateFrom, dateTo, metrics, deltas, summary
         );

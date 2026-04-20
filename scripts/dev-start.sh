@@ -69,7 +69,7 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 # ── Docker ────────────────────────────────────────────────────────────────────
-if ! docker info > /dev/null 2>&1; then
+if ! docker ps > /dev/null 2>&1; then
   error "Docker не запущен. Запустите Docker Desktop и повторите попытку."
   exit 1
 fi

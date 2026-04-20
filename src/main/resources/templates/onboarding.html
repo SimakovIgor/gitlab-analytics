@@ -397,7 +397,27 @@
             <div id="ob-content-4"
                  th:class="${hasProjects and !(hasSyncCompleted and activeJobIds.isEmpty())} ? 'ob-step-body' : 'ob-step-body hidden'">
                 <h2 class="ob-start-title">Синхронизация данных</h2>
-                <p class="ob-start-subtitle">Загружаем MR, коммиты и ревью за 360 дней. Шаг 5 откроется автоматически.</p>
+                <!-- Ошибка: синк упал (например, приложение перезапустилось во время синка) -->
+                <div th:if="${lastFailedSyncJobId != null and activeJobIds.isEmpty()}"
+                     style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:8px;
+                            background:#fff5f5;border:1px solid #fca5a5;margin-bottom:16px;">
+                    <span style="font-size:20px;line-height:1.4">&#x26A0;&#xFE0F;</span>
+                    <div>
+                        <div style="font-weight:600;color:#b91c1c;margin-bottom:4px;">Синхронизация прервалась</div>
+                        <div style="color:#6b7280;font-size:14px;margin-bottom:10px;">
+                            Приложение было перезапущено во время синхронизации. Данные загружены не полностью.
+                        </div>
+                        <button class="btn-primary"
+                                th:onclick="|retrySyncOnboarding(${lastFailedSyncJobId})|"
+                                style="font-size:14px;padding:7px 16px;">
+                            Запустить снова
+                        </button>
+                    </div>
+                </div>
+                <p class="ob-start-subtitle"
+                   th:classappend="${lastFailedSyncJobId != null and activeJobIds.isEmpty()} ? ' hidden' : ''">
+                    Загружаем MR, коммиты и ревью за 360 дней. Шаг 5 откроется автоматически.
+                </p>
                 <div id="ob-sync-section">
                     <div id="sync-banners-ob"></div>
                 </div>
@@ -591,6 +611,7 @@
     const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]').content;
 
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+    const LAST_FAILED_SYNC_JOB_ID = /*[[${lastFailedSyncJobId}]]*/ null;
 
     const OB_STATE = {
         hasSources:  /*[[${hasSources}]]*/ false,
@@ -842,6 +863,33 @@
                 const div = document.createElement('div');
                 div.className = 'sync-banner sync-banner-error';
                 div.innerHTML = `<span>✕</span> Не удалось запустить повтор: ${escHtml(e.message)}`;
+                banners.prepend(div);
+            }
+        }
+    }
+
+    async function retrySyncOnboarding(jobId) {
+        const errorBlock = document.querySelector('#ob-content-4 [style*="fff5f5"]');
+        if (errorBlock) {
+            errorBlock.style.display = 'none';
+        }
+        const subtitle = document.querySelector('#ob-content-4 .ob-start-subtitle');
+        if (subtitle) {
+            subtitle.classList.remove('hidden');
+        }
+        try {
+            const result = await api('POST', '/settings/sync/' + jobId + '/retry');
+            showSyncBanner(result.jobId, result.name || 'репозиторий', true);
+            activeSyncRunning = true;
+        } catch (e) {
+            if (errorBlock) {
+                errorBlock.style.display = '';
+            }
+            const banners = document.getElementById('sync-banners-ob');
+            if (banners) {
+                const div = document.createElement('div');
+                div.className = 'sync-banner sync-banner-error';
+                div.innerHTML = `<span>&#x2715;</span> Не удалось запустить синхронизацию: ${escHtml(e.message)}`;
                 banners.prepend(div);
             }
         }

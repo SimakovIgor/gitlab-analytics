@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
 
@@ -25,4 +26,7 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
 
     boolean existsByWorkspaceIdAndStatus(Long workspaceId,
                                          SyncStatus status);
+
+    Optional<SyncJob> findTopByWorkspaceIdAndStatusOrderByStartedAtDesc(Long workspaceId,
+                                                                         SyncStatus status);
 }
