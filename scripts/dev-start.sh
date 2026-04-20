@@ -115,7 +115,7 @@ if [[ "$WITH_MONITORING" == true ]]; then
       fi
     done
     if [[ ${#MISSING[@]} -gt 0 ]]; then
-      docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" --project-name gitlab-analytics up -d
+      docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" up -d
     fi
   fi
   success "Prometheus → http://localhost:9090"

@@ -26,8 +26,10 @@ public class AsyncConfig {
     @Bean(name = "mrProcessingExecutor")
     public Executor mrProcessingExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(10);
-        executor.setMaxPoolSize(10);
+        // 5 threads: each MR triggers multiple GitLab API calls (commits+stats+discussions+approvals+diffs).
+        // 10 threads caused thundering-herd 429 bursts; 5 keeps concurrent requests within rate limits.
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(5);
         executor.setQueueCapacity(500);
         executor.setThreadNamePrefix("mr-sync-");
         // When queue is full, the calling thread executes the task — no tasks dropped for large repos

@@ -17,6 +17,8 @@ public record AppProperties(
         int readTimeoutSeconds,
         int maxRetries,
         int retryBackoffSeconds,
+        int maxBackoffSeconds,
+        int blockTimeoutSeconds,
         @Min(1) int perPage
     ) {
 

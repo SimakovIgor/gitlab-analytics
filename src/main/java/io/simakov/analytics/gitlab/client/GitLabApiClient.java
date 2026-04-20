@@ -179,7 +179,7 @@ public class GitLabApiClient {
                     .map(body -> new GitLabApiException("Commit stats error " + response.statusCode(), response.statusCode())))
             .bodyToMono(GitLabCommitDto.class)
             .retryWhen(retrySpec())
-            .block(readTimeout());
+            .block(blockTimeout());
     }
 
     /**
@@ -229,7 +229,7 @@ public class GitLabApiClient {
                     .map(body -> new GitLabApiException("Approvals API error " + response.statusCode(), response.statusCode())))
             .bodyToMono(GitLabApprovalsDto.class)
             .retryWhen(retrySpec())
-            .block(readTimeout());
+            .block(blockTimeout());
     }
 
     // -----------------------------------------------------------------------
@@ -257,7 +257,7 @@ public class GitLabApiClient {
                         .map(body -> new GitLabApiException("GitLab API error " + resp.statusCode() + ": " + body, resp.statusCode())))
                 .toEntity(responseType)
                 .retryWhen(retrySpec())
-                .block(readTimeout());
+                .block(blockTimeout());
 
             if (response == null || response.getBody() == null || response.getBody().length == 0) {
                 break;
@@ -284,7 +284,10 @@ public class GitLabApiClient {
     private Retry retrySpec() {
         int maxRetries = appProperties.gitlab().maxRetries();
         int backoffSeconds = appProperties.gitlab().retryBackoffSeconds();
+        int maxBackoffSeconds = appProperties.gitlab().maxBackoffSeconds();
         return Retry.backoff(maxRetries, Duration.ofSeconds(backoffSeconds))
+            .maxBackoff(Duration.ofSeconds(maxBackoffSeconds))
+            .jitter(1.0)
             .filter(e -> e instanceof GitLabApiException && ((GitLabApiException) e).isTransient())
             .doBeforeRetry(signal -> {
                 Throwable failure = signal.failure();
@@ -306,5 +309,9 @@ public class GitLabApiClient {
 
     private Duration readTimeout() {
         return Duration.ofSeconds(appProperties.gitlab().readTimeoutSeconds());
+    }
+
+    private Duration blockTimeout() {
+        return Duration.ofSeconds(appProperties.gitlab().blockTimeoutSeconds());
     }
 }

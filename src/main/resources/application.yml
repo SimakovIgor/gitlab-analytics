@@ -7,8 +7,8 @@ spring:
     username: ${DB_USERNAME:analytics}
     password: ${DB_PASSWORD:analytics}
     hikari:
-      # mrProcessingExecutor (10) + snapshotExecutor (2) + Tomcat HTTP threads + headroom
-      maximum-pool-size: 20
+      # mrProcessingExecutor (5) + snapshotExecutor (2) + Tomcat HTTP threads + headroom
+      maximum-pool-size: 15
       connection-timeout: 30000
 
   jpa:
@@ -50,13 +50,20 @@ app:
   gitlab:
     # Таймаут установки соединения с GitLab API (секунды)
     connect-timeout-seconds: 10
-    # Таймаут ожидания ответа от GitLab API (секунды).
+    # Таймаут одного HTTP-запроса к GitLab API (секунды, Netty ReadTimeoutHandler).
     # Увеличить при работе с медленными инстансами GitLab.
     read-timeout-seconds: 120
     # Количество повторных попыток при временных ошибках (429, 5xx)
     max-retries: 5
-    # Начальный backoff между retry-попытками (секунды, exponential)
+    # Начальный backoff между retry-попытками (секунды, exponential с jitter)
     retry-backoff-seconds: 5
+    # Потолок backoff — экспонента не растёт выше этого значения (секунды).
+    # Без ограничения: 5s→10s→20s→40s→80s — суммарно >150s при 5 ретраях.
+    max-backoff-seconds: 30
+    # Таймаут на всю операцию включая все ретраи (секунды).
+    # Должен быть >= max-retries * max-backoff-seconds + запас на сами запросы.
+    # 5 ретраев × 30s + 60s запас = 210s → берём 300s.
+    block-timeout-seconds: 300
     # Размер страницы при пагинации GitLab API (max 100)
     per-page: 100
 
