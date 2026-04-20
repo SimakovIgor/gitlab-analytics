@@ -650,7 +650,7 @@
         div.className = 'sync-banner sync-banner-running';
         const desc = isRetry
             ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
-            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем данные за 360 дней`;
+            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем список MR за 360 дней`;
         div.innerHTML = buildBannerHtml(jobId, desc);
         banners.prepend(div);
         startBannerTimers(jobId, id, Date.now());

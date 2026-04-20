@@ -416,29 +416,26 @@
                 </div>
                 <p class="ob-start-subtitle"
                    th:classappend="${lastFailedSyncJobId != null and activeJobIds.isEmpty()} ? ' hidden' : ''">
-                    Загружаем MR, коммиты и ревью за 360 дней. Шаг 5 откроется автоматически.
+                    Загружаем список MR за 360 дней — займёт ~1-2 минуты. Шаг 5 откроется автоматически.
                 </p>
                 <div id="ob-sync-section">
                     <div id="sync-banners-ob"></div>
                 </div>
             </div>
 
-            <!-- Шаг 5: Выберите сотрудников -->
-            <div id="ob-content-5"
-                 th:class="${hasSyncCompleted and activeJobIds.isEmpty() and !hasUsers} ? 'ob-step-body' : 'ob-step-body hidden'">
-                <h2 class="ob-start-title">Выберите сотрудников</h2>
-                <p class="ob-start-subtitle">Выберите, кого отслеживать — добавить или убрать можно в любой момент</p>
+            <!-- Шаг 5: Подтвердите состав команды -->
+            <div id="ob-content-5" class="ob-step-body hidden">
+                <h2 class="ob-start-title">Ваша команда</h2>
+                <p class="ob-start-subtitle">Мы нашли этих разработчиков в ваших MR — уберите лишних и подтвердите состав</p>
                 <div class="discovery-loading hidden" id="ob-discovery-loading">
                     <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                    Ищем участников...
+                    Загружаем список...
                 </div>
                 <div class="discovery-list" id="ob-discovery-list" style="max-height:340px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:8px;"></div>
                 <div class="ob-discovery-actions-row hidden" id="ob-discovery-actions">
                     <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
                     <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
-                    <button class="btn-sm btn-secondary" id="ob-filter-active-btn" onclick="toggleObActivityFilter()">С коммитами</button>
-                    <button class="btn-sm btn-secondary" onclick="openModal('modal-user')">+ Вручную</button>
-                    <button class="btn-sm btn-primary" id="ob-btn-add" onclick="addSelectedOb()" style="margin-left:auto">Добавить выбранных</button>
+                    <button class="btn-sm btn-primary" id="ob-btn-confirm" onclick="confirmTeamSelection()" style="margin-left:auto">Подтвердить состав →</button>
                 </div>
             </div>
 
@@ -621,6 +618,7 @@
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
     let hasSyncCompleted = /*[[${hasSyncCompleted}]]*/ false;
+    let awaitingTeamConfirmation = false;
     let obAddedDevs = 0;
     let obTotalMrs = parseInt(sessionStorage.getItem('ob_total_mrs') || '0', 10);
 
@@ -705,7 +703,7 @@
         div.className = 'sync-banner sync-banner-running';
         const desc = isRetry
             ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
-            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем данные за 360 дней`;
+            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем список MR за 360 дней`;
         div.innerHTML = buildBannerHtml(jobId, desc);
         banners.prepend(div);
         startBannerTimers(jobId, id, Date.now());
@@ -952,15 +950,81 @@
         showContent(2, !s.hasSources);
         showContent(3, s.hasSources && !s.hasProjects);
         showContent(4, s.hasProjects && !syncDone);
-        showContent(5, syncDone && !s.hasUsers);
-        showContent(6, s.hasUsers);
+        showContent(5, awaitingTeamConfirmation);
+        showContent(6, s.hasUsers && !awaitingTeamConfirmation);
     }
 
     function onSyncCompletedInOnboarding() {
         activeSyncRunning = false;
         hasSyncCompleted = true;
+        awaitingTeamConfirmation = true;
         refreshOnboarding();
-        loadObDiscovery();
+        loadTrackedUsersForConfirmation();
+    }
+
+    async function loadTrackedUsersForConfirmation() {
+        const loading = document.getElementById('ob-discovery-loading');
+        const listEl = document.getElementById('ob-discovery-list');
+        const actions = document.getElementById('ob-discovery-actions');
+        if (!listEl) {
+            return;
+        }
+        if (loading) {
+            loading.classList.remove('hidden');
+        }
+        try {
+            const users = await api('GET', '/settings/users/tracked');
+            if (loading) {
+                loading.classList.add('hidden');
+            }
+            if (users.length === 0) {
+                listEl.innerHTML = '<div class="empty-state" style="padding:16px">Разработчики не найдены — добавьте вручную в Настройках</div>';
+            } else {
+                listEl.innerHTML = users.map(u => renderTrackedUserConfirmRow(u)).join('');
+            }
+            if (actions) {
+                actions.classList.remove('hidden');
+            }
+        } catch (e) {
+            if (loading) {
+                loading.classList.add('hidden');
+            }
+            console.error('Ошибка загрузки сотрудников:', e);
+        }
+    }
+
+    function renderTrackedUserConfirmRow(u) {
+        const letter = (u.displayName || '?')[0].toUpperCase();
+        return `<label class="discovery-row discovery-row-selectable">
+        <input type="checkbox" class="ob-check" data-user-id="${u.id}" checked onchange="updateObBtn()">
+        <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+        <div class="discovery-info">
+            <span class="discovery-name">${escHtml(u.displayName)}</span>
+        </div>
+    </label>`;
+    }
+
+    async function confirmTeamSelection() {
+        const unchecked = [...document.querySelectorAll('#ob-discovery-list .ob-check:not(:checked)')];
+        const btn = document.getElementById('ob-btn-confirm');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="ob-btn-spinner"></span>Сохраняем...';
+        }
+        setDiscoveryActionsLocked(true);
+        try {
+            await Promise.all(unchecked.map(cb => api('DELETE', '/settings/users/' + cb.dataset.userId)));
+            // Запускаем снапшоты асинхронно и сразу уходим на дашборд
+            api('POST', '/settings/snapshots/backfill?days=360').catch(() => {});
+            window.location.href = '/report';
+        } catch (e) {
+            setDiscoveryActionsLocked(false);
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Подтвердить состав →';
+            }
+            alert('Не удалось сохранить: ' + e.message);
+        }
     }
 
     async function loadObDiscovery() {
@@ -1030,9 +1094,13 @@
 
     function updateObBtn() {
         const count = document.querySelectorAll('.ob-check:checked').length;
-        const btn = document.getElementById('ob-btn-add');
-        if (btn) {
-            btn.textContent = count > 0 ? `Добавить выбранных (${count})` : 'Добавить выбранных';
+        const addBtn = document.getElementById('ob-btn-add');
+        if (addBtn) {
+            addBtn.textContent = count > 0 ? `Добавить выбранных (${count})` : 'Добавить выбранных';
+        }
+        const confirmBtn = document.getElementById('ob-btn-confirm');
+        if (confirmBtn && !confirmBtn.disabled) {
+            confirmBtn.textContent = `Подтвердить состав (${count}) →`;
         }
     }
 

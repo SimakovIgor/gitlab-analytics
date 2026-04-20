@@ -154,6 +154,10 @@ public class SettingsService {
         return contributorDiscoveryService.discover();
     }
 
+    public List<TrackedUser> getTrackedUsers() {
+        return trackedUserRepository.findAllByWorkspaceId(WorkspaceContext.get());
+    }
+
     @Transactional
     public List<TrackedUser> createUsersBulk(List<CreateTrackedUserRequest> requests) {
         Long workspaceId = WorkspaceContext.get();

@@ -145,6 +145,14 @@ public class SettingsController {
         return settingsService.discoverContributors();
     }
 
+    @GetMapping("/users/tracked")
+    @ResponseBody
+    public List<Map<String, Object>> getTrackedUsers() {
+        return settingsService.getTrackedUsers().stream()
+            .map(u -> Map.<String, Object>of("id", u.getId(), "displayName", u.getDisplayName()))
+            .toList();
+    }
+
     // ── Tracked Users ────────────────────────────────────────────────────────
 
     @PostMapping("/users/bulk")
