@@ -102,8 +102,8 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                GROUP BY DATE_TRUNC('week', mr.merged_at_gitlab)
                ORDER BY period
                """)
-    List<Object[]> findLeadTimeByWeek(@Param("projectIds") List<Long> projectIds,
-                                      @Param("dateFrom") Instant dateFrom);
+    List<LeadTimeWeekProjection> findLeadTimeByWeek(@Param("projectIds") List<Long> projectIds,
+                                                    @Param("dateFrom") Instant dateFrom);
 
     /**
      * Overall lead time summary for the selected period.
@@ -125,6 +125,6 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                  AND mr.merged_at_gitlab > mr.created_at_gitlab
                  AND mr.merged_at_gitlab >= :dateFrom
                """)
-    List<Object[]> findLeadTimeSummary(@Param("projectIds") List<Long> projectIds,
-                                       @Param("dateFrom") Instant dateFrom);
+    List<LeadTimeSummaryProjection> findLeadTimeSummary(@Param("projectIds") List<Long> projectIds,
+                                                        @Param("dateFrom") Instant dateFrom);
 }

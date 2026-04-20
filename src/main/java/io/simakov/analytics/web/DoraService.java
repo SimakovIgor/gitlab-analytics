@@ -3,6 +3,8 @@ package io.simakov.analytics.web;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.domain.model.TrackedProject;
+import io.simakov.analytics.domain.repository.LeadTimeSummaryProjection;
+import io.simakov.analytics.domain.repository.LeadTimeWeekProjection;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.security.WorkspaceContext;
@@ -49,24 +51,24 @@ public class DoraService {
         List<Long> resolvedIds = resolveProjectIds(projectIds);
         Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
 
-        List<Object[]> summaryRows = mergeRequestRepository.findLeadTimeSummary(resolvedIds, dateFrom);
-        Object[] summary = summaryRows.isEmpty()
+        List<LeadTimeSummaryProjection> summaryRows = mergeRequestRepository.findLeadTimeSummary(resolvedIds, dateFrom);
+        LeadTimeSummaryProjection summary = summaryRows.isEmpty()
             ? null
             : summaryRows.getFirst();
-        List<Object[]> weekly = mergeRequestRepository.findLeadTimeByWeek(resolvedIds, dateFrom);
+        List<LeadTimeWeekProjection> weekly = mergeRequestRepository.findLeadTimeByWeek(resolvedIds, dateFrom);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalMrs", summary != null
-            ? ((Number) summary[0]).intValue()
+            ? summary.getMrCount().intValue()
             : 0);
         result.put("medianHours", summary != null
-            ? round((Number) summary[1])
+            ? round(summary.getMedianHours())
             : null);
         result.put("p75Hours", summary != null
-            ? round((Number) summary[2])
+            ? round(summary.getP75Hours())
             : null);
         result.put("p95Hours", summary != null
-            ? round((Number) summary[3])
+            ? round(summary.getP95Hours())
             : null);
         result.put("chartJson", buildChartJson(weekly));
         return result;
@@ -81,15 +83,15 @@ public class DoraService {
             .toList();
     }
 
-    private String buildChartJson(List<Object[]> rows) {
+    private String buildChartJson(List<LeadTimeWeekProjection> rows) {
         List<String> labels = new ArrayList<>();
         List<Double> medians = new ArrayList<>();
         List<Double> p75s = new ArrayList<>();
 
-        for (Object[] row : rows) {
-            labels.add(row[0].toString());
-            medians.add(round((Number) row[2]));
-            p75s.add(round((Number) row[3]));
+        for (LeadTimeWeekProjection row : rows) {
+            labels.add(row.getPeriod().toString());
+            medians.add(round(row.getMedianHours()));
+            p75s.add(round(row.getP75Hours()));
         }
 
         Map<String, Object> chart = Map.of(

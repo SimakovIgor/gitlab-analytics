@@ -34,7 +34,7 @@ public interface MergeRequestCommitRepository extends JpaRepository<MergeRequest
                GROUP BY mrc.author_email, mrc.author_name, tp.name
                ORDER BY commit_count DESC
                """)
-    List<Object[]> findContributorRows();
+    List<CommitContributorProjection> findContributorRows();
 
     @Query(nativeQuery = true,
            value = """
@@ -52,5 +52,5 @@ public interface MergeRequestCommitRepository extends JpaRepository<MergeRequest
                GROUP BY mrc.author_email, mrc.author_name, tp.name
                ORDER BY commit_count DESC
                """)
-    List<Object[]> findContributorRowsByWorkspaceId(@Param("workspaceId") Long workspaceId);
+    List<CommitContributorProjection> findContributorRowsByWorkspaceId(@Param("workspaceId") Long workspaceId);
 }
