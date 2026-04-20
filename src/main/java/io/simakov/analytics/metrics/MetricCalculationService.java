@@ -100,7 +100,6 @@ public class MetricCalculationService {
             List<MergeRequestCommit> userCommits = collectUserCommits(
                 authoredMrs, commitsByMrId, user, aliasEmails);
 
-            @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
             MetricContext ctx = new MetricContext(
                 user, aliasEmails, alias.gitlabIds(),
                 authoredMrs, userCommits,

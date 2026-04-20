@@ -23,8 +23,7 @@ public class AppUserOauthService extends DefaultOAuth2UserService {
 
     @Override
     @Transactional
-    @SuppressWarnings("PMD.AvoidUncheckedExceptionsInSignatures")
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) {
         OAuth2User oAuth2User = super.loadUser(userRequest);
 
         Number idAttribute = oAuth2User.getAttribute("id");

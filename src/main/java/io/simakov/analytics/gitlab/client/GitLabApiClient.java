@@ -206,7 +206,6 @@ public class GitLabApiClient {
     // Pagination
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     private <T> List<T> fetchAllPages(String baseUrl,
                                       String token,
                                       String path,

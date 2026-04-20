@@ -37,7 +37,6 @@ public class ContributorDiscoveryService {
      * The one with the most commits becomes the primary entry; others become mergedEmails.
      * Guarded by MIN_NAME_LENGTH_FOR_MERGE to avoid collapsing generic short names.
      */
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     private static List<DiscoveredContributor> mergeByName(List<DiscoveredContributor> source) {
         // normalized name → contributors with that name
         Map<String, List<DiscoveredContributor>> byName = new LinkedHashMap<>();
@@ -128,7 +127,6 @@ public class ContributorDiscoveryService {
     }
 
     @Transactional(readOnly = true)
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     public List<DiscoveredContributor> discover() {
         Long workspaceId = WorkspaceContext.get();
         Set<String> trackedEmails = buildTrackedEmailSet(workspaceId);

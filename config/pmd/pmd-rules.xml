@@ -100,7 +100,11 @@
         <exclude name="DoNotUseThreads"/>
     </rule>
 
-    <rule ref="category/java/performance.xml"/>
+    <rule ref="category/java/performance.xml">
+        <!-- Legacy J2ME rule, irrelevant on modern JVM — object allocation inside loops
+             is handled efficiently by JIT and GC; suppressing per-site pollutes code -->
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    </rule>
 
     <rule ref="category/java/security.xml"/>
 
