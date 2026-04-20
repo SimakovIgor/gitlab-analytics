@@ -12,7 +12,8 @@ public record ManualSyncRequest(
     @NotNull Instant dateTo,
     boolean fetchNotes,
     boolean fetchApprovals,
-    boolean fetchCommits
+    boolean fetchCommits,
+    boolean fetchDiffStats
 ) {
 
 }

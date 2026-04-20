@@ -51,7 +51,7 @@ class SyncControllerTest extends BaseIT {
             List.of(project.getId()),
             Instant.now().minus(30, ChronoUnit.DAYS),
             Instant.now(),
-            true, true, true
+            true, true, true, false
         );
 
         ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
@@ -75,7 +75,7 @@ class SyncControllerTest extends BaseIT {
             List.of(1L),
             Instant.now().minus(7, ChronoUnit.DAYS),
             Instant.now(),
-            true, true, true
+            true, true, true, false
         );
 
         ResponseEntity<Void> response = restTemplate.postForEntity(
@@ -93,7 +93,7 @@ class SyncControllerTest extends BaseIT {
             List.of(),
             Instant.now().minus(7, ChronoUnit.DAYS),
             Instant.now(),
-            true, true, true
+            true, true, true, false
         );
 
         ResponseEntity<Void> response = restTemplate.exchange(
@@ -114,7 +114,7 @@ class SyncControllerTest extends BaseIT {
             List.of(project.getId()),
             Instant.now().minus(7, ChronoUnit.DAYS),
             Instant.now(),
-            false, false, false
+            false, false, false, false
         );
 
         ResponseEntity<SyncJobResponse> created = restTemplate.exchange(
@@ -163,7 +163,7 @@ class SyncControllerTest extends BaseIT {
             List.of(project1.getId(), project2.getId()),
             Instant.now().minus(30, ChronoUnit.DAYS),
             Instant.now(),
-            false, false, false
+            false, false, false, false
         );
 
         ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
@@ -196,7 +196,7 @@ class SyncControllerTest extends BaseIT {
             List.of(project.getId()),
             Instant.now().minus(30, ChronoUnit.DAYS),
             Instant.now(),
-            true, true, true
+            true, true, true, false
         );
 
         ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
@@ -225,7 +225,7 @@ class SyncControllerTest extends BaseIT {
             List.of(project2.getId(), project3.getId()),
             Instant.now().minus(30, ChronoUnit.DAYS),
             Instant.now(),
-            false, false, false
+            false, false, false, false
         );
 
         ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
@@ -252,7 +252,7 @@ class SyncControllerTest extends BaseIT {
             List.of(project.getId()),
             Instant.now().minus(30, ChronoUnit.DAYS),
             Instant.now(),
-            false, false, false
+            false, false, false, false
         );
 
         ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
@@ -293,7 +293,7 @@ class SyncControllerTest extends BaseIT {
                 projectIds,
                 Instant.now().minus(30, ChronoUnit.DAYS),
                 Instant.now(),
-                false, false, false
+                false, false, false, false
             );
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {

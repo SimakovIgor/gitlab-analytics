@@ -1,6 +1,7 @@
 package io.simakov.analytics.sync;
 
 import io.simakov.analytics.api.dto.request.ManualSyncRequest;
+import io.simakov.analytics.api.exception.GitLabApiException;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.TrackedProject;
@@ -97,8 +98,15 @@ public class SyncOrchestrator {
                 try {
                     syncMergeRequest(mrDto, trackedProjectId, ctx, request);
                 } catch (Exception e) {
-                    log.warn("Failed to sync MR iid={} in project {}: {}",
-                        mrDto.iid(), projectPath, e.getMessage());
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    if (cause instanceof GitLabApiException glEx && glEx.getStatusCode() != null
+                            && glEx.getStatusCode().value() == 429) {
+                        log.warn("Rate limit (429) syncing MR iid={} in project {} — retries exhausted",
+                            mrDto.iid(), projectPath);
+                    } else {
+                        log.warn("Failed to sync MR iid={} in project {}: {}",
+                            mrDto.iid(), projectPath, cause.getMessage());
+                    }
                 }
                 syncJobService.updateProgress(jobId, processed.incrementAndGet(), total);
             }, mrProcessingExecutor);

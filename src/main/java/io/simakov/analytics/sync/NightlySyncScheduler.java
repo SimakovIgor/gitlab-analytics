@@ -65,7 +65,7 @@ public class NightlySyncScheduler {
             log.warn("Nightly sync skipped for workspace={} — sync already running", workspaceId);
         } else {
             ManualSyncRequest request = new ManualSyncRequest(
-                projectIds, dateFrom, dateTo, true, true, true
+                projectIds, dateFrom, dateTo, true, true, true, true
             );
             log.info("Starting nightly sync: workspace={}, projects={}", workspaceId, projectIds.size());
             var job = syncJobService.create(workspaceId, request);

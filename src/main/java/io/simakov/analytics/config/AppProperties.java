@@ -16,6 +16,7 @@ public record AppProperties(
         int connectTimeoutSeconds,
         int readTimeoutSeconds,
         int maxRetries,
+        int retryBackoffSeconds,
         @Min(1) int perPage
     ) {
 

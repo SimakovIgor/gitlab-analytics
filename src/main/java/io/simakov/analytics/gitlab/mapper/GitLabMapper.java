@@ -86,6 +86,7 @@ public class GitLabMapper {
             .additions(additions)
             .deletions(deletions)
             .totalChanges(additions + deletions)
+            .mergeCommit(dto.isMergeCommit())
             .build();
     }
 

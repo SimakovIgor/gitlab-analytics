@@ -334,9 +334,12 @@ public class ReportViewService {
         }
         String createdAt = mr.getCreatedAtGitlab() != null ? mr.getCreatedAtGitlab().toString() : null;
         String mergedAt = mr.getMergedAtGitlab() != null ? mr.getMergedAtGitlab().toString() : null;
+        // Prefer net diff from /diffs endpoint (matches GitLab UI); fall back to commit stats.
+        int linesAdded = mr.getNetAdditions() != null ? mr.getNetAdditions() : stats.linesAdded();
+        int linesDeleted = mr.getNetDeletions() != null ? mr.getNetDeletions() : stats.linesDeleted();
         return new MrSummaryDto(mr.getTitle(), projectPath, mr.getWebUrl(),
             createdAt, mergedAt, hoursToMerge,
-            stats.linesAdded(), stats.linesDeleted(), stats.commitCount());
+            linesAdded, linesDeleted, stats.commitCount());
     }
 
     private int parsePeriodDays(String period) {

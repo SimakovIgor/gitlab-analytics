@@ -83,14 +83,35 @@ class DeliveryMetricProvider implements MetricProvider {
     }
 
     private ChangeVolume computeChangeVolume(MetricContext ctx) {
-        int linesAdded = ctx.userCommits().stream().mapToInt(MergeRequestCommit::getAdditions).sum();
-        int linesDeleted = ctx.userCommits().stream().mapToInt(MergeRequestCommit::getDeletions).sum();
-        int filesChanged = ctx.userCommits().stream().mapToInt(MergeRequestCommit::getFilesChangedCount).sum();
+        // Group user's non-merge commits by MR for the fallback path
+        java.util.Map<Long, List<MergeRequestCommit>> userCommitsByMrId = ctx.userCommits().stream()
+            .filter(c -> !c.isMergeCommit())
+            .collect(Collectors.groupingBy(MergeRequestCommit::getMergeRequestId));
 
-        // MR size in lines — all commits in the MR (not just user's), MRs with no commits excluded
+        // Use net diff (from /diffs endpoint) when available — matches GitLab UI.
+        // Falls back to the user's own commit stats (excluding merge commits).
+        int linesAdded = ctx.authoredMrs().stream()
+            .mapToInt(mr -> mr.getNetAdditions() != null
+                ? mr.getNetAdditions()
+                : userCommitsByMrId.getOrDefault(mr.getId(), List.of()).stream()
+                    .mapToInt(MergeRequestCommit::getAdditions).sum())
+            .sum();
+        int linesDeleted = ctx.authoredMrs().stream()
+            .mapToInt(mr -> mr.getNetDeletions() != null
+                ? mr.getNetDeletions()
+                : userCommitsByMrId.getOrDefault(mr.getId(), List.of()).stream()
+                    .mapToInt(MergeRequestCommit::getDeletions).sum())
+            .sum();
+        int filesChanged = ctx.authoredMrs().stream()
+            .mapToInt(MergeRequest::getFilesChangedCount).sum();
+
+        // MR size in lines — net diff when available, else all commits (not just user's) without merge commits
         List<Integer> mrSizesLines = ctx.authoredMrs().stream()
-            .map(mr -> ctx.commitsByMrId().getOrDefault(mr.getId(), List.of()).stream()
-                .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
+            .map(mr -> mr.getNetAdditions() != null
+                ? mr.getNetAdditions() + (mr.getNetDeletions() != null ? mr.getNetDeletions() : 0)
+                : ctx.commitsByMrId().getOrDefault(mr.getId(), List.of()).stream()
+                    .filter(c -> !c.isMergeCommit())
+                    .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
             .filter(size -> size > 0)
             .sorted()
             .toList();

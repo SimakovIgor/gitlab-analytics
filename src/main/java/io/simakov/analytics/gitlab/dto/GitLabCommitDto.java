@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.Instant;
+import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GitLabCommitDto(
@@ -13,8 +14,13 @@ public record GitLabCommitDto(
     @JsonProperty("author_email") String authorEmail,
     @JsonProperty("authored_date") Instant authoredDate,
     @JsonProperty("committed_date") Instant committedDate,
+    @JsonProperty("parent_ids") List<String> parentIds,
     CommitStats stats
 ) {
+
+    public boolean isMergeCommit() {
+        return parentIds != null && parentIds.size() > 1;
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CommitStats(
