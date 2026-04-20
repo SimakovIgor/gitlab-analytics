@@ -65,7 +65,7 @@ public class SyncOrchestrator {
         }
     }
 
-    @SuppressWarnings({"checkstyle:IllegalCatch", "PMD.AvoidInstantiatingObjectsInLoops"})
+    @SuppressWarnings("checkstyle:IllegalCatch")
     private void syncProject(Long jobId,
                              Long trackedProjectId,
                              ManualSyncRequest request) {

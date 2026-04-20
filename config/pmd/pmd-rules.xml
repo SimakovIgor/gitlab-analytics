@@ -38,6 +38,15 @@
         <exclude name="MethodNamingConventions"/>
     </rule>
 
+    <rule ref="category/java/codestyle.xml/SignatureDeclareThrowsException">
+        <properties>
+            <!-- Spring Security's HttpSecurity.build() declares throws Exception;
+                 @Bean filter chain methods must match that signature -->
+            <property name="violationSuppressXPath"
+                      value=".[ancestor::ClassDeclaration[pmd-java:hasAnnotation('org.springframework.context.annotation.Configuration')]]"/>
+        </properties>
+    </rule>
+
     <rule ref="category/java/codestyle.xml/ClassNamingConventions">
         <properties>
             <property name="utilityClassPattern" value="[A-Z][a-zA-Z0-9]*"/>

@@ -31,7 +31,6 @@ public class SecurityConfig {
      */
     @Bean
     @Order(1)
-    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
     public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
         return http
             .securityMatcher("/api/**")
@@ -51,7 +50,6 @@ public class SecurityConfig {
      */
     @Bean
     @Order(2)
-    @SuppressWarnings("PMD.SignatureDeclareThrowsException")
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         return http
             .authorizeHttpRequests(auth -> auth

@@ -60,7 +60,7 @@ public class SnapshotService {
         return runDailyBackfill(WorkspaceContext.get(), days);
     }
 
-    @SuppressWarnings({"PMD.AvoidInstantiatingObjectsInLoops", "checkstyle:IllegalCatch"})
+    @SuppressWarnings("checkstyle:IllegalCatch")
     public int runDailyBackfill(Long workspaceId,
                                 int days) {
         LocalDate today = DateTimeUtils.currentDateUtc();
