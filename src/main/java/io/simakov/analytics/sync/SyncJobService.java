@@ -14,6 +14,10 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -98,6 +102,30 @@ public class SyncJobService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Cannot parse payload of job " + jobId, e);
         }
+    }
+
+    /**
+     * Returns the first STARTED job in the workspace whose projectIds overlap with the given set.
+     * Used to detect duplicate syncs before creating a new job.
+     */
+    public Optional<SyncJob> findActiveJobForProjects(Long workspaceId,
+                                                      Collection<Long> projectIds) {
+        Set<Long> requested = Set.copyOf(projectIds);
+        List<SyncJob> active = syncJobRepository
+            .findByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED);
+        return active.stream()
+            .filter(job -> {
+                if (job.getPayloadJson() == null) {
+                    return false;
+                }
+                try {
+                    ManualSyncRequest payload = objectMapper.readValue(job.getPayloadJson(), ManualSyncRequest.class);
+                    return payload.projectIds().stream().anyMatch(requested::contains);
+                } catch (JsonProcessingException e) {
+                    return false;
+                }
+            })
+            .findFirst();
     }
 
     public SyncJob findById(Long jobId) {

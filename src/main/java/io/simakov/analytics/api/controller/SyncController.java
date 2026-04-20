@@ -51,6 +51,13 @@ public class SyncController {
                 throw new ResourceNotFoundException("TrackedProject", pid);
             }
         }
+        // Idempotency: return the running job instead of starting a duplicate
+        var activeJob = syncJobService.findActiveJobForProjects(workspaceId, request.projectIds());
+        if (activeJob.isPresent()) {
+            log.info("Sync already running (job {}), returning existing job", activeJob.get().getId());
+            return SyncJobResponse.from(activeJob.get());
+        }
+
         SyncJob job = syncJobService.create(workspaceId, request);
         log.info("Created sync job {} for {} projects", job.getId(), request.projectIds().size());
         syncOrchestrator.orchestrateAsync(job.getId(), request);

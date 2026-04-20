@@ -230,12 +230,18 @@ public class SettingsService {
     // ── Internal helpers ──────────────────────────────────────────────────────
 
     private SyncJobResponse triggerBackfill(Long trackedProjectId) {
+        Long workspaceId = WorkspaceContext.get();
+        // Idempotency: return the running job instead of starting a duplicate
+        var activeJob = syncJobService.findActiveJobForProjects(workspaceId, List.of(trackedProjectId));
+        if (activeJob.isPresent()) {
+            return SyncJobResponse.from(activeJob.get());
+        }
         Instant dateTo = DateTimeUtils.now();
         Instant dateFrom = dateTo.minus(BACKFILL_DAYS, ChronoUnit.DAYS);
         ManualSyncRequest request = new ManualSyncRequest(
             List.of(trackedProjectId), dateFrom, dateTo, true, true, true
         );
-        SyncJob job = syncJobService.create(WorkspaceContext.get(), request);
+        SyncJob job = syncJobService.create(workspaceId, request);
         syncOrchestrator.orchestrateAsync(job.getId(), request);
         return SyncJobResponse.from(job);
     }
