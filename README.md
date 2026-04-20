@@ -43,7 +43,7 @@ GITHUB_CLIENT_SECRET=your-github-client-secret
 ./scripts/dev-start.sh
 ```
 
-Скрипт запустит PostgreSQL + Prometheus + Grafana (Docker) и затем приложение через `./gradlew bootRun`.
+Скрипт запустит PostgreSQL + Prometheus + Grafana + Portainer (Docker) и затем приложение через `./gradlew bootRun`.
 
 ```bash
 ./scripts/dev-start.sh --no-monitoring   # только PostgreSQL + приложение
@@ -102,7 +102,7 @@ GITHUB_CLIENT_SECRET=your-github-client-secret \
 3. Начните вводить название репозитория — появится поиск по GitLab.
 4. Выберите нужный репозиторий из результатов и нажмите **Добавить**.
 
-Синхронизация запустится автоматически — загружаются данные за последние 360 дней (MR, коммиты, ревью, апрувалы). Прогресс отображается баннером вверху страницы.
+Синхронизация запустится автоматически — загружаются данные за последние 360 дней (MR, коммиты, ревью, апрувалы). Для больших репозиториев открывается отдельная страница прогресса (`/settings/sync/progress/{jobId}`) с ETA и статистикой в реальном времени.
 
 Для повторной синхронизации — кнопка **Синк** рядом с репозиторием.
 
@@ -202,11 +202,13 @@ GITHUB_CLIENT_SECRET=your-github-client-secret \
 
 ### Порты
 
-| Сервис       | Порт   | URL                          |
-|--------------|--------|------------------------------|
-| Приложение   | `8080` | http://localhost:8080        |
-| Prometheus   | `9090` | http://localhost:9090        |
-| Grafana      | `3000` | http://localhost:3000        |
+| Сервис       | Порт   | URL                                        |
+|--------------|--------|--------------------------------------------|
+| Приложение   | `8080` | http://localhost:8080                      |
+| Prometheus   | `9090` | http://localhost:9090                      |
+| Grafana      | `3000` | http://localhost:3000  (admin / admin)     |
+| Portainer    | `9000` | http://localhost:9000  (Docker UI)         |
+| Loki         | `3100` | внутренний, scrape через Promtail          |
 
 ### Health / Actuator endpoints
 
@@ -220,14 +222,22 @@ GITHUB_CLIENT_SECRET=your-github-client-secret \
 
 Метрики включены: JVM, process, system, HTTP server requests, HikariCP, Logback. Все метрики содержат тег `application=gitlab-analytics`.
 
-### Локальный мониторинг (Prometheus + Grafana)
+### Локальный мониторинг (Prometheus + Grafana + Portainer)
+
+Запускается автоматически через `./scripts/dev-start.sh`, либо вручную:
 
 ```bash
-docker compose -f docker-compose.monitoring.yml up -d
+docker compose -f docker/docker-compose.monitoring.yml --project-name gitlab-analytics up -d
 ```
 
-Grafana: http://localhost:3000 — логин `admin` / пароль `admin`.
-Datasource и dashboard (Spring Boot — 15 панелей) provisioned автоматически.
+| Сервис    | URL                       | Логин         |
+|-----------|---------------------------|---------------|
+| Grafana   | http://localhost:3000     | admin / admin |
+| Portainer | http://localhost:9000     | создаётся при первом входе (≥12 символов) |
+
+Grafana: datasource и dashboards (Spring Boot / JVM / Application) provisioned автоматически из `monitoring/grafana/`.
+
+**Portainer** — веб-UI для Docker: видно все контейнеры (running + stopped), логи, статус, возможность рестартовать прямо из браузера.
 
 > По умолчанию Prometheus scrape-ит `host.docker.internal:8080` — работает, когда приложение запущено локально (`./gradlew bootRun`).
 > Если приложение запущено в Docker (`docker compose up`), смени target в `monitoring/prometheus.yml` на `app:8080`.

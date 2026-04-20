@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # dev-start.sh — запускает всё локальное окружение для разработки:
-#   PostgreSQL + Prometheus + Grafana (Docker) → Spring Boot (gradle bootRun)
+#   PostgreSQL + Prometheus + Grafana + Portainer (Docker) → Spring Boot (gradle bootRun)
 #
 # Использование:
 #   ./scripts/dev-start.sh                  # полный запуск с мониторингом
@@ -85,12 +85,25 @@ until docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T postgres \
 done
 success "PostgreSQL готов → localhost:5432"
 
-# ── Prometheus + Grafana ───────────────────────────────────────────────────────
+# ── Prometheus + Grafana + Portainer ──────────────────────────────────────────
 if [[ "$WITH_MONITORING" == true ]]; then
-  info "Запускаем Prometheus + Grafana..."
+  info "Запускаем Prometheus + Grafana + Portainer..."
   docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" --project-name gitlab-analytics up -d
   success "Prometheus → http://localhost:9090"
   success "Grafana    → http://localhost:3000  (admin / admin)"
+  success "Portainer  → http://localhost:9000"
+fi
+
+# ── Проверка порта 8080 ────────────────────────────────────────────────────────
+if lsof -ti:8080 > /dev/null 2>&1; then
+  warn "Порт 8080 уже занят. Останавливаем процесс..."
+  kill -TERM $(lsof -ti:8080) 2>/dev/null || true
+  sleep 2
+  if lsof -ti:8080 > /dev/null 2>&1; then
+    kill -9 $(lsof -ti:8080) 2>/dev/null || true
+    sleep 1
+  fi
+  success "Порт 8080 освобождён"
 fi
 
 # ── Spring Boot ───────────────────────────────────────────────────────────────
@@ -104,6 +117,7 @@ echo -e "  ${GREEN}Metrics${NC}    → http://localhost:8080/actuator/prometheus
 if [[ "$WITH_MONITORING" == true ]]; then
   echo -e "  ${GREEN}Grafana${NC}    → http://localhost:3000  (admin / admin)"
   echo -e "              dashboards: JVM / Spring Boot 3.x · Application (sync jobs, HTTP)"
+  echo -e "  ${GREEN}Portainer${NC}  → http://localhost:9000  (все Docker контейнеры)"
 fi
 echo ""
 

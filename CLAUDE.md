@@ -94,6 +94,14 @@ metrics stored in minutes.
 **Async sync**: `SyncOrchestrator.orchestrateAsync` runs in a separate thread pool (configured in `AsyncConfig`). Avoid `@Transactional` on `private` methods — Spring AOP cannot proxy
 self-invocations.
 
+**Thread pools** (configured in `AsyncConfig`):
+- `mrProcessingExecutor` — 10 threads, queue 500, **CallerRunsPolicy** (calling thread executes when queue is full — prevents task loss for repos with 3000+ MRs).
+- `commitStatsExecutor` — 7 threads (I/O-bound), used by `CommitSyncStep` for parallel `GET /repository/commits/:sha` calls (~2100 req/min, within GitLab rate limit). Replaces the old sequential loop that caused ~37 min syncs for large repos.
+
+**Idempotent sync**: `SyncJobService.findActiveJobForProjects()` checks for a STARTED job with overlapping `projectIds` before creating a new one. `SyncController` and `SettingsService.triggerBackfill()` both call this check — double-click or two browser tabs return the existing job instead of launching a duplicate (which would cause `DataIntegrityViolationException` race conditions on unique constraints).
+
+**Sync progress page**: `GET /settings/sync/progress/{jobId}` — full-screen Thymeleaf page that polls every 3 seconds. Shows indeterminate bar → precise progress once MR count is known, ETA, elapsed time, done/error states with retry. Onboarding redirects here after `addProject()` instead of showing the inline banner (which was invisible on large repos).
+
 **Encryption**: `NoOpEncryptionService` stores tokens as plaintext. Set `app.encryption.enabled=true` and provide a real `EncryptionService` bean for production.
 
 **Commit stats**: The GitLab MR list and single-MR endpoints do not return `additions`/`deletions` on this GitLab instance. Stats are fetched individually via `GET /repository/commits/:sha` (one call
@@ -195,6 +203,18 @@ All metrics carry the tag `application=gitlab-analytics` (set via `management.me
 
 The `/actuator/**` endpoints are exposed over HTTP without additional auth (appropriate for internal/local use). For production, add `management.endpoints.web.base-path` behind an internal network or
 add security.
+
+### Monitoring stack (local: `docker-compose.monitoring.yml`, prod: `docker-compose.prod.yml`)
+
+| Service    | Port | Notes |
+|------------|------|-------|
+| Prometheus | 9090 | scrapes `host.docker.internal:8080/actuator/prometheus` (local) or `app:8080` (prod) |
+| Grafana    | 3000 | admin/admin — dashboards auto-provisioned from `monitoring/grafana/dashboards/` |
+| Loki       | 3100 | log storage — fed by Promtail reading Docker container logs |
+| Promtail   | —    | reads `/var/lib/docker/containers` + Docker socket, ships logs to Loki |
+| Portainer  | 9000 | Docker UI — all containers (running + stopped), logs, restart. First login creates admin password (≥12 chars). |
+
+**cAdvisor was removed** — Portainer covers container visibility. No container-level Prometheus metrics are collected (node-exporter covers host metrics in prod).
 
 ## Dependencies
 
