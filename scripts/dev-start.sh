@@ -88,7 +88,36 @@ success "PostgreSQL готов → localhost:5432"
 # ── Prometheus + Grafana + Portainer ──────────────────────────────────────────
 if [[ "$WITH_MONITORING" == true ]]; then
   info "Запускаем Prometheus + Grafana + Portainer..."
-  docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" --project-name gitlab-analytics up -d
+  MONITORING_CONTAINERS=(gitlab-analytics-prometheus gitlab-analytics-grafana gitlab-analytics-portainer gitlab-analytics-loki gitlab-analytics-promtail)
+  ALL_RUNNING=true
+  for c in "${MONITORING_CONTAINERS[@]}"; do
+    if ! docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
+      ALL_RUNNING=false
+      break
+    fi
+  done
+  if [[ "$ALL_RUNNING" == true ]]; then
+    info "Мониторинг уже запущен"
+  else
+    STOPPED=()
+    for c in "${MONITORING_CONTAINERS[@]}"; do
+      if docker ps -a --format '{{.Names}}' | grep -q "^${c}$"; then
+        STOPPED+=("$c")
+      fi
+    done
+    if [[ ${#STOPPED[@]} -gt 0 ]]; then
+      docker start "${STOPPED[@]}" > /dev/null
+    fi
+    MISSING=()
+    for c in "${MONITORING_CONTAINERS[@]}"; do
+      if ! docker ps -a --format '{{.Names}}' | grep -q "^${c}$"; then
+        MISSING+=("$c")
+      fi
+    done
+    if [[ ${#MISSING[@]} -gt 0 ]]; then
+      docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" --project-name gitlab-analytics up -d
+    fi
+  fi
   success "Prometheus → http://localhost:9090"
   success "Grafana    → http://localhost:3000  (admin / admin)"
   success "Portainer  → http://localhost:9000"
@@ -109,18 +138,6 @@ fi
 # ── Spring Boot ───────────────────────────────────────────────────────────────
 cd "$ROOT_DIR"
 
-echo ""
-echo -e "  ${GREEN}App${NC}        → http://localhost:8080"
-echo -e "  ${GREEN}Swagger${NC}    → http://localhost:8080/swagger-ui.html"
-echo -e "  ${GREEN}Health${NC}     → http://localhost:8080/actuator/health"
-echo -e "  ${GREEN}Metrics${NC}    → http://localhost:8080/actuator/prometheus"
-if [[ "$WITH_MONITORING" == true ]]; then
-  echo -e "  ${GREEN}Grafana${NC}    → http://localhost:3000  (admin / admin)"
-  echo -e "              dashboards: JVM / Spring Boot 3.x · Application (sync jobs, HTTP)"
-  echo -e "  ${GREEN}Portainer${NC}  → http://localhost:9000  (все Docker контейнеры)"
-fi
-echo ""
-
 APP_ENV=(
   GITHUB_CLIENT_ID="$GITHUB_CLIENT_ID"
   GITHUB_CLIENT_SECRET="$GITHUB_CLIENT_SECRET"
@@ -138,13 +155,25 @@ if [[ "$USE_JAR" == true ]]; then
       -x checkstyleMain -x pmdMain -x spotbugsMain -q
     JAR=$(ls "$ROOT_DIR"/build/libs/*.jar | grep -v plain | head -1)
   fi
-  info "Запускаем jar: $(basename "$JAR")"
+  info "Запускаем jar: $(basename "$JAR")  (Ctrl+C — остановить)"
   env "${APP_ENV[@]}" java -jar "$JAR"
 else
   GRADLE_ARGS="-x test -x jacocoTestReport -x jacocoTestCoverageVerification"
   if [[ "$FAST" == true ]]; then
     GRADLE_ARGS="$GRADLE_ARGS -x checkstyleMain -x pmdMain -x spotbugsMain"
   fi
-  info "Запускаем Spring Boot (bootRun)..."
-  env "${APP_ENV[@]}" ./gradlew bootRun $GRADLE_ARGS
+  LOG_FILE="$ROOT_DIR/build/dev-app.log"
+  mkdir -p "$ROOT_DIR/build"
+
+  info "Собираем и запускаем Spring Boot (лог: build/dev-app.log)..."
+  nohup env "${APP_ENV[@]}" ./gradlew bootRun $GRADLE_ARGS > "$LOG_FILE" 2>&1 &
+  BOOT_PID=$!
+  echo "$BOOT_PID" > "$ROOT_DIR/build/dev-app.pid"
+  info "PID: $BOOT_PID  (остановить: ./scripts/dev-stop.sh)"
+  echo ""
+  info "App     → http://localhost:8080"
+  info "Swagger → http://localhost:8080/swagger-ui.html"
+  echo ""
+  info "Логи (Ctrl+C — выйти из просмотра, приложение продолжит работу):"
+  tail -f "$LOG_FILE"
 fi

@@ -169,6 +169,50 @@ class MrSummaryLinesTest extends BaseIT {
         assertThat(mr.commitCount()).isZero();
     }
 
+    @Test
+    void netDiffTakesPrecedenceOverCommitStats() {
+        // MR1 has netAdditions/netDeletions set — these must be shown instead of commit stats
+        MergeRequest mr1 = mergeRequestRepository.findAll().stream()
+            .filter(mr -> mr.getGitlabMrIid() == 1L)
+            .findFirst().orElseThrow();
+        mr1.setNetAdditions(2114);
+        mr1.setNetDeletions(85);
+        mergeRequestRepository.save(mr1);
+
+        List<MrSummaryDto> mrs = getMrs(aliceId);
+        MrSummaryDto summary = mrs.stream()
+            .filter(m -> m.commitCount() == 2)
+            .findFirst().orElseThrow();
+
+        // net diff wins over commit stats (+80/-20)
+        assertThat(summary.linesAdded()).isEqualTo(2114);
+        assertThat(summary.linesDeleted()).isEqualTo(85);
+        assertThat(summary.commitCount()).isEqualTo(2); // commit count unchanged
+    }
+
+    @Test
+    void mergeCommitsExcludedFromFallbackStats() {
+        // sha1 is a regular commit (+50/-10), sha_merge is a merge commit with inflated stats
+        MergeRequest mr1 = mergeRequestRepository.findAll().stream()
+            .filter(mr -> mr.getGitlabMrIid() == 1L)
+            .findFirst().orElseThrow();
+        commitRepository.save(MergeRequestCommit.builder()
+            .mergeRequestId(mr1.getId()).gitlabCommitSha("sha_merge")
+            .authorEmail("alice@example.com").additions(19_677).deletions(0)
+            .mergeCommit(true)
+            .authoredDate(Instant.now()).build());
+
+        List<MrSummaryDto> mrs = getMrs(aliceId);
+        MrSummaryDto summary = mrs.stream()
+            .filter(m -> m.commitCount() == 3) // 2 regular + 1 merge = 3 total
+            .findFirst().orElseThrow();
+
+        // merge commit lines NOT counted; only sha1+sha2 = +80/-20
+        assertThat(summary.linesAdded()).isEqualTo(80);
+        assertThat(summary.linesDeleted()).isEqualTo(20);
+        assertThat(summary.commitCount()).isEqualTo(3);
+    }
+
     private List<MrSummaryDto> getMrs(Long userId) {
         HttpHeaders headers = authHeaders();
         ResponseEntity<List<MrSummaryDto>> resp = restTemplate.exchange(

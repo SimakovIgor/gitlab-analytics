@@ -63,6 +63,13 @@ public class MergeRequestCommit {
             nullable = false)
     private int filesChangedCount;
 
+    /** True when this commit has more than one parent (i.e. is a git merge commit).
+     *  Merge commits carry inflated stats (all changes from the merged branch)
+     *  and must be excluded from line-count metrics. */
+    @Column(name = "is_merge_commit",
+            nullable = false)
+    private boolean mergeCommit;
+
     @CreationTimestamp
     @Column(name = "created_at",
             nullable = false,

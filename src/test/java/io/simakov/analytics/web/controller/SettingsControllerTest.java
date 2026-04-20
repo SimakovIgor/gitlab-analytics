@@ -355,7 +355,7 @@ class SettingsControllerTest extends BaseIT {
                 projectIds,
                 Instant.now().minus(365, ChronoUnit.DAYS),
                 Instant.now(),
-                true, true, true
+                true, true, true, false
             );
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {

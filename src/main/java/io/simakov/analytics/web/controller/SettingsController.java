@@ -208,8 +208,19 @@ public class SettingsController {
     @PostMapping("/snapshots/backfill")
     @ResponseBody
     public ResponseEntity<Void> triggerSnapshotBackfill() {
-        settingsService.triggerSnapshotBackfill();
+        settingsService.scheduleSnapshotBackfill();
         return ResponseEntity.accepted().build();
+    }
+
+    /**
+     * Synchronous backfill for onboarding — blocks until all snapshots are created and returns the count.
+     * Kept separate from the async endpoint so no existing callers are affected.
+     */
+    @PostMapping("/snapshots/backfill/sync")
+    @ResponseBody
+    public ResponseEntity<Map<String, Integer>> triggerSnapshotBackfillSync() {
+        int created = settingsService.triggerSnapshotBackfill();
+        return ResponseEntity.ok(Map.of("snapshotsCreated", created));
     }
 
     // ── Sync status polling ──────────────────────────────────────────────────
