@@ -43,10 +43,10 @@ echo "==> Starting services on server..."
 ssh "${SERVER_USER}@${SERVER_IP}" bash <<ENDSSH
   set -e
   cd ${REMOTE_DIR}
-  docker compose -f docker/docker-compose.prod.yml --env-file .env up -d --build --remove-orphans
+  docker compose -f docker/docker-compose.prod.yml --project-name gitlab-analytics --env-file .env up -d --build --remove-orphans
   echo "Waiting for services to start..."
   sleep 15
-  docker compose -f docker/docker-compose.prod.yml ps
+  docker compose -f docker/docker-compose.prod.yml --project-name gitlab-analytics ps
 ENDSSH
 
 echo ""
