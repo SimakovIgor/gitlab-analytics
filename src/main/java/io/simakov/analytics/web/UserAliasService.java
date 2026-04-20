@@ -74,7 +74,6 @@ public class UserAliasService {
      * Например, для "a.upatov@uzum.com" ищет username="a.upatov".
      * Возвращает null если проект ещё не настроен или username не найден.
      */
-    @SuppressWarnings("checkstyle:IllegalCatch")
     private Long resolveGitlabUserId(String email) {
         if (!email.contains("@")) {
             return null;

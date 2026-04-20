@@ -39,11 +39,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings({
-    "PMD.JUnitTestContainsTooManyAsserts",
-    "checkstyle:ClassDataAbstractionCoupling",
-    "checkstyle:MethodCount"
-})
 class MetricCalculationTest extends BaseIT {
 
     private static final long ALICE_GITLAB_ID = 100L;

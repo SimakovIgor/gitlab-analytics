@@ -60,7 +60,6 @@ public class SnapshotService {
         return runDailyBackfill(WorkspaceContext.get(), days);
     }
 
-    @SuppressWarnings("checkstyle:IllegalCatch")
     public int runDailyBackfill(Long workspaceId,
                                 int days) {
         LocalDate today = DateTimeUtils.currentDateUtc();
@@ -81,7 +80,6 @@ public class SnapshotService {
     }
 
     @Scheduled(cron = "${app.snapshot.cron:0 0 2 * * *}")
-    @SuppressWarnings("checkstyle:IllegalCatch")
     public void runDailySnapshot() {
         log.info("Running daily metric snapshot for all workspaces");
         List<Workspace> workspaces = workspaceRepository.findAll();

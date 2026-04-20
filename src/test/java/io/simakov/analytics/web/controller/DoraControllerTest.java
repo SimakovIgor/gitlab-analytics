@@ -29,7 +29,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
-@SuppressWarnings("PMD.JUnitTestContainsTooManyAsserts")
 class DoraControllerTest extends BaseIT {
 
     private final Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);

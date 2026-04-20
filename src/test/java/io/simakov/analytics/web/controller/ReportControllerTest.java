@@ -29,7 +29,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
-@SuppressWarnings({"PMD.JUnitTestContainsTooManyAsserts", "checkstyle:ClassDataAbstractionCoupling"})
 class ReportControllerTest extends BaseIT {
 
     private static final long ALICE_GITLAB_ID = 101L;

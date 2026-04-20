@@ -25,7 +25,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("PMD.JUnitTestContainsTooManyAsserts")
 class ReportControllerTest extends BaseIT {
 
     @Autowired

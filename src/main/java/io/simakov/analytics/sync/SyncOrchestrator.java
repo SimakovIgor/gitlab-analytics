@@ -45,7 +45,6 @@ public class SyncOrchestrator {
     private final Executor mrProcessingExecutor;
 
     @Async("syncTaskExecutor")
-    @SuppressWarnings("checkstyle:IllegalCatch")
     public void orchestrateAsync(Long jobId,
                                  ManualSyncRequest request) {
         log.info("Starting sync job {} for projects {} from {} to {}",
@@ -65,7 +64,6 @@ public class SyncOrchestrator {
         }
     }
 
-    @SuppressWarnings("checkstyle:IllegalCatch")
     private void syncProject(Long jobId,
                              Long trackedProjectId,
                              ManualSyncRequest request) {

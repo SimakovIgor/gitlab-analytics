@@ -35,11 +35,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings({
-    "PMD.JUnitTestContainsTooManyAsserts",
-    "checkstyle:ClassDataAbstractionCoupling",
-    "checkstyle:MethodCount"
-})
 class SnapshotTest extends BaseIT {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 4, 17);

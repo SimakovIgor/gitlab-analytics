@@ -30,7 +30,6 @@ public class NightlySyncScheduler {
     private final AppProperties appProperties;
 
     @Scheduled(cron = "${app.sync.cron:0 0 3 * * *}")
-    @SuppressWarnings("checkstyle:IllegalCatch")
     public void runNightlySync() {
         List<Workspace> workspaces = workspaceRepository.findAll();
         if (workspaces.isEmpty()) {

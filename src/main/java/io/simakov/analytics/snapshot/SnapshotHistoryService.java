@@ -106,7 +106,6 @@ public class SnapshotHistoryService {
             .collect(Collectors.toMap(TrackedUser::getId, TrackedUser::getDisplayName));
     }
 
-    @SuppressWarnings("checkstyle:IllegalCatch")
     private Map<String, Object> parseMetrics(String json) {
         try {
             return objectMapper.readValue(json, MAP_TYPE);

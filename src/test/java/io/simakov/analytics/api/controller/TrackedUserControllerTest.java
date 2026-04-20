@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("PMD.JUnitTestContainsTooManyAsserts")
 class TrackedUserControllerTest extends BaseIT {
 
     @Autowired

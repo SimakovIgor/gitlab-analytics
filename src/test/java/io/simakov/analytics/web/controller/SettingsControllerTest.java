@@ -43,7 +43,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
-@SuppressWarnings({"PMD.JUnitTestContainsTooManyAsserts", "PMD.JUnitTestsShouldIncludeAssert"})
 class SettingsControllerTest extends BaseIT {
 
     @Autowired

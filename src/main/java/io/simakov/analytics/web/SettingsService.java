@@ -76,7 +76,6 @@ public class SettingsService {
 
     // ── Tracked Projects ─────────────────────────────────────────────────────
 
-    @SuppressWarnings("checkstyle:IllegalCatch")
     public Map<String, Object> validateToken(Long sourceId,
                                              String token) {
         Long workspaceId = WorkspaceContext.get();

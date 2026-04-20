@@ -29,7 +29,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
-@SuppressWarnings({"PMD.JUnitTestContainsTooManyAsserts", "checkstyle:ClassDataAbstractionCoupling"})
 class ContributorDiscoveryTest extends BaseIT {
 
     @Autowired

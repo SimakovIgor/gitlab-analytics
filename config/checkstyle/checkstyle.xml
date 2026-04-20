@@ -10,6 +10,9 @@
         <property name="fileNamePattern" value="module\-info\.java$"/>
     </module>
     <module name="SuppressWarningsFilter"/>
+    <module name="SuppressionFilter">
+        <property name="file" value="${config_loc}/checkstyle-suppressions.xml"/>
+    </module>
     <module name="FileTabCharacter"/>
     <module name="FileLength"/>
     <module name="LineLength">
@@ -62,7 +65,6 @@
             <property name="max" value="60"/>
         </module>
         <module name="ExplicitInitialization"/>
-        <module name="IllegalCatch"/>
         <module name="IllegalIdentifierName"/>
         <module name="IllegalInstantiation"/>
         <module name="IllegalThrows"/>

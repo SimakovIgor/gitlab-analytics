@@ -22,7 +22,6 @@ import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("PMD.JUnitTestContainsTooManyAsserts")
 class TrackedProjectControllerTest extends BaseIT {
 
     @Autowired
