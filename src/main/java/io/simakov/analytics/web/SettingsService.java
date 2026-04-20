@@ -102,7 +102,6 @@ public class SettingsService {
         return gitLabApiClient.searchProjects(source.getBaseUrl(), token, q);
     }
 
-    @Transactional
     public CreatedProjectResult createProject(CreateTrackedProjectRequest request) {
         Long workspaceId = WorkspaceContext.get();
         gitSourceRepository.findById(request.gitSourceId())

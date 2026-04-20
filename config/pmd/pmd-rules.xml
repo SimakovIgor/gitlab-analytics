@@ -38,14 +38,6 @@
         <exclude name="MethodNamingConventions"/>
     </rule>
 
-    <rule ref="category/java/codestyle.xml/SignatureDeclareThrowsException">
-        <properties>
-            <!-- Spring Security's HttpSecurity.build() declares throws Exception;
-                 @Bean filter chain methods must match that signature -->
-            <property name="violationSuppressXPath"
-                      value=".[ancestor::ClassDeclaration[pmd-java:hasAnnotation('org.springframework.context.annotation.Configuration')]]"/>
-        </properties>
-    </rule>
 
     <rule ref="category/java/codestyle.xml/ClassNamingConventions">
         <properties>
@@ -91,6 +83,14 @@
         <exclude name="SingularField"/>
         <exclude name="AvoidThrowingRawExceptionTypes"/>
         <exclude name="DataClass"/>
+    </rule>
+
+    <rule ref="category/java/design.xml/SignatureDeclareThrowsException">
+        <properties>
+            <!-- Spring Security's HttpSecurity.build() forces throws Exception on filter chain methods -->
+            <property name="violationSuppressXPath"
+                      value=".[ancestor::ClassDeclaration[pmd-java:hasAnnotation('org.springframework.context.annotation.Configuration')]]"/>
+        </properties>
     </rule>
 
     <rule ref="category/java/design.xml/TooManyFields">
