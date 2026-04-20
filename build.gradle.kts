@@ -81,7 +81,7 @@ dependencies {
 
 dependencyManagement {
     imports {
-        mavenBom("org.testcontainers:testcontainers-bom:1.20.1")
+        mavenBom("org.testcontainers:testcontainers-bom:1.21.0")
     }
 }
 
@@ -119,6 +119,7 @@ tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    environment("DOCKER_API_VERSION", "1.41")
     finalizedBy(tasks.jacocoTestReport)
 }
 

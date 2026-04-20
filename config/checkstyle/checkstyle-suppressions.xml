@@ -6,4 +6,6 @@
     <!-- Test classes naturally couple many repositories/services and accumulate many test methods -->
     <suppress checks="ClassDataAbstractionCoupling" files=".*Test\.java"/>
     <suppress checks="MethodCount" files=".*Test\.java"/>
+    <!-- Test methods use snake_case naming (given_when_then) for readability -->
+    <suppress checks="MethodName" files=".*Test\.java"/>
 </suppressions>

@@ -45,7 +45,7 @@ public class WorkspaceContextFilter extends OncePerRequestFilter {
 
         if (workspaceId != null) {
             WorkspaceContext.set(workspaceId);
-        } else if (requiresWorkspace(request.getRequestURI()) && isAuthenticated()) {
+        } else if (!WorkspaceContext.isSet() && requiresWorkspace(request.getRequestURI()) && isAuthenticated()) {
             response.sendRedirect("/onboarding");
             return;
         }

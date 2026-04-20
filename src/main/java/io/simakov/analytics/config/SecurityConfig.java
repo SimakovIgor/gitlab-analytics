@@ -4,6 +4,7 @@ import io.simakov.analytics.security.AppUserOauthService;
 import io.simakov.analytics.security.BearerTokenAuthFilter;
 import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -45,8 +46,19 @@ public class SecurityConfig {
     }
 
     /**
+     * Prevents Spring Boot from auto-registering BearerTokenAuthFilter as a servlet-level filter.
+     * The filter is manually added to each security chain that needs it.
+     */
+    @Bean
+    public FilterRegistrationBean<BearerTokenAuthFilter> bearerFilterRegistration(BearerTokenAuthFilter filter) {
+        FilterRegistrationBean<BearerTokenAuthFilter> bean = new FilterRegistrationBean<>(filter);
+        bean.setEnabled(false);
+        return bean;
+    }
+
+    /**
      * Filter chain for web UI routes.
-     * Session-based, OAuth2 login via GitHub.
+     * Session-based, OAuth2 login via GitHub. Bearer token also accepted for JSON endpoints.
      */
     @Bean
     @Order(2)
@@ -65,6 +77,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(bearerTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .oauth2Login(oauth2 -> oauth2
                 .loginPage("/login")
                 .userInfoEndpoint(ui -> ui.userService(appUserOauthService))
