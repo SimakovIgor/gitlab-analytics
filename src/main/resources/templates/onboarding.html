@@ -1344,15 +1344,8 @@
                 name: selectedProject.name,
                 token
             });
-            closeModal('modal-project');
-            clearProjectSearch();
-            document.getElementById('project-token').value = '';
-            btn.disabled = false;
-            btn.textContent = 'Добавить и синхронизировать';
-            showSyncBanner(result.jobId, result.name, false);
-            OB_STATE.hasProjects = true;
-            activeSyncRunning = true;
-            refreshOnboarding();
+            window.location.href = '/settings/sync/progress/' + result.jobId
+                + '?name=' + encodeURIComponent(result.name);
         } catch (e) {
             showError('project-error', e.message);
             btn.disabled = false;

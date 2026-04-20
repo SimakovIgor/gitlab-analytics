@@ -214,6 +214,15 @@ public class SettingsController {
 
     // ── Sync status polling ──────────────────────────────────────────────────
 
+    @GetMapping("/sync/progress/{jobId}")
+    public String syncProgressPage(@PathVariable Long jobId,
+                                   @RequestParam(required = false) String name,
+                                   Model model) {
+        model.addAttribute("jobId", jobId);
+        model.addAttribute("projectName", name != null ? name : "репозиторий");
+        return "sync-progress";
+    }
+
     @GetMapping("/sync/{jobId}")
     @ResponseBody
     public SyncJobResponse getSyncStatus(@PathVariable Long jobId) {

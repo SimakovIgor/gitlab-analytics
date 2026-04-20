@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Синхронизация — GitLab Analytics</title>
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+    <style>
+        .sp-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 56px);
+            padding: 2rem 1rem;
+        }
+        .sp-card {
+            width: 100%;
+            max-width: 560px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,.07);
+            padding: 2.5rem 2.5rem 2rem;
+        }
+
+        /* Running state */
+        .sp-icon-running {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: #fff3ee;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.25rem;
+        }
+        @keyframes sp-spin { to { transform: rotate(360deg); } }
+        .sp-spinner {
+            width: 26px; height: 26px;
+            border: 3px solid rgba(252,109,38,.2);
+            border-top-color: #FC6D26;
+            border-radius: 50%;
+            animation: sp-spin .8s linear infinite;
+        }
+
+        /* Done state */
+        .sp-icon-done {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: #FC6D26;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.25rem;
+            color: #fff;
+            font-size: 1.4rem;
+        }
+
+        /* Error state */
+        .sp-icon-error {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: #fff0f0;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.25rem;
+            color: #e53e3e;
+            font-size: 1.4rem;
+        }
+
+        .sp-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            text-align: center;
+            margin: 0 0 .4rem;
+        }
+        .sp-subtitle {
+            font-size: .92rem;
+            color: #666;
+            text-align: center;
+            margin: 0 0 2rem;
+            line-height: 1.5;
+        }
+
+        .sp-progress-wrap {
+            margin-bottom: 1rem;
+        }
+        .sp-progress-bar {
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: .6rem;
+        }
+        .sp-progress-fill {
+            height: 100%;
+            background: #FC6D26;
+            border-radius: 4px;
+            transition: width .4s ease;
+            width: 0%;
+        }
+        .sp-progress-fill-indeterminate {
+            width: 40%;
+            animation: sp-indeterminate 1.4s ease-in-out infinite;
+            transform-origin: left;
+        }
+        @keyframes sp-indeterminate {
+            0%   { transform: translateX(-100%) scaleX(.3); }
+            50%  { transform: translateX(80%)   scaleX(.8); }
+            100% { transform: translateX(200%)  scaleX(.3); }
+        }
+        .sp-progress-label {
+            font-size: .82rem;
+            color: #888;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .sp-stats {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            font-size: .88rem;
+            color: #555;
+            line-height: 2;
+        }
+        .sp-stats span {
+            float: right;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .sp-error-box {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            font-size: .88rem;
+            color: #c53030;
+        }
+        .sp-error-note {
+            color: #888;
+            font-size: .82rem;
+            margin-top: .4rem;
+        }
+
+        .sp-actions {
+            display: flex;
+            gap: .75rem;
+            justify-content: center;
+            margin-top: .5rem;
+        }
+        .sp-hint {
+            text-align: center;
+            font-size: .8rem;
+            color: #bbb;
+            margin-top: 1.25rem;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="app-layout">
+
+<header class="topbar">
+    <span class="topbar-brand">
+        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
+                fill="#FC6D26"/>
+        </svg>
+        GitLab Analytics
+    </span>
+</header>
+
+<div class="sp-wrap">
+    <div class="sp-card">
+
+        <!-- Running state -->
+        <div id="sp-state-running">
+            <div class="sp-icon-running">
+                <div class="sp-spinner"></div>
+            </div>
+            <h2 class="sp-title">Синхронизация данных</h2>
+            <p class="sp-subtitle" id="sp-subtitle-running">
+                Загружаем MR, коммиты и ревью за 360 дней.<br>Для большого репозитория это займёт несколько минут.
+            </p>
+
+            <div class="sp-progress-wrap">
+                <div class="sp-progress-bar">
+                    <div class="sp-progress-fill sp-progress-fill-indeterminate" id="sp-fill"></div>
+                </div>
+                <div class="sp-progress-label">
+                    <span id="sp-label-left">получение списка MR...</span>
+                    <span id="sp-label-right" id="sp-duration"></span>
+                </div>
+            </div>
+
+            <div class="sp-stats" id="sp-stats" style="display:none">
+                <div>Обработано MR <span id="sp-mrs-count">—</span></div>
+                <div>Прошло времени <span id="sp-elapsed">—</span></div>
+                <div>Осталось примерно <span id="sp-eta">—</span></div>
+            </div>
+
+            <div class="sp-hint">Можно закрыть эту вкладку — синхронизация продолжится в фоне</div>
+            <div class="sp-actions" style="margin-top:1.5rem">
+                <a class="btn-secondary" href="/onboarding" style="text-decoration:none">← Вернуться к настройке</a>
+            </div>
+        </div>
+
+        <!-- Done state -->
+        <div id="sp-state-done" class="hidden">
+            <div class="sp-icon-done">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <h2 class="sp-title">Синхронизация завершена!</h2>
+            <p class="sp-subtitle" id="sp-subtitle-done">Данные успешно загружены.</p>
+            <div class="sp-stats" id="sp-stats-done">
+                <div>Проект <span id="sp-done-project">—</span></div>
+                <div>Загружено MR <span id="sp-done-mrs">—</span></div>
+                <div>Время синхронизации <span id="sp-done-duration">—</span></div>
+            </div>
+            <div class="sp-actions">
+                <a class="btn-primary" href="/onboarding" style="text-decoration:none">
+                    Продолжить настройку →
+                </a>
+            </div>
+        </div>
+
+        <!-- Error state -->
+        <div id="sp-state-error" class="hidden">
+            <div class="sp-icon-error">✕</div>
+            <h2 class="sp-title">Синхронизация не удалась</h2>
+            <p class="sp-subtitle">Данные могли загрузиться частично — повтор продолжит с того места, где остановился.</p>
+            <div class="sp-error-box" id="sp-error-msg">
+                Неизвестная ошибка
+                <div class="sp-error-note">Проверьте доступность GitLab и корректность токена</div>
+            </div>
+            <div class="sp-actions">
+                <a class="btn-secondary" href="/onboarding" style="text-decoration:none">← К настройке</a>
+                <button class="btn-primary" id="sp-retry-btn" onclick="retrySync()">Повторить</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const JOB_ID = /*[[${jobId}]]*/ 0;
+    const PROJECT_NAME = /*[[${projectName}]]*/ 'репозиторий';
+
+    let pollInterval = null;
+    let durationTimer = null;
+    let serverStartMs = null;
+    let currentJobId = JOB_ID;
+
+    function $(id) { return document.getElementById(id); }
+
+    function showState(name) {
+        ['running', 'done', 'error'].forEach(s => $('sp-state-' + s).classList.toggle('hidden', s !== name));
+    }
+
+    function formatSec(sec) {
+        if (sec < 60) { return sec + ' с'; }
+        return Math.floor(sec / 60) + ' м ' + (sec % 60) + ' с';
+    }
+
+    function formatEta(sec) {
+        if (sec < 10) { return 'почти готово'; }
+        if (sec < 60) { return '~' + sec + ' с'; }
+        return '~' + Math.round(sec / 60) + ' мин';
+    }
+
+    function startDurationTimer() {
+        durationTimer = setInterval(() => {
+            if (!serverStartMs) { return; }
+            const sec = Math.floor((Date.now() - serverStartMs) / 1000);
+            const el = $('sp-label-right');
+            if (el) { el.textContent = formatSec(sec); }
+        }, 1000);
+    }
+
+    function updateRunningUI(job) {
+        if (job.startedAt && !serverStartMs) {
+            serverStartMs = new Date(job.startedAt).getTime();
+        }
+
+        const fillEl = $('sp-fill');
+        const labelLeft = $('sp-label-left');
+        const statsEl = $('sp-stats');
+        const mrsCount = $('sp-mrs-count');
+        const etaEl = $('sp-eta');
+        const elapsedEl = $('sp-elapsed');
+
+        if (job.totalMrs > 0) {
+            const pct = Math.round(job.processedMrs / job.totalMrs * 100);
+            fillEl.classList.remove('sp-progress-fill-indeterminate');
+            fillEl.style.width = pct + '%';
+
+            const elapsedSec = Math.max(1, (Date.now() - (serverStartMs || Date.now())) / 1000);
+            const rate = job.processedMrs > 0 ? job.processedMrs / elapsedSec : 0;
+            const etaSec = rate > 0 ? Math.round((job.totalMrs - job.processedMrs) / rate) : null;
+
+            if (labelLeft) { labelLeft.textContent = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`; }
+            if (statsEl) { statsEl.style.display = ''; }
+            if (mrsCount) { mrsCount.textContent = `${job.processedMrs} / ${job.totalMrs}`; }
+            if (etaEl) { etaEl.textContent = etaSec != null ? formatEta(etaSec) : '—'; }
+            if (elapsedEl && serverStartMs) {
+                elapsedEl.textContent = formatSec(Math.floor((Date.now() - serverStartMs) / 1000));
+            }
+        } else {
+            if (labelLeft) { labelLeft.textContent = 'получение списка MR...'; }
+        }
+    }
+
+    function onCompleted(job) {
+        clearInterval(pollInterval);
+        clearInterval(durationTimer);
+
+        $('sp-done-project').textContent = PROJECT_NAME;
+        $('sp-done-mrs').textContent = job.totalMrs > 0 ? job.totalMrs : '—';
+        if (job.startedAt && job.finishedAt) {
+            const sec = Math.round((new Date(job.finishedAt) - new Date(job.startedAt)) / 1000);
+            $('sp-done-duration').textContent = formatSec(sec);
+        }
+        showState('done');
+    }
+
+    function onFailed(job) {
+        clearInterval(pollInterval);
+        clearInterval(durationTimer);
+
+        const errEl = $('sp-error-msg');
+        if (errEl) {
+            const msg = job.errorMessage || 'Неизвестная ошибка';
+            errEl.innerHTML = msg + '<div class="sp-error-note">Проверьте доступность GitLab и корректность токена</div>';
+        }
+        showState('error');
+    }
+
+    async function poll() {
+        try {
+            const resp = await fetch('/settings/sync/' + currentJobId);
+            if (!resp.ok) { return; }
+            const job = await resp.json();
+
+            if (job.status === 'STARTED' || job.status === 'PENDING') {
+                updateRunningUI(job);
+            } else if (job.status === 'COMPLETED') {
+                onCompleted(job);
+            } else if (job.status === 'FAILED') {
+                onFailed(job);
+            }
+        } catch (e) {
+            // продолжаем поллинг при сетевой ошибке
+        }
+    }
+
+    async function retrySync() {
+        const btn = $('sp-retry-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Запускаем...'; }
+        try {
+            const csrfMeta = document.querySelector('meta[name="_csrf"]');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]');
+            const headers = {'Content-Type': 'application/json'};
+            if (csrfMeta && csrfHeader) { headers[csrfHeader.content] = csrfMeta.content; }
+
+            const resp = await fetch('/settings/sync/' + currentJobId + '/retry', {method: 'POST', headers});
+            const job = await resp.json();
+            currentJobId = job.jobId;
+            serverStartMs = null;
+            showState('running');
+            const fillEl = $('sp-fill');
+            if (fillEl) {
+                fillEl.classList.add('sp-progress-fill-indeterminate');
+                fillEl.style.width = '';
+            }
+            startPolling();
+        } catch (e) {
+            if (btn) { btn.disabled = false; btn.textContent = 'Повторить'; }
+        }
+    }
+
+    function startPolling() {
+        clearInterval(pollInterval);
+        clearInterval(durationTimer);
+        startDurationTimer();
+        poll();
+        pollInterval = setInterval(poll, 3000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        showState('running');
+        startPolling();
+    });
+    /*]]>*/
+</script>
+
+</body>
+</html>
