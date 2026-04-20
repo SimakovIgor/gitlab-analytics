@@ -3,6 +3,7 @@ package io.simakov.analytics.web;
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
+import io.simakov.analytics.domain.model.MergeRequestCommit;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
@@ -10,6 +11,7 @@ import io.simakov.analytics.domain.model.TrackedUserAlias;
 import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
+import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
@@ -51,6 +53,7 @@ public class ReportViewService {
     private final SyncJobRepository syncJobRepository;
     private final MetricCalculationService metricCalculationService;
     private final MergeRequestRepository mergeRequestRepository;
+    private final MergeRequestCommitRepository commitRepository;
 
     @Transactional(readOnly = true)
     public ReportPageData buildReportPage(String period,
@@ -243,61 +246,92 @@ public class ReportViewService {
         Map<Long, String> projectPathById = allProjects.stream()
             .collect(Collectors.toMap(TrackedProject::getId, TrackedProject::getPathWithNamespace));
 
-        if (!gitlabUserIds.isEmpty()) {
-            return mergeRequestRepository
-                .findMergedInPeriodByAuthors(projectIds, gitlabUserIds, dateFrom, dateTo)
-                .stream()
-                .map(mr -> toMrSummary(mr, projectPathById))
-                .toList();
+        Set<String> userEmails = buildUserEmails(userId, aliases);
+
+        List<MergeRequest> mrs;
+        if (gitlabUserIds.isEmpty()) {
+            mrs = findMrsByEmailFallbackRaw(userId, aliases, projectIds, dateFrom, dateTo);
+        } else {
+            mrs = mergeRequestRepository.findMergedInPeriodByAuthors(projectIds, gitlabUserIds, dateFrom, dateTo);
         }
 
-        return findMrsByEmailFallback(userId, aliases, projectIds, projectPathById, dateFrom, dateTo);
+        return toMrSummaries(mrs, projectPathById, userEmails);
     }
 
-    private List<MrSummaryDto> findMrsByEmailFallback(Long userId,
-                                                       List<TrackedUserAlias> aliases,
-                                                       List<Long> projectIds,
-                                                       Map<Long, String> projectPathById,
-                                                       Instant dateFrom,
-                                                       Instant dateTo) {
+    private List<MergeRequest> findMrsByEmailFallbackRaw(Long userId,
+                                                          List<TrackedUserAlias> aliases,
+                                                          List<Long> projectIds,
+                                                          Instant dateFrom,
+                                                          Instant dateTo) {
         TrackedUser user = trackedUserRepository.findById(userId).orElse(null);
         if (user == null) {
             return List.of();
         }
+        Set<String> emails = buildUserEmails(userId, aliases);
+        if (emails.isEmpty()) {
+            return List.of();
+        }
+        return mergeRequestRepository
+            .findMergedInPeriodByCommitEmails(projectIds, List.copyOf(emails), dateFrom, dateTo);
+    }
+
+    private Set<String> buildUserEmails(Long userId, List<TrackedUserAlias> aliases) {
         Set<String> emails = new HashSet<>();
         aliases.forEach(a -> {
             if (a.getEmail() != null) {
                 emails.add(a.getEmail().toLowerCase(Locale.ROOT));
             }
         });
-        if (user.getEmail() != null && !user.getEmail().isBlank()) {
-            emails.add(user.getEmail().toLowerCase(Locale.ROOT));
-        }
-        if (emails.isEmpty()) {
+        trackedUserRepository.findById(userId).ifPresent(u -> {
+            if (u.getEmail() != null && !u.getEmail().isBlank()) {
+                emails.add(u.getEmail().toLowerCase(Locale.ROOT));
+            }
+        });
+        return emails;
+    }
+
+    List<MrSummaryDto> toMrSummaries(List<MergeRequest> mrs,
+                                      Map<Long, String> projectPathById,
+                                      Set<String> userEmails) {
+        if (mrs.isEmpty()) {
             return List.of();
         }
-        return mergeRequestRepository
-            .findMergedInPeriodByCommitEmails(projectIds, List.copyOf(emails), dateFrom, dateTo)
-            .stream()
-            .map(mr -> toMrSummary(mr, projectPathById))
+        List<Long> mrIds = mrs.stream().map(MergeRequest::getId).toList();
+        Map<Long, MrCommitStats> statsByMrId = buildCommitStats(mrIds, userEmails);
+        return mrs.stream()
+            .map(mr -> toMrSummary(mr, projectPathById, statsByMrId.getOrDefault(mr.getId(), MrCommitStats.EMPTY)))
             .toList();
     }
 
+    private Map<Long, MrCommitStats> buildCommitStats(List<Long> mrIds, Set<String> userEmails) {
+        List<MergeRequestCommit> commits = commitRepository.findByMergeRequestIdIn(mrIds);
+        Map<Long, MrCommitStats> result = new HashMap<>();
+        for (MergeRequestCommit c : commits) {
+            String email = c.getAuthorEmail() != null ? c.getAuthorEmail().toLowerCase(Locale.ROOT) : "";
+            if (!userEmails.isEmpty() && !userEmails.contains(email)) {
+                continue;
+            }
+            result.merge(c.getMergeRequestId(),
+                new MrCommitStats(c.getAdditions(), c.getDeletions(), 1),
+                MrCommitStats::merge);
+        }
+        return result;
+    }
+
     private MrSummaryDto toMrSummary(MergeRequest mr,
-                                     Map<Long, String> projectPathById) {
+                                     Map<Long, String> projectPathById,
+                                     MrCommitStats stats) {
         String projectPath = projectPathById.getOrDefault(mr.getTrackedProjectId(), "");
         Double hoursToMerge = null;
         if (mr.getMergedAtGitlab() != null && mr.getCreatedAtGitlab() != null) {
             long seconds = mr.getMergedAtGitlab().getEpochSecond() - mr.getCreatedAtGitlab().getEpochSecond();
             hoursToMerge = Math.round(seconds / 3600.0 * 10.0) / 10.0;
         }
-        String createdAt = mr.getCreatedAtGitlab() != null
-            ? mr.getCreatedAtGitlab().toString()
-            : null;
-        String mergedAt = mr.getMergedAtGitlab() != null
-            ? mr.getMergedAtGitlab().toString()
-            : null;
-        return new MrSummaryDto(mr.getTitle(), projectPath, mr.getWebUrl(), createdAt, mergedAt, hoursToMerge);
+        String createdAt = mr.getCreatedAtGitlab() != null ? mr.getCreatedAtGitlab().toString() : null;
+        String mergedAt = mr.getMergedAtGitlab() != null ? mr.getMergedAtGitlab().toString() : null;
+        return new MrSummaryDto(mr.getTitle(), projectPath, mr.getWebUrl(),
+            createdAt, mergedAt, hoursToMerge,
+            stats.linesAdded(), stats.linesDeleted(), stats.commitCount());
     }
 
     private int parsePeriodDays(String period) {
@@ -305,6 +339,16 @@ public class ReportViewService {
             return PeriodType.valueOf(period).toDays();
         } catch (IllegalArgumentException e) {
             return PeriodType.LAST_30_DAYS.toDays();
+        }
+    }
+
+    record MrCommitStats(int linesAdded, int linesDeleted, int commitCount) {
+        static final MrCommitStats EMPTY = new MrCommitStats(0, 0, 0);
+
+        static MrCommitStats merge(MrCommitStats a, MrCommitStats b) {
+            return new MrCommitStats(a.linesAdded + b.linesAdded,
+                a.linesDeleted + b.linesDeleted,
+                a.commitCount + b.commitCount);
         }
     }
 }

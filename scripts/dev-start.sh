@@ -97,7 +97,7 @@ success "PostgreSQL готов → localhost:5432"
 # ── Prometheus + Grafana ───────────────────────────────────────────────────────
 if [[ "$WITH_MONITORING" == true ]]; then
   info "Запускаем Prometheus + Grafana..."
-  docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" up -d
+  docker compose -f "$ROOT_DIR/docker/docker-compose.monitoring.yml" --project-name gitlab-analytics up -d
   success "Prometheus → http://localhost:9090"
   success "Grafana    → http://localhost:3000  (admin / admin)"
 fi

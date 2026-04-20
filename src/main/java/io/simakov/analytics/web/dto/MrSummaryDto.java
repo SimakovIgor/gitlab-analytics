@@ -6,7 +6,10 @@ public record MrSummaryDto(
     String webUrl,
     String createdAt,
     String mergedAt,
-    Double hoursToMerge
+    Double hoursToMerge,
+    int linesAdded,
+    int linesDeleted,
+    int commitCount
 ) {
 
 }

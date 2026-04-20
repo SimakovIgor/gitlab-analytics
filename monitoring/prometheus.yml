@@ -3,6 +3,20 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
+  - job_name: cadvisor
+    static_configs:
+      - targets: [ "cadvisor:8080" ]
+
+  # Docker daemon built-in Prometheus metrics (aggregate container state counts).
+  # Exposes: engine_daemon_container_states_containers{state="running|stopped|paused"}
+  # To enable on macOS Docker Desktop:
+  #   1. Docker Desktop → Settings → Docker Engine → add "metrics-addr": "127.0.0.1:9323"
+  #   2. Apply & Restart
+  #   3. Uncomment the job below and reload Prometheus config
+  #- job_name: docker-daemon
+  #  static_configs:
+  #    - targets: [ "host.docker.internal:9323" ]
+
   - job_name: gitlab-analytics
     metrics_path: /actuator/prometheus
     static_configs:

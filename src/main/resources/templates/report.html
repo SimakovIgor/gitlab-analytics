@@ -1323,19 +1323,25 @@
 
         function renderRows(mrs) {
             if (!mrs.length) {
-                return '<tr><td colspan="5" class="mr-list-empty">Нет MR, удовлетворяющих фильтру</td></tr>';
+                return '<tr><td colspan="8" class="mr-list-empty">Нет MR, удовлетворяющих фильтру</td></tr>';
             }
             return mrs.map(mr => {
                 const title = mr.webUrl
                     ? `<a class="mr-title-link" href="${escHtml(mr.webUrl)}" target="_blank" rel="noopener">${escHtml(mr.title)}</a>`
                     : escHtml(mr.title);
                 const repo = `<span title="${escHtml(mr.projectPath || '')}">${escHtml(repoShort(mr.projectPath))}</span>`;
+                const added = mr.linesAdded > 0 ? `<span style="color:#2da44e">+${mr.linesAdded}</span>` : '—';
+                const deleted = mr.linesDeleted > 0 ? `<span style="color:#cf222e">−${mr.linesDeleted}</span>` : '—';
+                const commits = mr.commitCount > 0 ? mr.commitCount : '—';
                 return `<tr>
                 <td class="mr-td-title">${title}</td>
                 <td class="mr-td-repo">${repo}</td>
                 <td class="mr-td-date">${fmtDate(mr.createdAt)}</td>
                 <td class="mr-td-date">${fmtDate(mr.mergedAt)}</td>
                 <td class="mr-td-ttm">${fmtHours(mr.hoursToMerge)}</td>
+                <td class="mr-td-num">${added}</td>
+                <td class="mr-td-num">${deleted}</td>
+                <td class="mr-td-num">${commits}</td>
             </tr>`;
             }).join('');
         }
@@ -1411,6 +1417,9 @@
                         <th class="mr-th-sort" id="mr-th-created">Открыт<span class="mr-sort-icon" id="mr-sort-icon-created"></span></th>
                         <th class="mr-th-sort" id="mr-th-merged">Смёрджен<span class="mr-sort-icon" id="mr-sort-icon-merged"></span></th>
                         <th class="mr-th-sort" id="mr-th-ttm">До мержа<span class="mr-sort-icon" id="mr-sort-icon-ttm"> ↓</span></th>
+                        <th class="mr-td-num" title="Строк добавлено (коммиты автора)">+ строк</th>
+                        <th class="mr-td-num" title="Строк удалено (коммиты автора)">− строк</th>
+                        <th class="mr-td-num" title="Коммиты автора в MR">Коммиты</th>
                     </tr></thead>
                     <tbody id="mr-tbody">${renderRows(getSorted())}</tbody>
                 </table></div>`;
