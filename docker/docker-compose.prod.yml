@@ -16,7 +16,9 @@ services:
     restart: unless-stopped
 
   app:
-    build: .
+    build:
+      context: ..
+      dockerfile: Dockerfile
     container_name: gitlab-analytics-app
     depends_on:
       postgres:
@@ -52,7 +54,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -67,7 +69,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - ../monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki_data:/loki
     command: -config.file=/etc/loki/loki-config.yml
     restart: unless-stopped
@@ -76,7 +78,7 @@ services:
     image: grafana/promtail:2.9.8
     container_name: gitlab-analytics-promtail
     volumes:
-      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - ../monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/promtail-config.yml
@@ -96,8 +98,8 @@ services:
       POSTGRES_HOST: postgres
       DB_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
