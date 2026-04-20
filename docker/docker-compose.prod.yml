@@ -106,8 +106,19 @@ services:
       - loki
     restart: unless-stopped
 
+  portainer:
+    image: portainer/portainer-ce:2.21.5
+    container_name: gitlab-analytics-portainer
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
   loki_data:
+  portainer_data:
