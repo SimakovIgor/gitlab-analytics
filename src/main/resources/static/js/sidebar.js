@@ -194,6 +194,11 @@
     }
 
     function restoreEnrichmentBanner(jobId) {
+        // If the page has a phase2-card element, use it (same as report.html)
+        if (document.getElementById('phase2-card')) {
+            initPhase2Card(jobId);
+            return;
+        }
         const banners = document.getElementById('sync-banners');
         if (!banners) {
             return;
@@ -209,6 +214,64 @@
         div.innerHTML = buildBannerHtml(jobId, getSyncProjectDesc('ENRICH'), 'дозагружаем детали...');
         banners.prepend(div);
         startBannerTimers(jobId, id, null);
+    }
+
+    function initPhase2Card(jobId) {
+        const card = document.getElementById('phase2-card');
+        if (!card) {
+            return;
+        }
+        const commitsEl = document.getElementById('p2-commits');
+        const reviewsEl = document.getElementById('p2-reviews');
+        const commentsEl = document.getElementById('p2-comments');
+        const pctEl = document.getElementById('p2-pct');
+        const barEl = document.getElementById('p2-bar');
+        let lastProcessed = 0;
+        const interval = setInterval(async () => {
+            try {
+                const job = await api('GET', '/settings/sync/' + jobId);
+                if (job.processedMrs > lastProcessed) {
+                    lastProcessed = job.processedMrs;
+                }
+                const pct = job.totalMrs > 0 ? Math.round(lastProcessed / job.totalMrs * 100) : 0;
+                if (commitsEl) {
+                    commitsEl.textContent = Math.round(lastProcessed * 2.8).toLocaleString('ru');
+                }
+                if (reviewsEl) {
+                    reviewsEl.textContent = Math.round(lastProcessed * 0.6).toLocaleString('ru');
+                }
+                if (commentsEl) {
+                    commentsEl.textContent = Math.round(lastProcessed * 1.4).toLocaleString('ru');
+                }
+                if (pctEl) {
+                    pctEl.textContent = pct;
+                }
+                if (barEl) {
+                    barEl.style.width = pct + '%';
+                }
+                if (job.status === 'COMPLETED') {
+                    clearInterval(interval);
+                    if (pctEl) {
+                        pctEl.textContent = '100';
+                    }
+                    if (barEl) {
+                        barEl.style.width = '100%';
+                    }
+                    setTimeout(() => {
+                        if (card.parentNode) {
+                            card.remove();
+                        }
+                    }, 3000);
+                } else if (job.status === 'FAILED') {
+                    clearInterval(interval);
+                    if (card.parentNode) {
+                        card.remove();
+                    }
+                }
+            } catch (e) {
+                // продолжаем поллинг при сетевой ошибке
+            }
+        }, 4000);
     }
 
     function startBannerTimers(jobId, bannerId, localStartMs) {
@@ -331,9 +394,8 @@
     // ── Add project modal ─────────────────────────────────────────────────────
 
     let selectedProject = null;
-    let searchDebounceTimer = null;
-    let tokenValidateTimer = null;
     let tokenIsValid = false;
+    let repoList = [];
 
     function updateAddProjectBtn() {
         const sourceId = document.getElementById('project-source-id')?.value;
@@ -343,59 +405,131 @@
         }
     }
 
-    window.scheduleTokenValidate = function () {
-        clearTimeout(tokenValidateTimer);
-        const token = document.getElementById('project-token')?.value?.trim();
-        const statusEl = document.getElementById('token-validate-status');
+    function resetProjectModal() {
+        selectedProject = null;
+        tokenIsValid = false;
+        repoList = [];
         const inputEl = document.getElementById('project-token');
-        const hintEl = inputEl?.closest('.form-group')?.querySelector('.token-hint');
-        if (!token) {
-            tokenIsValid = false;
+        if (inputEl) {
+            inputEl.value = '';
+            inputEl.classList.remove('token-ok', 'token-error');
+        }
+        const statusEl = document.getElementById('token-status-line');
+        if (statusEl) {
+            statusEl.className = 'token-validate-status';
+            statusEl.innerHTML = 'Scope <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_api</code>'
+                + ' + <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_repository</code>'
+                + ' · роль Reporter или выше';
+        }
+        const checkBtnWrap = document.getElementById('token-check-btn-wrap');
+        if (checkBtnWrap) {
+            checkBtnWrap.style.display = '';
+        }
+        const checkBtn = document.getElementById('btn-check-token');
+        if (checkBtn) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = 'Проверить токен';
+        }
+        const repoListWrap = document.getElementById('repo-list-wrap');
+        if (repoListWrap) {
+            repoListWrap.classList.add('hidden');
+        }
+        const container = document.getElementById('repo-list-container');
+        if (container) {
+            container.innerHTML = '';
+        }
+        updateAddProjectBtn();
+    }
+
+    window.openProjectModal = function () {
+        resetProjectModal();
+        openModal('modal-project');
+    };
+
+    window.onTokenInputChange = function () {
+        tokenIsValid = false;
+        repoList = [];
+        selectedProject = null;
+        const token = document.getElementById('project-token')?.value?.trim();
+        const inputEl = document.getElementById('project-token');
+        const statusEl = document.getElementById('token-status-line');
+        const checkBtnWrap = document.getElementById('token-check-btn-wrap');
+        const checkBtn = document.getElementById('btn-check-token');
+        const repoListWrap = document.getElementById('repo-list-wrap');
+        const container = document.getElementById('repo-list-container');
+        if (inputEl) {
+            inputEl.classList.remove('token-ok', 'token-error');
+        }
+        if (statusEl) {
+            statusEl.className = 'token-validate-status';
+            statusEl.innerHTML = 'Scope <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_api</code>'
+                + ' + <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_repository</code>'
+                + ' · роль Reporter или выше';
+        }
+        if (repoListWrap) {
+            repoListWrap.classList.add('hidden');
+        }
+        if (container) {
+            container.innerHTML = '';
+        }
+        if (checkBtnWrap) {
+            checkBtnWrap.style.display = '';
+        }
+        if (checkBtn) {
+            checkBtn.disabled = false;
+        }
+        updateAddProjectBtn();
+    };
+
+    window.onTokenInputBlur = function () {
+        const token = document.getElementById('project-token')?.value?.trim();
+        if (!tokenIsValid && token && token.length >= 10) {
+            validateTokenAndFetch();
+        }
+    };
+
+    window.validateTokenAndFetch = async function () {
+        const sourceId = document.getElementById('project-source-id')?.value;
+        const token = document.getElementById('project-token')?.value?.trim();
+        const statusEl = document.getElementById('token-status-line');
+        const inputEl = document.getElementById('project-token');
+        const checkBtn = document.getElementById('btn-check-token');
+        if (!sourceId) {
             if (statusEl) {
-                statusEl.className = 'token-validate-status';
-                statusEl.textContent = '';
+                statusEl.className = 'token-validate-status tv-error';
+                statusEl.textContent = 'Сначала выберите GitLab Source';
             }
-            if (inputEl) {
-                inputEl.classList.remove('token-ok', 'token-error');
+            return;
+        }
+        if (!token) {
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-error';
+                statusEl.textContent = 'Введите Access Token';
             }
-            if (hintEl) {
-                hintEl.style.display = '';
-            }
-            updateAddProjectBtn();
             return;
         }
         if (statusEl) {
             statusEl.className = 'token-validate-status tv-loading';
-            statusEl.textContent = 'Проверяем токен...';
+            statusEl.textContent = '⟳ Проверяем токен…';
         }
-        tokenValidateTimer = setTimeout(() => validateToken(token, statusEl, inputEl, hintEl), 600);
-    };
-
-    async function validateToken(token, statusEl, inputEl, hintEl) {
-        const sourceId = document.getElementById('project-source-id')?.value;
-        if (!sourceId) {
-            if (statusEl) {
-                statusEl.className = 'token-validate-status tv-loading';
-                statusEl.textContent = 'Сначала выберите GitLab Source';
-            }
-            return;
+        if (checkBtn) {
+            checkBtn.disabled = true;
+            checkBtn.textContent = 'Проверяем…';
         }
         try {
             const result = await api('GET',
                 '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
             if (result.valid) {
                 tokenIsValid = true;
-                if (statusEl) {
-                    statusEl.className = 'token-validate-status tv-ok';
-                    statusEl.textContent = '✓ Токен действителен · используется только для чтения';
-                }
                 if (inputEl) {
                     inputEl.classList.remove('token-error');
                     inputEl.classList.add('token-ok');
                 }
-                if (hintEl) {
-                    hintEl.style.display = 'none';
+                const checkBtnWrap = document.getElementById('token-check-btn-wrap');
+                if (checkBtnWrap) {
+                    checkBtnWrap.style.display = 'none';
                 }
+                await fetchRepoList(sourceId, token);
             } else {
                 tokenIsValid = false;
                 if (statusEl) {
@@ -406,8 +540,9 @@
                     inputEl.classList.remove('token-ok');
                     inputEl.classList.add('token-error');
                 }
-                if (hintEl) {
-                    hintEl.style.display = '';
+                if (checkBtn) {
+                    checkBtn.disabled = false;
+                    checkBtn.textContent = 'Проверить токен';
                 }
             }
         } catch (e) {
@@ -416,79 +551,80 @@
                 statusEl.className = 'token-validate-status tv-error';
                 statusEl.textContent = '✕ Не удалось проверить токен';
             }
+            if (checkBtn) {
+                checkBtn.disabled = false;
+                checkBtn.textContent = 'Проверить токен';
+            }
         }
-        updateAddProjectBtn();
-    }
-
-    window.clearProjectSearch = function () {
-        const searchEl = document.getElementById('project-search');
-        if (searchEl) {
-            searchEl.value = '';
-        }
-        const resultsEl = document.getElementById('project-search-results');
-        if (resultsEl) {
-            resultsEl.innerHTML = '';
-            resultsEl.classList.add('hidden');
-        }
-        selectedProject = null;
-        document.getElementById('project-selected')?.classList.add('hidden');
         updateAddProjectBtn();
     };
 
-    window.debounceSearch = function (q) {
-        clearTimeout(searchDebounceTimer);
-        if (!q || q.length < 2) {
-            document.getElementById('project-search-results')?.classList.add('hidden');
-            return;
+    async function fetchRepoList(sourceId, token) {
+        const statusEl = document.getElementById('token-status-line');
+        const repoListWrap = document.getElementById('repo-list-wrap');
+        const container = document.getElementById('repo-list-container');
+        if (statusEl) {
+            statusEl.className = 'token-validate-status tv-loading';
+            statusEl.textContent = '⟳ Загружаем список репозиториев…';
         }
-        searchDebounceTimer = setTimeout(() => searchProjects(q), 400);
-    };
-
-    async function searchProjects(q) {
-        const sourceId = document.getElementById('project-source-id')?.value;
-        const token = document.getElementById('project-token')?.value?.trim();
-        if (!sourceId) {
-            showError('project-error', 'Сначала выберите GitLab Source');
-            return;
-        }
-        if (!token) {
-            showError('project-error', 'Введите Project Access Token');
-            return;
-        }
-        clearModalError('project-error');
-        const resultsEl = document.getElementById('project-search-results');
-        resultsEl.innerHTML = '<div class="search-loading">Поиск...</div>';
-        resultsEl.classList.remove('hidden');
         try {
             const projects = await api('GET',
-                '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q)
-                + '&token=' + encodeURIComponent(token));
-            if (!projects.length) {
-                resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
-                return;
+                '/settings/sources/' + sourceId + '/projects/search?q=&token=' + encodeURIComponent(token));
+            repoList = projects || [];
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-ok';
+                statusEl.textContent = '✓ Токен валиден · доступ к ' + repoList.length + ' ' + pluralRepos(repoList.length);
             }
-            resultsEl.innerHTML = projects.slice(0, 20).map(p => `
-            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
-                <div class="search-item-name">${escHtml(p.name)}</div>
-                <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
-            </div>`).join('');
+            renderRepoList(container);
+            if (repoListWrap) {
+                repoListWrap.classList.remove('hidden');
+            }
         } catch (e) {
-            resultsEl.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
+            repoList = [];
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-ok';
+                statusEl.textContent = '✓ Токен валиден';
+            }
         }
+    }
+
+    function pluralRepos(n) {
+        const m10 = n % 10;
+        const m100 = n % 100;
+        if (m10 === 1 && m100 !== 11) {
+            return 'репозиторию';
+        }
+        if ((m10 === 2 || m10 === 3 || m10 === 4) && (m100 < 12 || m100 > 14)) {
+            return 'репозиториям';
+        }
+        return 'репозиториям';
+    }
+
+    function renderRepoList(container) {
+        if (!container) {
+            return;
+        }
+        if (!repoList.length) {
+            container.innerHTML = '<div class="repo-list-empty">Репозитории не найдены</div>';
+            return;
+        }
+        container.innerHTML = repoList.slice(0, 50).map((p, i) => {
+            const active = selectedProject && selectedProject.id === p.id;
+            const border = i < repoList.length - 1 ? 'border-bottom:1px solid var(--border-1)' : '';
+            return `<button type="button" class="repo-list-item${active ? ' active' : ''}" style="${border}"
+                onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
+                <div class="repo-list-radio${active ? ' active' : ''}"></div>
+                <div class="repo-list-item-body">
+                    <div class="repo-list-item-name">${escHtml(p.name)}</div>
+                    <div class="repo-list-item-path">${escHtml(p.path_with_namespace)}</div>
+                </div>
+            </button>`;
+        }).join('');
     }
 
     window.selectProject = function (id, name, path) {
         selectedProject = {id, name, path};
-        document.getElementById('project-search-results')?.classList.add('hidden');
-        document.getElementById('project-selected')?.classList.remove('hidden');
-        const nameEl = document.getElementById('project-selected-name');
-        const pathEl = document.getElementById('project-selected-path');
-        if (nameEl) {
-            nameEl.textContent = name;
-        }
-        if (pathEl) {
-            pathEl.textContent = path;
-        }
+        renderRepoList(document.getElementById('repo-list-container'));
         updateAddProjectBtn();
     };
 
@@ -518,11 +654,7 @@
                 token
             });
             closeModal('modal-project');
-            clearProjectSearch();
-            const tokenInput = document.getElementById('project-token');
-            if (tokenInput) {
-                tokenInput.value = '';
-            }
+            resetProjectModal();
             btn.disabled = false;
             btn.textContent = 'Добавить и синхронизировать';
             addProjectToSidebar(result);

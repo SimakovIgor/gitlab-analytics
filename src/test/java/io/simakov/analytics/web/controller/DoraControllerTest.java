@@ -130,10 +130,9 @@ class DoraControllerTest extends BaseIT {
             .andExpect(status().isOk())
             .andReturn();
 
-        // With unknown project filter, count should be 0 not 1
+        // With unknown project filter, totalMrs stat should be 0
         assertThat(result.getResponse().getContentAsString())
-            .contains(">0<")
-            .doesNotContain(">1<");
+            .contains("class=\"dora-stat-value\">0</div>");
     }
 
     @Test

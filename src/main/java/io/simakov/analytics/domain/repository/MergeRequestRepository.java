@@ -97,6 +97,18 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     List<UserMrCountProjection> countMrsByTrackedUser(@Param("workspaceId") Long workspaceId);
 
     /**
+     * All currently open MRs for the given projects.
+     * Used by insight rules to detect stuck or long-open MRs.
+     */
+    @Query("""
+        SELECT mr FROM MergeRequest mr
+        WHERE mr.trackedProjectId IN :projectIds
+        AND mr.state = :state
+        """)
+    List<MergeRequest> findOpenByProjectIds(@Param("projectIds") List<Long> projectIds,
+                                            @Param("state") io.simakov.analytics.domain.model.enums.MrState state);
+
+    /**
      * Weekly lead time distribution (MR open → merge) for DORA chart.
      * Returns rows: [period_date, mr_count, median_hours, p75_hours, p95_hours]
      */
