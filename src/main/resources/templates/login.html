@@ -1,46 +1,505 @@
 <!DOCTYPE html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<html lang="ru" data-variant="B" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GitLab Analytics — Вход</title>
+    <title>gitlens analytics — вход</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .lp-root {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Left hero panel ─────────────────────────────────────────── */
+        .lp-hero {
+            flex: 0 0 58%;
+            background: linear-gradient(155deg, oklch(0.14 0.09 278) 0%, oklch(0.21 0.13 272) 100%);
+            display: flex;
+            flex-direction: column;
+            padding: 40px 52px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* subtle noise texture */
+        .lp-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        /* glow orb */
+        .lp-hero::after {
+            content: '';
+            position: absolute;
+            top: -120px;
+            right: -80px;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, oklch(0.42 0.19 275 / 0.20) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .lp-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1;
+        }
+
+        .lp-logo-wordmark { display: flex; flex-direction: column; line-height: 1; }
+        .lp-logo-name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; color: rgba(255,255,255,0.95); }
+        .lp-logo-sub { font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+        .lp-hero-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 1;
+            padding-top: 20px;
+        }
+
+        .lp-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 11px;
+            font-weight: 600;
+            color: oklch(0.80 0.12 125);
+            margin-bottom: 20px;
+            letter-spacing: 0.04em;
+        }
+
+        .lp-eyebrow-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: oklch(0.80 0.12 125);
+            box-shadow: 0 0 0 3px oklch(0.80 0.12 125 / 0.2);
+            animation: lp-pulse 2.4s ease-in-out infinite;
+        }
+
+        @keyframes lp-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .lp-headline {
+            font-size: 44px;
+            font-weight: 700;
+            line-height: 1.14;
+            color: rgba(255,255,255,0.97);
+            margin-bottom: 16px;
+            letter-spacing: -0.03em;
+        }
+
+        .lp-headline em {
+            font-style: normal;
+            color: oklch(0.86 0.22 125);
+        }
+
+        .lp-subtext {
+            font-size: 15px;
+            color: rgba(255,255,255,0.48);
+            line-height: 1.6;
+            max-width: 400px;
+            margin-bottom: 44px;
+        }
+
+        /* ── Metric cards ─────────────────────────────────────────────── */
+        .lp-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-width: 400px;
+            margin-bottom: 16px;
+        }
+
+        .lp-metric {
+            background: rgba(255,255,255,0.055);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 14px 16px;
+            backdrop-filter: blur(4px);
+        }
+
+        .lp-metric-value {
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 28px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.95);
+            letter-spacing: -0.02em;
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .lp-metric-value sup {
+            font-size: 13px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.38);
+            margin-left: 2px;
+            vertical-align: baseline;
+        }
+
+        .lp-metric-label { font-size: 11px; color: rgba(255,255,255,0.36); }
+        .lp-metric--good .lp-metric-value { color: oklch(0.82 0.18 125); }
+
+        /* ── Chart preview ────────────────────────────────────────────── */
+        .lp-chart-card {
+            background: rgba(255,255,255,0.055);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 14px 16px 10px;
+            max-width: 400px;
+        }
+
+        .lp-chart-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: rgba(255,255,255,0.32);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* ── Footer ───────────────────────────────────────────────────── */
+        .lp-hero-footer {
+            z-index: 1;
+            padding-top: 32px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .lp-beta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            font-size: 11px;
+            font-weight: 600;
+            color: oklch(0.80 0.12 125);
+            letter-spacing: 0.04em;
+        }
+
+        .lp-hero-note { font-size: 12px; color: rgba(255,255,255,0.26); }
+
+        /* ── Right auth panel ─────────────────────────────────────────── */
+        .lp-auth {
+            flex: 1;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 40px;
+            position: relative;
+        }
+
+        .lp-auth-card { width: 100%; max-width: 340px; }
+
+        .lp-auth-logo {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 40px;
+        }
+
+        .lp-auth-logo-text {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #16150f;
+        }
+
+        .lp-auth-heading {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #16150f;
+            margin-bottom: 6px;
+        }
+
+        .lp-auth-sub {
+            font-size: 13px;
+            color: #8a8573;
+            line-height: 1.5;
+            margin-bottom: 36px;
+        }
+
+        /* ── Features ─────────────────────────────────────────────────── */
+        .lp-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 32px;
+        }
+
+        .lp-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            font-size: 13px;
+            color: #5a5648;
+            line-height: 1.4;
+        }
+
+        .lp-feature-icon {
+            width: 18px;
+            height: 18px;
+            border-radius: 5px;
+            background: oklch(0.42 0.19 275 / 0.09);
+            color: oklch(0.42 0.19 275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* ── Error ────────────────────────────────────────────────────── */
+        .lp-error {
+            margin-bottom: 16px;
+            padding: 10px 14px;
+            background: oklch(0.55 0.22 28 / 0.08);
+            border: 1px solid oklch(0.55 0.22 28 / 0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            color: oklch(0.55 0.22 28);
+        }
+
+        /* ── GitHub button ────────────────────────────────────────────── */
+        .lp-btn-github {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 13px 20px;
+            background: oklch(0.42 0.19 275);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            cursor: pointer;
+            letter-spacing: -0.01em;
+            transition: filter 0.15s, transform 0.1s;
+            box-shadow: 0 1px 2px oklch(0.42 0.19 275 / 0.25),
+                        0 4px 12px oklch(0.42 0.19 275 / 0.18);
+        }
+
+        .lp-btn-github:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .lp-btn-github:active { filter: brightness(0.96); transform: translateY(0); }
+
+        .lp-auth-hint {
+            margin-top: 14px;
+            font-size: 11px;
+            color: #b5b09c;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .lp-auth-footer {
+            position: absolute;
+            bottom: 24px;
+            font-size: 11px;
+            color: #b5b09c;
+        }
+
+        /* ── Responsive ───────────────────────────────────────────────── */
+        @media (max-width: 820px) {
+            .lp-root { flex-direction: column; }
+            .lp-hero { flex: none; padding: 32px 28px; }
+            .lp-headline { font-size: 30px; }
+            .lp-metrics { grid-template-columns: repeat(4, 1fr); max-width: none; }
+            .lp-chart-card { display: none; }
+            .lp-auth { padding: 40px 28px; }
+        }
+
+        @media (max-width: 560px) {
+            .lp-metrics { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
 </head>
-<body class="login-page">
+<body>
 
-<div class="login-card">
+<div class="lp-root">
 
-    <div class="login-icon">
-        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
-            <path
-                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
-                fill="#FC6D26"/>
-            <path d="M282.83 170.73l-.27-.69a88.3 88.3 0 00-35.15 19.33L190 239.11c19.55 14.79 36.57 27.64 36.57 27.64l40.06-30 .1-.08a48.56 48.56 0 0016.1-56.04z"
-                  fill="#E24329"/>
-            <path d="M153.43 266.75l19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91S209.55 254 190 239.11c-19.55 14.79-36.57 27.64-36.57 27.64z"
-                  fill="#FCA326"/>
-            <path d="M132.58 189.37A88.19 88.19 0 0097.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82S170.45 254 190 239.11z"
-                  fill="#E24329"/>
-        </svg>
+    <!-- ══ LEFT HERO ══════════════════════════════════════════════════ -->
+    <div class="lp-hero">
+
+        <div class="lp-logo">
+            <svg width="26" height="26" viewBox="0 0 22 22" fill="none">
+                <defs>
+                    <linearGradient id="lg-hero" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="oklch(0.86 0.22 125)"/>
+                        <stop offset="1" stop-color="oklch(0.65 0.18 125)"/>
+                    </linearGradient>
+                </defs>
+                <path d="M11 1 L21 8 L17 21 L5 21 L1 8 Z" fill="url(#lg-hero)"/>
+                <path d="M11 1 L17 21 L11 14 L5 21 Z" fill="rgba(0,0,0,0.18)"/>
+            </svg>
+            <div class="lp-logo-wordmark">
+                <span class="lp-logo-name">gitlens</span>
+                <span class="lp-logo-sub">analytics</span>
+            </div>
+        </div>
+
+        <div class="lp-hero-body">
+
+            <div class="lp-eyebrow">
+                <span class="lp-eyebrow-dot"></span>
+                Public beta · Бесплатно
+            </div>
+
+            <h1 class="lp-headline">
+                Инженерная аналитика<br>
+                для <em>GitLab</em> команд
+            </h1>
+
+            <p class="lp-subtext">
+                Lead Time, код-ревью, DORA-метрики и инсайты —<br>
+                в одном месте. Без ручных таблиц.
+            </p>
+
+            <div class="lp-metrics">
+                <div class="lp-metric">
+                    <div class="lp-metric-value">4.2<sup>ч</sup></div>
+                    <div class="lp-metric-label">Медиана Lead Time</div>
+                </div>
+                <div class="lp-metric">
+                    <div class="lp-metric-value">47<sup>шт</sup></div>
+                    <div class="lp-metric-label">MR за неделю</div>
+                </div>
+                <div class="lp-metric">
+                    <div class="lp-metric-value">3.1<sup>комм</sup></div>
+                    <div class="lp-metric-label">Ревью глубина</div>
+                </div>
+                <div class="lp-metric lp-metric--good">
+                    <div class="lp-metric-value">Elite</div>
+                    <div class="lp-metric-label">DORA рейтинг</div>
+                </div>
+            </div>
+
+            <div class="lp-chart-card">
+                <div class="lp-chart-title">Lead Time · по неделям</div>
+                <svg width="100%" viewBox="0 0 360 64" preserveAspectRatio="none">
+                    <line x1="0" y1="16" x2="360" y2="16" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                    <line x1="0" y1="32" x2="360" y2="32" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                    <line x1="0" y1="48" x2="360" y2="48" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                    <path d="M0,44 L40,38 L80,30 L120,34 L160,22 L200,28 L240,18 L280,14 L320,10 L360,12 L360,64 L0,64 Z"
+                          fill="oklch(0.86 0.22 125 / 0.12)"/>
+                    <path d="M0,56 L40,52 L80,48 L120,50 L160,42 L200,46 L240,38 L280,34 L320,28 L360,30"
+                          fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.5" stroke-dasharray="4 3"/>
+                    <path d="M0,44 L40,38 L80,30 L120,34 L160,22 L200,28 L240,18 L280,14 L320,10 L360,12"
+                          fill="none" stroke="oklch(0.86 0.22 125)" stroke-width="2.2"
+                          stroke-linejoin="round" stroke-linecap="round"/>
+                    <circle cx="360" cy="12" r="3" fill="oklch(0.86 0.22 125)"/>
+                </svg>
+            </div>
+
+        </div>
+
+        <div class="lp-hero-footer">
+            <span class="lp-beta-badge">✦ Весь функционал бесплатно</span>
+            <span class="lp-hero-note">Без кредитной карты</span>
+        </div>
+
     </div>
 
-    <h1>Метрики команды из GitLab</h1>
-    <p class="login-subtitle">MR, коммиты, ревью и динамика по каждому разработчику — в одном отчёте</p>
+    <!-- ══ RIGHT AUTH ═════════════════════════════════════════════════ -->
+    <div class="lp-auth">
+        <div class="lp-auth-card">
 
-    <div class="alert alert-error" th:if="${param.error}">
-        Не удалось войти. Попробуйте ещё раз.
+            <div class="lp-auth-logo">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <defs>
+                        <linearGradient id="lg-auth" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stop-color="oklch(0.42 0.19 275)"/>
+                            <stop offset="1" stop-color="oklch(0.58 0.15 275)"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M11 1 L21 8 L17 21 L5 21 L1 8 Z" fill="url(#lg-auth)"/>
+                    <path d="M11 1 L17 21 L11 14 L5 21 Z" fill="rgba(0,0,0,0.12)"/>
+                </svg>
+                <span class="lp-auth-logo-text">gitlens analytics</span>
+            </div>
+
+            <h2 class="lp-auth-heading">Добро пожаловать</h2>
+            <p class="lp-auth-sub">Войдите через GitHub, чтобы получить доступ к аналитике вашей команды.</p>
+
+            <ul class="lp-features">
+                <li class="lp-feature">
+                    <span class="lp-feature-icon">
+                        <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                            <path d="M1.5 5.5 L4 8 L8.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    MR, коммиты и ревью — по каждому разработчику
+                </li>
+                <li class="lp-feature">
+                    <span class="lp-feature-icon">
+                        <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                            <path d="M1.5 5.5 L4 8 L8.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    DORA-метрики: Lead Time, Deployment Frequency, MTTR
+                </li>
+                <li class="lp-feature">
+                    <span class="lp-feature-icon">
+                        <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                            <path d="M1.5 5.5 L4 8 L8.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    Инсайты: застрявшие MR, дисбаланс ревью, рост Lead Time
+                </li>
+            </ul>
+
+            <div class="lp-error" th:if="${param.error}">
+                Не удалось войти через GitHub. Попробуйте ещё раз.
+            </div>
+
+            <div class="lp-auth-hint" style="margin-bottom:16px"
+                 th:if="${param.logout}">Вы вышли из системы.</div>
+
+            <a class="lp-btn-github" href="/oauth2/authorization/github">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                </svg>
+                Войти через GitHub
+            </a>
+
+            <p class="lp-auth-hint">
+                OAuth — пароль не нужен.<br>
+                Данные хранятся только в вашем GitLab.
+            </p>
+
+        </div>
+
+        <div class="lp-auth-footer">© 2025 gitlens analytics</div>
     </div>
-
-    <a class="btn-oauth btn-github" href="/oauth2/authorization/github">
-        <svg fill="white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path
-                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
-        </svg>
-        Войти через GitHub
-    </a>
-
-    <p class="login-hint" th:if="${param.logout}">Вы вышли из системы</p>
-    <p class="login-hint" th:unless="${param.logout}">Вход через GitHub · данные берутся из вашего GitLab</p>
 
 </div>
 

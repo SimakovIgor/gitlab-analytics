@@ -56,9 +56,9 @@
             </div>
             <div class="kpi-card">
                 <div class="kpi-label">С ошибками</div>
-                <div class="kpi-value kpi-value-bad num" th:text="${failed14d + partial14d}">0</div>
+                <div class="kpi-value kpi-value-bad num" th:text="${failed14d}">0</div>
                 <div class="kpi-sub"
-                     th:text="${partial14d} + ' частичных · ' + ${failed14d} + ' упало'">—
+                     th:text="${partial14d} + ' фаза·1 · ' + ${failed14d} + ' упало'">—
                 </div>
             </div>
             <div class="kpi-card">
@@ -213,12 +213,13 @@
 
     function getPhaseStatus(isFast, job) {
         if (isFast) {
-            return (job.phase === 'FAST' && job.uiStatus === 'failed') ? 'failed' : 'ok';
+            return job.uiStatus === 'failed' ? 'failed' : 'ok';
         }
-        if (job.phase === 'FAST') {
+        // Phase 1 (FAST) job: enrichment steps were not run yet
+        if (job.uiStatus === 'phase1') {
             return 'skipped';
         }
-        return (job.uiStatus === 'failed') ? 'failed' : 'ok';
+        return job.uiStatus === 'failed' ? 'failed' : 'ok';
     }
 
     function renderPhaseBreakdown(job) {
@@ -249,17 +250,14 @@
 
     var STATUS_LABELS = {
         ok: '\u0423\u0441\u043f\u0435\u0445',
-        partial: '\u0427\u0430\u0441\u0442\u0438\u0447\u043d\u043e',
+        phase1: '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2',
         failed: '\u041e\u0448\u0438\u0431\u043a\u0430',
         running: '\u0412 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u0435'
     };
 
     function renderJobRow(job) {
-        var note = job.errorMessage
-            || (job.uiStatus === 'partial'
-                ? '\u0424\u0430\u0437\u0430 1 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430, \u0444\u0430\u0437\u0430 2 \u0432 \u043e\u0447\u0435\u0440\u0435\u0434\u0438'
-                : '')
-            || '\u2014';
+        // Note column: error message for failed, project name otherwise
+        var note = job.errorMessage || job.projectName || '\u2014';
         var mrCount = job.totalMrs > 0 ? job.totalMrs.toLocaleString('ru') : '\u2014';
         var statusLabel = STATUS_LABELS[job.uiStatus] || job.uiStatus;
         var noteClass = 'sync-col-note' + (job.uiStatus === 'failed' ? ' sync-note-err' : '');

@@ -5,7 +5,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
-    <title>GitLab Analytics — DORA</title>
+    <title>GitLab Analytics — Сервисы & DORA</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -15,19 +15,17 @@
 
 <div class="report-page">
 
-    <!-- ── Боковая панель ──────────────────────────────────── -->
     <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
 
     <main class="report-main">
 
-        <!-- Карточки синхронизации (Phase 1 и Phase 2) -->
         <div id="sync-banners"></div>
 
         <!-- Заголовок + период -->
         <div class="page-header">
             <div>
-                <h1 class="page-title">DORA метрики</h1>
-                <div class="page-subtitle">Индустриальные показатели эффективности инженерной команды</div>
+                <h1 class="page-title">Сервисы & DORA</h1>
+                <div class="page-subtitle">Индустриальные метрики здоровья инженерной работы — по каждому сервису.</div>
             </div>
             <div class="page-header-right">
                 <div class="period-segmented">
@@ -52,11 +50,6 @@
                             type="button">360д
                     </button>
                 </div>
-                <span class="period-info">
-                    <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
-                    &nbsp;→&nbsp;
-                    <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
-                </span>
             </div>
         </div>
 
@@ -76,131 +69,120 @@
             </div>
         </div>
 
-        <!-- ── Lead Time ─────────────────────────────────────────────────────────── -->
+        <!-- ── 4 DORA metric cards ──────────────────────────────────────────── -->
+        <div class="dora-big-grid">
 
-        <div class="dora-section">
-            <div class="dora-section-header">
-                <div>
-                    <div class="dora-metric-name">Lead Time for Changes</div>
-                    <div class="dora-metric-desc">
-                        Время от открытия MR до попадания в основную ветку.
-                        Показывает скорость доставки изменений.
-                    </div>
+            <!-- Lead Time for Changes -->
+            <div class="dora-big-card">
+                <div class="dora-big-header">
+                    <span class="dora-big-label">Lead Time</span>
+                    <span th:if="${medianHours != null and medianHours <= 1}"
+                          class="rating-pill rating-pill-elite"
+                          data-tooltip="Elite: медиана Lead Time менее 1 часа">
+                        <span class="rating-pill-dot"></span>Elite
+                    </span>
+                    <span th:if="${medianHours != null and medianHours > 1 and medianHours <= 24}"
+                          class="rating-pill rating-pill-high tooltip-hint"
+                          data-tooltip="High: медиана Lead Time от 1 часа до 1 дня">
+                        <span class="rating-pill-dot"></span>High
+                    </span>
+                    <span th:if="${medianHours != null and medianHours > 24 and medianHours <= 168}"
+                          class="rating-pill rating-pill-medium tooltip-hint"
+                          data-tooltip="Medium: медиана Lead Time от 1 до 7 дней">
+                        <span class="rating-pill-dot"></span>Medium
+                    </span>
+                    <span th:if="${medianHours != null and medianHours > 168}"
+                          class="rating-pill rating-pill-low tooltip-hint"
+                          data-tooltip="Low: медиана Lead Time более 7 дней">
+                        <span class="rating-pill-dot"></span>Low
+                    </span>
+                    <span th:if="${medianHours == null}" class="rating-pill rating-pill-tbd">
+                        <span class="rating-pill-dot"></span>Нет данных
+                    </span>
                 </div>
-                <div class="dora-badge dora-badge-elite tooltip-hint"
-                     data-tooltip="Elite: медиана Lead Time менее 1 часа. Лучший уровень по классификации DORA Research."
-                     th:if="${medianHours != null and medianHours <= 1}">Elite
+                <div class="dora-big-value-row">
+                    <span class="num dora-big-value"
+                          th:text="${medianHours != null ? #numbers.formatDecimal(medianHours, 1, 1) : '—'}">—</span>
+                    <span class="dora-big-unit" th:if="${medianHours != null}">ч</span>
+                    <span class="dora-big-trend" id="leadTimeTrend"></span>
                 </div>
-                <div class="dora-badge dora-badge-high tooltip-hint"
-                     data-tooltip="High: медиана Lead Time от 1 часа до 1 дня. Высокая скорость доставки изменений."
-                     th:if="${medianHours != null and medianHours > 1 and medianHours <= 24}">High
+                <svg id="leadTimeSparkline" class="dora-sparkline" aria-hidden="true"></svg>
+                <div class="dora-big-secondary" th:if="${p75Hours != null}">
+                    <span class="tooltip-hint" data-tooltip="75% MR завершается быстрее">P75
+                        <span th:text="${#numbers.formatDecimal(p75Hours, 1, 1) + ' ч'}">—</span>
+                    </span>
+                    <span class="dora-big-sep">·</span>
+                    <span class="tooltip-hint" data-tooltip="95% MR завершается быстрее">P95
+                        <span th:text="${p95Hours != null ? #numbers.formatDecimal(p95Hours, 1, 1) + ' ч' : '—'}">—</span>
+                    </span>
+                    <span class="dora-big-sep">·</span>
+                    <span th:text="${totalMrs + ' MR'}">0 MR</span>
                 </div>
-                <div class="dora-badge dora-badge-medium tooltip-hint"
-                     data-tooltip="Medium: медиана Lead Time от 1 до 7 дней. Средний уровень — есть пространство для улучшения."
-                     th:if="${medianHours != null and medianHours > 24 and medianHours <= 168}">Medium
-                </div>
-                <div class="dora-badge dora-badge-low tooltip-hint"
-                     data-tooltip="Low: медиана Lead Time более 7 дней. Изменения долго доходят до основной ветки."
-                     th:if="${medianHours != null and medianHours > 168}">Low
-                </div>
+                <div class="dora-big-desc">Медиана от открытия MR до мержа в основную ветку</div>
             </div>
 
-            <div class="dora-stats-row">
-                <div class="dora-stat-card">
-                    <div class="dora-stat-label">
-                    <span class="tooltip-hint"
-                          data-tooltip="P50 — половина MR закрывается быстрее. Устойчивее среднего, не искажается выбросами.">Медиана</span>
-                    </div>
-                    <div class="dora-stat-value"
-                         th:text="${medianHours != null ? #numbers.formatDecimal(medianHours, 1, 1) + ' ч' : '—'}">—
-                    </div>
+            <!-- Deployment Frequency (TBD) -->
+            <div class="dora-big-card dora-big-card-tbd">
+                <div class="dora-big-header">
+                    <span class="dora-big-label">Deploy Freq.</span>
+                    <span class="rating-pill rating-pill-tbd"><span class="rating-pill-dot"></span>Скоро</span>
                 </div>
-                <div class="dora-stat-card">
-                    <div class="dora-stat-label">
-                    <span class="tooltip-hint"
-                          data-tooltip="75% MR закрывается быстрее. Показывает «медленный хвост» — MR, застрявшие на ревью.">P75</span>
-                    </div>
-                    <div class="dora-stat-value"
-                         th:text="${p75Hours != null ? #numbers.formatDecimal(p75Hours, 1, 1) + ' ч' : '—'}">—
-                    </div>
+                <div class="dora-big-value-row">
+                    <span class="num dora-big-value">—</span>
                 </div>
-                <div class="dora-stat-card">
-                    <div class="dora-stat-label">
-                    <span class="tooltip-hint"
-                          data-tooltip="95% MR закрывается быстрее. Выявляет самые проблемные MR, требующие внимания.">P95</span>
-                    </div>
-                    <div class="dora-stat-value"
-                         th:text="${p95Hours != null ? #numbers.formatDecimal(p95Hours, 1, 1) + ' ч' : '—'}">—
-                    </div>
-                </div>
-                <div class="dora-stat-card">
-                    <div class="dora-stat-label">
-                    <span class="tooltip-hint"
-                          data-tooltip="Число MR, смерджённых в выбранном периоде. Основа для расчёта перцентилей Lead Time.">MR за период</span>
-                    </div>
-                    <div class="dora-stat-value" th:text="${totalMrs}">0</div>
-                </div>
+                <div class="dora-big-desc">Частота деплоев в продакшн. Требует подключения CI/CD пайплайнов GitLab.</div>
             </div>
 
-            <div class="chart-card" style="margin-top:16px">
-                <div class="chart-title">Lead Time по неделям</div>
-                <div class="chart-wrap">
-                    <canvas id="leadTimeChart"></canvas>
+            <!-- Change Failure Rate (TBD) -->
+            <div class="dora-big-card dora-big-card-tbd">
+                <div class="dora-big-header">
+                    <span class="dora-big-label">Change Failure</span>
+                    <span class="rating-pill rating-pill-tbd"><span class="rating-pill-dot"></span>Скоро</span>
                 </div>
+                <div class="dora-big-value-row">
+                    <span class="num dora-big-value">—</span>
+                </div>
+                <div class="dora-big-desc">Процент деплоев, вызвавших инциденты. Требует интеграции с Jira.</div>
             </div>
+
+            <!-- MTTR (TBD) -->
+            <div class="dora-big-card dora-big-card-tbd">
+                <div class="dora-big-header">
+                    <span class="dora-big-label">MTTR</span>
+                    <span class="rating-pill rating-pill-tbd"><span class="rating-pill-dot"></span>Скоро</span>
+                </div>
+                <div class="dora-big-value-row">
+                    <span class="num dora-big-value">—</span>
+                </div>
+                <div class="dora-big-desc">Среднее время восстановления после инцидента. Требует интеграции с Jira.</div>
+            </div>
+
         </div>
 
-        <!-- ── Deployment Frequency (TBD) ────────────────────────────────────────── -->
-
-        <div class="dora-section dora-section-tbd">
-            <div class="dora-section-header">
+        <!-- ── Lead Time chart ────────────────────────────────────────────────── -->
+        <div class="chart-card">
+            <div class="dora-chart-header">
                 <div>
-                    <div class="dora-metric-name">Deployment Frequency
-                        <span class="dora-tbd-badge">Скоро</span>
-                    </div>
-                    <div class="dora-metric-desc">
-                        Как часто команда деплоит в продакшн.
-                        Требует подключения CI/CD пайплайнов GitLab.
-                    </div>
+                    <div class="chart-title">Lead Time · по неделям</div>
+                    <div class="dora-chart-subtitle">Медиана и P75 за выбранный период</div>
+                </div>
+                <div class="dora-chart-legend">
+                    <span class="dora-legend-item">
+                        <span class="dora-legend-line dora-legend-line-solid"></span>Медиана
+                    </span>
+                    <span class="dora-legend-item">
+                        <span class="dora-legend-line dora-legend-line-dashed"></span>P75
+                    </span>
                 </div>
             </div>
-        </div>
-
-        <!-- ── Change Failure Rate (TBD) ─────────────────────────────────────────── -->
-
-        <div class="dora-section dora-section-tbd">
-            <div class="dora-section-header">
-                <div>
-                    <div class="dora-metric-name">Change Failure Rate
-                        <span class="dora-tbd-badge">Скоро</span>
-                    </div>
-                    <div class="dora-metric-desc">
-                        Процент деплоев, приводящих к инцидентам или откатам.
-                        Требует интеграции с Jira (тикеты инцидентов).
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── MTTR (TBD) ─────────────────────────────────────────────────────────── -->
-
-        <div class="dora-section dora-section-tbd">
-            <div class="dora-section-header">
-                <div>
-                    <div class="dora-metric-name">Mean Time to Restore (MTTR)
-                        <span class="dora-tbd-badge">Скоро</span>
-                    </div>
-                    <div class="dora-metric-desc">
-                        Среднее время восстановления после инцидента.
-                        Требует интеграции с Jira (инциденты и время резолюции).
-                    </div>
-                </div>
+            <div class="chart-wrap">
+                <canvas id="leadTimeChart"></canvas>
             </div>
         </div>
 
     </main>
 
-</div><!-- /.report-page -->
+</div>
 
 <script th:inline="javascript">
     /*<![CDATA[*/
@@ -211,7 +193,6 @@
 </script>
 <script src="/js/sidebar.js"></script>
 <script>
-    // Restore saved period on load (if no explicit URL param)
     (function () {
         const urlParams = new URLSearchParams(window.location.search);
         if (!urlParams.has('period')) {
@@ -243,34 +224,128 @@
     function applyFiltersWithPeriod(period) {
         navigateDora(period, getProjectIds());
     }
+
+    // ── Sparkline ────────────────────────────────────────────────────────────
+    function drawSparkline(svgEl, data, accentColor) {
+        if (!data || data.length < 2) return;
+        const W = 260, H = 44, PAD = 4;
+        const filtered = data.filter(v => v != null && !isNaN(v));
+        if (filtered.length < 2) return;
+        const max = Math.max(...filtered);
+        const min = Math.min(...filtered, 0);
+        const range = max - min || 1;
+        const stepX = W / (filtered.length - 1);
+        const pts = filtered.map(function (v, i) {
+            return [
+                i * stepX,
+                PAD + (H - PAD * 2) - ((v - min) / range) * (H - PAD * 2)
+            ];
+        });
+        const d = pts.map(function (p, i) {
+            return (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1);
+        }).join(' ');
+        const area = d + ' L' + W + ',' + H + ' L0,' + H + ' Z';
+        const last = pts[pts.length - 1];
+        svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        svgEl.setAttribute('preserveAspectRatio', 'none');
+        svgEl.innerHTML =
+            '<path d="' + area + '" fill="' + accentColor + '" opacity="0.12"/>'
+            + '<path d="' + d + '" fill="none" stroke="' + accentColor + '" stroke-width="1.8"'
+            + ' stroke-linejoin="round" stroke-linecap="round"/>'
+            + '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.5" fill="' + accentColor + '"/>';
+    }
+
+    // ── Trend arrow ──────────────────────────────────────────────────────────
+    function renderTrendArrow(el, data) {
+        if (!data || data.length < 4) return;
+        const valid = data.filter(function (v) { return v != null && !isNaN(v); });
+        if (valid.length < 4) return;
+        const half = Math.floor(valid.length / 2);
+        const firstAvg = valid.slice(0, half).reduce(function (a, b) { return a + b; }, 0) / half;
+        const lastAvg = valid.slice(-half).reduce(function (a, b) { return a + b; }, 0) / half;
+        const pct = (lastAvg - firstAvg) / (firstAvg || 1);
+        let dir = 'flat';
+        if (pct > 0.05) { dir = 'up'; }
+        else if (pct < -0.05) { dir = 'down'; }
+        // lead time: down = good (green), up = bad (red)
+        const color = dir === 'down' ? 'var(--good)' : dir === 'up' ? 'var(--bad)' : 'var(--fg-3)';
+        const rot = dir === 'up' ? 0 : dir === 'down' ? 180 : 90;
+        el.innerHTML = '<svg width="16" height="16" viewBox="0 0 12 12"'
+            + ' style="transform:rotate(' + rot + 'deg)">'
+            + '<path d="M6 2 L6 10 M2.5 5.5 L6 2 L9.5 5.5" fill="none" stroke="' + color + '"'
+            + ' stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+    }
 </script>
 <script th:inline="javascript">
     const chartData = JSON.parse([[${chartJson}]]);
+    const style = getComputedStyle(document.documentElement);
+    const accentColor = style.getPropertyValue('--accent').trim() || '#6366f1';
+    const fg3Color = style.getPropertyValue('--fg-3').trim() || '#8a8573';
+    const accentBg = style.getPropertyValue('--accent-bg').trim() || 'rgba(99,102,241,0.08)';
 
+    // Draw sparkline in Lead Time card
+    const sparkSvg = document.getElementById('leadTimeSparkline');
+    if (sparkSvg && chartData.datasets && chartData.datasets[0]) {
+        drawSparkline(sparkSvg, chartData.datasets[0].data, accentColor);
+    }
+
+    // Draw trend arrow
+    const trendEl = document.getElementById('leadTimeTrend');
+    if (trendEl && chartData.datasets && chartData.datasets[0]) {
+        renderTrendArrow(trendEl, chartData.datasets[0].data);
+    }
+
+    // Main weekly chart
     new Chart(document.getElementById('leadTimeChart'), {
         type: 'line',
-        data: chartData,
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                {
+                    label: 'Медиана (ч)',
+                    data: chartData.datasets[0] ? chartData.datasets[0].data : [],
+                    borderColor: accentColor,
+                    backgroundColor: accentBg,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    borderWidth: 2.2,
+                    pointBackgroundColor: accentColor
+                },
+                {
+                    label: 'P75 (ч)',
+                    data: chartData.datasets[1] ? chartData.datasets[1].data : [],
+                    borderColor: fg3Color,
+                    backgroundColor: 'transparent',
+                    borderDash: [4, 3],
+                    tension: 0.3,
+                    pointRadius: 2,
+                    borderWidth: 1.5
+                }
+            ]
+        },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: {position: 'top'},
+                legend: {display: false},
                 tooltip: {
                     callbacks: {
-                        label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + ' ч'
+                        label: function (ctx) {
+                            return ctx.dataset.label + ': ' + ctx.parsed.y + ' ч';
+                        }
                     }
                 }
             },
             scales: {
                 x: {
-                    ticks: {
-                        maxTicksLimit: 12,
-                        maxRotation: 0
-                    }
+                    ticks: {maxTicksLimit: 12, maxRotation: 0},
+                    grid: {color: 'rgba(0,0,0,0.04)'}
                 },
                 y: {
                     title: {display: true, text: 'Часы'},
-                    beginAtZero: true
+                    beginAtZero: true,
+                    grid: {color: 'rgba(0,0,0,0.04)'}
                 }
             }
         }

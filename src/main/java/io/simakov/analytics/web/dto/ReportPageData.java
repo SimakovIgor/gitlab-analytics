@@ -27,7 +27,8 @@ public record ReportPageData(
     Instant dateTo,
     List<UserMetrics> metrics,
     Map<Long, Map<String, Number>> deltas,
-    ReportSummary summary
+    ReportSummary summary,
+    List<InsightSummaryDto> topInsights
 ) {
 
 }

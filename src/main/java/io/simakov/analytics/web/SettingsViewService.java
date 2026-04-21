@@ -1,5 +1,7 @@
 package io.simakov.analytics.web;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
@@ -16,6 +18,7 @@ import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.web.dto.SyncHistoryPageData;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +31,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SettingsViewService {
@@ -43,6 +48,7 @@ public class SettingsViewService {
     private final TrackedUserRepository trackedUserRepository;
     private final TrackedUserAliasRepository aliasRepository;
     private final SyncJobRepository syncJobRepository;
+    private final ObjectMapper objectMapper;
 
     private static String formatDuration(Instant start,
                                          Instant end) {
@@ -73,7 +79,9 @@ public class SettingsViewService {
         if (job.getStatus() == SyncStatus.FAILED) {
             return "failed";
         }
-        return job.getPhase() == SyncJobPhase.FAST ? "partial" : "ok";
+        // FAST phase done = Phase 1 completed successfully (Phase 2 follows automatically).
+        // Not a partial failure — show as green "phase1", not orange "partial".
+        return job.getPhase() == SyncJobPhase.FAST ? "phase1" : "ok";
     }
 
     private static long durSecs(SyncJob job) {
@@ -154,6 +162,8 @@ public class SettingsViewService {
         Long workspaceId = WorkspaceContext.get();
         List<SyncJob> rawJobs = syncJobRepository.findTop30ByWorkspaceIdOrderByStartedAtDesc(workspaceId);
         List<TrackedProject> projects = trackedProjectRepository.findAllByWorkspaceId(workspaceId);
+        Map<Long, String> projectNames = projects.stream()
+            .collect(Collectors.toMap(TrackedProject::getId, TrackedProject::getName));
 
         long maxNonFailedId = rawJobs.stream()
             .filter(j -> j.getStatus() != SyncStatus.FAILED)
@@ -162,7 +172,7 @@ public class SettingsViewService {
             .orElse(-1L);
 
         List<Map<String, Object>> jobs = rawJobs.stream()
-            .map(job -> buildJobRow(job, maxNonFailedId))
+            .map(job -> buildJobRow(job, maxNonFailedId, projectNames))
             .toList();
 
         List<Map<String, Object>> chartBars = buildChartBars(rawJobs);
@@ -188,7 +198,9 @@ public class SettingsViewService {
         );
     }
 
-    private Map<String, Object> buildJobRow(SyncJob job, long maxNonFailedId) {
+    private Map<String, Object> buildJobRow(SyncJob job,
+                                             long maxNonFailedId,
+                                             Map<Long, String> projectNames) {
         Map<String, Object> row = new HashMap<>();
         row.put("id", job.getId());
         row.put("uiStatus", toUiStatus(job));
@@ -200,7 +212,31 @@ public class SettingsViewService {
         row.put("totalMrs", job.getTotalMrs());
         row.put("errorMessage", job.getErrorMessage());
         row.put("canRetry", job.getStatus() == SyncStatus.FAILED && job.getId() > maxNonFailedId);
+        row.put("projectName", resolveProjectName(job, projectNames));
         return row;
+    }
+
+    private String resolveProjectName(SyncJob job, Map<Long, String> projectNames) {
+        String payload = job.getPayloadJson();
+        if (payload == null || payload.isBlank()) {
+            return null;
+        }
+        try {
+            Map<String, Object> map = objectMapper.readValue(payload, new TypeReference<>() { });
+            @SuppressWarnings("unchecked")
+            List<Integer> ids = (List<Integer>) map.get("projectIds");
+            if (ids == null || ids.isEmpty()) {
+                return null;
+            }
+            String names = ids.stream()
+                .map(id -> projectNames.get((long) id))
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining(", "));
+            return names.isBlank() ? null : names;
+        } catch (Exception e) {
+            log.warn("Failed to resolve project name for job {}: {}", job.getId(), e.getMessage());
+            return null;
+        }
     }
 
     private List<Map<String, Object>> buildChartBars(List<SyncJob> rawJobs) {
@@ -235,7 +271,9 @@ public class SettingsViewService {
             .filter(j -> j.getStartedAt().isAfter(cutoff))
             .toList();
         long ok = jobs14d.stream().filter(j -> "ok".equals(toUiStatus(j))).count();
-        long partial = jobs14d.stream().filter(j -> "partial".equals(toUiStatus(j))).count();
+        // "phase1" = FAST phase completed — Phase 1 of 2 succeeded, Phase 2 follows automatically.
+        // These are NOT errors; tracked separately to distinguish from truly failed jobs.
+        long partial = jobs14d.stream().filter(j -> "phase1".equals(toUiStatus(j))).count();
         long failed = jobs14d.stream().filter(j -> "failed".equals(toUiStatus(j))).count();
         OptionalDouble avgDur = jobs14d.stream()
             .filter(j -> j.getFinishedAt() != null && !"failed".equals(toUiStatus(j)))

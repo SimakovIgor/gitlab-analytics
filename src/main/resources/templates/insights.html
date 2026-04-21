@@ -26,9 +26,10 @@
         <!-- Заголовок + период -->
         <div class="page-header">
             <div>
-                <h1 class="page-title">Инсайты</h1>
+                <h1 class="page-title">Инсайты и рекомендации</h1>
                 <div class="page-subtitle">
                     Система автоматически находит аномалии и закономерности в работе команды.
+                    Алгоритмические правила — работают постоянно и бесплатно, AI-инсайты — опциональный модуль с нарративными рекомендациями.
                 </div>
             </div>
             <div class="page-header-right">
@@ -66,6 +67,7 @@
                         <input class="filter-project-check" onchange="applyProjectFilter()"
                                th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
                                th:value="${project.id}" type="checkbox">
+                        <span class="filter-chip-check">✓</span>
                         <span th:text="${project.name}">repo</span>
                     </label>
                 </th:block>
@@ -82,8 +84,8 @@
                         <span class="insight-meta-count" th:text="'· ' + ${algoCount} + ' активных'">· 0 активных</span>
                     </div>
                     <div class="insight-meta-desc">
-                        Детерминированные правила на метриках: пороги, дельты, распределения.
-                        Прозрачные — видно какое именно правило сработало.
+                        Детерминированные правила на метриках: пороги, дельты, распределения (Gini), bus factor.
+                        Работают непрерывно, без внешних вызовов. Прозрачные — видно конкретный triggered rule.
                     </div>
                 </div>
             </div>
@@ -96,8 +98,8 @@
                         <span class="badge-soon">Скоро</span>
                     </div>
                     <div class="insight-meta-desc">
-                        LLM анализирует паттерны (риски, рост, выгорание) и формулирует рекомендации.
-                        В будущем — по подписке.
+                        LLM анализирует паттерны (burnout, риски, рост) и формулирует рекомендации текстом.
+                        AI-модуль запускается раз в сутки и использует сырые метрики + дельты, без имён и кода.
                     </div>
                 </div>
             </div>
@@ -317,7 +319,17 @@
 <script th:src="@{/js/sidebar.js}"></script>
 
 <script>
+    function saveFilters(period, projectIds) {
+        try {
+            localStorage.setItem('gl_period', period);
+            localStorage.setItem('gl_projectIds', JSON.stringify(projectIds));
+        } catch (e) { /* ignore */ }
+    }
+
     function applyPeriod(period) {
+        const checked = Array.from(document.querySelectorAll('.filter-project-check:checked'))
+            .map(function (c) { return c.value; });
+        saveFilters(period, checked);
         const url = new URL(window.location.href);
         url.searchParams.set('period', period);
         window.location.href = url.toString();
@@ -325,16 +337,31 @@
 
     function applyProjectFilter() {
         const checked = Array.from(document.querySelectorAll('.filter-project-check:checked'))
-            .map(function (c) {
-                return c.value;
-            });
+            .map(function (c) { return c.value; });
+        const urlParams = new URLSearchParams(window.location.search);
+        saveFilters(urlParams.get('period') || 'LAST_30_DAYS', checked);
         const url = new URL(window.location.href);
         url.searchParams.delete('projectIds');
-        checked.forEach(function (id) {
-            url.searchParams.append('projectIds', id);
-        });
+        checked.forEach(function (id) { url.searchParams.append('projectIds', id); });
         window.location.href = url.toString();
     }
+
+    // Restore saved filters on load if no explicit URL params
+    (function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('period') && !urlParams.has('projectIds')) {
+            try {
+                const savedPeriod = localStorage.getItem('gl_period');
+                const savedIds = JSON.parse(localStorage.getItem('gl_projectIds') || '[]');
+                if (savedPeriod && savedPeriod !== 'LAST_30_DAYS' || savedIds.length > 0) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('period', savedPeriod || 'LAST_30_DAYS');
+                    savedIds.forEach(function (id) { url.searchParams.append('projectIds', id); });
+                    window.location.replace(url.toString());
+                }
+            } catch (e) { /* ignore */ }
+        }
+    }());
 
     // Client-side filtering by source and kind
     var activeSource = 'all';

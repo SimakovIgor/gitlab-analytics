@@ -17,12 +17,16 @@ import io.simakov.analytics.domain.repository.SyncJobRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.insights.InsightService;
+import io.simakov.analytics.insights.model.InsightKind;
+import io.simakov.analytics.insights.model.TeamInsight;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.util.DateTimeUtils;
+import io.simakov.analytics.web.dto.InsightSummaryDto;
 import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
 import io.simakov.analytics.web.dto.ReportSummary;
@@ -48,6 +52,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ReportViewService {
 
+    private static final int TOP_INSIGHTS_LIMIT = 6;
+
     private final GitSourceRepository gitSourceRepository;
     private final TrackedProjectRepository trackedProjectRepository;
     private final TrackedUserRepository trackedUserRepository;
@@ -57,6 +63,7 @@ public class ReportViewService {
     private final MetricCalculationService metricCalculationService;
     private final MergeRequestRepository mergeRequestRepository;
     private final MergeRequestCommitRepository commitRepository;
+    private final InsightService insightService;
 
     @Transactional(readOnly = true)
     public ReportPageData buildReportPage(String period,
@@ -96,7 +103,7 @@ public class ReportViewService {
                 sources, hasSources, hasProjects, hasUsers, true, hasSyncCompleted,
                 activeJobIds, lastFailedSyncJobId, enrichmentJobId, usersWithAliases, allProjects,
                 List.of(), period, showInactive,
-                null, null, List.of(), Map.of(), null
+                null, null, List.of(), Map.of(), null, List.of()
             );
         }
 
@@ -135,11 +142,41 @@ public class ReportViewService {
             summary = buildSummary(metrics, previous, allUsers.size());
         }
 
+        Map<Long, String> userNameById = allUsers.stream()
+            .collect(Collectors.toMap(TrackedUser::getId, TrackedUser::getDisplayName));
+        List<InsightSummaryDto> topInsights = buildTopInsights(workspaceId, period, selectedProjectIds, userNameById);
+
         return new ReportPageData(
             sources, hasSources, hasProjects, hasUsers, false, hasSyncCompleted,
             activeJobIds, lastFailedSyncJobId, enrichmentJobId, usersWithAliases, allProjects,
             selectedProjectIds, period, showInactive,
-            dateFrom, dateTo, metrics, deltas, summary
+            dateFrom, dateTo, metrics, deltas, summary, topInsights
+        );
+    }
+
+    private List<InsightSummaryDto> buildTopInsights(Long workspaceId,
+                                                     String period,
+                                                     List<Long> projectIds,
+                                                     Map<Long, String> userNameById) {
+        return insightService.evaluate(workspaceId, period, projectIds).stream()
+            .filter(i -> i.kind() == InsightKind.BAD || i.kind() == InsightKind.WARN)
+            .limit(TOP_INSIGHTS_LIMIT)
+            .map(i -> toInsightSummary(i, userNameById))
+            .toList();
+    }
+
+    private InsightSummaryDto toInsightSummary(TeamInsight insight,
+                                               Map<Long, String> userNameById) {
+        List<String> names = insight.affectedUserIds().stream()
+            .map(userNameById::get)
+            .filter(Objects::nonNull)
+            .limit(3)
+            .toList();
+        return new InsightSummaryDto(
+            insight.kind().name().toLowerCase(Locale.ROOT),
+            insight.title(),
+            insight.body(),
+            names
         );
     }
 

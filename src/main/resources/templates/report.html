@@ -72,89 +72,45 @@
                         <input class="filter-project-check" onchange="applyFilters()"
                                th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
                                th:value="${project.id}" type="checkbox">
+                        <span class="filter-chip-check">✓</span>
                         <span th:text="${project.name}">repo</span>
                     </label>
                 </th:block>
             </div>
         </div>
 
-        <!-- Инсайты -->
-        <div class="insight-section" th:if="${summary != null and metrics != null and !metrics.isEmpty()}">
+        <!-- Инсайты: «Что требует внимания» -->
+        <div class="insight-section"
+             th:if="${topInsights != null and !topInsights.isEmpty()}">
             <div class="section-header">
                 <span class="section-header-label">Что требует внимания</span>
                 <div class="section-header-line"></div>
+                <a class="section-header-link" href="/insights">Все инсайты →</a>
             </div>
             <div class="insight-strip">
-                <!-- Lead Time: Elite -->
-                <div class="insight-card insight-card-good"
-                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() <= 1}">
-                    <div class="insight-icon">⚡</div>
-                    <div>
-                        <div class="insight-title">DORA Elite: мгновенная доставка</div>
-                        <div class="insight-desc"
-                             th:text="'Медиана Lead Time ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours(), 1, 1)} + ' ч — лучший уровень'"></div>
+                <th:block th:each="ins : ${topInsights}">
+                    <div th:class="'insight-card insight-card-' + ${ins.kind()}">
+                        <div class="insight-card-header">
+                            <div class="insight-icon"
+                                 th:text="${ins.kind() == 'bad'} ? '!' : (${ins.kind() == 'warn'} ? '▲' : (${ins.kind() == 'good'} ? '↑' : 'i'))">!</div>
+                            <span class="insight-kind-label"
+                                  th:text="${ins.kind() == 'bad'} ? 'Требует внимания' : (${ins.kind() == 'warn'} ? 'Наблюдать' : (${ins.kind() == 'good'} ? 'Улучшение' : 'Инфо'))">Требует внимания</span>
+                        </div>
+                        <div class="insight-title" th:text="${ins.title()}">Заголовок</div>
+                        <div class="insight-desc" th:text="${ins.body()}">Описание</div>
+                        <div class="insight-card-footer">
+                            <div class="insight-avatars">
+                                <th:block th:each="name,iter : ${ins.affectedUserNames()}">
+                                    <div class="insight-avatar"
+                                         th:style="'background:oklch(0.62 0.14 ' + ${(iter.index * 60 + 200) % 360} + ')'"
+                                         th:attr="data-name=${name}"
+                                         th:text="${#strings.substring(name, 0, 1).toUpperCase()}">A</div>
+                                </th:block>
+                            </div>
+                            <a class="insight-action-link" href="/insights">Подробнее →</a>
+                        </div>
                     </div>
-                </div>
-                <!-- Lead Time: High -->
-                <div class="insight-card insight-card-good"
-                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() > 1 and summary.medianTimeToMergeHours() <= 24}">
-                    <div class="insight-icon">✓</div>
-                    <div>
-                        <div class="insight-title">DORA High: быстрая доставка</div>
-                        <div class="insight-desc"
-                             th:text="'Медиана Lead Time ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours(), 1, 1)} + ' ч'"></div>
-                    </div>
-                </div>
-                <!-- Lead Time: Medium -->
-                <div class="insight-card insight-card-warn"
-                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() > 24 and summary.medianTimeToMergeHours() <= 168}">
-                    <div class="insight-icon">~</div>
-                    <div>
-                        <div class="insight-title">DORA Medium: есть резерв</div>
-                        <div class="insight-desc"
-                             th:text="'Медиана Lead Time ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours() / 24, 1, 1)} + ' д — цель менее 1 дня'"></div>
-                    </div>
-                </div>
-                <!-- Lead Time: Low -->
-                <div class="insight-card insight-card-bad"
-                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() > 168}">
-                    <div class="insight-icon">!</div>
-                    <div>
-                        <div class="insight-title">DORA Low: медленная доставка</div>
-                        <div class="insight-desc"
-                             th:text="'Медиана ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours() / 24, 1, 1)} + ' д — рекомендуется анализ процесса'"></div>
-                    </div>
-                </div>
-                <!-- Lead Time growing -->
-                <div class="insight-card insight-card-warn"
-                     th:if="${summary.deltaMedianTimeToMergeHours() != null and summary.deltaMedianTimeToMergeHours() > 12}">
-                    <div class="insight-icon">↑</div>
-                    <div>
-                        <div class="insight-title">Время ревью растёт</div>
-                        <div class="insight-desc"
-                             th:text="'+' + ${#numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1)} + ' ч к предыдущему периоду'"></div>
-                    </div>
-                </div>
-                <!-- Team activity: good -->
-                <div class="insight-card insight-card-good"
-                     th:if="${summary.totalDevs() > 0 and summary.activeDevs() * 100 / summary.totalDevs() >= 80}">
-                    <div class="insight-icon">↗</div>
-                    <div>
-                        <div class="insight-title">Высокая вовлечённость команды</div>
-                        <div class="insight-desc"
-                             th:text="${summary.activeDevs()} + ' из ' + ${summary.totalDevs()} + ' разработчиков активны'"></div>
-                    </div>
-                </div>
-                <!-- Team activity: low -->
-                <div class="insight-card insight-card-warn"
-                     th:if="${summary.totalDevs() > 1 and summary.activeDevs() * 100 / summary.totalDevs() < 50}">
-                    <div class="insight-icon">~</div>
-                    <div>
-                        <div class="insight-title">Низкая вовлечённость</div>
-                        <div class="insight-desc"
-                             th:text="'Только ' + ${summary.activeDevs()} + ' из ' + ${summary.totalDevs()} + ' разработчиков активны'"></div>
-                    </div>
-                </div>
+                </th:block>
             </div>
         </div>
 
@@ -450,7 +406,15 @@
         navigateReport(SELECTED_PERIOD, projectIds, showInactive, metric);
     }
 
+    function saveFilters(period, projectIds) {
+        try {
+            localStorage.setItem('gl_period', period);
+            localStorage.setItem('gl_projectIds', JSON.stringify(projectIds));
+        } catch (e) { /* ignore */ }
+    }
+
     function navigateReport(period, projectIds, showInactive, metric) {
+        saveFilters(period, projectIds);
         const params = new URLSearchParams();
         params.set('period', period);
         params.set('metric', metric || SELECTED_METRIC);
@@ -1237,6 +1201,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Restore saved filters if page loaded without explicit URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('period') && !urlParams.has('projectIds')) {
+            try {
+                const savedPeriod = localStorage.getItem('gl_period');
+                const savedIds = JSON.parse(localStorage.getItem('gl_projectIds') || '[]');
+                if (savedPeriod && savedPeriod !== 'LAST_30_DAYS' || savedIds.length > 0) {
+                    const period = savedPeriod || 'LAST_30_DAYS';
+                    const showInactive = !(document.getElementById('show-inactive-cb')?.checked || false);
+                    navigateReport(period, savedIds, showInactive, null);
+                    return;
+                }
+            } catch (e) { /* ignore */ }
+        }
+
         ACTIVE_JOB_IDS
             .filter(jobId => jobId !== ENRICHMENT_JOB_ID)
             .forEach(jobId => restoreSyncCard(jobId));
