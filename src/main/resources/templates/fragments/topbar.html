@@ -33,9 +33,8 @@
     <nav class="topbar-nav">
         <a th:class="${activePage == 'overview'} ? 'nav-link nav-link-active' : 'nav-link'"
            href="/report">Обзор</a>
-        <span class="nav-link nav-link-disabled">
-            Инсайты <span class="nav-badge-soon">soon</span>
-        </span>
+        <a th:class="${activePage == 'insights'} ? 'nav-link nav-link-active' : 'nav-link'"
+           href="/insights">Инсайты</a>
         <span class="nav-link nav-link-disabled">
             Команда <span class="nav-badge-soon">soon</span>
         </span>

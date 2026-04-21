@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Инсайты — GitLab Analytics</title>
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+</head>
+<body class="app-layout">
+
+<header th:replace="~{fragments/topbar :: topbar('insights')}"></header>
+
+<div class="report-page">
+
+    <!-- ── Боковая панель ──────────────────────────────────── -->
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">Период</div>
+            <div class="period-segmented" style="flex-direction: column; gap: 4px;">
+                <button onclick="applyPeriod('LAST_7_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">7 дней</button>
+                <button onclick="applyPeriod('LAST_30_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">30 дней</button>
+                <button onclick="applyPeriod('LAST_90_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">90 дней</button>
+                <button onclick="applyPeriod('LAST_180_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">180 дней</button>
+                <button onclick="applyPeriod('LAST_360_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">360 дней</button>
+            </div>
+        </div>
+
+        <div class="sidebar-section" th:if="${allProjects != null and !#lists.isEmpty(allProjects)}">
+            <div class="sidebar-label">Репозитории</div>
+            <div class="sidebar-projects">
+                <th:block th:each="proj : ${allProjects}">
+                    <label class="sidebar-project-row">
+                        <input type="checkbox"
+                               class="proj-checkbox"
+                               th:value="${proj.id}"
+                               th:checked="${#lists.contains(selectedProjectIds, proj.id)}">
+                        <span class="sidebar-project-name" th:text="${proj.name}">repo</span>
+                    </label>
+                </th:block>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ── Основная область ─────────────────────────────── -->
+    <main class="report-main">
+
+        <!-- Заголовок -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Инсайты</h1>
+                <div class="page-subtitle">
+                    Система автоматически находит аномалии и закономерности в работе команды.
+                    Алгоритмические правила работают постоянно и бесплатно.
+                    AI-инсайты — опциональный модуль.
+                </div>
+            </div>
+        </div>
+
+        <!-- Карточки-объяснения -->
+        <div class="insight-meta-grid">
+            <div class="insight-meta-card">
+                <div class="insight-meta-icon">⚙</div>
+                <div>
+                    <div class="insight-meta-title">
+                        Алгоритмические
+                        <span class="insight-meta-count" th:text="'· ' + ${algoCount} + ' активных'"></span>
+                    </div>
+                    <div class="insight-meta-desc">
+                        Детерминированные правила на метриках: пороги, дельты, распределения (Gini).
+                        Работают непрерывно, без внешних вызовов. Прозрачные — виден конкретный triggered rule.
+                    </div>
+                </div>
+            </div>
+            <div class="insight-meta-card insight-meta-card-ai">
+                <div class="insight-meta-icon insight-meta-icon-ai">✦</div>
+                <div>
+                    <div class="insight-meta-title">
+                        AI-рекомендации
+                        <span class="insight-meta-count">· 0 сгенерировано</span>
+                        <span class="badge-soon">Soon</span>
+                    </div>
+                    <div class="insight-meta-desc">
+                        LLM анализирует паттерны (burnout, риски, рост) и формулирует рекомендации текстом.
+                        Данные анонимизируются, запуск раз в сутки. В будущем — по подписке.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фильтр по типу -->
+        <div class="insight-filter-bar">
+            <div class="insight-filter-group" id="kind-filter">
+                <button class="insight-filter-btn insight-filter-btn-active"
+                        data-kind="all"
+                        type="button"
+                        th:text="'Все · ' + ${totalCount}">Все</button>
+                <button class="insight-filter-btn insight-filter-btn-bad"
+                        data-kind="bad"
+                        type="button"
+                        th:text="'Проблемы · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).BAD) ?: 0}">Проблемы</button>
+                <button class="insight-filter-btn insight-filter-btn-warn"
+                        data-kind="warn"
+                        type="button"
+                        th:text="'Внимание · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).WARN) ?: 0}">Внимание</button>
+                <button class="insight-filter-btn insight-filter-btn-good"
+                        data-kind="good"
+                        type="button"
+                        th:text="'Улучшения · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).GOOD) ?: 0}">Улучшения</button>
+                <button class="insight-filter-btn insight-filter-btn-info"
+                        data-kind="info"
+                        type="button"
+                        th:text="'Инфо · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).INFO) ?: 0}">Инфо</button>
+            </div>
+            <span class="insight-sort-label">Сортировка: severity ↓</span>
+        </div>
+
+        <!-- Список инсайтов -->
+        <div class="insight-rows" id="insight-list">
+
+            <!-- Пустое состояние -->
+            <div th:if="${#lists.isEmpty(insights)}" class="insight-empty">
+                <div class="insight-empty-icon">✓</div>
+                <div class="insight-empty-title">Всё в порядке</div>
+                <div class="insight-empty-desc">
+                    Ни одно из алгоритмических правил не сработало за выбранный период.
+                </div>
+            </div>
+
+            <!-- Insight row -->
+            <th:block th:each="ins : ${insights}">
+                <div class="insight-row"
+                     th:attr="data-kind=${ins.kind().cssValue()}"
+                     th:classappend="'insight-row--' + ${ins.kind().cssValue()}">
+
+                    <!-- Иконка severity -->
+                    <div class="insight-row-icon"
+                         th:classappend="'insight-row-icon--' + ${ins.kind().cssValue()}">
+                        <span th:switch="${ins.kind().cssValue()}">
+                            <span th:case="'bad'">!</span>
+                            <span th:case="'warn'">▲</span>
+                            <span th:case="'good'">↑</span>
+                            <span th:case="'info'">i</span>
+                        </span>
+                    </div>
+
+                    <!-- Тело -->
+                    <div class="insight-row-body">
+                        <div class="insight-row-meta">
+                            <span class="insight-row-title" th:text="${ins.title()}"></span>
+                            <span class="insight-row-badge-algo">⚙ Algo</span>
+                            <span class="insight-row-severity"
+                                  th:classappend="'insight-row-severity--' + ${ins.kind().cssValue()}"
+                                  th:text="'Severity ' + ${ins.severity()} + '/5'"></span>
+                            <code class="insight-row-code" th:text="${ins.rule().code()}"></code>
+                        </div>
+                        <div class="insight-row-desc" th:text="${ins.body()}"></div>
+
+                        <!-- Кого касается -->
+                        <div class="insight-row-who"
+                             th:if="${!#lists.isEmpty(ins.affectedUserIds())}">
+                            <span class="insight-row-who-label">Кого касается:</span>
+                            <th:block th:each="uid : ${ins.affectedUserIds()}">
+                                <span class="insight-row-who-avatar"
+                                      th:if="${users.containsKey(uid)}">
+                                    <span class="avatar avatar-xs"
+                                          th:text="${#strings.substring(users.get(uid), 0, 1)}"></span>
+                                    <span class="insight-row-who-name"
+                                          th:text="${users.get(uid)}"></span>
+                                </span>
+                            </th:block>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка действия -->
+                    <a href="/report"
+                       class="insight-row-action"
+                       th:classappend="'insight-row-action--' + ${ins.kind().cssValue()}">
+                        Смотреть →
+                    </a>
+                </div>
+            </th:block>
+        </div>
+
+        <!-- Footer-пояснение -->
+        <div class="insight-footer-explainer" th:if="${!#lists.isEmpty(insights)}">
+            <strong>Как это работает:</strong>
+            алгоритмические правила пересчитываются при каждой синхронизации GitLab.
+            AI-модуль запускается раз в сутки и использует сырые метрики без имён и кода.
+        </div>
+
+    </main>
+</div>
+
+<script th:inline="javascript">
+    function applyPeriod(period) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('period', period);
+        window.location.href = url.toString();
+    }
+
+    // Project checkboxes
+    document.querySelectorAll('.proj-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            const checked = Array.from(document.querySelectorAll('.proj-checkbox:checked'))
+                .map(function(c) { return c.value; });
+            const url = new URL(window.location.href);
+            url.searchParams.delete('projectIds');
+            checked.forEach(function(id) { url.searchParams.append('projectIds', id); });
+            window.location.href = url.toString();
+        });
+    });
+
+    // Kind filter
+    document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const kind = btn.dataset.kind;
+            document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function(b) {
+                b.classList.remove('insight-filter-btn-active');
+            });
+            btn.classList.add('insight-filter-btn-active');
+            document.querySelectorAll('#insight-list .insight-row').forEach(function(row) {
+                const rowKind = row.dataset.kind;
+                row.style.display = (kind === 'all' || rowKind === kind) ? '' : 'none';
+            });
+        });
+    });
+</script>
+</body>
+</html>

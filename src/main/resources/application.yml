@@ -84,6 +84,27 @@ app:
     # 2 дня — чтобы не пропустить MR, смерджённые около полуночи.
     window-days: 2
 
+  insights:
+    thresholds:
+      # Часов с момента создания MR, после которых он считается зависшим (STUCK_MRS)
+      stuck-mr-hours: 24
+      # Командная медиана TTM выше этого значения (часов) → HIGH_MERGE_TIME
+      max-median-ttm-hours: 24.0
+      # Рост медианы TTM относительно прошлого периода → MERGE_TIME_SPIKE (2.0 = вырос в 2+ раза)
+      merge-time-spike-ratio: 2.0
+      # Коэффициент Джини распределения ревью выше этого → REVIEW_LOAD_IMBALANCE
+      review-gini: 0.45
+      # Средний размер MR (строк) выше этого → LARGE_MR_HABIT
+      large-mr-lines: 500
+      # Доля текущих MR от прошлого периода ниже этого → DELIVERY_DROP (0.70 = упало до менее 70%)
+      delivery-drop-ratio: 0.70
+      # Среднее комментариев на отревьюенный MR ниже этого → LOW_REVIEW_DEPTH
+      min-comments-per-mr: 1.5
+      # Доля доработок выше этого → HIGH_REWORK_RATIO
+      max-rework-ratio: 0.35
+      # Минимальный порог смерджённых MR для проверки отсутствия ревью → NO_CODE_REVIEW
+      min-mrs-for-no-review-check: 5
+
 management:
   endpoints:
     web:
