@@ -3,11 +3,11 @@ package io.simakov.analytics.web.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.security.WorkspaceContext;
-import io.simakov.analytics.web.HistoryViewService;
+import io.simakov.analytics.web.MetricTrendService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.ReportViewService;
 import io.simakov.analytics.web.SettingsViewService;
-import io.simakov.analytics.web.dto.HistoryPageData;
+import io.simakov.analytics.web.dto.MetricChartData;
 import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
 import io.simakov.analytics.web.dto.SettingsPageData;
@@ -30,7 +30,7 @@ import java.util.List;
 public class WebController {
 
     private final ReportViewService reportViewService;
-    private final HistoryViewService historyViewService;
+    private final MetricTrendService metricTrendService;
     private final SettingsViewService settingsViewService;
     private final OAuth2UserResolver userResolver;
     private final WorkspaceService workspaceService;
@@ -80,8 +80,9 @@ public class WebController {
         model.addAttribute("metrics", data.metrics());
         model.addAttribute("deltas", data.deltas());
         model.addAttribute("summary", data.summary());
+        model.addAttribute("topInsights", data.topInsights());
 
-        HistoryPageData historyData = historyViewService.buildHistoryPage(metric, period, projectIds, showInactive);
+        MetricChartData historyData = metricTrendService.buildChartData(metric, period, projectIds, showInactive);
         model.addAttribute("chartData", historyData.chartJson());
         model.addAttribute("selectedMetric", historyData.selectedMetric());
         model.addAttribute("metricLabel", historyData.metricLabel());
@@ -98,7 +99,7 @@ public class WebController {
                             @RequestParam(required = false) List<Long> projectIds,
                             @RequestParam(defaultValue = "false") boolean showInactive,
                             @RequestParam(required = false) String metric) {
-        return historyViewService.buildHistoryPage(metric, period, projectIds, showInactive).chartJson();
+        return metricTrendService.buildChartData(metric, period, projectIds, showInactive).chartJson();
     }
 
     @GetMapping("/sync")

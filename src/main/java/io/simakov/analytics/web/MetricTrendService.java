@@ -13,7 +13,7 @@ import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.metrics.model.Metric;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.util.DateTimeUtils;
-import io.simakov.analytics.web.dto.HistoryPageData;
+import io.simakov.analytics.web.dto.MetricChartData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HistoryViewService {
+public class MetricTrendService {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
@@ -49,10 +49,10 @@ public class HistoryViewService {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    public HistoryPageData buildHistoryPage(String metric,
-                                            String period,
-                                            List<Long> requestedProjectIds,
-                                            boolean showInactive) {
+    public MetricChartData buildChartData(String metric,
+                                          String period,
+                                          List<Long> requestedProjectIds,
+                                          boolean showInactive) {
         String effectiveMetric = (metric != null && !metric.isBlank())
             ? metric
             : Metric.MR_MERGED_COUNT.key();
@@ -90,7 +90,7 @@ public class HistoryViewService {
             chartJson = buildChartJson(snapshots, users, effectiveMetric, showInactive);
         }
 
-        return new HistoryPageData(
+        return new MetricChartData(
             chartJson,
             effectiveMetric,
             periodType.name(),

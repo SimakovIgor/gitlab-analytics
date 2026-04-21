@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-public record HistoryPageData(
+public record MetricChartData(
     String chartJson,
     String selectedMetric,
     String selectedPeriod,

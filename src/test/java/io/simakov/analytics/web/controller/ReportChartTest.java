@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
-class HistoryChartTest extends BaseIT {
+class ReportChartTest extends BaseIT {
 
     @Autowired
     private MockMvc mockMvc;
