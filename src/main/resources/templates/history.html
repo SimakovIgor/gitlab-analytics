@@ -8,39 +8,7 @@
 </head>
 <body class="app-layout">
 
-<header class="topbar">
-    <span class="topbar-brand">
-        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
-            <path
-                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
-                fill="#FC6D26"/>
-        </svg>
-        GitLab Analytics
-    </span>
-
-    <nav class="topbar-nav">
-
-        <a class="nav-link" href="/report">Отчёт</a>
-        <a class="nav-link nav-link-active" href="/history">История</a>
-        <a class="nav-link" href="/dora">DORA</a>
-        <a class="nav-link" href="/settings">Настройки</a>
-    </nav>
-
-    <div class="topbar-user" th:if="${currentUser}">
-        <img class="avatar"
-             th:alt="${currentUser.name}"
-             th:if="${currentUser.avatarUrl != ''}"
-             th:src="${currentUser.avatarUrl}">
-        <div class="avatar-placeholder" th:text="${#strings.substring(currentUser.name, 0, 1)}"
-             th:unless="${currentUser.avatarUrl != ''}">?
-        </div>
-        <span class="topbar-username" th:text="${currentUser.name}">Пользователь</span>
-        <form method="post" th:action="@{/logout}">
-            <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
-            <button class="btn-logout" type="submit">Выйти</button>
-        </form>
-    </div>
-</header>
+<header th:replace="~{fragments/topbar :: topbar('overview')}"></header>
 
 <main class="main-content">
 

@@ -53,4 +53,24 @@ public interface MergeRequestCommitRepository extends JpaRepository<MergeRequest
                ORDER BY commit_count DESC
                """)
     List<CommitContributorProjection> findContributorRowsByWorkspaceId(@Param("workspaceId") Long workspaceId);
+
+    /**
+     * Returns distinct (author_email, author_gitlab_user_id) pairs from commits
+     * in the given projects. Used to populate email aliases for auto-discovered users
+     * after ENRICH phase completes.
+     */
+    @Query(nativeQuery = true,
+           value = """
+               SELECT DISTINCT LOWER(mrc.author_email) AS author_email,
+                               mr.author_gitlab_user_id AS gitlab_user_id
+               FROM merge_request_commit mrc
+               JOIN merge_request mr ON mr.id = mrc.merge_request_id
+               WHERE mrc.author_email IS NOT NULL
+                 AND mrc.author_email <> ''
+                 AND mrc.is_merge_commit = false
+                 AND mr.author_gitlab_user_id IS NOT NULL
+                 AND mr.tracked_project_id IN (:projectIds)
+               """)
+    List<CommitAuthorEmailProjection> findDistinctCommitEmailsByProjectIds(
+        @Param("projectIds") List<Long> projectIds);
 }

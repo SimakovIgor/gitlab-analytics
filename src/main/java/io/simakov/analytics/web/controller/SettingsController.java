@@ -8,12 +8,14 @@ import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsService;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.CreatedProjectResult;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import io.simakov.analytics.web.dto.SettingsPageData;
+import io.simakov.analytics.workspace.WorkspaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -42,6 +44,7 @@ public class SettingsController {
     private final SettingsService settingsService;
     private final SettingsViewService settingsViewService;
     private final OAuth2UserResolver userResolver;
+    private final WorkspaceService workspaceService;
 
     // ── Settings page ────────────────────────────────────────────────────────
 
@@ -55,6 +58,7 @@ public class SettingsController {
         SettingsPageData data = settingsViewService.buildSettingsPage();
         model.addAttribute("sources", data.sources());
         model.addAttribute("projects", data.projects());
+        model.addAttribute("allProjects", data.projects());
         model.addAttribute("sourceNames", data.sourceNames());
         model.addAttribute("usersWithAliases", data.usersWithAliases());
         model.addAttribute("onboardingMode", data.onboardingMode());
@@ -63,6 +67,8 @@ public class SettingsController {
         model.addAttribute("hasUsers", data.hasUsers());
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("recentJobs", data.recentJobs());
+        model.addAttribute("showInactive", false);
+        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
 
         return "settings";
     }
@@ -148,9 +154,7 @@ public class SettingsController {
     @GetMapping("/users/tracked")
     @ResponseBody
     public List<Map<String, Object>> getTrackedUsers() {
-        return settingsService.getTrackedUsers().stream()
-            .map(u -> Map.<String, Object>of("id", u.getId(), "displayName", u.getDisplayName()))
-            .toList();
+        return settingsService.getTrackedUsersWithMrCount();
     }
 
     // ── Tracked Users ────────────────────────────────────────────────────────

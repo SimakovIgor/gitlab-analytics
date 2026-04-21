@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+    Новая топ-навигация Phase 1.
+    Параметр activePage: 'overview' | 'sync' | 'settings' | 'history' | 'dora'
+    Использование: <header th:replace="~{fragments/topbar :: topbar('overview')}"></header>
+-->
+<header class="topbar" th:fragment="topbar(activePage)">
+
+    <!-- Логотип -->
+    <a class="topbar-brand" href="/report">
+        <svg class="topbar-brand-logo" viewBox="0 0 22 22" fill="none">
+            <defs>
+                <linearGradient id="gl-topbar" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="var(--accent)"/>
+                    <stop offset="1" stop-color="var(--accent-dim)"/>
+                </linearGradient>
+            </defs>
+            <path d="M11 1 L21 8 L17 21 L5 21 L1 8 Z" fill="url(#gl-topbar)"/>
+            <path d="M11 1 L17 21 L11 14 L5 21 Z" fill="rgba(0,0,0,0.15)"/>
+        </svg>
+        <div class="topbar-brand-text">
+            <span class="topbar-brand-name">gitlens</span>
+            <span class="topbar-brand-sub">analytics</span>
+        </div>
+    </a>
+
+    <div class="topbar-divider"></div>
+
+    <!-- Навигация -->
+    <nav class="topbar-nav">
+        <a th:class="${activePage == 'overview'} ? 'nav-link nav-link-active' : 'nav-link'"
+           href="/report">Обзор</a>
+        <span class="nav-link nav-link-disabled">
+            Инсайты <span class="nav-badge-soon">soon</span>
+        </span>
+        <span class="nav-link nav-link-disabled">
+            Команда <span class="nav-badge-soon">soon</span>
+        </span>
+        <span class="nav-link nav-link-disabled">
+            Flow <span class="nav-badge-soon">soon</span>
+        </span>
+        <a th:class="${activePage == 'dora'} ? 'nav-link nav-link-active' : 'nav-link'"
+           href="/dora">Сервисы</a>
+        <span class="nav-link nav-link-disabled">
+            Сравнение <span class="nav-badge-soon">soon</span>
+        </span>
+        <a th:class="${activePage == 'sync'} ? 'nav-link nav-link-active' : 'nav-link'"
+           href="/settings?tab=jobs">Sync</a>
+    </nav>
+
+    <!-- Поиск-заглушка -->
+    <button class="topbar-search" type="button" title="Поиск (скоро)">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="5" cy="5" r="3.5" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M8 8 L11 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <span>Найти...</span>
+        <span class="topbar-kbd">⌘K</span>
+    </button>
+
+    <!-- Пользователь -->
+    <div class="topbar-user" th:if="${currentUser}">
+        <img class="avatar"
+             th:if="${currentUser.avatarUrl != ''}"
+             th:src="${currentUser.avatarUrl}"
+             th:alt="${currentUser.name}">
+        <div class="avatar-placeholder"
+             th:unless="${currentUser.avatarUrl != ''}"
+             th:text="${#strings.isEmpty(currentUser.name) ? '?' : #strings.substring(currentUser.name, 0, 1)}">?
+        </div>
+        <span class="topbar-username" th:text="${currentUser.name}">Пользователь</span>
+    </div>
+
+    <!-- Sync pill -->
+    <div th:if="${activeJobIds != null and !#lists.isEmpty(activeJobIds)}"
+         class="sync-pill sync-pill-run"
+         onclick="window.location.href='/settings?tab=jobs'">
+        <span class="sync-pill-dot"></span>
+        <span>Синк идёт</span>
+    </div>
+    <div th:unless="${activeJobIds != null and !#lists.isEmpty(activeJobIds)}"
+         class="sync-pill sync-pill-ok"
+         onclick="window.location.href='/settings?tab=jobs'">
+        <span class="sync-pill-dot"></span>
+        <span>Sync OK</span>
+    </div>
+
+    <!-- Выход -->
+    <form method="post" th:action="@{/logout}" th:if="${currentUser}" style="flex-shrink:0">
+        <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
+        <button class="btn-logout" type="submit">Выйти</button>
+    </form>
+
+</header>
+
+</body>
+</html>

@@ -1,8 +1,14 @@
 package io.simakov.analytics.web.controller;
 
+import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
+import io.simakov.analytics.security.WorkspaceContext;
+import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.DoraService;
 import io.simakov.analytics.web.OAuth2UserResolver;
+import io.simakov.analytics.web.SettingsViewService;
+import io.simakov.analytics.web.dto.SettingsPageData;
+import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
@@ -21,6 +27,9 @@ public class DoraController {
 
     private final DoraService doraService;
     private final OAuth2UserResolver userResolver;
+    private final SettingsViewService settingsViewService;
+    private final WorkspaceService workspaceService;
+    private final SyncJobService syncJobService;
 
     @GetMapping("/dora")
     public String dora(OAuth2AuthenticationToken authentication,
@@ -31,7 +40,8 @@ public class DoraController {
             model.addAttribute("currentUser", userResolver.resolve(authentication));
         }
 
-        List<TrackedProject> allProjects = doraService.getAllProjects();
+        SettingsPageData sidebarData = settingsViewService.buildSettingsPage();
+        List<TrackedProject> allProjects = sidebarData.projects();
         Set<Long> workspaceIds = allProjects.stream().map(TrackedProject::getId).collect(Collectors.toSet());
         List<Long> effectiveProjectIds = (projectIds != null && !projectIds.isEmpty())
             ? projectIds.stream().filter(workspaceIds::contains).toList()
@@ -40,6 +50,16 @@ public class DoraController {
         Map<String, Object> leadTime = doraService.buildLeadTimeData(effectiveProjectIds, days);
 
         model.addAttribute("projects", allProjects);
+        model.addAttribute("allProjects", allProjects);
+        model.addAttribute("sources", sidebarData.sources());
+        model.addAttribute("usersWithAliases", sidebarData.usersWithAliases());
+        model.addAttribute("activeJobIds", sidebarData.activeJobIds());
+        Long enrichmentJobId = syncJobService.findActiveEnrichmentJob(WorkspaceContext.get())
+            .map(SyncJob::getId).orElse(null);
+        model.addAttribute("enrichmentJobId", enrichmentJobId);
+        model.addAttribute("hasProjects", sidebarData.hasProjects());
+        model.addAttribute("showInactive", false);
+        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
         model.addAttribute("selectedProjectIds", effectiveProjectIds);
         model.addAttribute("selectedDays", days);
         model.addAttribute("dateFrom", java.time.LocalDate.now().minusDays(days));

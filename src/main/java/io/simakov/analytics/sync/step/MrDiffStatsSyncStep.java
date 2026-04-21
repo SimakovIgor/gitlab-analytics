@@ -11,12 +11,14 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * Fetches net diff stats (additions / deletions) from GET /merge_requests/:iid/diffs.
- * These match what GitLab UI shows on the Changes tab and are stored in
- * merge_request.net_additions / merge_request.net_deletions.
+ * Populates net diff stats (additions / deletions) for a MergeRequest.
  *
- * <p>Unlike commit stats (sum of per-commit additions/deletions), net diff reflects
- * the actual code change introduced by the MR against its base branch.
+ * <p>Primary source: {@code diff_stats_summary} field in the GitLab MR object (GitLab 14.10+).
+ * When available, this field is set during the FAST phase by {@link io.simakov.analytics.gitlab.mapper.GitLabMapper}
+ * and contains server-computed totals that include all files — including those too large to diff.
+ *
+ * <p>Fallback: {@code GET /merge_requests/:iid/diffs} — parses unified diff text line-by-line.
+ * Files with {@code too_large=true} contribute 0, which may under-count vs. GitLab UI.
  */
 @Slf4j
 @Component
@@ -34,11 +36,18 @@ class MrDiffStatsSyncStep implements SyncStep {
 
     @Override
     public void sync(SyncContext ctx, MergeRequest mr) {
+        if (mr.getNetAdditions() != null) {
+            // Already set from diff_stats_summary during FAST phase — skip expensive /diffs parsing.
+            log.debug("Skipping /diffs for MR iid={}: netAdditions already set to {}",
+                mr.getGitlabMrIid(), mr.getNetAdditions());
+            return;
+        }
         MrNetDiffStats stats = gitLabApiClient.getMrNetDiffStats(
             ctx.baseUrl(), ctx.token(), ctx.gitlabProjectId(), mr.getGitlabMrIid());
         mr.setNetAdditions(stats.additions());
         mr.setNetDeletions(stats.deletions());
         mergeRequestRepository.save(mr);
-        log.debug("Net diff for MR iid={}: +{} -{}", mr.getGitlabMrIid(), stats.additions(), stats.deletions());
+        log.debug("Net diff for MR iid={} via /diffs fallback: +{} -{}",
+            mr.getGitlabMrIid(), stats.additions(), stats.deletions());
     }
 }

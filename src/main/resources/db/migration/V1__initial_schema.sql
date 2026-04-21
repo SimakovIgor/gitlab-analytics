@@ -1,5 +1,5 @@
 -- ── AppUser (GitHub OAuth identity) ─────────────────────────────────────────
-CREATE TABLE app_user (
+CREATE TABLE IF NOT EXISTS app_user (
     id            BIGSERIAL    PRIMARY KEY,
     github_id     BIGINT       NOT NULL UNIQUE,
     github_login  VARCHAR(255) NOT NULL UNIQUE,
@@ -11,7 +11,7 @@ CREATE TABLE app_user (
 );
 
 -- ── Workspace (tenant) ───────────────────────────────────────────────────────
-CREATE TABLE workspace (
+CREATE TABLE IF NOT EXISTS workspace (
     id         BIGSERIAL    PRIMARY KEY,
     name       VARCHAR(255) NOT NULL,
     slug       VARCHAR(100) NOT NULL UNIQUE,
@@ -22,11 +22,10 @@ CREATE TABLE workspace (
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- slug: index already created by UNIQUE constraint (workspace_slug_key)
-CREATE INDEX idx_workspace_owner ON workspace (owner_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_owner ON workspace (owner_id);
 
 -- ── WorkspaceMember ──────────────────────────────────────────────────────────
-CREATE TABLE workspace_member (
+CREATE TABLE IF NOT EXISTS workspace_member (
     id           BIGSERIAL   PRIMARY KEY,
     workspace_id BIGINT      NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
     app_user_id  BIGINT      NOT NULL REFERENCES app_user (id) ON DELETE CASCADE,
@@ -35,12 +34,10 @@ CREATE TABLE workspace_member (
     CONSTRAINT uq_workspace_member UNIQUE (workspace_id, app_user_id)
 );
 
--- workspace_id: already covered as leading column of uq_workspace_member
-CREATE INDEX idx_workspace_member_user ON workspace_member (app_user_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_member_user ON workspace_member (app_user_id);
 
 -- ── GitLab instance connections ───────────────────────────────────────────────
-CREATE TABLE git_source
-(
+CREATE TABLE IF NOT EXISTS git_source (
     id           BIGSERIAL    PRIMARY KEY,
     workspace_id BIGINT       NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
     name         VARCHAR(255) NOT NULL,
@@ -49,11 +46,10 @@ CREATE TABLE git_source
     updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_git_source_workspace ON git_source (workspace_id);
+CREATE INDEX IF NOT EXISTS idx_git_source_workspace ON git_source (workspace_id);
 
 -- ── Repositories to track ─────────────────────────────────────────────────────
-CREATE TABLE tracked_project
-(
+CREATE TABLE IF NOT EXISTS tracked_project (
     id                  BIGSERIAL    PRIMARY KEY,
     workspace_id        BIGINT       NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
     git_source_id       BIGINT       NOT NULL,
@@ -69,13 +65,10 @@ CREATE TABLE tracked_project
         FOREIGN KEY (git_source_id) REFERENCES git_source (id) ON DELETE CASCADE
 );
 
--- uq_tracked_project starts with workspace_id (covering workspace_id lookups).
--- Separate index for git_source_id FK coverage (not the leading column in uq_tracked_project).
-CREATE INDEX idx_tracked_project_git_source ON tracked_project (git_source_id);
+CREATE INDEX IF NOT EXISTS idx_tracked_project_git_source ON tracked_project (git_source_id);
 
 -- ── Team members ──────────────────────────────────────────────────────────────
-CREATE TABLE tracked_user
-(
+CREATE TABLE IF NOT EXISTS tracked_user (
     id           BIGSERIAL    PRIMARY KEY,
     workspace_id BIGINT       NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
     display_name VARCHAR(255) NOT NULL,
@@ -85,11 +78,10 @@ CREATE TABLE tracked_user
     updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_tracked_user_workspace ON tracked_user (workspace_id);
+CREATE INDEX IF NOT EXISTS idx_tracked_user_workspace ON tracked_user (workspace_id);
 
 -- ── GitLab identities linked to a tracked user ───────────────────────────────
-CREATE TABLE tracked_user_alias
-(
+CREATE TABLE IF NOT EXISTS tracked_user_alias (
     id              BIGSERIAL    PRIMARY KEY,
     tracked_user_id BIGINT       NOT NULL,
     gitlab_user_id  BIGINT,
@@ -101,14 +93,13 @@ CREATE TABLE tracked_user_alias
         FOREIGN KEY (tracked_user_id) REFERENCES tracked_user (id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_tracked_user_alias_tracked_user_id ON tracked_user_alias (tracked_user_id);
-CREATE INDEX idx_alias_gitlab_user_id ON tracked_user_alias (gitlab_user_id) WHERE gitlab_user_id IS NOT NULL;
-CREATE INDEX idx_alias_username ON tracked_user_alias (username) WHERE username IS NOT NULL;
-CREATE INDEX idx_alias_email ON tracked_user_alias (email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tracked_user_alias_tracked_user_id ON tracked_user_alias (tracked_user_id);
+CREATE INDEX IF NOT EXISTS idx_alias_gitlab_user_id ON tracked_user_alias (gitlab_user_id) WHERE gitlab_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_alias_username ON tracked_user_alias (username) WHERE username IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_alias_email ON tracked_user_alias (email) WHERE email IS NOT NULL;
 
 -- ── Merge requests ────────────────────────────────────────────────────────────
-CREATE TABLE merge_request
-(
+CREATE TABLE IF NOT EXISTS merge_request (
     id                       BIGSERIAL    PRIMARY KEY,
     tracked_project_id       BIGINT       NOT NULL,
     gitlab_mr_id             BIGINT       NOT NULL,
@@ -127,6 +118,8 @@ CREATE TABLE merge_request
     deletions                INT          NOT NULL DEFAULT 0,
     changes_count            INT          NOT NULL DEFAULT 0,
     files_changed_count      INT          NOT NULL DEFAULT 0,
+    net_additions            INT,
+    net_deletions            INT,
     web_url                  VARCHAR(1024),
     first_commit_at          TIMESTAMPTZ,
     last_commit_at           TIMESTAMPTZ,
@@ -137,14 +130,13 @@ CREATE TABLE merge_request
         FOREIGN KEY (tracked_project_id) REFERENCES tracked_project (id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_mr_author ON merge_request (author_gitlab_user_id) WHERE author_gitlab_user_id IS NOT NULL;
-CREATE INDEX idx_mr_created ON merge_request (created_at_gitlab);
-CREATE INDEX idx_mr_merged ON merge_request (merged_at_gitlab) WHERE merged_at_gitlab IS NOT NULL;
-CREATE INDEX idx_mr_state ON merge_request (state);
+CREATE INDEX IF NOT EXISTS idx_mr_author  ON merge_request (author_gitlab_user_id) WHERE author_gitlab_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mr_created ON merge_request (created_at_gitlab);
+CREATE INDEX IF NOT EXISTS idx_mr_merged  ON merge_request (merged_at_gitlab) WHERE merged_at_gitlab IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mr_state   ON merge_request (state);
 
 -- ── Commits within an MR ──────────────────────────────────────────────────────
-CREATE TABLE merge_request_commit
-(
+CREATE TABLE IF NOT EXISTS merge_request_commit (
     id                  BIGSERIAL   PRIMARY KEY,
     merge_request_id    BIGINT      NOT NULL,
     gitlab_commit_sha   VARCHAR(64) NOT NULL,
@@ -156,17 +148,17 @@ CREATE TABLE merge_request_commit
     deletions           INT         NOT NULL DEFAULT 0,
     total_changes       INT         NOT NULL DEFAULT 0,
     files_changed_count INT         NOT NULL DEFAULT 0,
+    is_merge_commit     BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_mr_commit UNIQUE (merge_request_id, gitlab_commit_sha),
     CONSTRAINT fk_mr_commit_merge_request
         FOREIGN KEY (merge_request_id) REFERENCES merge_request (id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_mr_commit_email ON merge_request_commit (author_email) WHERE author_email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mr_commit_email ON merge_request_commit (author_email) WHERE author_email IS NOT NULL;
 
 -- ── Discussion threads on an MR ───────────────────────────────────────────────
-CREATE TABLE merge_request_discussion
-(
+CREATE TABLE IF NOT EXISTS merge_request_discussion (
     id                   BIGSERIAL   PRIMARY KEY,
     merge_request_id     BIGINT      NOT NULL,
     gitlab_discussion_id VARCHAR(64) NOT NULL,
@@ -178,8 +170,7 @@ CREATE TABLE merge_request_discussion
 );
 
 -- ── Individual notes / comments ───────────────────────────────────────────────
-CREATE TABLE merge_request_note
-(
+CREATE TABLE IF NOT EXISTS merge_request_note (
     id                    BIGSERIAL NOT NULL PRIMARY KEY,
     merge_request_id      BIGINT    NOT NULL,
     discussion_id         BIGINT,
@@ -199,12 +190,11 @@ CREATE TABLE merge_request_note
         FOREIGN KEY (discussion_id) REFERENCES merge_request_discussion (id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_mr_note_author ON merge_request_note (author_gitlab_user_id) WHERE author_gitlab_user_id IS NOT NULL;
-CREATE INDEX idx_mr_note_discussion_id ON merge_request_note (discussion_id) WHERE discussion_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mr_note_author      ON merge_request_note (author_gitlab_user_id) WHERE author_gitlab_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_mr_note_discussion  ON merge_request_note (discussion_id) WHERE discussion_id IS NOT NULL;
 
 -- ── Approvals per MR ──────────────────────────────────────────────────────────
-CREATE TABLE merge_request_approval
-(
+CREATE TABLE IF NOT EXISTS merge_request_approval (
     id                         BIGSERIAL NOT NULL PRIMARY KEY,
     merge_request_id           BIGINT    NOT NULL,
     approved_by_gitlab_user_id BIGINT,
@@ -217,11 +207,11 @@ CREATE TABLE merge_request_approval
 );
 
 -- ── Sync job audit log ────────────────────────────────────────────────────────
-CREATE TABLE sync_job
-(
+CREATE TABLE IF NOT EXISTS sync_job (
     id            BIGSERIAL    PRIMARY KEY,
     workspace_id  BIGINT       NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
     status        VARCHAR(50)  NOT NULL,
+    phase         VARCHAR(20),
     started_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     finished_at   TIMESTAMPTZ,
     requested_by  VARCHAR(255),
@@ -233,12 +223,12 @@ CREATE TABLE sync_job
     processed_mrs INT          NOT NULL DEFAULT 0
 );
 
-CREATE INDEX idx_sync_job_status    ON sync_job (status);
-CREATE INDEX idx_sync_job_workspace ON sync_job (workspace_id);
+CREATE INDEX IF NOT EXISTS idx_sync_job_status    ON sync_job (status);
+CREATE INDEX IF NOT EXISTS idx_sync_job_workspace ON sync_job (workspace_id);
+CREATE INDEX IF NOT EXISTS idx_sync_job_phase     ON sync_job (phase) WHERE phase IS NOT NULL;
 
 -- ── Cached metric snapshots ───────────────────────────────────────────────────
-CREATE TABLE metric_snapshot
-(
+CREATE TABLE IF NOT EXISTS metric_snapshot (
     id                 BIGSERIAL    PRIMARY KEY,
     workspace_id       BIGINT       NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
     tracked_user_id    BIGINT,
@@ -258,7 +248,6 @@ CREATE TABLE metric_snapshot
         FOREIGN KEY (tracked_project_id) REFERENCES tracked_project (id) ON DELETE CASCADE
 );
 
--- uq_metric_snapshot_user_date starts with workspace_id (covering workspace_id lookups).
-CREATE INDEX idx_metric_snapshot_user         ON metric_snapshot (tracked_user_id)    WHERE tracked_user_id IS NOT NULL;
-CREATE INDEX idx_metric_snapshot_project      ON metric_snapshot (tracked_project_id) WHERE tracked_project_id IS NOT NULL;
-CREATE INDEX idx_metric_snapshot_snapshot_date ON metric_snapshot (snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_metric_snapshot_user          ON metric_snapshot (tracked_user_id)    WHERE tracked_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_metric_snapshot_project       ON metric_snapshot (tracked_project_id) WHERE tracked_project_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_metric_snapshot_snapshot_date ON metric_snapshot (snapshot_date);

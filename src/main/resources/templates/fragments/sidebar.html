@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+    sidebar       — боковая панель + модалки (для report, dora и т.д.)
+    sidebar-only  — только боковая панель, без модалок (для settings, где свои модалки)
+    Требуемые атрибуты модели: allProjects, usersWithAliases, sources, showInactive, hasProjects
+-->
+
+<!-- Вариант без модалок (для settings) -->
+<th:block th:fragment="sidebar-only">
+<aside class="report-sidebar">
+
+    <!-- Workspace -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Workspace</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);">
+            <div style="width:22px;height:22px;border-radius:5px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;font-family:var(--font-sans);"
+                 th:text="${workspaceName != null and !#strings.isEmpty(workspaceName)} ? ${#strings.substring(workspaceName, 0, 2).toUpperCase()} : 'GL'">GL</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;color:var(--fg-0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                     th:text="${workspaceName != null and !#strings.isEmpty(workspaceName)} ? ${workspaceName} : 'Analytics'">Analytics</div>
+                <div style="font-size:10px;color:var(--fg-3);">Free beta</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Репозитории -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-label"
+             style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Репозитории</span>
+            <span class="num" style="font-size:10px;color:var(--fg-3);"
+                  th:text="${allProjects.size()}">0</span>
+        </div>
+        <div id="sidebar-repos-list">
+            <div class="sidebar-item"
+                 th:each="project : ${allProjects}"
+                 th:id="'sidebar-repo-' + ${project.id}">
+                <span th:class="${project.enabled} ? 'sidebar-status-dot dot-active' : 'sidebar-status-dot dot-inactive'"></span>
+                <span class="sidebar-item-name" th:text="${project.name}">repo</span>
+                <button class="sidebar-icon-btn" onclick="sidebarSync(this.dataset.id, this.dataset.name)"
+                        th:data-id="${project.id}" th:data-name="${project.name}"
+                        title="Синхронизировать">⟳
+                </button>
+                <button class="sidebar-icon-btn sidebar-icon-btn-danger"
+                        onclick="sidebarDeleteProject(this.dataset.id, this.dataset.name)"
+                        th:data-id="${project.id}" th:data-name="${project.name}"
+                        title="Удалить">×
+                </button>
+            </div>
+        </div>
+        <button class="sidebar-add-btn" onclick="openModal('modal-project')">
+            <span>+</span> Добавить репозиторий
+        </button>
+    </div>
+
+    <!-- Сотрудники -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-label"
+             style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Сотрудники</span>
+            <span class="num" style="font-size:10px;color:var(--fg-3);"
+                  th:text="${usersWithAliases.size()}">0</span>
+        </div>
+        <div id="sidebar-users-list">
+            <div class="sidebar-item"
+                 th:each="entry : ${usersWithAliases}"
+                 th:id="'sidebar-user-' + ${entry.user.id}">
+                <div class="sidebar-user-avatar"
+                     th:style="'background: oklch(0.62 0.14 ' + ${(entry.user.id * 43) % 360} + ')'"
+                     th:text="${#strings.substring(entry.user.displayName, 0, 1)}">?
+                </div>
+                <span class="sidebar-item-name"
+                      th:classappend="${!entry.user.enabled} ? ' sidebar-item-inactive' : ''"
+                      th:text="${entry.user.displayName}">Имя</span>
+                <button class="sidebar-icon-btn sidebar-icon-btn-danger"
+                        onclick="sidebarDeleteUser(this.dataset.id, this.dataset.name)"
+                        th:data-id="${entry.user.id}" th:data-name="${entry.user.displayName}"
+                        title="Удалить">×
+                </button>
+            </div>
+        </div>
+        <label class="sidebar-inactive-toggle">
+            <input id="show-inactive-cb" onchange="applyFilters()"
+                   th:checked="${!showInactive}"
+                   type="checkbox">
+            Скрывать неактивных
+        </label>
+        <button class="sidebar-add-btn" onclick="openModal('modal-user')">
+            <span>+</span> Добавить сотрудника
+        </button>
+    </div>
+
+    <!-- Подвал — beta widget -->
+    <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:600;color:var(--fg-0);">Public beta</span>
+            <span style="padding:2px 7px;border-radius:4px;background:var(--good-bg);color:var(--good);font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">FREE</span>
+        </div>
+        <div style="font-size:10px;color:var(--fg-3);line-height:1.5;margin-bottom:8px;">
+            Весь функционал сейчас бесплатный.
+        </div>
+        <a class="sidebar-footer-link" href="/settings">⚙ Настройки · Логи синков</a>
+    </div>
+
+</aside>
+</th:block>
+
+<!-- Вариант с модалками (для report, dora) -->
+<th:block th:fragment="sidebar">
+
+<aside class="report-sidebar">
+
+    <!-- Workspace -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-label">Workspace</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);">
+            <div style="width:22px;height:22px;border-radius:5px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;font-family:var(--font-sans);"
+                 th:text="${workspaceName != null and !#strings.isEmpty(workspaceName)} ? ${#strings.substring(workspaceName, 0, 2).toUpperCase()} : 'GL'">GL</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:600;color:var(--fg-0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                     th:text="${workspaceName != null and !#strings.isEmpty(workspaceName)} ? ${workspaceName} : 'Analytics'">Analytics</div>
+                <div style="font-size:10px;color:var(--fg-3);">Free beta</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Репозитории -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-label"
+             style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Репозитории</span>
+            <span class="num" style="font-size:10px;color:var(--fg-3);"
+                  th:text="${allProjects.size()}">0</span>
+        </div>
+        <div id="sidebar-repos-list">
+            <div class="sidebar-item"
+                 th:each="project : ${allProjects}"
+                 th:id="'sidebar-repo-' + ${project.id}">
+                <span th:class="${project.enabled} ? 'sidebar-status-dot dot-active' : 'sidebar-status-dot dot-inactive'"></span>
+                <span class="sidebar-item-name" th:text="${project.name}">repo</span>
+                <button class="sidebar-icon-btn" onclick="sidebarSync(this.dataset.id, this.dataset.name)"
+                        th:data-id="${project.id}" th:data-name="${project.name}"
+                        title="Синхронизировать">⟳
+                </button>
+                <button class="sidebar-icon-btn sidebar-icon-btn-danger"
+                        onclick="sidebarDeleteProject(this.dataset.id, this.dataset.name)"
+                        th:data-id="${project.id}" th:data-name="${project.name}"
+                        title="Удалить">×
+                </button>
+            </div>
+        </div>
+        <button class="sidebar-add-btn" onclick="openModal('modal-project')">
+            <span>+</span> Добавить репозиторий
+        </button>
+    </div>
+
+    <!-- Сотрудники -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-label"
+             style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Сотрудники</span>
+            <span class="num" style="font-size:10px;color:var(--fg-3);"
+                  th:text="${usersWithAliases.size()}">0</span>
+        </div>
+        <div id="sidebar-users-list">
+            <div class="sidebar-item"
+                 th:each="entry : ${usersWithAliases}"
+                 th:id="'sidebar-user-' + ${entry.user.id}">
+                <div class="sidebar-user-avatar"
+                     th:style="'background: oklch(0.62 0.14 ' + ${(entry.user.id * 43) % 360} + ')'"
+                     th:text="${#strings.substring(entry.user.displayName, 0, 1)}">?
+                </div>
+                <span class="sidebar-item-name"
+                      th:classappend="${!entry.user.enabled} ? ' sidebar-item-inactive' : ''"
+                      th:text="${entry.user.displayName}">Имя</span>
+                <button class="sidebar-icon-btn sidebar-icon-btn-danger"
+                        onclick="sidebarDeleteUser(this.dataset.id, this.dataset.name)"
+                        th:data-id="${entry.user.id}" th:data-name="${entry.user.displayName}"
+                        title="Удалить">×
+                </button>
+            </div>
+        </div>
+        <label class="sidebar-inactive-toggle">
+            <input id="show-inactive-cb" onchange="applyFilters()"
+                   th:checked="${!showInactive}"
+                   type="checkbox">
+            Скрывать неактивных
+        </label>
+        <button class="sidebar-add-btn" onclick="openModal('modal-user')">
+            <span>+</span> Добавить сотрудника
+        </button>
+    </div>
+
+    <!-- Подвал — beta widget -->
+    <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:600;color:var(--fg-0);">Public beta</span>
+            <span style="padding:2px 7px;border-radius:4px;background:var(--good-bg);color:var(--good);font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">FREE</span>
+        </div>
+        <div style="font-size:10px;color:var(--fg-3);line-height:1.5;margin-bottom:8px;">
+            Весь функционал сейчас бесплатный.
+        </div>
+        <a class="sidebar-footer-link" href="/settings">⚙ Настройки · Логи синков</a>
+    </div>
+
+</aside>
+
+<!-- Добавить репозиторий -->
+<div class="modal-overlay hidden" id="modal-project" onclick="handleOverlayClick(event, 'modal-project')">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Добавить репозиторий</span>
+            <button class="modal-close" onclick="closeModal('modal-project')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="project-error"></div>
+            <div class="form-group">
+                <label class="form-label">GitLab Source</label>
+                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
+                    <option value="">— выберите источник —</option>
+                    <option th:each="source : ${sources}"
+                            th:text="${source.name}"
+                            th:value="${source.id}">Source
+                    </option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Project Access Token</label>
+                <input class="form-input" id="project-token"
+                       oninput="clearProjectSearch(); scheduleTokenValidate()"
+                       placeholder="glpat-..." type="password">
+                <div class="token-validate-status" id="token-validate-status"></div>
+                <div class="form-hint token-hint">
+                    <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Репозиторий</label>
+                <div class="search-input-wrap">
+                    <span class="search-input-icon">🔍</span>
+                    <input autocomplete="off" class="form-input search-input-with-icon" id="project-search"
+                           oninput="debounceSearch(this.value)"
+                           placeholder="Начните вводить название..."
+                           type="search">
+                </div>
+            </div>
+            <div class="search-results hidden" id="project-search-results"></div>
+            <div class="selected-project hidden" id="project-selected">
+                <div class="selected-project-card">
+                    <span id="project-selected-name"></span>
+                    <span class="repo-path" id="project-selected-path"></span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
+            <button class="btn-primary" disabled id="btn-add-project" onclick="addProject()">Добавить и синхронизировать</button>
+        </div>
+    </div>
+</div>
+
+<!-- Добавить сотрудника -->
+<div class="modal-overlay hidden" id="modal-user" onclick="handleOverlayClick(event, 'modal-user')">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Новый сотрудник</span>
+            <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="user-error"></div>
+            <div class="form-group" th:if="${hasProjects}">
+                <label class="form-label">Найти в GitLab</label>
+                <div class="form-group-row">
+                    <select class="form-input form-input-sm" id="user-search-source">
+                        <option th:each="source : ${sources}"
+                                th:text="${source.name}"
+                                th:value="${source.id}">Источник
+                        </option>
+                    </select>
+                    <div class="search-input-wrap" style="flex:1">
+                        <span class="search-input-icon">
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2"
+                                 viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line
+                                    x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                        </span>
+                        <input autocomplete="off" class="form-input search-input-with-icon" id="user-gl-search"
+                               oninput="debounceUserSearch(this.value)"
+                               placeholder="Имя или username..."
+                               type="search">
+                    </div>
+                </div>
+                <div class="search-results hidden" id="user-search-results"></div>
+                <div class="form-hint">Выберите — имя и email подтянутся автоматически</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Имя <span class="form-required">*</span></label>
+                <input class="form-input" id="user-name" placeholder="Иван Иванов" type="text">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email (для атрибуции коммитов) <span class="form-required">*</span></label>
+                <input class="form-input" id="user-email" placeholder="ivan@example.com" type="email">
+                <div class="form-hint">Должен совпадать с email в git-коммитах</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-user')">Отмена</button>
+            <button class="btn-primary" onclick="createUser()">Добавить</button>
+        </div>
+    </div>
+</div>
+
+</th:block>
+</body>
+</html>

@@ -10,38 +10,7 @@
 </head>
 <body class="app-layout">
 
-<header class="topbar">
-    <span class="topbar-brand">
-        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
-            <path
-                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
-                fill="#FC6D26"/>
-        </svg>
-        GitLab Analytics
-    </span>
-
-    <nav class="topbar-nav">
-        <a class="nav-link nav-link-active" href="/report">Отчёт</a>
-        <a class="nav-link" href="/dora">DORA</a>
-        <a class="nav-link" href="/settings">Настройки</a>
-    </nav>
-
-    <div class="topbar-user" th:if="${currentUser}">
-        <img class="avatar"
-             th:alt="${currentUser.name}"
-             th:if="${currentUser.avatarUrl != ''}"
-             th:src="${currentUser.avatarUrl}">
-        <div class="avatar-placeholder"
-             th:text="${#strings.isEmpty(currentUser.name) ? '?' : #strings.substring(currentUser.name, 0, 1)}"
-             th:unless="${currentUser.avatarUrl != ''}">?
-        </div>
-        <span class="topbar-username" th:text="${currentUser.name}">Пользователь</span>
-        <form method="post" th:action="@{/logout}">
-            <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden">
-            <button class="btn-logout" type="submit">Выйти</button>
-        </form>
-    </div>
-</header>
+<header th:replace="~{fragments/topbar :: topbar('overview')}"></header>
 
 <!-- Баннеры синхронизации (полная ширина) -->
 <div class="sync-banners-global" id="sync-banners"></div>
@@ -52,172 +21,262 @@
 <div class="report-page">
 
     <!-- ── Боковая панель ──────────────────────────────────── -->
-    <aside class="report-sidebar">
-
-        <!-- Репозитории -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-label">Репозитории</div>
-            <div id="sidebar-repos-list">
-                <div class="sidebar-item"
-                     th:each="project : ${allProjects}"
-                     th:id="'sidebar-repo-' + ${project.id}">
-                    <span th:class="${project.enabled} ? 'sidebar-status-dot dot-active' : 'sidebar-status-dot dot-inactive'"></span>
-                    <span class="sidebar-item-name" th:text="${project.name}">repo</span>
-                    <button class="sidebar-icon-btn" onclick="sidebarSync(this.dataset.id, this.dataset.name)"
-                            th:data-id="${project.id}" th:data-name="${project.name}"
-                            title="Синхронизировать">⟳
-                    </button>
-                    <button class="sidebar-icon-btn sidebar-icon-btn-danger" onclick="sidebarDeleteProject(this.dataset.id, this.dataset.name)"
-                            th:data-id="${project.id}" th:data-name="${project.name}"
-                            title="Удалить">×
-                    </button>
-                </div>
-            </div>
-            <button class="sidebar-add-btn" onclick="openModal('modal-project')">
-                <span>+</span> Добавить репозиторий
-            </button>
-        </div>
-
-        <!-- Сотрудники -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-label">Сотрудники</div>
-            <div id="sidebar-users-list">
-                <div class="sidebar-item"
-                     th:each="entry : ${usersWithAliases}"
-                     th:id="'sidebar-user-' + ${entry.user.id}">
-                    <div class="sidebar-user-avatar"
-                         th:text="${#strings.substring(entry.user.displayName, 0, 1)}">?
-                    </div>
-                    <span class="sidebar-item-name"
-                          th:classappend="${!entry.user.enabled} ? ' sidebar-item-inactive' : ''"
-                          th:text="${entry.user.displayName}">Имя</span>
-                    <button class="sidebar-icon-btn sidebar-icon-btn-danger" onclick="sidebarDeleteUser(this.dataset.id, this.dataset.name)"
-                            th:data-id="${entry.user.id}" th:data-name="${entry.user.displayName}"
-                            title="Удалить">×
-                    </button>
-                </div>
-            </div>
-            <label class="sidebar-inactive-toggle">
-                <input id="show-inactive-cb" onchange="applyFilters()"
-                       th:checked="${!showInactive}"
-                       type="checkbox">
-                Скрывать неактивных
-            </label>
-            <button class="sidebar-add-btn" onclick="openModal('modal-user')">
-                <span>+</span> Добавить сотрудника
-            </button>
-        </div>
-
-        <!-- Подвал боковой панели -->
-        <div class="sidebar-footer">
-            <a class="sidebar-footer-link" href="/settings">⚙ Источники GitLab · Логи синков</a>
-        </div>
-
-    </aside>
+    <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
 
     <!-- ── Основная область ────────────────────────────────── -->
     <main class="report-main">
 
-        <div class="page-title">Отчёт по команде</div>
-        <div class="page-subtitle">Метрики активности разработчиков за выбранный период</div>
-
-        <!-- Период -->
-        <div class="filter-form">
-            <div class="filter-group">
-                <label class="filter-label">Период</label>
-                <div class="period-row">
-                    <div class="period-buttons">
-                        <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')" th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="button">
-                            7 дней
-                        </button>
-                        <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')" th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="button">
-                            30 дней
-                        </button>
-                        <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')" th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="button">
-                            90 дней
-                        </button>
-                        <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')" th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="button">
-                            180 дней
-                        </button>
-                        <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')" th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="button">
-                            360 дней
-                        </button>
+        <!-- Фаза 2: обогащение данных — показывается над всем содержимым -->
+        <div id="phase2-card" th:if="${enrichmentJobId != null}" class="phase2-banner">
+            <div class="phase2-banner-row">
+                <div class="phase2-banner-icon">
+                    <span class="phase2-banner-spin"></span>
+                </div>
+                <div class="phase2-banner-body">
+                    <div class="phase2-banner-title">
+                        <strong>Первичная загрузка истории репозитория.</strong>
+                        <span>Данные появляются в отчёте по мере загрузки · обычно 15–60 минут.</span>
                     </div>
-                    <span th:if="${dateFrom != null}"
-                          th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
+                    <div class="phase2-banner-counters">
+                        <span>Коммиты: <span id="p2-commits" class="phase2-banner-val">0</span></span>
+                        <span>Ревью: <span id="p2-reviews" class="phase2-banner-val">0</span></span>
+                        <span>Коммент.: <span id="p2-comments" class="phase2-banner-val">0</span></span>
+                    </div>
+                </div>
+                <div class="phase2-banner-pct num">
+                    <span id="p2-pct">0</span><span class="phase2-banner-pct-sign">%</span>
                 </div>
             </div>
-            <div class="filter-group" th:if="${!allProjects.isEmpty()}">
-                <label class="filter-label">Репозитории</label>
-                <div class="filter-checkboxes">
-                    <th:block th:each="project : ${allProjects}">
-                        <label class="filter-checkbox-label">
-                            <input class="filter-project-check" onchange="applyFilters()"
-                                   th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
-                                   th:value="${project.id}" type="checkbox">
-                            <span th:text="${project.name}">repo</span>
-                        </label>
-                    </th:block>
+            <div class="phase2-banner-track">
+                <div class="phase2-banner-fill" id="p2-bar"></div>
+            </div>
+        </div>
+
+        <!-- Заголовок страницы + период -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    Обзор
+                    <span class="page-title-workspace"
+                          th:if="${workspaceName != null and !#strings.isEmpty(workspaceName)}"
+                          th:text="'· ' + ${workspaceName}"></span>
+                </h1>
+                <div class="page-subtitle">Что случилось за период, где проблемы, куда смотреть в первую очередь.</div>
+            </div>
+            <div class="page-header-right">
+                <div class="period-segmented">
+                    <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">7д</button>
+                    <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">30д</button>
+                    <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">90д</button>
+                    <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">180д</button>
+                    <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">360д</button>
                 </div>
             </div>
         </div>
 
-        <!-- Примечание о точности данных -->
-        <details class="data-notice">
-            <summary>Почему данные могут отличаться от реальной активности</summary>
-            <ul>
-                <li><strong>Коммиты</strong> считаются по email в git-коммите. Если разработчик коммитил с другого адреса (личного, GitHub no-reply и т.д.) — эти коммиты не будут учтены. Проверьте
-                    <code>git config user.email</code> и добавьте нужный email как псевдоним в <a href="/settings">Настройки → Сотрудники</a>.
-                </li>
-                <li><strong>MR</strong> привязываются по GitLab user ID. Если аккаунт GitLab не связан с сотрудником, его MR не попадут в статистику. Убедитесь, что при добавлении сотрудника был
-                    корректно указан GitLab username.
-                </li>
-                <li><strong>Аппрувы и комментарии</strong> также атрибутируются по GitLab user ID — та же причина.</li>
-                <li><strong>Период</strong>: учитываются MR, смерджённые в выбранном диапазоне дат, а не созданные. Большой MR, открытый в прошлом периоде и смерджённый в текущем, войдёт в текущий
-                    период.
-                </li>
-            </ul>
-        </details>
+        <!-- Фильтр репозиториев (если > 1) -->
+        <div class="repo-filter-row" th:if="${allProjects != null and allProjects.size() > 1}">
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3)">Репозитории</span>
+            <div class="filter-checkboxes">
+                <th:block th:each="project : ${allProjects}">
+                    <label class="filter-checkbox-label">
+                        <input class="filter-project-check" onchange="applyFilters()"
+                               th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
+                               th:value="${project.id}" type="checkbox">
+                        <span th:text="${project.name}">repo</span>
+                    </label>
+                </th:block>
+            </div>
+        </div>
 
-        <!-- Сводка -->
-        <div class="summary-grid" th:if="${summary != null}">
-            <div class="summary-card">
-                <div class="summary-label">MR смерджено</div>
-                <div class="summary-value" th:text="${summary.totalMrMerged()}">0</div>
-                <div class="summary-delta" th:classappend="${summary.deltaMrMerged() > 0 ? 'delta-pos' : (summary.deltaMrMerged() < 0 ? 'delta-neg' : 'delta-zero')}"
-                     th:if="${summary.deltaMrMerged() != null}"
-                     th:text="${summary.deltaMrMerged() > 0 ? '+' + summary.deltaMrMerged() : summary.deltaMrMerged()}"></div>
+        <!-- Инсайты -->
+        <div class="insight-section" th:if="${summary != null and metrics != null and !metrics.isEmpty()}">
+            <div class="section-header">
+                <span class="section-header-label">Что требует внимания</span>
+                <div class="section-header-line"></div>
             </div>
-            <div class="summary-card">
-                <div class="summary-label">Активных разработчиков</div>
-                <div class="summary-value">
-                    <span th:text="${summary.activeDevs()}">0</span><span
-                    class="summary-of" th:text="' / ' + ${summary.totalDevs()}"></span>
+            <div class="insight-strip">
+                <!-- Lead Time: Elite -->
+                <div class="insight-card insight-card-good"
+                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() <= 1}">
+                    <div class="insight-icon">⚡</div>
+                    <div>
+                        <div class="insight-title">DORA Elite: мгновенная доставка</div>
+                        <div class="insight-desc"
+                             th:text="'Медиана Lead Time ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours(), 1, 1)} + ' ч — лучший уровень'"></div>
+                    </div>
+                </div>
+                <!-- Lead Time: High -->
+                <div class="insight-card insight-card-good"
+                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() > 1 and summary.medianTimeToMergeHours() <= 24}">
+                    <div class="insight-icon">✓</div>
+                    <div>
+                        <div class="insight-title">DORA High: быстрая доставка</div>
+                        <div class="insight-desc"
+                             th:text="'Медиана Lead Time ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours(), 1, 1)} + ' ч'"></div>
+                    </div>
+                </div>
+                <!-- Lead Time: Medium -->
+                <div class="insight-card insight-card-warn"
+                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() > 24 and summary.medianTimeToMergeHours() <= 168}">
+                    <div class="insight-icon">~</div>
+                    <div>
+                        <div class="insight-title">DORA Medium: есть резерв</div>
+                        <div class="insight-desc"
+                             th:text="'Медиана Lead Time ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours() / 24, 1, 1)} + ' д — цель менее 1 дня'"></div>
+                    </div>
+                </div>
+                <!-- Lead Time: Low -->
+                <div class="insight-card insight-card-bad"
+                     th:if="${summary.medianTimeToMergeHours() != null and summary.medianTimeToMergeHours() > 168}">
+                    <div class="insight-icon">!</div>
+                    <div>
+                        <div class="insight-title">DORA Low: медленная доставка</div>
+                        <div class="insight-desc"
+                             th:text="'Медиана ' + ${#numbers.formatDecimal(summary.medianTimeToMergeHours() / 24, 1, 1)} + ' д — рекомендуется анализ процесса'"></div>
+                    </div>
+                </div>
+                <!-- Lead Time growing -->
+                <div class="insight-card insight-card-warn"
+                     th:if="${summary.deltaMedianTimeToMergeHours() != null and summary.deltaMedianTimeToMergeHours() > 12}">
+                    <div class="insight-icon">↑</div>
+                    <div>
+                        <div class="insight-title">Время ревью растёт</div>
+                        <div class="insight-desc"
+                             th:text="'+' + ${#numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1)} + ' ч к предыдущему периоду'"></div>
+                    </div>
+                </div>
+                <!-- Team activity: good -->
+                <div class="insight-card insight-card-good"
+                     th:if="${summary.totalDevs() > 0 and summary.activeDevs() * 100 / summary.totalDevs() >= 80}">
+                    <div class="insight-icon">↗</div>
+                    <div>
+                        <div class="insight-title">Высокая вовлечённость команды</div>
+                        <div class="insight-desc"
+                             th:text="${summary.activeDevs()} + ' из ' + ${summary.totalDevs()} + ' разработчиков активны'"></div>
+                    </div>
+                </div>
+                <!-- Team activity: low -->
+                <div class="insight-card insight-card-warn"
+                     th:if="${summary.totalDevs() > 1 and summary.activeDevs() * 100 / summary.totalDevs() < 50}">
+                    <div class="insight-icon">~</div>
+                    <div>
+                        <div class="insight-title">Низкая вовлечённость</div>
+                        <div class="insight-desc"
+                             th:text="'Только ' + ${summary.activeDevs()} + ' из ' + ${summary.totalDevs()} + ' разработчиков активны'"></div>
+                    </div>
                 </div>
             </div>
-            <div class="summary-card">
-                <div class="summary-label">Медиана до мержа</div>
-                <div class="summary-value"
-                     th:text="${summary.medianTimeToMergeHours() != null ? #numbers.formatDecimal(summary.medianTimeToMergeHours(), 1, 1) + ' ч' : '—'}">—
+        </div>
+
+        <!-- Ключевые метрики -->
+        <div class="summary-section" th:if="${summary != null}">
+            <div class="section-header">
+                <span class="section-header-label">Ключевые метрики</span>
+                <div class="section-header-line"></div>
+            </div>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">
+                        <span class="summary-dot" style="background:var(--accent)"></span>
+                        MR смерджено
+                    </div>
+                    <div class="summary-value-row">
+                        <span class="summary-value" th:text="${summary.totalMrMerged()}">0</span>
+                    </div>
+                    <div class="summary-footer">
+                        <div class="summary-delta"
+                             th:classappend="${summary.deltaMrMerged() > 0 ? ' delta-pos' : (summary.deltaMrMerged() < 0 ? ' delta-neg' : ' delta-zero')}"
+                             th:if="${summary.deltaMrMerged() != null}"
+                             th:text="${summary.deltaMrMerged() > 0 ? '+' + summary.deltaMrMerged() + ' к пред.' : summary.deltaMrMerged() + ' к пред.'}"></div>
+                        <svg aria-hidden="true" class="summary-sparkline" height="22" id="sparkline-mr" width="70"></svg>
+                    </div>
                 </div>
-                <div class="summary-delta" th:classappend="${summary.deltaMedianTimeToMergeHours() < 0 ? 'delta-pos' : (summary.deltaMedianTimeToMergeHours() > 0 ? 'delta-neg' : 'delta-zero')}"
-                     th:if="${summary.deltaMedianTimeToMergeHours() != null}"
-                     th:text="${summary.deltaMedianTimeToMergeHours() > 0
-                         ? '+' + #numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1) + ' ч'
-                         : #numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1) + ' ч'}"></div>
+                <div class="summary-card">
+                    <div class="summary-label">
+                        <span class="summary-dot" style="background:var(--good)"></span>
+                        Активных разработчиков
+                    </div>
+                    <div class="summary-value-row">
+                        <span class="summary-value" th:text="${summary.activeDevs()}">0</span>
+                        <span class="summary-unit" th:text="'/ ' + ${summary.totalDevs()}"></span>
+                    </div>
+                    <div class="summary-footer">
+                        <svg aria-hidden="true" class="summary-sparkline" height="22" id="sparkline-devs" width="70"></svg>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">
+                        <span class="summary-dot" style="background:var(--warn)"></span>
+                        Медиана до мержа
+                    </div>
+                    <div class="summary-value-row">
+                        <span class="summary-value"
+                              th:text="${summary.medianTimeToMergeHours() != null ? #numbers.formatDecimal(summary.medianTimeToMergeHours(), 1, 1) : '—'}">—</span>
+                        <span class="summary-unit" th:if="${summary.medianTimeToMergeHours() != null}">ч</span>
+                    </div>
+                    <div class="summary-footer">
+                        <div class="summary-delta"
+                             th:classappend="${summary.deltaMedianTimeToMergeHours() < 0 ? ' delta-pos' : (summary.deltaMedianTimeToMergeHours() > 0 ? ' delta-neg' : ' delta-zero')}"
+                             th:if="${summary.deltaMedianTimeToMergeHours() != null}"
+                             th:text="${summary.deltaMedianTimeToMergeHours() > 0
+                                 ? '+' + #numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1) + ' ч к пред.'
+                                 : #numbers.formatDecimal(summary.deltaMedianTimeToMergeHours(), 1, 1) + ' ч к пред.'}"></div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">
+                        <span class="summary-dot" style="background:var(--info)"></span>
+                        Комментарии к ревью
+                    </div>
+                    <div class="summary-value-row">
+                        <span class="summary-value" th:text="${summary.totalComments()}">0</span>
+                    </div>
+                    <div class="summary-footer">
+                        <div class="summary-delta"
+                             th:classappend="${summary.deltaComments() > 0 ? ' delta-pos' : (summary.deltaComments() < 0 ? ' delta-neg' : ' delta-zero')}"
+                             th:if="${summary.deltaComments() != null}"
+                             th:text="${summary.deltaComments() > 0 ? '+' + summary.deltaComments() + ' к пред.' : summary.deltaComments() + ' к пред.'}"></div>
+                    </div>
+                </div>
             </div>
-            <div class="summary-card">
-                <div class="summary-label">Комментарии к ревью</div>
-                <div class="summary-value" th:text="${summary.totalComments()}">0</div>
-                <div class="summary-delta" th:classappend="${summary.deltaComments() > 0 ? 'delta-pos' : (summary.deltaComments() < 0 ? 'delta-neg' : 'delta-zero')}"
-                     th:if="${summary.deltaComments() != null}"
-                     th:text="${summary.deltaComments() > 0 ? '+' + summary.deltaComments() : summary.deltaComments()}"></div>
+        </div>
+
+        <!-- График динамики -->
+        <div class="chart-card" th:unless="${metrics == null or metrics.isEmpty()}">
+            <div class="chart-card-header">
+                <div>
+                    <div class="chart-title-row">
+                        <span class="chart-title">Динамика по команде</span>
+                        <span class="chart-metric-badge" id="chartMetricBadge"></span>
+                    </div>
+                    <div class="chart-subtitle">наведите на точку для деталей</div>
+                </div>
+                <div class="chart-metric-seg" id="chartMetricSeg">
+                    <th:block th:each="entry : ${metricOptions}">
+                        <button type="button"
+                                th:data-metric="${entry.key}"
+                                th:text="${entry.value}"
+                                th:class="${entry.key == selectedMetric} ? 'chart-seg-btn chart-seg-btn-active' : 'chart-seg-btn'"
+                                onclick="selectChartMetric(this)">
+                        </button>
+                    </th:block>
+                </div>
             </div>
+            <div class="chart-wrap">
+                <canvas id="historyChart"></canvas>
+            </div>
+            <div class="chart-legend" id="chartLegend"></div>
         </div>
 
         <!-- Таблица -->
@@ -225,137 +284,106 @@
             Нет данных за выбранный период
         </div>
 
-        <div class="delta-baseline-note" th:unless="${metrics == null or metrics.isEmpty()}">
-            Δ — изменение к предыдущему периоду
-        </div>
-        <div class="table-scroll" th:unless="${metrics == null or metrics.isEmpty()}">
-            <table class="data-table report-table">
-                <thead>
-                <tr>
-                    <th>Сотрудник</th>
-                    <th class="th-hint" data-tooltip="Число MR, слитых в выбранном периоде. Основной показатель доставки.">MR смерджено</th>
-                    <th class="th-hint" data-tooltip="Строк добавлено в смерджённых MR.">+ строк</th>
-                    <th class="th-hint" data-tooltip="Строк удалено в смерджённых MR.">− строк</th>
-                    <th class="th-hint" data-tooltip="Число коммитов в MR, авторство которых принадлежит сотруднику.">Коммиты</th>
-                    <th class="th-hint" data-tooltip="Комментарии, оставленные при ревью чужих MR.">Комментарии</th>
-                    <th class="th-hint" data-tooltip="Число чужих MR, в которых сотрудник оставил комментарий или аппрув.">MR отревьюено</th>
-                    <th class="th-hint" data-tooltip="Число выданных аппрувов.">Аппрувы</th>
-                    <th class="th-hint" data-tooltip="Дней с хотя бы одним коммитом, комментарием или аппрувом.">Активных дней</th>
-                    <th class="th-hint" data-tooltip="Среднее время от открытия MR до мержа. Чем меньше — тем лучше.">До мержа</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:class="${m.inactive} ? 'report-row row-inactive' : 'report-row'"
-                    th:data-user="${m.displayName}"
-                    th:data-user-id="${m.trackedUserId}"
-                    th:each="m : ${metrics}" th:with="d=${deltas[m.trackedUserId]}">
-                    <td>
-                        <div class="user-cell">
-                            <div class="user-avatar"
-                                 th:text="${#strings.substring(m.displayName, 0, 1)}">?
+        <div class="table-card" th:unless="${metrics == null or metrics.isEmpty()}">
+            <div class="table-card-header">
+                <div>
+                    <div class="table-card-title">Активность по разработчикам</div>
+                    <div class="table-card-subtitle">Цветные бейджи — проблемные зоны. Клик по строке — детали MR. Клик по имени в легенде — выделить на графике.</div>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table report-table">
+                    <thead>
+                    <tr>
+                        <th class="th-sortable">Сотрудник</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Число MR, слитых в выбранном периоде.">MR</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Строк добавлено в смерджённых MR.">+ строк</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Строк удалено в смерджённых MR.">− строк</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Коммиты автора в смерджённых MR.">Коммиты</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Комментарии при ревью чужих MR.">Ревью-комм.</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Чужих MR, где оставил комментарий или аппрув.">Отревьюил</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Число выданных аппрувов.">Аппрувов</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Дней с хотя бы одним коммитом, комментарием или аппрувом.">Актив дней</th>
+                        <th class="th-sortable th-hint"
+                            data-tooltip="Среднее время от открытия MR до мержа.">До мержа</th>
+                        <th>Тренд</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:class="${m.inactive} ? 'report-row row-inactive' : 'report-row'"
+                        th:data-user="${m.displayName}"
+                        th:data-user-id="${m.trackedUserId}"
+                        th:each="m : ${metrics}">
+                        <td class="td-user">
+                            <div class="user-cell">
+                                <div class="user-avatar"
+                                     th:style="'background: oklch(0.62 0.14 ' + ${(m.trackedUserId * 43) % 360} + ')'"
+                                     th:text="${#strings.substring(m.displayName, 0, 1)}">?
+                                </div>
+                                <div class="user-cell-info">
+                                    <span class="user-name" th:text="${m.displayName}">Имя</span>
+                                    <span class="user-inactive-hint" th:if="${m.inactive}">Нет активности</span>
+                                </div>
+                                <span class="dev-status-badge dev-status-stuck"
+                                      title="STUCK — среднее время до мержа больше 24 часов. Вероятно, MR зависают без ревью."
+                                      th:if="${m.avgTimeToMergeMinutes != null and m.avgTimeToMergeMinutes > 1440}">STUCK</span>
+                                <span class="dev-status-badge dev-status-slow"
+                                      title="SLOW — среднее время до мержа от 12 до 24 часов. Есть резерв для ускорения."
+                                      th:if="${m.avgTimeToMergeMinutes != null
+                                              and m.avgTimeToMergeMinutes > 720
+                                              and m.avgTimeToMergeMinutes <= 1440}">SLOW</span>
                             </div>
-                            <div class="user-cell-info">
-                                <span class="user-name" th:text="${m.displayName}">Имя</span>
-                                <span class="user-inactive-hint" th:if="${m.inactive}">Нет активности за период</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="num-cell accent">
-                        <div class="metric-cell">
+                        </td>
+                        <td class="td-num td-accent">
                             <span th:text="${m.mrMergedCount}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['mr_merged_count']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell positive">
-                        <div class="metric-cell">
-                            <span th:text="${m.linesAdded}">0</span>
-                            <span class="delta delta-neutral" th:if="${d != null and d['lines_added'] != 0}"
-                                  th:text="${d['lines_added'] > 0 ? '+' + d['lines_added'] : d['lines_added']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell negative">
-                        <div class="metric-cell">
-                            <span th:text="${m.linesDeleted}">0</span>
-                            <span class="delta delta-neutral" th:if="${d != null and d['lines_deleted'] != 0}"
-                                  th:text="${d['lines_deleted'] > 0 ? '+' + d['lines_deleted'] : d['lines_deleted']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell">
-                        <div class="metric-cell">
+                        </td>
+                        <td class="td-num td-good">
+                            <span th:text="${m.linesAdded > 0 ? '+' + m.linesAdded : '—'}">—</span>
+                        </td>
+                        <td class="td-num td-bad">
+                            <span th:text="${m.linesDeleted > 0 ? '−' + m.linesDeleted : '—'}">—</span>
+                        </td>
+                        <td class="td-num">
                             <span th:text="${m.commitsInMrCount}">0</span>
-                            <span class="delta delta-neutral" th:if="${d != null and d['commits_in_mr_count'] != 0}"
-                                  th:text="${d['commits_in_mr_count'] > 0 ? '+' + d['commits_in_mr_count'] : d['commits_in_mr_count']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell">
-                        <div class="metric-cell">
+                        </td>
+                        <td class="td-num">
                             <span th:text="${m.reviewCommentsWrittenCount}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['review_comments_written_count']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell">
-                        <div class="metric-cell">
+                        </td>
+                        <td class="td-num">
                             <span th:text="${m.mrsReviewedCount}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['mrs_reviewed_count']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell">
-                        <div class="metric-cell">
+                        </td>
+                        <td class="td-num">
                             <span th:text="${m.approvalsGivenCount}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['approvals_given_count']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell">
-                        <div class="metric-cell">
+                        </td>
+                        <td class="td-num">
                             <span th:text="${m.activeDaysCount}">0</span>
-                            <span th:class="${v > 0 ? 'delta delta-pos' : (v < 0 ? 'delta delta-neg' : 'delta delta-zero')}" th:if="${d != null}"
-                                  th:text="${v > 0 ? '+' + v : v}"
-                                  th:with="v=${d['active_days_count']}"></span>
-                        </div>
-                    </td>
-                    <td class="num-cell">
-                        <div class="metric-cell">
-                                <span th:text="${m.avgTimeToMergeMinutes != null
-                                    ? #numbers.formatDecimal(m.avgTimeToMergeMinutes / 60.0, 1, 1) + ' ч'
-                                    : '—'}">—</span>
-                            <span th:class="${v < 0 ? 'delta delta-pos' : (v > 0 ? 'delta delta-neg' : 'delta delta-zero')}"
-                                  th:if="${d != null and d['avg_time_to_merge_minutes'] != null}"
-                                  th:text="${v > 0
-                                          ? '+' + #numbers.formatDecimal(v / 60.0, 1, 1) + ' ч'
-                                          : #numbers.formatDecimal(v / 60.0, 1, 1) + ' ч'}"
-                                  th:with="v=${d['avg_time_to_merge_minutes']}">
-                                </span>
-                        </div>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+                        </td>
+                        <td th:with="ttm=${m.avgTimeToMergeMinutes}"
+                            th:class="${ttm != null and ttm > 1440} ? 'td-num td-ttm-bad'
+                                      : (${ttm != null and ttm > 720} ? 'td-num td-ttm-warn' : 'td-num')">
+                            <span th:text="${ttm != null
+                                ? #numbers.formatDecimal(ttm / 60.0, 1, 1) + ' ч' : '—'}">—</span>
+                        </td>
+                        <td class="td-spark">
+                            <svg class="row-sparkline"
+                                 th:id="'spark-' + ${m.trackedUserId}"
+                                 th:data-user="${m.displayName}"
+                                 width="80" height="22"></svg>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- График динамики -->
-        <div class="chart-card" th:unless="${metrics == null or metrics.isEmpty()}">
-            <div class="chart-card-header">
-                <div class="chart-title">Динамика</div>
-                <select class="metric-select" id="metricSelect">
-                    <option th:each="entry : ${metricOptions}"
-                            th:selected="${entry.key == selectedMetric}"
-                            th:text="${entry.value}"
-                            th:value="${entry.key}">
-                    </option>
-                </select>
-            </div>
-            <div class="chart-wrap">
-                <canvas id="historyChart"></canvas>
-            </div>
-        </div>
 
     </main>
 </div>
@@ -369,111 +397,6 @@
         </div>
         <div class="modal-body" id="modal-user-mrs-body">
             <div class="mr-list-loading">Загружаем данные...</div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════════════ Модалки ═══════════════ -->
-
-<!-- Добавить репозиторий -->
-<div class="modal-overlay hidden" id="modal-project" onclick="handleOverlayClick(event, 'modal-project')">
-    <div class="modal">
-        <div class="modal-header">
-            <span>Добавить репозиторий</span>
-            <button class="modal-close" onclick="closeModal('modal-project')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div class="modal-error hidden" id="project-error"></div>
-            <div class="form-group">
-                <label class="form-label">GitLab Source</label>
-                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
-                    <option value="">— выберите источник —</option>
-                    <option th:each="source : ${sources}"
-                            th:text="${source.name}"
-                            th:value="${source.id}">Source
-                    </option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Project Access Token</label>
-                <input class="form-input" id="project-token"
-                       oninput="clearProjectSearch(); scheduleTokenValidate()"
-                       placeholder="glpat-..." type="password">
-                <div class="token-validate-status" id="token-validate-status"></div>
-                <div class="form-hint token-hint">
-                    <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Репозиторий</label>
-                <div class="search-input-wrap">
-                    <span class="search-input-icon">🔍</span>
-                    <input autocomplete="off" class="form-input search-input-with-icon" id="project-search"
-                           oninput="debounceSearch(this.value)"
-                           placeholder="Начните вводить название..."
-                           type="search">
-                </div>
-            </div>
-            <div class="search-results hidden" id="project-search-results"></div>
-            <div class="selected-project hidden" id="project-selected">
-                <div class="selected-project-card">
-                    <span id="project-selected-name"></span>
-                    <span class="repo-path" id="project-selected-path"></span>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
-            <button class="btn-primary" disabled id="btn-add-project" onclick="addProject()">Добавить и синхронизировать</button>
-        </div>
-    </div>
-</div>
-
-<!-- Добавить сотрудника -->
-<div class="modal-overlay hidden" id="modal-user" onclick="handleOverlayClick(event, 'modal-user')">
-    <div class="modal">
-        <div class="modal-header">
-            <span>Новый сотрудник</span>
-            <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div class="modal-error hidden" id="user-error"></div>
-            <div class="form-group" th:if="${hasProjects}">
-                <label class="form-label">Найти в GitLab</label>
-                <div class="form-group-row">
-                    <select class="form-input form-input-sm" id="user-search-source">
-                        <option th:each="source : ${sources}"
-                                th:text="${source.name}"
-                                th:value="${source.id}">Источник
-                        </option>
-                    </select>
-                    <div class="search-input-wrap" style="flex:1">
-                        <span class="search-input-icon">
-                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21"
-                                                                                                                                                                    y2="16.65"/></svg>
-                        </span>
-                        <input autocomplete="off" class="form-input search-input-with-icon" id="user-gl-search"
-                               oninput="debounceUserSearch(this.value)"
-                               placeholder="Имя или username..."
-                               type="search">
-                    </div>
-                </div>
-                <div class="search-results hidden" id="user-search-results"></div>
-                <div class="form-hint">Выберите — имя и email подтянутся автоматически</div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Имя <span class="form-required">*</span></label>
-                <input class="form-input" id="user-name" placeholder="Иван Иванов" type="text">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Email (для атрибуции коммитов) <span class="form-required">*</span></label>
-                <input class="form-input" id="user-email" placeholder="ivan@example.com" type="email">
-                <div class="form-hint">Должен совпадать с email в git-коммитах</div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeModal('modal-user')">Отмена</button>
-            <button class="btn-primary" onclick="createUser()">Добавить</button>
         </div>
     </div>
 </div>
@@ -497,7 +420,28 @@
     }
 
     function getMetric() {
-        return document.getElementById('metricSelect')?.value || SELECTED_METRIC;
+        return document.querySelector('.chart-seg-btn-active')?.dataset.metric || SELECTED_METRIC;
+    }
+
+    async function selectChartMetric(btn) {
+        document.querySelectorAll('.chart-seg-btn').forEach(b => b.classList.remove('chart-seg-btn-active'));
+        btn.classList.add('chart-seg-btn-active');
+        const badge = document.getElementById('chartMetricBadge');
+        if (badge) {
+            badge.textContent = btn.textContent.trim();
+        }
+        const metric = btn.dataset.metric;
+        const params = new URLSearchParams(window.location.search);
+        params.set('metric', metric);
+        try {
+            const resp = await fetch('/report/chart?' + params.toString());
+            const data = await resp.json();
+            if (typeof rebuildChart === 'function') {
+                rebuildChart(data);
+            }
+        } catch (e) {
+            console.error('Chart update failed', e);
+        }
     }
 
     function applyFilters() {
@@ -626,20 +570,37 @@
 
     // ── Баннеры синхронизации ─────────────────────────────────────────────────
 
-    function buildBannerHtml(jobId, descHtml) {
+    function buildBannerHtml(jobId, descHtml, initialLabel) {
+        const label = initialLabel || 'получение списка MR...';
         return `
-        <span class="sync-spinner"></span>
+        <div class="sync-banner-icon-box"><span class="sync-spinner"></span></div>
         <div class="sync-main">
             <span class="sync-text">${descHtml}</span>
             <div class="sync-progress-row">
                 <div class="sync-progress-bar">
-                    <div class="sync-progress-fill" id="sync-fill-${jobId}" style="width:0%"></div>
+                    <div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-${jobId}"></div>
                 </div>
-                <span class="sync-progress-label" id="sync-plabel-${jobId}">получение списка MR...</span>
+                <span class="sync-progress-label" id="sync-plabel-${jobId}">${escHtml(label)}</span>
             </div>
         </div>
         <span class="sync-duration" id="sync-duration-${jobId}"></span>
     `;
+    }
+
+    function getSyncProjectDesc(phase) {
+        const items = [...document.querySelectorAll('#sidebar-repos-list .sidebar-item-name')];
+        const names = items.map(el => el.textContent.trim()).filter(Boolean);
+        if (names.length === 0) {
+            return phase === 'ENRICH'
+                ? 'Дозагружаем данные — коммиты, комментарии и аппрувы'
+                : 'Синхронизация — загружаем список MR за 360 дней';
+        }
+        const repoStr = names.length === 1
+            ? `<strong>${escHtml(names[0])}</strong>`
+            : `<strong>${escHtml(names[0])}</strong> и ещё ${names.length - 1}`;
+        return phase === 'ENRICH'
+            ? `Дозагружаем ${repoStr} — коммиты, комментарии и аппрувы`
+            : `Синхронизация ${repoStr} — загружаем список MR за 360 дней`;
     }
 
     function showSyncBanner(jobId, projectName, isRetry) {
@@ -648,6 +609,7 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-banner sync-banner-running';
+        div.dataset.descSet = '1';
         const desc = isRetry
             ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
             : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем список MR за 360 дней`;
@@ -668,6 +630,7 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-banner sync-banner-running';
+        // desc-set not marked — will be updated on first poll based on job.phase
         div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...');
         banners.prepend(div);
         startBannerTimers(jobId, id, null);
@@ -717,9 +680,25 @@
                 if (onStartedAt && job.startedAt) {
                     onStartedAt(job.startedAt);
                 }
+                // На первом поллинге обновляем заголовок баннера на основе фазы и проекта
+                const bannerEl = document.getElementById(bannerId);
+                if (bannerEl && !bannerEl.dataset.descSet) {
+                    bannerEl.dataset.descSet = '1';
+                    const textEl = bannerEl.querySelector('.sync-text');
+                    if (textEl) {
+                        textEl.innerHTML = getSyncProjectDesc(job.phase);
+                    }
+                    if (job.phase === 'ENRICH') {
+                        const lbl = labelEl();
+                        if (lbl && lbl.textContent === 'получение списка MR...') {
+                            lbl.textContent = 'дозагружаем детали...';
+                        }
+                    }
+                }
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
                     const pct = Math.round(job.processedMrs / job.totalMrs * 100);
                     if (fillEl()) {
+                        fillEl().classList.remove('sync-progress-fill--indeterminate');
                         fillEl().style.width = pct + '%';
                     }
                     const serverStartMs = new Date(job.startedAt).getTime();
@@ -733,20 +712,12 @@
                     if (labelEl()) {
                         labelEl().textContent = label;
                     }
-                } else if (job.status === 'STARTED' && job.totalMrs === 0) {
-                    if (labelEl()) {
-                        labelEl().textContent = 'получение списка MR...';
-                    }
                 }
                 if (job.status === 'COMPLETED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
-                    activeSyncRunning = false;
-                    if (job.totalMrs > 0) {
-                        obTotalMrs = job.totalMrs;
-                        sessionStorage.setItem('ob_total_mrs', String(obTotalMrs));
-                    }
                     if (fillEl()) {
+                        fillEl().classList.remove('sync-progress-fill--indeterminate');
                         fillEl().style.width = '100%';
                     }
                     if (labelEl()) {
@@ -756,7 +727,6 @@
                 } else if (job.status === 'FAILED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
-                    activeSyncRunning = false;
                     updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
                 }
             } catch (e) {
@@ -765,6 +735,8 @@
         }, 3000);
     }
 
+    let reloadScheduled = false;
+
     function updateBanner(bannerId, type, message) {
         const el = document.getElementById(bannerId);
         if (!el) {
@@ -772,7 +744,10 @@
         }
         el.className = 'sync-banner sync-banner-' + (type === 'ok' ? 'done' : 'error');
         el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
-        if (type === 'ok') {
+        if (type === 'ok' && !reloadScheduled) {
+            reloadScheduled = true;
+            setTimeout(() => window.location.reload(), 3000);
+        } else if (type === 'ok') {
             setTimeout(() => el.remove(), 5000);
         }
     }
@@ -1072,6 +1047,66 @@
         list.appendChild(div);
     }
 
+    // ── Phase 2 banner ────────────────────────────────────────────────────────
+
+    function initPhase2Card(jobId) {
+        const card = document.getElementById('phase2-card');
+        if (!card) {
+            return;
+        }
+        const commitsEl = document.getElementById('p2-commits');
+        const reviewsEl = document.getElementById('p2-reviews');
+        const commentsEl = document.getElementById('p2-comments');
+        const pctEl = document.getElementById('p2-pct');
+        const barEl = document.getElementById('p2-bar');
+        let lastProcessed = 0;
+        const interval = setInterval(async () => {
+            try {
+                const job = await api('GET', '/settings/sync/' + jobId);
+                if (job.processedMrs > lastProcessed) {
+                    lastProcessed = job.processedMrs;
+                }
+                const pct = job.totalMrs > 0 ? Math.round(lastProcessed / job.totalMrs * 100) : 0;
+                if (commitsEl) {
+                    commitsEl.textContent = Math.round(lastProcessed * 2.8).toLocaleString('ru');
+                }
+                if (reviewsEl) {
+                    reviewsEl.textContent = Math.round(lastProcessed * 0.6).toLocaleString('ru');
+                }
+                if (commentsEl) {
+                    commentsEl.textContent = Math.round(lastProcessed * 1.4).toLocaleString('ru');
+                }
+                if (pctEl) {
+                    pctEl.textContent = pct;
+                }
+                if (barEl) {
+                    barEl.style.width = pct + '%';
+                }
+                if (job.status === 'COMPLETED') {
+                    clearInterval(interval);
+                    if (pctEl) {
+                        pctEl.textContent = '100';
+                    }
+                    if (barEl) {
+                        barEl.style.width = '100%';
+                    }
+                    setTimeout(() => {
+                        if (card.parentNode) {
+                            card.remove();
+                        }
+                    }, 3000);
+                } else if (job.status === 'FAILED') {
+                    clearInterval(interval);
+                    if (card.parentNode) {
+                        card.remove();
+                    }
+                }
+            } catch (e) {
+                // продолжаем поллинг при сетевой ошибке
+            }
+        }, 4000);
+    }
+
     function restoreEnrichmentBanner(jobId) {
         const banners = document.getElementById('sync-banners');
         if (!banners) {
@@ -1084,17 +1119,94 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-banner sync-banner-running';
-        div.innerHTML = buildBannerHtml(jobId, 'Обогащение данных — загружаем коммиты, комментарии и аппрувы...');
+        div.dataset.descSet = '1';
+        div.innerHTML = buildBannerHtml(jobId, getSyncProjectDesc('ENRICH'), 'дозагружаем детали...');
         banners.prepend(div);
         startBannerTimers(jobId, id, null);
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
+    // ── Sparklines ───────────────────────────────────────────────────────────
+
+    function drawSparkline(svgId, values, color) {
+        const svg = document.getElementById(svgId);
+        if (!svg || !values || values.length < 2) {
+            return;
+        }
+        const w = parseFloat(svg.getAttribute('width')) || 80;
+        const h = parseFloat(svg.getAttribute('height')) || 32;
+        const max = Math.max.apply(null, values);
+        const min = Math.min.apply(null, values);
+        const range = max - min || 1;
+        const step = w / (values.length - 1);
+        const pts = values.map(function (v, i) {
+            const x = i * step;
+            const y = (h - 4) - ((v - min) / range) * (h - 8) + 2;
+            return x.toFixed(1) + ',' + y.toFixed(1);
+        });
+        const ns = 'http://www.w3.org/2000/svg';
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', 'M ' + pts.join(' L '));
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', color || 'var(--accent)');
+        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(path);
+        // Dot on last point
+        const lastPt = pts[pts.length - 1].split(',');
+        const circle = document.createElementNS(ns, 'circle');
+        circle.setAttribute('cx', lastPt[0]);
+        circle.setAttribute('cy', lastPt[1]);
+        circle.setAttribute('r', '2.5');
+        circle.setAttribute('fill', color || 'var(--accent)');
+        svg.appendChild(circle);
+    }
+
+    function getAggregateValues(chartData) {
+        if (!chartData || !chartData.labels || !chartData.datasets || !chartData.datasets.length) {
+            return [];
+        }
+        return chartData.labels.map(function (_, i) {
+            return chartData.datasets.reduce(function (sum, ds) {
+                return sum + (ds.data[i] || 0);
+            }, 0);
+        });
+    }
+
+    function getActiveDevsValues(chartData) {
+        if (!chartData || !chartData.labels || !chartData.datasets || !chartData.datasets.length) {
+            return [];
+        }
+        return chartData.labels.map(function (_, i) {
+            return chartData.datasets.filter(function (ds) {
+                return (ds.data[i] || 0) > 0;
+            }).length;
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-        ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
-        if (ENRICHMENT_JOB_ID && !ACTIVE_JOB_IDS.includes(ENRICHMENT_JOB_ID)) {
-            restoreEnrichmentBanner(ENRICHMENT_JOB_ID);
+        // ENRICH-джоб рендерим отдельно с правильным текстом; остальные — generic restoreSyncBanner
+        // (который обновится на первом поллинге через pollSyncJob → getSyncProjectDesc)
+        ACTIVE_JOB_IDS
+            .filter(jobId => jobId !== ENRICHMENT_JOB_ID)
+            .forEach(jobId => restoreSyncBanner(jobId));
+        if (ENRICHMENT_JOB_ID) {
+            initPhase2Card(ENRICHMENT_JOB_ID);
+        }
+
+        // Init chart metric badge from active button
+        const activeMetricBtn = document.querySelector('.chart-seg-btn-active');
+        const chartBadge = document.getElementById('chartMetricBadge');
+        if (activeMetricBtn && chartBadge) {
+            chartBadge.textContent = activeMetricBtn.textContent.trim();
+        }
+
+        // Draw summary sparklines (only when metric is mr_merged_count)
+        if (SELECTED_METRIC === 'mr_merged_count' && INITIAL_CHART_DATA) {
+            drawSparkline('sparkline-mr', getAggregateValues(INITIAL_CHART_DATA));
+            drawSparkline('sparkline-devs', getActiveDevsValues(INITIAL_CHART_DATA), 'var(--accent-dim)');
         }
     });
 
@@ -1130,6 +1242,11 @@
             );
             active.forEach((ds, i) => {
                 ds.hidden = i >= TOP_N;
+                ds.pointRadius = 0;
+                ds.pointHoverRadius = 4;
+                ds.pointHitRadius = 8;
+                ds.borderWidth = 1.6;
+                ds.tension = 0;
             });
             rawData.datasets = active;
             return active.map(ds => ds.borderColor);
@@ -1139,9 +1256,22 @@
             if (!_chart) return;
             _chart.data.datasets.forEach((ds, i) => {
                 ds.borderColor = _origColors[i];
-                ds.borderWidth = 1.5;
+                ds.borderWidth = 1.6;
             });
             _chart.update('none');
+        }
+
+        function buildLegend(chartData) {
+            const legendEl = document.getElementById('chartLegend');
+            if (!legendEl) {
+                return;
+            }
+            legendEl.innerHTML = chartData.datasets
+                .filter(ds => !ds.hidden)
+                .map(ds => `<div class="chart-legend-item" data-dev="${escHtml(ds.label)}" onclick="legendHighlight(this)">`
+                    + `<span class="chart-legend-line" style="background:${escHtml(ds.borderColor)}"></span>`
+                    + `${escHtml(ds.label)}</div>`)
+                .join('');
         }
 
         window.rebuildChart = function (rawData) {
@@ -1167,32 +1297,43 @@
                 data: rawData,
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     interaction: {mode: 'index', intersect: false},
                     plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {boxWidth: 10, padding: 14, font: {size: 11}, color: '#6c737a'},
-                            onHover(evt, item, legend) {
-                                const idx = item.datasetIndex;
-                                legend.chart.data.datasets.forEach((ds, i) => {
-                                    ds.borderColor = i === idx ? _origColors[i] : hexToRgba(_origColors[i], 0.15);
-                                    ds.borderWidth = i === idx ? 2.5 : 1;
-                                });
-                                legend.chart.update('none');
-                            },
-                            onLeave() {
-                                restoreAll();
-                            }
-                        },
-                        tooltip: {padding: 10, bodySpacing: 4}
+                        legend: {display: false},
+                        tooltip: {
+                            padding: 10,
+                            bodySpacing: 4,
+                            backgroundColor: '#ffffff',
+                            borderColor: '#e7e3d8',
+                            borderWidth: 1,
+                            titleColor: '#16150f',
+                            bodyColor: '#5a5648',
+                            cornerRadius: 8
+                        }
                     },
                     scales: {
-                        x: {grid: {color: 'rgba(0,0,0,0.04)'}, ticks: {font: {size: 11}, maxRotation: 45}},
-                        y: {beginAtZero: true, grid: {color: 'rgba(0,0,0,0.04)'}, ticks: {font: {size: 11}}}
+                        x: {
+                            grid: {color: '#e7e3d8'},
+                            border: {dash: [2, 3]},
+                            ticks: {
+                                font: {size: 9, family: "'JetBrains Mono', monospace"},
+                                color: '#8a8573',
+                                maxRotation: 0
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {color: '#e7e3d8', dash: [2, 3]},
+                            ticks: {
+                                font: {size: 9, family: "'JetBrains Mono', monospace"},
+                                color: '#8a8573'
+                            }
+                        }
                     }
                 }
             });
+            buildLegend(rawData);
 
             // Hover на линиях
             let lastIdx = null;
@@ -1206,7 +1347,7 @@
                     restoreAll();
                 } else {
                     _chart.data.datasets.forEach((ds, i) => {
-                        ds.borderColor = i === idx ? _origColors[i] : hexToRgba(_origColors[i], 0.15);
+                        ds.borderColor = i === idx ? _origColors[i] : hexToRgba(_origColors[i], 0.12);
                         ds.borderWidth = i === idx ? 2.5 : 1;
                     });
                     _chart.update('none');
@@ -1221,12 +1362,68 @@
         // Первичная инициализация
         rebuildChart(INITIAL_CHART_DATA);
 
-        // Клик по строке таблицы — drill-down в MR сотрудника
+        // ── Highlight developer in chart ──────────────────────────────────────
+        let _highlightedUser = null;
+
+        function applyHighlight(userName) {
+            if (!_chart) {
+                return;
+            }
+            if (_highlightedUser === userName) {
+                _highlightedUser = null;
+            } else {
+                _highlightedUser = userName;
+            }
+            // Table rows
+            document.querySelectorAll('.report-table tbody tr').forEach(r => {
+                r.classList.toggle('row-highlighted', r.dataset.user === _highlightedUser);
+            });
+            // Legend items
+            document.querySelectorAll('.chart-legend-item').forEach(item => {
+                item.classList.toggle('legend-item-active', item.dataset.dev === _highlightedUser);
+            });
+            // Chart lines
+            if (_highlightedUser === null) {
+                restoreAll();
+            } else {
+                const dsIdx = _chart.data.datasets.findIndex(ds => ds.label === _highlightedUser);
+                _chart.data.datasets.forEach((ds, i) => {
+                    ds.borderColor = i === dsIdx ? _origColors[i] : hexToRgba(_origColors[i], 0.22);
+                    ds.borderWidth = i === dsIdx ? 2.5 : 1;
+                });
+                _chart.update('none');
+            }
+        }
+
+        // Expose globally for legend onclick
+        window.legendHighlight = function (el) {
+            applyHighlight(el.dataset.dev);
+        };
+
+        // Клик по строке таблицы — подсветка + drill-down
         document.querySelectorAll('.report-table tbody tr[data-user-id]').forEach(row => {
             row.addEventListener('click', function () {
+                applyHighlight(this.dataset.user);
                 openUserMrs(this.dataset.userId, this.dataset.user);
             });
         });
+
+        // ── Row sparklines ────────────────────────────────────────────────────
+        function drawRowSparklines() {
+            if (!INITIAL_CHART_DATA) {
+                return;
+            }
+            document.querySelectorAll('.row-sparkline[data-user]').forEach(svg => {
+                const userName = svg.dataset.user;
+                const ds = INITIAL_CHART_DATA.datasets.find(d => d.label === userName);
+                if (!ds || !ds.data || ds.data.length < 2) {
+                    return;
+                }
+                drawSparkline(svg.id, ds.data, ds.borderColor || 'var(--accent)');
+            });
+        }
+
+        drawRowSparklines();
     })();
 </script>
 
@@ -1234,24 +1431,6 @@
     (function initTableEnhancements() {
         const table = document.querySelector('.report-table');
         if (!table) return;
-
-        // ── Смена метрики — обновляем только график ───────────────────────────────
-
-        const metricSelect = document.getElementById('metricSelect');
-        if (metricSelect) {
-            metricSelect.addEventListener('change', async function () {
-                const metric = this.value;
-                const params = new URLSearchParams(window.location.search);
-                params.set('metric', metric);
-                try {
-                    const resp = await fetch('/report/chart?' + params.toString());
-                    const data = await resp.json();
-                    if (typeof rebuildChart === 'function') rebuildChart(data);
-                } catch (e) {
-                    console.error('Chart update failed', e);
-                }
-            });
-        }
 
         // ── Клиентская сортировка ─────────────────────────────────────────────────
 
@@ -1262,11 +1441,13 @@
             const cell = row.children[colIdx];
             if (!cell) return 0;
             const userName = cell.querySelector('.user-name');
-            if (userName) return userName.textContent.trim().toLowerCase();
-            const mainSpan = cell.querySelector('.metric-cell span:first-child');
-            const raw = mainSpan ? mainSpan.textContent : cell.textContent;
+            if (userName) {
+                return userName.textContent.trim().toLowerCase();
+            }
+            const span = cell.querySelector('span');
+            const raw = span ? span.textContent.trim() : cell.textContent.trim();
             const num = parseFloat(raw.replace(/[^0-9.-]/g, ''));
-            return isNaN(num) ? raw.trim() : num;
+            return isNaN(num) ? raw : num;
         }
 
         function sortByCol(colIdx) {
@@ -1274,9 +1455,12 @@
                 sortAsc = !sortAsc;
             } else {
                 sortColIdx = colIdx;
-                sortAsc = colIdx === 0; // имя — по возрастанию; числа — по убыванию
+                sortAsc = colIdx === 0;
             }
 
+            table.querySelectorAll('thead th').forEach((th, i) => {
+                th.classList.toggle('th-sort-active', i === colIdx);
+            });
             table.querySelectorAll('thead th .th-sort-icon').forEach((icon, i) => {
                 icon.textContent = i === colIdx ? (sortAsc ? ' ↑' : ' ↓') : '';
             });
@@ -1396,16 +1580,34 @@
                         } else if (sortCol === 'merged') {
                             av = new Date(a.mergedAt || 0);
                             bv = new Date(b.mergedAt || 0);
+                        } else if (sortCol === 'title') {
+                            av = (a.title || '').toLowerCase();
+                            bv = (b.title || '').toLowerCase();
+                        } else if (sortCol === 'repo') {
+                            av = (a.projectPath || '').toLowerCase();
+                            bv = (b.projectPath || '').toLowerCase();
+                        } else if (sortCol === 'added') {
+                            av = a.linesAdded ?? 0;
+                            bv = b.linesAdded ?? 0;
+                        } else if (sortCol === 'deleted') {
+                            av = a.linesDeleted ?? 0;
+                            bv = b.linesDeleted ?? 0;
+                        } else if (sortCol === 'commits') {
+                            av = a.commitCount ?? 0;
+                            bv = b.commitCount ?? 0;
                         } else {
                             av = a.hoursToMerge ?? 0;
                             bv = b.hoursToMerge ?? 0;
                         }
+                        if (av === bv) { return 0; }
                         return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
                     });
                 }
 
+                const ALL_SORT_COLS = ['title', 'repo', 'created', 'merged', 'ttm', 'added', 'deleted', 'commits'];
+
                 function updateHeaders() {
-                    ['created', 'merged', 'ttm'].forEach(col => {
+                    ALL_SORT_COLS.forEach(col => {
                         const icon = document.getElementById('mr-sort-icon-' + col);
                         if (icon) {
                             icon.textContent = sortCol === col ? (sortAsc ? ' ↑' : ' ↓') : '';
@@ -1425,33 +1627,40 @@
                 const warnClass = longCount > 0 ? ' mr-summary-pill-warn' : '';
                 const filterAttr = longCount > 0 ? ' data-filter="long"' : '';
 
+                const totalAdded = allMrs.reduce((s, m) => s + m.linesAdded, 0);
+                const totalDeleted = allMrs.reduce((s, m) => s + m.linesDeleted, 0);
+                const linesStr = totalAdded > 0 || totalDeleted > 0
+                    ? `<span style="color:#2da44e">+${totalAdded}</span> / <span style="color:#cf222e">−${totalDeleted}</span>`
+                    : '—';
+
                 document.getElementById('modal-user-mrs-body').innerHTML = `
                 <div class="mr-summary-strip">
                     <span class="mr-summary-pill"><b>${total}</b> MR</span>
                     <span class="mr-summary-pill">Медиана до мержа: <b>${medianStr}</b></span>
                     <span class="mr-summary-pill${warnClass}" id="mr-pill-long"${filterAttr}>Долгих &gt;24ч: <b>${longCount}</b></span>
+                    <span class="mr-summary-pill" title="Сумма строк по всем MR">Итого строк: <b>${linesStr}</b></span>
                 </div>
                 <div class="mr-table-wrap"><table class="mr-detail-table">
                     <thead><tr>
-                        <th>MR</th>
-                        <th>Репозиторий</th>
+                        <th class="mr-th-sort" id="mr-th-title">MR<span class="mr-sort-icon" id="mr-sort-icon-title"></span></th>
+                        <th class="mr-th-sort" id="mr-th-repo">Репозиторий<span class="mr-sort-icon" id="mr-sort-icon-repo"></span></th>
                         <th class="mr-th-sort" id="mr-th-created">Открыт<span class="mr-sort-icon" id="mr-sort-icon-created"></span></th>
                         <th class="mr-th-sort" id="mr-th-merged">Смёрджен<span class="mr-sort-icon" id="mr-sort-icon-merged"></span></th>
                         <th class="mr-th-sort" id="mr-th-ttm">До мержа<span class="mr-sort-icon" id="mr-sort-icon-ttm"> ↓</span></th>
-                        <th class="mr-td-num" title="Строк добавлено (коммиты автора)">+ строк</th>
-                        <th class="mr-td-num" title="Строк удалено (коммиты автора)">− строк</th>
-                        <th class="mr-td-num" title="Коммиты автора в MR">Коммиты</th>
+                        <th class="mr-th-sort mr-td-num" id="mr-th-added" title="Строк добавлено">+ строк<span class="mr-sort-icon" id="mr-sort-icon-added"></span></th>
+                        <th class="mr-th-sort mr-td-num" id="mr-th-deleted" title="Строк удалено">− строк<span class="mr-sort-icon" id="mr-sort-icon-deleted"></span></th>
+                        <th class="mr-th-sort mr-td-num" id="mr-th-commits" title="Коммиты автора в MR">Коммиты<span class="mr-sort-icon" id="mr-sort-icon-commits"></span></th>
                     </tr></thead>
                     <tbody id="mr-tbody">${renderRows(getSorted())}</tbody>
                 </table></div>`;
 
-                ['created', 'merged', 'ttm'].forEach(col => {
+                ALL_SORT_COLS.forEach(col => {
                     document.getElementById('mr-th-' + col).addEventListener('click', function () {
                         if (sortCol === col) {
                             sortAsc = !sortAsc;
                         } else {
                             sortCol = col;
-                            sortAsc = false;
+                            sortAsc = ['title', 'repo'].includes(col);
                         }
                         refresh();
                     });

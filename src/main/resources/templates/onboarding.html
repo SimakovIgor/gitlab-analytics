@@ -7,599 +7,435 @@
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>GitLab Analytics — Настройка</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
-    <style>
-        .ob-start-card {
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 2px 16px rgba(0, 0, 0, .07);
-            padding: 2rem 2.5rem 2.5rem;
-        }
-
-        @keyframes ob-fadein {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .main-content { animation: ob-fadein .35s ease; }
-
-        /* Режим A: вертикальное центрирование */
-        .ob-start-wrap {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: calc(100vh - 56px);
-            padding: 2rem 1rem;
-        }
-        .ob-start-card {
-            width: 100%;
-            max-width: 640px;
-        }
-        .ob-hint-line {
-            font-size: .8rem;
-            color: #999;
-            margin-bottom: 1.5rem;
-            letter-spacing: .02em;
-        }
-
-        /* Прогресс-бар шагов */
-        .ob-progress {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            margin-bottom: 3.5rem;
-        }
-        .ob-prog-step {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex-shrink: 0;
-            width: 28px;
-        }
-        .ob-prog-dot {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: .75rem;
-            font-weight: 700;
-        }
-        .ob-prog-dot-active {
-            background: #FC6D26;
-            color: #fff;
-            box-shadow: 0 0 0 4px rgba(252,109,38,.2);
-        }
-        .ob-prog-dot-inactive {
-            background: #f5f5f5;
-            color: #bbb;
-            border: 1.5px solid #d8d8d8;
-        }
-        .ob-prog-label {
-            position: absolute;
-            top: 32px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: .65rem;
-            color: #ccc;
-            white-space: nowrap;
-        }
-        .ob-prog-label-active {
-            color: #FC6D26;
-            font-weight: 700;
-        }
-        .ob-prog-line {
-            flex: 1;
-            height: 2px;
-            background: #eee;
-            margin: 0 4px;
-        }
-        .ob-prog-line-active {
-            background: #FC6D26;
-        }
-
-        .ob-start-title {
-            font-size: 1.65rem;
-            font-weight: 700;
-            color: #1a1a1a;
-            margin: 0 0 .5rem;
-        }
-        .ob-start-subtitle {
-            font-size: .95rem;
-            color: #666;
-            margin: 0 0 2rem;
-            line-height: 1.5;
-        }
-
-        /* Завершённый шаг stepper — менее яркий, чем active */
-        .ob-prog-dot-done {
-            background: #fff3ee;
-            color: #FC6D26;
-            border: 1.5px solid #fca326;
-            font-size: .8rem;
-        }
-        .ob-prog-label-done {
-            color: #aaa;
-            font-weight: 500;
-        }
-        .ob-prog-line-done {
-            background: #fca326;
-            opacity: .5;
-        }
-
-        /* Spinner для loading state кнопки */
-        @keyframes ob-spin { to { transform: rotate(360deg); } }
-        .ob-btn-spinner {
-            display: inline-block;
-            width: 12px; height: 12px;
-            border: 2px solid rgba(255,255,255,.35);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: ob-spin .7s linear infinite;
-            vertical-align: middle;
-            margin-right: 6px;
-        }
-
-        /* Финальный блок шага 6 — единый */
-        .ob-final-loading {
-            display: flex;
-            padding: 18px 20px;
-            background: #f8f9fa;
-            border: 1.5px solid #e9ecef;
-            border-radius: 10px;
-            margin-top: 1rem;
-        }
-        .ob-spinner {
-            width: 40px; height: 40px;
-            border: 3px solid #e9ecef;
-            border-top-color: #FC6D26;
-            border-radius: 50%;
-            animation: ob-spin 0.8s linear infinite;
-        }
-        @keyframes ob-spin { to { transform: rotate(360deg); } }
-        .ob-final-done {
-            background: #f8f9fa;
-            border: 1.5px solid #e9ecef;
-            border-radius: 14px;
-            padding: 2rem 1.75rem;
-            margin-top: 1rem;
-            text-align: center;
-        }
-        .ob-final-done-icon {
-            width: 48px; height: 48px;
-            margin: 0 auto .75rem;
-            background: #FC6D26;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 1.35rem;
-        }
-        .ob-final-done-title { font-size: 1.35rem; font-weight: 700; color: #1a1a1a; margin-bottom: .4rem; }
-        .ob-final-done-sub { font-size: .9rem; color: #666; margin-bottom: 1.25rem; }
-        .ob-final-stats { color: #888; font-size: .875rem; margin-bottom: 1.5rem; line-height: 1.8; }
-        .ob-final-action { display: flex; justify-content: center; }
-        .ob-final-action a { text-decoration: none; }
-
-        /* Discovery list улучшения */
-        #ob-discovery-list .discovery-row {
-            padding: 10px 12px;
-        }
-        #ob-discovery-list .discovery-email {
-            color: #aaa;
-        }
-        #ob-discovery-list .discovery-name {
-            font-weight: 600;
-        }
-        .ob-discovery-actions-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
-            padding-top: 10px;
-            border-top: 1px solid #f0f0f0;
-            margin-top: 10px;
-        }
-        .ob-discovery-actions-row .btn-sm-add {
-            margin-left: auto;
-        }
-
-        /* Контент активного шага */
-        .ob-step-body {
-            margin-top: 2rem;
-            animation: ob-fadein .3s ease;
-        }
-        .ob-step-body .btn-primary {
-            margin-top: .5rem;
-        }
-
-        /* Унифицированная ширина для обоих режимов */
-        .ob-start-card {
-            max-width: 720px;
-        }
-    </style>
 </head>
 <body class="app-layout">
 
+<!-- Минимальный топбар — только логотип + "Первичная настройка" -->
 <header class="topbar">
-    <span class="topbar-brand">
-        <svg fill="none" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
-            <path
-                d="M282.83 170.73l-.27-.69-26.14-68.22a6.81 6.81 0 00-2.69-3.24 7 7 0 00-8 .43 7 7 0 00-2.32 3.52l-17.65 54H154.29l-17.65-54a6.86 6.86 0 00-2.32-3.52 7 7 0 00-8-.43 6.85 6.85 0 00-2.69 3.24L97.44 170l-.26.69a48.54 48.54 0 0016.1 56.1l.09.07.24.17 39.82 29.82 19.7 14.91 12 9.06a8.07 8.07 0 009.76 0l12-9.06 19.7-14.91 40.06-30 .1-.08a48.56 48.56 0 0016.08-56.04z"
-                fill="#FC6D26"/>
+    <a class="topbar-brand" href="/">
+        <svg class="topbar-brand-logo" viewBox="0 0 22 22" fill="none">
+            <defs>
+                <linearGradient id="gl-ob" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="var(--accent)"/>
+                    <stop offset="1" stop-color="var(--accent-dim)"/>
+                </linearGradient>
+            </defs>
+            <path d="M11 1 L21 8 L17 21 L5 21 L1 8 Z" fill="url(#gl-ob)"/>
+            <path d="M11 1 L17 21 L11 14 L5 21 Z" fill="rgba(0,0,0,0.15)"/>
         </svg>
-        GitLab Analytics
-    </span>
+        <div class="topbar-brand-text">
+            <span class="topbar-brand-name">gitlens</span>
+            <span class="topbar-brand-sub">analytics</span>
+        </div>
+    </a>
+    <div style="width:1px;height:22px;background:var(--border-1);margin:0 16px;"></div>
+    <div style="font-size:11px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.1em;color:var(--fg-3);">
+        Первичная настройка
+    </div>
 </header>
 
 <!-- ══════════════════════════════════════════════════════════
-     РЕЖИМ A: создание workspace (шаг 1 из 6)
+     ШАГ 1: Создание workspace
      ══════════════════════════════════════════════════════════ -->
-<div class="main-content" th:if="${!workspaceReady}">
-    <div class="ob-start-wrap">
-        <div class="ob-start-card">
+<div class="ob-wrap" th:if="${!workspaceReady}">
+    <div class="ob-card">
 
-            <div class="ob-hint-line">Это займёт ~2 минуты</div>
-
-            <!-- Прогресс: 6 шагов -->
-            <div class="ob-progress">
-                <div class="ob-prog-step">
-                    <div class="ob-prog-dot ob-prog-dot-active">1</div>
-                    <div class="ob-prog-label ob-prog-label-active">Команда</div>
-                </div>
-                <div class="ob-prog-line"></div>
-                <div class="ob-prog-step">
-                    <div class="ob-prog-dot ob-prog-dot-inactive">2</div>
-                    <div class="ob-prog-label">GitLab</div>
-                </div>
-                <div class="ob-prog-line"></div>
-                <div class="ob-prog-step">
-                    <div class="ob-prog-dot ob-prog-dot-inactive">3</div>
-                    <div class="ob-prog-label">Репо</div>
-                </div>
-                <div class="ob-prog-line"></div>
-                <div class="ob-prog-step">
-                    <div class="ob-prog-dot ob-prog-dot-inactive">4</div>
-                    <div class="ob-prog-label">Синхр.</div>
-                </div>
-                <div class="ob-prog-line"></div>
-                <div class="ob-prog-step">
-                    <div class="ob-prog-dot ob-prog-dot-inactive">5</div>
-                    <div class="ob-prog-label">Сотрудники</div>
-                </div>
-                <div class="ob-prog-line"></div>
-                <div class="ob-prog-step">
-                    <div class="ob-prog-dot ob-prog-dot-inactive">6</div>
-                    <div class="ob-prog-label">Метрики</div>
-                </div>
+        <!-- Stepper: шаг 1 активен -->
+        <div class="ob-stepper">
+            <div class="ob-stepper-row">
+                <span>Шаг 01 / 06</span>
+                <span>Workspace</span>
             </div>
-
-            <h2 class="ob-start-title">Создайте команду</h2>
-            <p class="ob-start-subtitle">Добавьте репозитории и начните отслеживать метрики разработки</p>
-
-            <form method="post" th:action="@{/onboarding}">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                <div style="margin-bottom:1rem;">
-                    <label style="display:block;font-size:.85rem;font-weight:600;color:#444;margin-bottom:6px;">
-                        Название команды
-                    </label>
-                    <input
-                        class="form-input"
-                        type="text"
-                        name="workspaceName"
-                        placeholder="Например: Backend Team"
-                        required
-                        maxlength="255"
-                        autofocus
-                        style="width:100%;box-sizing:border-box;"/>
-                </div>
-                <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:.75rem 1.5rem;font-size:1rem;">
-                    Создать команду и продолжить →
-                </button>
-            </form>
-
+            <div class="ob-stepper-bars">
+                <div class="ob-bar ob-bar-active"></div>
+                <div class="ob-bar"></div>
+                <div class="ob-bar"></div>
+                <div class="ob-bar"></div>
+                <div class="ob-bar"></div>
+                <div class="ob-bar"></div>
+            </div>
+            <div class="ob-stepper-labels">
+                <div class="ob-slabel ob-slabel-active">Workspace</div>
+                <div class="ob-slabel">Git-система</div>
+                <div class="ob-slabel">Репозиторий и доступ</div>
+                <div class="ob-slabel">Синхронизация</div>
+                <div class="ob-slabel">Сотрудники</div>
+                <div class="ob-slabel">Готово</div>
+            </div>
         </div>
+
+        <div class="ob-eyebrow">Добро пожаловать</div>
+        <h1 class="ob-title">Создайте workspace</h1>
+        <p class="ob-sub">
+            Workspace — рабочая область, куда подключаются репозитории и
+            разработчики, за метриками которых вы хотите следить.
+        </p>
+
+        <form method="post" th:action="@{/onboarding}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <label class="ob-field-label">Название workspace</label>
+            <input class="ob-text-input" type="text" name="workspaceName"
+                   placeholder="Backend · Marketplace · ke-platform…"
+                   required maxlength="255" autofocus>
+            <div class="ob-field-hint">
+                Отображается в заголовке дашборда. Переименовать можно из настроек.
+            </div>
+            <div class="ob-nav-footer-end">
+                <button type="submit" class="ob-primary-btn">Продолжить →</button>
+            </div>
+        </form>
+
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
-     РЕЖИМ B: визард настройки (workspace уже создан)
+     ШАГИ 2–6: Визард (workspace уже создан)
      ══════════════════════════════════════════════════════════ -->
-<div class="main-content" th:if="${workspaceReady}">
-    <div class="ob-start-wrap">
-        <div class="ob-start-card" id="onboarding-wizard">
+<div class="ob-wrap" th:if="${workspaceReady}">
+    <div class="ob-card" id="onboarding-wizard">
 
-            <div class="ob-hint-line">Это займёт ~2 минуты</div>
-
-            <!-- Горизонтальный 6-шаговый stepper -->
-            <div class="ob-progress">
-
-                <!-- Шаг 1: Команда — всегда выполнен -->
-                <div class="ob-prog-step">
-                    <div class="ob-prog-dot ob-prog-dot-done">✓</div>
-                    <div class="ob-prog-label ob-prog-label-done">Команда</div>
-                </div>
-                <div class="ob-prog-line ob-prog-line-done"></div>
-
-                <!-- Шаг 2: GitLab -->
-                <div class="ob-prog-step">
-                    <div id="ob-dot-2"
-                         th:class="${hasSources} ? 'ob-prog-dot ob-prog-dot-done' : 'ob-prog-dot ob-prog-dot-active'"
-                         th:text="${hasSources} ? '✓' : '2'">2</div>
-                    <div id="ob-label-2"
-                         th:class="${hasSources} ? 'ob-prog-label ob-prog-label-done' : 'ob-prog-label ob-prog-label-active'">GitLab</div>
-                </div>
-                <div id="ob-line-2-3" th:class="${hasSources} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
-
-                <!-- Шаг 3: Репозиторий -->
-                <div class="ob-prog-step">
-                    <div id="ob-dot-3"
-                         th:class="${hasProjects} ? 'ob-prog-dot ob-prog-dot-done'
-                                   : (${hasSources} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive')"
-                         th:text="${hasProjects} ? '✓' : '3'">3</div>
-                    <div id="ob-label-3"
-                         th:class="${hasProjects} ? 'ob-prog-label ob-prog-label-done'
-                                   : (${hasSources} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label')">Репо</div>
-                </div>
-                <div id="ob-line-3-4" th:class="${hasProjects} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
-
-                <!-- Шаг 4: Синхронизация -->
-                <div class="ob-prog-step">
-                    <div id="ob-dot-4"
-                         th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-dot ob-prog-dot-done'
-                                   : (${hasProjects} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive')"
-                         th:text="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? '✓' : '4'">4</div>
-                    <div id="ob-label-4"
-                         th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-label ob-prog-label-done'
-                                   : (${hasProjects} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label')">Синхр.</div>
-                </div>
-                <div id="ob-line-4-5"
-                     th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
-
-                <!-- Шаг 5: Сотрудники -->
-                <div class="ob-prog-step">
-                    <div id="ob-dot-5"
-                         th:class="${hasUsers} ? 'ob-prog-dot ob-prog-dot-done'
-                                   : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive')"
-                         th:text="${hasUsers} ? '✓' : '5'">5</div>
-                    <div id="ob-label-5"
-                         th:class="${hasUsers} ? 'ob-prog-label ob-prog-label-done'
-                                   : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label')">Сотрудники</div>
-                </div>
-                <div id="ob-line-5-6" th:class="${hasUsers} ? 'ob-prog-line ob-prog-line-done' : 'ob-prog-line'"></div>
-
-                <!-- Шаг 6: Метрики -->
-                <div class="ob-prog-step">
-                    <div id="ob-dot-6"
-                         th:class="${hasUsers} ? 'ob-prog-dot ob-prog-dot-active' : 'ob-prog-dot ob-prog-dot-inactive'">6</div>
-                    <div id="ob-label-6"
-                         th:class="${hasUsers} ? 'ob-prog-label ob-prog-label-active' : 'ob-prog-label'">Метрики</div>
-                </div>
-
+        <!-- Горизонтальный stepper: counter row + bars + labels -->
+        <div class="ob-stepper" id="ob-stepper">
+            <div class="ob-stepper-row">
+                <span id="ob-stepper-counter-text">Шаг 02 / 06</span>
+                <span id="ob-stepper-current-label">Git-система</span>
             </div>
-
-            <!-- ── Контент активного шага ───────────────────────────────── -->
-
-            <!-- Шаг 2: Подключите GitLab -->
-            <div id="ob-content-2" th:class="${hasSources} ? 'ob-step-body hidden' : 'ob-step-body'">
-                <h2 class="ob-start-title">Подключите GitLab</h2>
-                <p class="ob-start-subtitle">Укажите URL вашего GitLab и добавьте источник — данные забираются только для чтения</p>
-                <button class="btn-primary" onclick="openModal('modal-source')">+ Добавить источник</button>
+            <div class="ob-stepper-bars">
+                <!-- Шаг 1: всегда done -->
+                <div class="ob-bar ob-bar-done" id="ob-bar-1"></div>
+                <!-- Шаги 2–6: Thymeleaf-стартовые состояния -->
+                <div id="ob-bar-2"
+                     th:class="${hasSources} ? 'ob-bar ob-bar-done' : 'ob-bar ob-bar-active'"></div>
+                <div id="ob-bar-3"
+                     th:class="${hasProjects} ? 'ob-bar ob-bar-done'
+                               : (${hasSources} ? 'ob-bar ob-bar-active' : 'ob-bar')"></div>
+                <div id="ob-bar-4"
+                     th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-bar ob-bar-done'
+                               : (${hasProjects} ? 'ob-bar ob-bar-active' : 'ob-bar')"></div>
+                <div id="ob-bar-5"
+                     th:class="${hasUsers} ? 'ob-bar ob-bar-done'
+                               : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-bar ob-bar-active' : 'ob-bar')"></div>
+                <div id="ob-bar-6"
+                     th:class="${hasUsers} ? 'ob-bar ob-bar-active' : 'ob-bar'"></div>
             </div>
-
-            <!-- Шаг 3: Добавьте репозиторий -->
-            <div id="ob-content-3"
-                 th:class="${!hasSources or hasProjects} ? 'ob-step-body hidden' : 'ob-step-body'">
-                <h2 class="ob-start-title">Добавьте репозиторий</h2>
-                <p class="ob-start-subtitle">Данные за 360 дней загрузятся автоматически после добавления</p>
-                <button class="btn-primary" onclick="openModal('modal-project')">+ Добавить репозиторий</button>
+            <div class="ob-stepper-labels">
+                <div class="ob-slabel ob-slabel-done" id="ob-slabel-1">Workspace</div>
+                <div id="ob-slabel-2"
+                     th:class="${hasSources} ? 'ob-slabel ob-slabel-done' : 'ob-slabel ob-slabel-active'">Git-система</div>
+                <div id="ob-slabel-3"
+                     th:class="${hasProjects} ? 'ob-slabel ob-slabel-done'
+                               : (${hasSources} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Репозиторий и доступ</div>
+                <div id="ob-slabel-4"
+                     th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-slabel ob-slabel-done'
+                               : (${hasProjects} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Синхронизация</div>
+                <div id="ob-slabel-5"
+                     th:class="${hasUsers} ? 'ob-slabel ob-slabel-done'
+                               : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Сотрудники</div>
+                <div id="ob-slabel-6"
+                     th:class="${hasUsers} ? 'ob-slabel ob-slabel-active' : 'ob-slabel'">Готово</div>
             </div>
+        </div>
 
-            <!-- Шаг 4: Синхронизация -->
-            <div id="ob-content-4"
-                 th:class="${hasProjects and !(hasSyncCompleted and activeJobIds.isEmpty())} ? 'ob-step-body' : 'ob-step-body hidden'">
-                <h2 class="ob-start-title">Синхронизация данных</h2>
-                <!-- Ошибка: синк упал (например, приложение перезапустилось во время синка) -->
-                <div th:if="${lastFailedSyncJobId != null and activeJobIds.isEmpty()}"
-                     style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:8px;
-                            background:#fff5f5;border:1px solid #fca5a5;margin-bottom:16px;">
-                    <span style="font-size:20px;line-height:1.4">&#x26A0;&#xFE0F;</span>
-                    <div>
-                        <div style="font-weight:600;color:#b91c1c;margin-bottom:4px;">Синхронизация прервалась</div>
-                        <div style="color:#6b7280;font-size:14px;margin-bottom:10px;">
-                            Приложение было перезапущено во время синхронизации. Данные загружены не полностью.
+        <!-- ── Шаг 2: Git-система ──────────────────────────────────────────── -->
+        <div id="ob-content-2" th:class="${hasSources} ? 'ob-step-body hidden' : 'ob-step-body'">
+            <div class="ob-eyebrow">Git-система</div>
+            <h1 class="ob-title">Откуда читаем данные</h1>
+            <p class="ob-sub">
+                Поддерживаем GitLab — облачный и self-hosted. Выберите, где лежит
+                ваш код; на следующем шаге подключим конкретный репозиторий.
+            </p>
+
+            <div class="ob-option-cards">
+                <!-- Self-hosted GitLab — активна по умолчанию -->
+                <button type="button" class="ob-option-card ob-option-card-active"
+                        id="ob-option-self-hosted" onclick="selectGitOption('self-hosted')">
+                    <div class="ob-option-radio ob-option-radio-active" id="ob-radio-self-hosted"></div>
+                    <div style="flex:1;min-width:0">
+                        <div class="ob-option-title">
+                            Self-hosted GitLab
+                            <span class="ob-option-mono">gitlab.yourcompany.ru</span>
                         </div>
-                        <button class="btn-primary"
-                                th:onclick="|retrySyncOnboarding(${lastFailedSyncJobId})|"
-                                style="font-size:14px;padding:7px 16px;">
-                            Запустить снова
-                        </button>
+                        <div class="ob-option-desc">Ваш собственный инстанс — Community или Enterprise Edition</div>
                     </div>
-                </div>
-                <p class="ob-start-subtitle"
-                   th:classappend="${lastFailedSyncJobId != null and activeJobIds.isEmpty()} ? ' hidden' : ''">
-                    Загружаем список MR за 360 дней — займёт ~1-2 минуты. Шаг 5 откроется автоматически.
-                </p>
-                <div id="ob-sync-section">
-                    <div id="sync-banners-ob"></div>
+                </button>
+                <!-- GitLab.com — недоступна -->
+                <button type="button" class="ob-option-card" id="ob-option-gitlab-com" disabled>
+                    <div class="ob-option-radio" id="ob-radio-gitlab-com"></div>
+                    <div style="flex:1;min-width:0">
+                        <div class="ob-option-title">
+                            GitLab.com
+                            <span class="ob-option-mono">gitlab.com</span>
+                            <span class="ob-option-soon">Скоро</span>
+                        </div>
+                        <div class="ob-option-desc">Публичное облако GitLab</div>
+                    </div>
+                </button>
+            </div>
+
+            <!-- URL для self-hosted -->
+            <div id="ob-host-wrap" style="margin-bottom:20px">
+                <label class="ob-field-label">Адрес GitLab</label>
+                <input class="ob-text-input ob-mono" id="ob-host"
+                       type="text" placeholder="gitlab.yourcompany.ru"
+                       oninput="updateStep2NextBtn()"
+                       onchange="updateStep2NextBtn()"
+                       onpaste="setTimeout(updateStep2NextBtn,0)"
+                       onkeyup="updateStep2NextBtn()">
+                <div class="ob-field-hint">
+                    Без <code style="font-family:var(--font-mono)">https://</code> — только домен. Нужен доступ из сети gitlens.
                 </div>
             </div>
 
-            <!-- Шаг 5: Подтвердите состав команды -->
-            <div id="ob-content-5" class="ob-step-body hidden">
-                <h2 class="ob-start-title">Ваша команда</h2>
-                <p class="ob-start-subtitle">Мы нашли этих разработчиков в ваших MR — уберите лишних и подтвердите состав</p>
-                <div class="discovery-loading hidden" id="ob-discovery-loading">
-                    <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                    Загружаем список...
-                </div>
-                <div class="discovery-list" id="ob-discovery-list" style="max-height:340px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:8px;"></div>
-                <div class="ob-discovery-actions-row hidden" id="ob-discovery-actions">
-                    <button class="btn-sm btn-secondary" onclick="toggleAllOb(false)">Снять все</button>
-                    <button class="btn-sm btn-secondary" onclick="toggleAllOb(true)">Выбрать всех</button>
-                    <button class="btn-sm btn-primary" id="ob-btn-confirm" onclick="confirmTeamSelection()" style="margin-left:auto">Подтвердить состав →</button>
-                </div>
-            </div>
+            <div class="ob-info-box">GitHub и Bitbucket — в roadmap на Q2.</div>
 
-            <!-- Шаг 6: Финал — единый success-блок -->
-            <div id="ob-content-6" th:class="${!hasUsers} ? 'ob-step-body hidden' : 'ob-step-body'">
-                <h2 class="ob-start-title">История метрик</h2>
-                <p class="ob-start-subtitle">Создаём снапшоты за 360 дней для выбранных сотрудников</p>
-                <div class="ob-final-loading" id="ob-final-loading">
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding:32px 0;">
-                        <div class="ob-spinner"></div>
-                        <div style="font-size:.95rem;color:#555;">Загружаем историю метрик...</div>
-                        <div style="font-size:.8rem;color:#aaa;">Это может занять до минуты</div>
-                        <a href="/report" style="color:#FC6D26;font-size:.82rem;text-decoration:none;">Пропустить →</a>
-                    </div>
-                </div>
-                <div class="ob-final-done hidden" id="ob-final-done">
-                    <div class="ob-final-done-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    </div>
-                    <div class="ob-final-done-title">Всё готово!</div>
-                    <div class="ob-final-done-sub">Данные синхронизированы, история метрик за 360 дней загружена</div>
-                    <div class="ob-final-stats" id="ob-final-stats"></div>
-                    <div class="ob-final-action">
-                        <a class="btn-primary" href="/report"
-                           style="padding:.875rem 2.5rem;font-size:1.05rem;font-weight:600;">
-                            Перейти к аналитике команды →
-                        </a>
-                    </div>
-                </div>
-            </div>
+            <div id="ob-step2-error" class="modal-error hidden" style="margin-top:10px"></div>
 
+            <div class="ob-nav-footer">
+                <div></div>
+                <button type="button" class="ob-primary-btn" id="ob-step2-next-btn"
+                        onclick="ob_step2_next()" disabled>Продолжить →</button>
+            </div>
         </div>
+
+        <!-- ── Шаг 3: Репозиторий и доступ ───────────────────────────────── -->
+        <div id="ob-content-3"
+             th:class="${!hasSources or hasProjects} ? 'ob-step-body hidden' : 'ob-step-body'">
+            <div class="ob-eyebrow">Репозиторий и доступ</div>
+            <h1 class="ob-title">Подключите первый репозиторий</h1>
+            <p class="ob-sub">
+                Вставьте Access Token от вашего GitLab —
+                мы проверим его и покажем репозитории, к которым он даёт доступ.
+                Выберите тот, с которого начнём.
+            </p>
+
+            <!-- Скрытый source ID, заполняется JS после создания source -->
+            <input type="hidden" id="project-source-id"
+                   th:value="${sources != null and !sources.isEmpty()} ? ${sources[0].id} : ''">
+
+            <!-- Token input -->
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+                <label class="ob-field-label" style="margin:0">Access Token</label>
+                <a class="ob-token-link" id="ob-token-link"
+                   href="#" target="_blank" rel="noreferrer">Где взять токен ↗</a>
+            </div>
+            <input class="ob-text-input ob-mono" id="project-token"
+                   type="password" placeholder="glpat-••••••••••••••••"
+                   oninput="ob_onTokenChange(this.value)">
+            <div class="ob-token-status" id="ob-token-status">
+                Scope <code style="font-family:var(--font-mono);color:var(--fg-1)">read_api</code>
+                + <code style="font-family:var(--font-mono);color:var(--fg-1)">read_repository</code>
+                · роль <code style="font-family:var(--font-mono);color:var(--fg-1)">Reporter</code> или выше
+            </div>
+
+            <div style="margin-top:16px">
+                <button type="button" class="ob-outline-btn" id="ob-validate-btn"
+                        onclick="ob_validateToken()" disabled>Проверить токен</button>
+            </div>
+
+            <!-- Repo list (показывается после валидации токена) -->
+            <div id="ob-repo-list-wrap" class="hidden" style="margin-top:26px">
+                <label class="ob-field-label">Выберите репозиторий</label>
+                <div class="ob-repo-list" id="ob-repo-list-items">
+                    <div style="padding:16px;font-size:12.5px;color:var(--fg-3)">Загружаем список репозиториев…</div>
+                </div>
+                <div class="ob-field-hint">Остальные репозитории добавите из настроек после онбординга.</div>
+            </div>
+
+            <!-- Info box -->
+            <div class="ob-info-box ob-info-box-flex" style="margin-top:22px">
+                <div class="ob-info-icon">i</div>
+                <div style="font-size:12.5px;color:var(--fg-2);line-height:1.55">
+                    Токен шифруется при записи. Код репозитория не читаем — только метаданные MR, коммитов, ревью и комментариев.
+                </div>
+            </div>
+
+            <div id="ob-step3-error" class="modal-error hidden" style="margin-top:10px"></div>
+
+            <div class="ob-nav-footer">
+                <button type="button" class="ob-link-btn" onclick="ob_backToStep2()">← Назад</button>
+                <button type="button" class="ob-primary-btn" id="btn-add-project"
+                        onclick="ob_step3_addProject()" disabled>Продолжить →</button>
+            </div>
+        </div>
+
+        <!-- ── Шаг 4: Синхронизация ───────────────────────────────────────── -->
+        <div id="ob-content-4"
+             th:class="${hasProjects and !(hasSyncCompleted and activeJobIds.isEmpty())} ? 'ob-step-body' : 'ob-step-body hidden'">
+            <div class="ob-eyebrow">Синхронизация · фаза 1 из 2</div>
+            <h1 class="ob-title">Собираем список MR</h1>
+            <p class="ob-sub"
+               th:classappend="${lastFailedSyncJobId != null and activeJobIds.isEmpty()} ? ' hidden' : ''">
+                Сначала подтянем только merge requests — этого хватит для выбора сотрудников.
+                Коммиты, ревью и комментарии загрузим фоном после онбординга, чтобы вы не ждали зря.
+            </p>
+
+            <!-- Ошибка синка -->
+            <div class="ob-sync-error"
+                 th:if="${lastFailedSyncJobId != null and activeJobIds.isEmpty()}">
+                <span style="font-size:18px;line-height:1.4">&#x26A0;&#xFE0F;</span>
+                <div>
+                    <div style="font-weight:600;color:var(--bad);margin-bottom:4px;">Синхронизация прервалась</div>
+                    <div style="color:var(--fg-2);font-size:14px;margin-bottom:10px;">
+                        Приложение было перезапущено во время синхронизации. Данные загружены не полностью.
+                    </div>
+                    <button class="ob-primary-btn" style="font-size:14px;padding:7px 16px"
+                            th:onclick="|retrySyncOnboarding(${lastFailedSyncJobId})|">
+                        Запустить снова
+                    </button>
+                </div>
+            </div>
+
+            <!-- Прогресс синка (создаётся JS) -->
+            <div id="ob-sync-section">
+                <div id="sync-banners-ob"></div>
+            </div>
+
+            <!-- Превью фазы 2 -->
+            <div class="ob-phase2-preview" style="margin-top:14px">
+                <div class="ob-phase2-num">2</div>
+                <div>
+                    <div class="ob-phase2-eyebrow">Фаза 2 · после онбординга</div>
+                    <div class="ob-phase2-desc">
+                        Коммиты, ревью, комментарии, апрувы — подтянем фоном.
+                        Обзор метрик станет полным через 5–10 минут.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Шаг 5: Состав команды ──────────────────────────────────────── -->
+        <div id="ob-content-5" class="ob-step-body hidden">
+            <div class="ob-eyebrow">Сотрудники</div>
+            <h1 class="ob-title">Выберите, за кем следим</h1>
+            <p class="ob-sub">
+                Мы нашли этих разработчиков в ваших MR — уберите лишних и подтвердите состав.
+                Список можно менять потом.
+            </p>
+
+            <div class="discovery-loading hidden" id="ob-discovery-loading"
+                 style="display:flex;align-items:center;gap:10px;padding:16px;color:var(--fg-2);font-size:14px">
+                <span class="sync-spinner" style="border-color:var(--border-2);border-top-color:var(--fg-2)"></span>
+                Загружаем список авторов...
+            </div>
+            <div class="ob-check-list" id="ob-discovery-list"></div>
+
+            <div class="ob-discovery-actions hidden" id="ob-discovery-actions"
+                 style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+                <div class="ob-people-actions-links">
+                    <button class="ob-link-btn" onclick="toggleAllOb(false)">Снять все</button>
+                    <button class="ob-link-btn" onclick="toggleAllOb(true)">Выбрать всех</button>
+                </div>
+                <div class="ob-selected-counter" id="ob-selected-counter">Выбрано: 0 / 0</div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:32px">
+                <button class="ob-primary-btn" id="ob-btn-confirm"
+                        onclick="confirmTeamSelection()">Подтвердить состав →</button>
+            </div>
+        </div>
+
+        <!-- ── Шаг 6: Финал ───────────────────────────────────────────────── -->
+        <div id="ob-content-6" th:class="${!hasUsers} ? 'ob-step-body hidden' : 'ob-step-body'">
+            <div class="ob-eyebrow">Готово</div>
+            <h1 class="ob-title">
+                <em th:text="${workspaceName != null and !workspaceName.isEmpty()} ? ${workspaceName} : 'Ваша команда'">Ваша команда</em><br>
+                настроена.
+            </h1>
+            <p class="ob-sub">
+                MR за 360 дней загружены — отчёт уже доступен. Детальные метрики
+                (коммиты, ревью, комментарии) собираем в фоне: для крупных репо это занимает до часа.
+            </p>
+
+            <!-- Статистика: репо / разработчиков / MR -->
+            <div class="ob-stats-grid" id="ob-stats-grid">
+                <div class="ob-stat-cell">
+                    <div class="ob-stat-value" id="ob-stat-repos">—</div>
+                    <div class="ob-stat-label">репозиторий</div>
+                </div>
+                <div class="ob-stat-cell">
+                    <div class="ob-stat-value" id="ob-stat-devs">—</div>
+                    <div class="ob-stat-label">разработчиков</div>
+                </div>
+                <div class="ob-stat-cell">
+                    <div class="ob-stat-value num" id="ob-stat-mrs">—</div>
+                    <div class="ob-stat-label">MR за 360d</div>
+                </div>
+            </div>
+
+            <!-- Фаза 1: MR загружены -->
+            <div class="ob-phase-card ob-phase-card-good">
+                <div class="ob-phase-check">
+                    <svg width="12" height="12" viewBox="0 0 20 20">
+                        <path d="M4 10.5 L8 14.5 L16 6" stroke="#fff" stroke-width="2.5"
+                              fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="ob-phase-title">Фаза 1 · MR загружены</div>
+                    <div class="ob-phase-desc">Дашборд готов к использованию прямо сейчас.</div>
+                </div>
+            </div>
+
+            <!-- Фаза 2: идёт фоновая загрузка -->
+            <div class="ob-phase-card ob-phase-card-running">
+                <div class="ob-phase2-running-header">
+                    <svg class="ob-sync-spinner" width="22" height="22" viewBox="0 0 22 22">
+                        <circle cx="11" cy="11" r="8" stroke="var(--border-2)" stroke-width="2" fill="none"/>
+                        <path d="M19 11 A 8 8 0 0 0 11 3" stroke="var(--accent)" stroke-width="2"
+                              fill="none" stroke-linecap="round"/>
+                    </svg>
+                    <div style="flex:1">
+                        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                            <div class="ob-phase2-running-title">Фаза 2 · подтягиваем коммиты, ревью и комментарии</div>
+                            <div class="ob-phase2-running-eta" id="ob-phase2-eta">~10–30 мин</div>
+                        </div>
+                        <div class="ob-phase2-running-desc">
+                            Зависит от глубины истории репозитория.
+                            Прогресс продолжится в дашборде — данные будут появляться по мере загрузки.
+                        </div>
+                    </div>
+                </div>
+                <div class="ob-sync-bar-relative">
+                    <div class="ob-sync-bar-fill-indeterminate"></div>
+                </div>
+                <div class="ob-phase2-counters" id="ob-phase2-counters">
+                    <div>
+                        <div class="ob-phase2-counter-val num" id="ob-c-commits">0
+                            <span class="ob-phase2-counter-loaded">загружено</span>
+                        </div>
+                        <div class="ob-phase2-counter-label">Коммиты</div>
+                    </div>
+                    <div>
+                        <div class="ob-phase2-counter-val num" id="ob-c-reviews">0
+                            <span class="ob-phase2-counter-loaded">загружено</span>
+                        </div>
+                        <div class="ob-phase2-counter-label">Ревью</div>
+                    </div>
+                    <div>
+                        <div class="ob-phase2-counter-val num" id="ob-c-comments">0
+                            <span class="ob-phase2-counter-loaded">загружено</span>
+                        </div>
+                        <div class="ob-phase2-counter-label">Коммент.</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="ob-primary-btn ob-primary-btn-full" onclick="window.location.href='/report'"
+                    style="width:100%;justify-content:center;">
+                Открыть отчёт →
+            </button>
+            <div class="ob-final-note">
+                Можно открыть дашборд прямо сейчас — данные будут появляться по мере
+                загрузки, а следующий sync запустится завтра в 06:00.
+            </div>
+        </div>
+
     </div>
 </div>
 
-<!-- ═══════════════ Модалки (только в режиме визарда) ═══════════════ -->
+<!-- ═══════════════ Модалки (только для sidebar, не используются в визарде) ═══ -->
 
-<!-- Добавить источник -->
-<div class="modal-overlay hidden" id="modal-source" onclick="handleOverlayClick(event, 'modal-source')" th:if="${workspaceReady}">
-    <div class="modal">
-        <div class="modal-header">
-            <span>Новый GitLab Source</span>
-            <button class="modal-close" onclick="closeModal('modal-source')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div class="modal-error hidden" id="source-error"></div>
-            <div class="form-group">
-                <label class="form-label">Название</label>
-                <input class="form-input" id="source-name" placeholder="Production GitLab" type="text">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Base URL</label>
-                <input class="form-input" id="source-url" placeholder="https://gitlab.example.com" type="url">
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeModal('modal-source')">Отмена</button>
-            <button class="btn-primary" onclick="createSource()">Добавить</button>
-        </div>
-    </div>
-</div>
-
-<!-- Добавить репозиторий -->
-<div class="modal-overlay hidden" id="modal-project" onclick="handleOverlayClick(event, 'modal-project')" th:if="${workspaceReady}">
-    <div class="modal">
-        <div class="modal-header">
-            <span>Добавить репозиторий</span>
-            <button class="modal-close" onclick="closeModal('modal-project')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div class="modal-error hidden" id="project-error"></div>
-            <div class="form-group">
-                <label class="form-label">GitLab Source</label>
-                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
-                    <option value="">— выберите источник —</option>
-                    <option th:each="source : ${sources}"
-                            th:text="${source.name}"
-                            th:value="${source.id}">Source
-                    </option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Project Access Token</label>
-                <input class="form-input" id="project-token"
-                       oninput="clearProjectSearch(); scheduleTokenValidate()"
-                       placeholder="glpat-..." type="password">
-                <div class="token-validate-status" id="token-validate-status"></div>
-                <div class="form-hint token-hint">
-                    <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Репозиторий</label>
-                <div class="search-input-wrap">
-                    <span class="search-input-icon">🔍</span>
-                    <input autocomplete="off" class="form-input search-input-with-icon" id="project-search"
-                           oninput="debounceSearch(this.value)"
-                           placeholder="Начните вводить название..."
-                           type="search">
-                </div>
-            </div>
-            <div class="search-results hidden" id="project-search-results"></div>
-            <div class="selected-project hidden" id="project-selected">
-                <div class="selected-project-card">
-                    <span id="project-selected-name"></span>
-                    <span class="repo-path" id="project-selected-path"></span>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
-            <button class="btn-primary" disabled id="btn-add-project" onclick="addProject()">Добавить и синхронизировать</button>
-        </div>
-    </div>
-</div>
-
-<!-- Добавить сотрудника -->
-<div class="modal-overlay hidden" id="modal-user" onclick="handleOverlayClick(event, 'modal-user')" th:if="${workspaceReady}">
-    <div class="modal">
-        <div class="modal-header">
-            <span>Новый сотрудник</span>
-            <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div class="modal-error hidden" id="user-error"></div>
-            <div class="form-group" th:if="${hasProjects}">
-                <label class="form-label">Найти в GitLab</label>
-                <div class="form-group-row">
-                    <select class="form-input form-input-sm" id="user-search-source">
-                        <option th:each="source : ${sources}"
-                                th:text="${source.name}"
-                                th:value="${source.id}">Источник
-                        </option>
-                    </select>
-                    <div class="search-input-wrap" style="flex:1">
-                        <span class="search-input-icon">
-                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21"
-                                                                                                                                                                    y2="16.65"/></svg>
-                        </span>
-                        <input autocomplete="off" class="form-input search-input-with-icon" id="user-gl-search"
-                               oninput="debounceUserSearch(this.value)"
-                               placeholder="Имя или username..."
-                               type="search">
-                    </div>
-                </div>
-                <div class="search-results hidden" id="user-search-results"></div>
-                <div class="form-hint">Выберите — имя и email подтянутся автоматически</div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Имя <span class="form-required">*</span></label>
-                <input class="form-input" id="user-name" placeholder="Иван Иванов" type="text">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Email (для атрибуции коммитов) <span class="form-required">*</span></label>
-                <input class="form-input" id="user-email" placeholder="ivan@example.com" type="email">
-                <div class="form-hint">Должен совпадать с email в git-коммитах</div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" onclick="closeModal('modal-user')">Отмена</button>
-            <button class="btn-primary" onclick="createUser()">Добавить</button>
-        </div>
-    </div>
-</div>
+<!-- Добавить источник (для report/settings страниц) — здесь не отображается -->
 
 <script th:inline="javascript" th:if="${workspaceReady}">
     /*<![CDATA[*/
@@ -615,6 +451,8 @@
         hasProjects: /*[[${hasProjects}]]*/ false,
         hasUsers:    /*[[${hasUsers}]]*/ false
     };
+
+    const STEP_LABELS = ['Workspace', 'Git-система', 'Репозиторий и доступ', 'Синхронизация', 'Сотрудники', 'Готово'];
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
     let hasSyncCompleted = /*[[${hasSyncCompleted}]]*/ false;
@@ -648,11 +486,17 @@
     }
 
     function openModal(id) {
-        document.getElementById(id).classList.remove('hidden');
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('hidden');
+        }
     }
 
     function closeModal(id) {
-        document.getElementById(id).classList.add('hidden');
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.add('hidden');
+        }
         const errId = id.replace('modal-', '') + '-error';
         clearModalError(errId);
     }
@@ -665,8 +509,10 @@
 
     function showError(errorId, msg) {
         const el = document.getElementById(errorId);
-        el.textContent = msg;
-        el.classList.remove('hidden');
+        if (el) {
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
     }
 
     function clearModalError(errorId) {
@@ -677,34 +523,480 @@
         }
     }
 
-    // ── Баннеры синхронизации ─────────────────────────────────────────────────
+    // ── Stepper ───────────────────────────────────────────────────────────────
 
-    function buildBannerHtml(jobId, descHtml) {
-        return `
-        <span class="sync-spinner"></span>
-        <div class="sync-main">
-            <span class="sync-text">${descHtml}</span>
-            <div class="sync-progress-row">
-                <div class="sync-progress-bar">
-                    <div class="sync-progress-fill" id="sync-fill-${jobId}" style="width:0%"></div>
+    function applyStep(stepNum, state) {
+        const bar = document.getElementById('ob-bar-' + stepNum);
+        const lbl = document.getElementById('ob-slabel-' + stepNum);
+        if (bar) {
+            bar.className = 'ob-bar' + (state !== 'inactive' ? ' ob-bar-' + state : '');
+        }
+        if (lbl) {
+            lbl.className = 'ob-slabel' + (state !== 'inactive' ? ' ob-slabel-' + state : '');
+        }
+    }
+
+    function updateStepperCounter(stepNum) {
+        const counterEl = document.getElementById('ob-stepper-counter-text');
+        const labelEl = document.getElementById('ob-stepper-current-label');
+        if (counterEl) {
+            counterEl.textContent = 'Шаг ' + String(stepNum).padStart(2, '0') + ' / 06';
+        }
+        if (labelEl) {
+            labelEl.textContent = STEP_LABELS[stepNum - 1] || '';
+        }
+    }
+
+    function getActiveStepNum(s) {
+        if (!s.hasSources) {
+            return 2;
+        }
+        if (!s.hasProjects) {
+            return 3;
+        }
+        const syncDone = hasSyncCompleted && !activeSyncRunning;
+        if (!syncDone) {
+            return 4;
+        }
+        if (awaitingTeamConfirmation) {
+            return 5;
+        }
+        if (!s.hasUsers) {
+            return 5;
+        }
+        return 6;
+    }
+
+    function showContent(num, visible) {
+        const el = document.getElementById('ob-content-' + num);
+        if (el) {
+            el.classList.toggle('hidden', !visible);
+        }
+    }
+
+    function refreshOnboarding() {
+        const s = OB_STATE;
+        const syncDone = s.hasProjects && hasSyncCompleted && !activeSyncRunning;
+
+        applyStep(2, s.hasSources ? 'done' : 'active');
+        applyStep(3, s.hasProjects ? 'done' : s.hasSources ? 'active' : 'inactive');
+        applyStep(4, syncDone ? 'done' : s.hasProjects ? 'active' : 'inactive');
+        applyStep(5, s.hasUsers ? 'done' : syncDone ? 'active' : 'inactive');
+        applyStep(6, s.hasUsers ? 'active' : 'inactive');
+
+        const activeStep = getActiveStepNum(s);
+        updateStepperCounter(activeStep);
+
+        showContent(2, !s.hasSources);
+        showContent(3, s.hasSources && !s.hasProjects);
+        showContent(4, s.hasProjects && !syncDone);
+        showContent(5, awaitingTeamConfirmation);
+        showContent(6, s.hasUsers && !awaitingTeamConfirmation);
+
+        if (s.hasUsers && !awaitingTeamConfirmation) {
+            populateStep6Stats();
+        }
+        updateStep2NextBtn();
+    }
+
+    // ── Шаг 2: Git-система ───────────────────────────────────────────────────
+
+    let obSelectedGitOption = 'self-hosted';
+
+    function selectGitOption(option) {
+        obSelectedGitOption = option;
+        const selfCard = document.getElementById('ob-option-self-hosted');
+        const selfRadio = document.getElementById('ob-radio-self-hosted');
+        const hostWrap = document.getElementById('ob-host-wrap');
+        if (selfCard) {
+            selfCard.classList.toggle('ob-option-card-active', option === 'self-hosted');
+        }
+        if (selfRadio) {
+            selfRadio.classList.toggle('ob-option-radio-active', option === 'self-hosted');
+        }
+        if (hostWrap) {
+            hostWrap.classList.toggle('hidden', option !== 'self-hosted');
+        }
+        updateStep2NextBtn();
+    }
+
+    function updateStep2NextBtn() {
+        const hostEl = document.getElementById('ob-host');
+        const host = hostEl ? hostEl.value.trim() : '';
+        const btn = document.getElementById('ob-step2-next-btn');
+        if (btn) {
+            btn.disabled = host.length < 3 || !host.includes('.');
+        }
+    }
+
+    async function ob_step2_next() {
+        const rawHost = (document.getElementById('ob-host').value || '').trim()
+            .replace(/^https?:\/\//, '').replace(/\/$/, '');
+        if (!rawHost) {
+            return;
+        }
+        const btn = document.getElementById('ob-step2-next-btn');
+        const errEl = document.getElementById('ob-step2-error');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="ob-btn-spinner"></span>Подключаем...';
+        if (errEl) {
+            errEl.classList.add('hidden');
+        }
+        try {
+            const source = await api('POST', '/settings/sources', {
+                name: rawHost,
+                baseUrl: 'https://' + rawHost
+            });
+            const sourceIdEl = document.getElementById('project-source-id');
+            if (sourceIdEl) {
+                sourceIdEl.value = source.id;
+            }
+            const tokenLink = document.getElementById('ob-token-link');
+            if (tokenLink) {
+                tokenLink.href = 'https://' + rawHost + '/-/user_settings/personal_access_tokens';
+            }
+            OB_STATE.hasSources = true;
+            refreshOnboarding();
+        } catch (e) {
+            if (errEl) {
+                errEl.textContent = e.message;
+                errEl.classList.remove('hidden');
+            }
+            btn.disabled = false;
+            btn.textContent = 'Продолжить →';
+        }
+    }
+
+    // ── Шаг 3: Токен + репо ──────────────────────────────────────────────────
+
+    let selectedProject = null;
+    let searchDebounceTimer = null;
+    let tokenValidateTimer = null;
+    let tokenIsValid = false;
+
+    function ob_onTokenChange(v) {
+        tokenIsValid = false;
+        selectedProject = null;
+        const repoWrap = document.getElementById('ob-repo-list-wrap');
+        if (repoWrap) {
+            repoWrap.classList.add('hidden');
+        }
+        const validateBtn = document.getElementById('ob-validate-btn');
+        if (validateBtn) {
+            validateBtn.disabled = !v || v.trim().length < 5;
+            validateBtn.textContent = 'Проверить токен';
+        }
+        const addBtn = document.getElementById('btn-add-project');
+        if (addBtn) {
+            addBtn.disabled = true;
+        }
+        ob_updateTokenStatus('default', null);
+        // Сбрасываем список репозиториев
+        const listEl = document.getElementById('ob-repo-list-items');
+        if (listEl) {
+            listEl.innerHTML = '<div style="padding:16px;font-size:12.5px;color:var(--fg-3)">Загружаем список репозиториев…</div>';
+        }
+    }
+
+    function ob_updateTokenStatus(state, message) {
+        const el = document.getElementById('ob-token-status');
+        if (!el) {
+            return;
+        }
+        if (state === 'ok') {
+            el.style.color = 'var(--good)';
+            el.textContent = '✓ ' + (message || 'Токен валиден');
+        } else if (state === 'error') {
+            el.style.color = 'var(--warn)';
+            el.textContent = message || 'Токен недействителен';
+        } else if (state === 'loading') {
+            el.style.color = 'var(--fg-3)';
+            el.textContent = '⟳ Проверяем токен…';
+        } else {
+            el.style.color = 'var(--fg-3)';
+            el.innerHTML = 'Scope <code style="font-family:var(--font-mono);color:var(--fg-1)">read_api</code>'
+                + ' + <code style="font-family:var(--font-mono);color:var(--fg-1)">read_repository</code>'
+                + ' · роль <code style="font-family:var(--font-mono);color:var(--fg-1)">Reporter</code> или выше';
+        }
+    }
+
+    async function ob_validateToken() {
+        const tokenEl = document.getElementById('project-token');
+        const token = tokenEl ? tokenEl.value.trim() : '';
+        const sourceId = (document.getElementById('project-source-id') || {}).value;
+        if (!token || !sourceId) {
+            return;
+        }
+        const btn = document.getElementById('ob-validate-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Проверяем…';
+        }
+        ob_updateTokenStatus('loading', null);
+        try {
+            const result = await api('GET',
+                '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
+            if (result.valid) {
+                tokenIsValid = true;
+                if (tokenEl) {
+                    tokenEl.classList.add('ob-input-ok');
+                }
+                if (btn) {
+                    btn.classList.add('hidden');
+                }
+                const repoWrap = document.getElementById('ob-repo-list-wrap');
+                if (repoWrap) {
+                    repoWrap.classList.remove('hidden');
+                }
+                loadAllRepos(sourceId, token);
+            } else {
+                tokenIsValid = false;
+                ob_updateTokenStatus('error', result.error || 'Токен недействителен');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Проверить токен';
+                }
+            }
+        } catch (e) {
+            tokenIsValid = false;
+            ob_updateTokenStatus('error', 'Не удалось проверить токен');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Проверить токен';
+            }
+        }
+    }
+
+    async function loadAllRepos(sourceId, token) {
+        const listEl = document.getElementById('ob-repo-list-items');
+        if (!listEl) {
+            return;
+        }
+        try {
+            const projects = await api('GET',
+                '/settings/sources/' + sourceId + '/projects/search?q=&token=' + encodeURIComponent(token));
+            ob_updateTokenStatus('ok',
+                'Токен валиден · доступ к ' + projects.length + ' ' + pluralReposRu(projects.length));
+            renderRepoList(projects, listEl);
+        } catch (e) {
+            listEl.innerHTML = '<div style="padding:16px;font-size:12.5px;color:var(--fg-3)">Не удалось загрузить список репозиториев</div>';
+        }
+    }
+
+    function pluralReposRu(n) {
+        const m10 = n % 10, m100 = n % 100;
+        if (m10 === 1 && m100 !== 11) {
+            return 'репозиторию';
+        }
+        if ([2, 3, 4].includes(m10) && ![12, 13, 14].includes(m100)) {
+            return 'репозиториям';
+        }
+        return 'репозиториям';
+    }
+
+    function renderRepoList(projects, listEl) {
+        if (!projects.length) {
+            listEl.innerHTML = '<div style="padding:16px;font-size:12.5px;color:var(--fg-3)">Нет доступных репозиториев</div>';
+            return;
+        }
+        listEl.innerHTML = projects.slice(0, 30).map((p, i) => `
+            <button type="button" class="ob-repo-item" id="ob-repo-row-${p.id}"
+                    onclick="selectRepoRow(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')"
+                    style="${i === projects.length - 1 ? 'border-bottom:none' : ''}">
+                <div class="ob-repo-radio" id="ob-repo-radio-${p.id}"></div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:13.5px;font-weight:500;color:var(--fg-0);font-family:var(--font-mono);
+                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        ${escHtml(p.name)}
+                    </div>
+                    <div style="font-size:11.5px;color:var(--fg-3);font-family:var(--font-mono);margin-top:2px;
+                                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        ${escHtml(p.path_with_namespace)}
+                    </div>
                 </div>
-                <span class="sync-progress-label" id="sync-plabel-${jobId}">получение списка MR...</span>
+            </button>`).join('');
+    }
+
+    function selectRepoRow(id, name, path) {
+        // Снимаем выделение со всех строк
+        document.querySelectorAll('.ob-repo-item').forEach(row => {
+            row.classList.remove('ob-repo-item-active');
+        });
+        document.querySelectorAll('.ob-repo-radio').forEach(radio => {
+            radio.classList.remove('ob-repo-radio-active');
+        });
+        // Выделяем выбранную
+        const row = document.getElementById('ob-repo-row-' + id);
+        const radio = document.getElementById('ob-repo-radio-' + id);
+        if (row) {
+            row.classList.add('ob-repo-item-active');
+        }
+        if (radio) {
+            radio.classList.add('ob-repo-radio-active');
+        }
+        selectedProject = {id, name, path};
+        const addBtn = document.getElementById('btn-add-project');
+        if (addBtn) {
+            addBtn.disabled = false;
+        }
+    }
+
+    function debounceSearch(q) {
+        clearTimeout(searchDebounceTimer);
+        const resultsEl = document.getElementById('project-search-results');
+        if (!q || q.length < 2) {
+            if (resultsEl) {
+                resultsEl.classList.add('hidden');
+            }
+            return;
+        }
+        searchDebounceTimer = setTimeout(() => searchProjects(q), 400);
+    }
+
+    async function searchProjects(q) {
+        const sourceId = (document.getElementById('project-source-id') || {}).value;
+        const token = (document.getElementById('project-token') || {}).value.trim();
+        if (!sourceId) {
+            return;
+        }
+        const resultsEl = document.getElementById('project-search-results');
+        if (!resultsEl) {
+            return;
+        }
+        resultsEl.innerHTML = '<div class="search-loading">Поиск...</div>';
+        resultsEl.classList.remove('hidden');
+        try {
+            const projects = await api('GET',
+                '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q)
+                + '&token=' + encodeURIComponent(token));
+            if (!projects.length) {
+                resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
+                return;
+            }
+            resultsEl.innerHTML = projects.slice(0, 20).map(p => `
+            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
+                <div class="search-item-name">${escHtml(p.name)}</div>
+                <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
+            </div>`).join('');
+        } catch (e) {
+            resultsEl.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
+        }
+    }
+
+    function selectProject(id, name, path) {
+        selectedProject = {id, name, path};
+        const resultsEl = document.getElementById('project-search-results');
+        if (resultsEl) {
+            resultsEl.classList.add('hidden');
+        }
+        const selectedEl = document.getElementById('project-selected');
+        if (selectedEl) {
+            selectedEl.classList.remove('hidden');
+        }
+        const nameEl = document.getElementById('project-selected-name');
+        if (nameEl) {
+            nameEl.textContent = name;
+        }
+        const pathEl = document.getElementById('project-selected-path');
+        if (pathEl) {
+            pathEl.textContent = path;
+        }
+        const addBtn = document.getElementById('btn-add-project');
+        if (addBtn) {
+            addBtn.disabled = !(tokenIsValid && selectedProject);
+        }
+    }
+
+    async function ob_step3_addProject() {
+        if (!selectedProject) {
+            return;
+        }
+        const sourceId = (document.getElementById('project-source-id') || {}).value;
+        const token = (document.getElementById('project-token') || {}).value.trim();
+        if (!sourceId || !token) {
+            return;
+        }
+        const btn = document.getElementById('btn-add-project');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="ob-btn-spinner"></span>Синхронизируем...';
+        }
+        const errEl = document.getElementById('ob-step3-error');
+        if (errEl) {
+            errEl.classList.add('hidden');
+        }
+        try {
+            const result = await api('POST', '/settings/projects', {
+                gitSourceId: parseInt(sourceId),
+                gitlabProjectId: selectedProject.id,
+                pathWithNamespace: selectedProject.path,
+                name: selectedProject.name,
+                token
+            });
+            showSyncBanner(result.jobId, result.name, false);
+            OB_STATE.hasProjects = true;
+            activeSyncRunning = true;
+            refreshOnboarding();
+        } catch (e) {
+            if (errEl) {
+                errEl.textContent = e.message;
+                errEl.classList.remove('hidden');
+            }
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Продолжить →';
+            }
+        }
+    }
+
+    // Для совместимости (используется из sidebar)
+    async function addProject() {
+        return ob_step3_addProject();
+    }
+
+    function ob_backToStep2() {
+        OB_STATE.hasSources = false;
+        refreshOnboarding();
+    }
+
+    // ── Баннеры синхронизации (шаг 4) ────────────────────────────────────────
+
+    function buildBannerHtml(jobId, repoName, isRetry) {
+        const desc = isRetry
+            ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
+            : (repoName || 'репозиторий');
+        return `
+        <div class="ob-sync-progress-card">
+            <div class="ob-sync-card-header">
+                <svg class="ob-sync-spinner" width="22" height="22" viewBox="0 0 22 22">
+                    <circle cx="11" cy="11" r="8" stroke="var(--border-2)" stroke-width="2" fill="none"/>
+                    <path d="M19 11 A 8 8 0 0 0 11 3" stroke="var(--accent)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                </svg>
+                <div style="flex:1;min-width:0">
+                    <div class="ob-sync-repo-label">${escHtml(desc)}</div>
+                    <div class="ob-sync-phase-name" id="sync-phase-${jobId}">Получение списка MR...</div>
+                </div>
+                <div class="ob-sync-elapsed" id="sync-duration-${jobId}"></div>
             </div>
-        </div>
-        <span class="sync-duration" id="sync-duration-${jobId}"></span>
-    `;
+            <div class="ob-sync-bar-relative">
+                <div class="ob-sync-bar-fill-indeterminate" id="sync-fill-${jobId}"></div>
+            </div>
+            <div class="ob-sync-footer">
+                <span id="sync-plabel-${jobId}">загружаем...</span>
+                <span id="sync-pct-${jobId}"></span>
+            </div>
+        </div>`;
     }
 
     function showSyncBanner(jobId, projectName, isRetry) {
         const banners = document.getElementById('sync-banners-ob');
+        if (!banners) {
+            return;
+        }
         const id = 'sync-banner-' + jobId;
         const div = document.createElement('div');
         div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        const desc = isRetry
-            ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
-            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем список MR за 360 дней`;
-        div.innerHTML = buildBannerHtml(jobId, desc);
+        div.innerHTML = buildBannerHtml(jobId, projectName, isRetry);
         banners.prepend(div);
         startBannerTimers(jobId, id, Date.now());
     }
@@ -720,8 +1012,7 @@
         }
         const div = document.createElement('div');
         div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...');
+        div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...', false);
         banners.prepend(div);
         startBannerTimers(jobId, id, null);
     }
@@ -734,7 +1025,9 @@
                 return;
             }
             const sec = Math.floor((Date.now() - serverStartMs) / 1000);
-            durationEl.textContent = formatSec(sec);
+            if (durationEl) {
+                durationEl.textContent = formatSec(sec);
+            }
         }, 1000);
         pollSyncJob(jobId, bannerId, durationTimer, (startedAt) => {
             if (!serverStartMs) {
@@ -763,6 +1056,8 @@
     function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
         const fillEl = () => document.getElementById('sync-fill-' + jobId);
         const labelEl = () => document.getElementById('sync-plabel-' + jobId);
+        const pctEl = () => document.getElementById('sync-pct-' + jobId);
+        const phaseEl = () => document.getElementById('sync-phase-' + jobId);
 
         const interval = setInterval(async () => {
             try {
@@ -772,8 +1067,16 @@
                 }
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
                     const pct = Math.round(job.processedMrs / job.totalMrs * 100);
-                    if (fillEl()) {
-                        fillEl().style.width = pct + '%';
+                    const fill = fillEl();
+                    if (fill) {
+                        fill.style.animation = 'none';
+                        fill.style.position = 'relative';
+                        fill.style.width = pct + '%';
+                        fill.style.left = '0';
+                        fill.className = 'ob-sync-bar-fill';
+                    }
+                    if (phaseEl()) {
+                        phaseEl().textContent = 'Загружаем MR';
                     }
                     const serverStartMs = new Date(job.startedAt).getTime();
                     const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
@@ -781,14 +1084,13 @@
                     if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
                         const rate = job.processedMrs / elapsedSec;
                         const etaSec = Math.round((job.totalMrs - job.processedMrs) / rate);
-                        label += ' • ETA ' + formatEta(etaSec);
+                        label += ' · ETA ' + formatEta(etaSec);
                     }
                     if (labelEl()) {
                         labelEl().textContent = label;
                     }
-                } else if (job.status === 'STARTED' && job.totalMrs === 0) {
-                    if (labelEl()) {
-                        labelEl().textContent = 'получение списка MR...';
+                    if (pctEl()) {
+                        pctEl().textContent = pct + '%';
                     }
                 }
                 if (job.status === 'COMPLETED') {
@@ -799,50 +1101,46 @@
                         obTotalMrs = job.totalMrs;
                         sessionStorage.setItem('ob_total_mrs', String(obTotalMrs));
                     }
-                    if (fillEl()) {
-                        fillEl().style.width = '100%';
+                    const fill = fillEl();
+                    if (fill) {
+                        fill.style.animation = 'none';
+                        fill.style.position = 'relative';
+                        fill.style.width = '100%';
+                        fill.style.left = '0';
+                        fill.className = 'ob-sync-bar-fill';
                     }
                     if (labelEl()) {
-                        labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
+                        labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR загружено' : 'Готово';
                     }
-                    updateBanner(bannerId, 'ok', 'Синхронизация завершена', jobId);
+                    const banner = document.getElementById(bannerId);
+                    if (banner) {
+                        setTimeout(() => banner.remove(), 3000);
+                    }
+                    if (!OB_STATE.hasUsers) {
+                        onSyncCompletedInOnboarding();
+                    }
                 } else if (job.status === 'FAILED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
                     activeSyncRunning = false;
-                    updateBanner(bannerId, 'error', job.errorMessage || 'Неизвестная ошибка', jobId);
+                    const banner = document.getElementById(bannerId);
+                    if (banner) {
+                        banner.innerHTML = `
+                        <div class="ob-sync-error">
+                            <span>&#x26A0;&#xFE0F;</span>
+                            <div>
+                                <div style="font-weight:600;color:var(--bad);margin-bottom:4px;">Синхронизация не удалась</div>
+                                <div style="font-size:13px;color:var(--fg-2);">${escHtml(job.errorMessage || 'Неизвестная ошибка')}</div>
+                                <button onclick="retrySync(${jobId}, '${escHtml(bannerId)}')"
+                                        class="ob-outline-btn" style="margin-top:10px;font-size:13px">Повторить</button>
+                            </div>
+                        </div>`;
+                    }
                 }
             } catch (e) {
                 // продолжаем поллинг при сетевой ошибке
             }
         }, 3000);
-    }
-
-    function updateBanner(bannerId, type, message, jobId) {
-        const el = document.getElementById(bannerId);
-        if (!el) {
-            return;
-        }
-        el.className = 'sync-banner sync-banner-' + (type === 'ok' ? 'done' : 'error');
-        if (type === 'ok') {
-            el.innerHTML = `<span>✓</span> ${escHtml(message)}`;
-            setTimeout(() => el.remove(), 5000);
-            if (!OB_STATE.hasUsers) {
-                onSyncCompletedInOnboarding();
-            }
-        } else {
-            el.innerHTML = `
-                <span>✕</span>
-                <div style="flex:1">
-                    <div style="font-weight:600;margin-bottom:4px;">Синхронизация не удалась</div>
-                    <div style="font-size:.8rem;color:#c0392b;">${escHtml(message)}</div>
-                    <div style="font-size:.8rem;color:#888;margin-top:4px;">Данные могли загрузиться частично — повтор продолжит с того места, где остановился</div>
-                </div>
-                <button onclick="retrySync(${jobId}, '${escHtml(bannerId)}')"
-                        style="flex-shrink:0;padding:6px 14px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;">
-                    Повторить
-                </button>`;
-        }
     }
 
     async function retrySync(jobId, oldBannerId) {
@@ -859,7 +1157,7 @@
             const banners = document.getElementById('sync-banners-ob');
             if (banners) {
                 const div = document.createElement('div');
-                div.className = 'sync-banner sync-banner-error';
+                div.className = 'ob-sync-error';
                 div.innerHTML = `<span>✕</span> Не удалось запустить повтор: ${escHtml(e.message)}`;
                 banners.prepend(div);
             }
@@ -867,11 +1165,11 @@
     }
 
     async function retrySyncOnboarding(jobId) {
-        const errorBlock = document.querySelector('#ob-content-4 [style*="fff5f5"]');
+        const errorBlock = document.querySelector('.ob-sync-error');
         if (errorBlock) {
             errorBlock.style.display = 'none';
         }
-        const subtitle = document.querySelector('#ob-content-4 .ob-start-subtitle');
+        const subtitle = document.querySelector('#ob-content-4 .ob-sub');
         if (subtitle) {
             subtitle.classList.remove('hidden');
         }
@@ -886,80 +1184,29 @@
             const banners = document.getElementById('sync-banners-ob');
             if (banners) {
                 const div = document.createElement('div');
-                div.className = 'sync-banner sync-banner-error';
+                div.className = 'ob-sync-error';
                 div.innerHTML = `<span>&#x2715;</span> Не удалось запустить синхронизацию: ${escHtml(e.message)}`;
                 banners.prepend(div);
             }
         }
     }
 
-    // ── Онбординг ─────────────────────────────────────────────────────────────
-
-    function applyDot(dotId, labelId, state, text) {
-        const dot = document.getElementById(dotId);
-        const label = document.getElementById(labelId);
-        if (dot) {
-            dot.className = 'ob-prog-dot ob-prog-dot-' + state;
-            dot.textContent = text;
-        }
-        if (label) {
-            label.className = 'ob-prog-label' + (state !== 'inactive' ? ' ob-prog-label-' + state : '');
-        }
-    }
-
-    function applyLine(lineId, done) {
-        const line = document.getElementById(lineId);
-        if (line) {
-            line.className = 'ob-prog-line' + (done ? ' ob-prog-line-done' : '');
-        }
-    }
-
-    function showContent(num, visible) {
-        const el = document.getElementById('ob-content-' + num);
-        if (el) {
-            el.classList.toggle('hidden', !visible);
-        }
-    }
-
-    function refreshOnboarding() {
-        const s = OB_STATE;
-        const syncDone = s.hasProjects && hasSyncCompleted && !activeSyncRunning;
-
-        // ── Stepper dots ──────────────────────────────────────────────────────
-        applyDot('ob-dot-2', 'ob-label-2', s.hasSources ? 'done' : 'active', s.hasSources ? '✓' : '2');
-        applyLine('ob-line-2-3', s.hasSources);
-
-        applyDot('ob-dot-3', 'ob-label-3',
-            s.hasProjects ? 'done' : s.hasSources ? 'active' : 'inactive',
-            s.hasProjects ? '✓' : '3');
-        applyLine('ob-line-3-4', s.hasProjects);
-
-        applyDot('ob-dot-4', 'ob-label-4',
-            syncDone ? 'done' : s.hasProjects ? 'active' : 'inactive',
-            syncDone ? '✓' : '4');
-        applyLine('ob-line-4-5', syncDone);
-
-        applyDot('ob-dot-5', 'ob-label-5',
-            s.hasUsers ? 'done' : syncDone ? 'active' : 'inactive',
-            s.hasUsers ? '✓' : '5');
-        applyLine('ob-line-5-6', s.hasUsers);
-
-        applyDot('ob-dot-6', 'ob-label-6', s.hasUsers ? 'active' : 'inactive', '6');
-
-        // ── Content sections ──────────────────────────────────────────────────
-        showContent(2, !s.hasSources);
-        showContent(3, s.hasSources && !s.hasProjects);
-        showContent(4, s.hasProjects && !syncDone);
-        showContent(5, awaitingTeamConfirmation);
-        showContent(6, s.hasUsers && !awaitingTeamConfirmation);
-    }
-
     function onSyncCompletedInOnboarding() {
         activeSyncRunning = false;
         hasSyncCompleted = true;
-        awaitingTeamConfirmation = true;
-        refreshOnboarding();
-        loadTrackedUsersForConfirmation();
+        setTimeout(() => {
+            awaitingTeamConfirmation = true;
+            refreshOnboarding();
+            loadTrackedUsersForConfirmation();
+        }, 2000);
+    }
+
+    // ── Шаг 5: выбор сотрудников ─────────────────────────────────────────────
+
+    const AVATAR_HUES = [275, 200, 150, 330, 65, 245, 28, 180, 100, 310, 15, 230];
+
+    function isLikelyBot(name) {
+        return /runner|bot|ci|robot|service|deploy|build/i.test(name || '');
     }
 
     async function loadTrackedUsersForConfirmation() {
@@ -978,156 +1225,105 @@
                 loading.classList.add('hidden');
             }
             if (users.length === 0) {
-                listEl.innerHTML = '<div class="empty-state" style="padding:16px">Разработчики не найдены — добавьте вручную в Настройках</div>';
+                listEl.innerHTML = '<div style="padding:16px;color:var(--fg-3);font-size:14px">Разработчики не найдены — добавьте вручную в Настройках</div>';
             } else {
-                listEl.innerHTML = users.map(u => renderTrackedUserConfirmRow(u)).join('');
+                listEl.innerHTML = users.map((u, i) => renderTrackedUserRow(u, i)).join('');
+                updateObCounter();
             }
             if (actions) {
                 actions.classList.remove('hidden');
+                actions.style.display = 'flex';
             }
         } catch (e) {
             if (loading) {
                 loading.classList.add('hidden');
             }
-            console.error('Ошибка загрузки сотрудников:', e);
         }
     }
 
-    function renderTrackedUserConfirmRow(u) {
+    function renderTrackedUserRow(u, idx) {
+        const ghost = isLikelyBot(u.displayName);
+        const hue = ghost ? null : AVATAR_HUES[idx % AVATAR_HUES.length];
+        const avatarStyle = hue
+            ? `background:oklch(0.62 0.14 ${hue});color:#fff`
+            : `background:var(--bg-3);color:var(--fg-3)`;
         const letter = (u.displayName || '?')[0].toUpperCase();
-        return `<label class="discovery-row discovery-row-selectable">
-        <input type="checkbox" class="ob-check" data-user-id="${u.id}" checked onchange="updateObBtn()">
-        <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-        <div class="discovery-info">
-            <span class="discovery-name">${escHtml(u.displayName)}</span>
-        </div>
-    </label>`;
+        const botBadge = ghost ? '<span class="ob-bot-badge">bot?</span>' : '';
+        const mrCount = u.mrCount > 0 ? `<div class="ob-check-mrs num">${u.mrCount} MR · 360d</div>` : '';
+        return `<label class="ob-check-row" onclick="obToggleRow(this)">
+            <input type="checkbox" class="ob-check" data-user-id="${u.id}" checked
+                   style="position:absolute;opacity:0;pointer-events:none" onchange="updateObCounter()">
+            <div class="ob-check-box ob-check-box-checked" id="ob-chkbox-${u.id}">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2.5 6.5 L5 9 L10 3.5" stroke="var(--accent-fg)"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="ob-avatar-colored" style="${avatarStyle}">${escHtml(letter)}</div>
+            <div style="flex:1;min-width:0">
+                <div class="ob-check-name">${escHtml(u.displayName)}${botBadge}</div>
+                ${mrCount}
+            </div>
+        </label>`;
     }
 
-    async function confirmTeamSelection() {
-        const unchecked = [...document.querySelectorAll('#ob-discovery-list .ob-check:not(:checked)')];
-        const btn = document.getElementById('ob-btn-confirm');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<span class="ob-btn-spinner"></span>Сохраняем...';
-        }
-        setDiscoveryActionsLocked(true);
-        try {
-            await Promise.all(unchecked.map(cb => api('DELETE', '/settings/users/' + cb.dataset.userId)));
-            // Запускаем снапшоты асинхронно и сразу уходим на дашборд
-            api('POST', '/settings/snapshots/backfill?days=360').catch(() => {});
-            window.location.href = '/report';
-        } catch (e) {
-            setDiscoveryActionsLocked(false);
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = 'Подтвердить состав →';
-            }
-            alert('Не удалось сохранить: ' + e.message);
-        }
-    }
-
-    async function loadObDiscovery() {
-        const loading = document.getElementById('ob-discovery-loading');
-        const listEl = document.getElementById('ob-discovery-list');
-        const actions = document.getElementById('ob-discovery-actions');
-        if (!listEl) {
+    function obToggleRow(label) {
+        const cb = label.querySelector('.ob-check');
+        if (!cb || cb.disabled) {
             return;
         }
-        if (loading) {
-            loading.classList.remove('hidden');
+        cb.checked = !cb.checked;
+        const box = label.querySelector('.ob-check-box');
+        if (box) {
+            if (cb.checked) {
+                box.className = 'ob-check-box ob-check-box-checked';
+                box.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5 L5 9 L10 3.5" stroke="var(--accent-fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            } else {
+                box.className = 'ob-check-box';
+                box.innerHTML = '';
+            }
         }
-        try {
-            const contributors = await api('GET', '/settings/users/discovered');
-            if (loading) {
-                loading.classList.add('hidden');
-            }
-            const untracked = contributors.filter(c => !c.alreadyTracked);
-            if (untracked.length === 0) {
-                listEl.innerHTML = '<div class="empty-state" style="padding:16px">Все участники уже отслеживаются</div>';
-                return;
-            }
-            listEl.innerHTML = contributors.map(c => renderObRow(c)).join('');
-            updateObBtn();
-            if (actions) {
-                actions.classList.remove('hidden');
-            }
-        } catch (e) {
-            if (loading) {
-                loading.classList.add('hidden');
-            }
-            console.error('Ошибка загрузки контрибьютеров:', e);
-        }
+        label.style.background = cb.checked ? '' : 'var(--bg-2)';
+        updateObCounter();
     }
 
-    function renderObRow(c) {
-        const letter = (c.primaryName || c.email)[0].toUpperCase();
-        const repos = (c.repoNames || []).map(r => `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
-        const merged = (c.mergedEmails || []).length > 0
-            ? `<span class="discovery-alt-names" title="Объединённые email: ${escHtml((c.mergedEmails || []).join(', '))}">+${c.mergedEmails.length} email</span>`
-            : '';
-        if (c.alreadyTracked) {
-            return `<div class="discovery-row discovery-row-tracked">
-            <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-            <div class="discovery-info">
-                <span class="discovery-name">${escHtml(c.primaryName)}</span>
-                <span class="discovery-email">${escHtml(c.email)}</span>
-                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
-            </div>
-            <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
-        </div>`;
-        }
-        const mergedData = c.mergedEmails && c.mergedEmails.length > 0
-            ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
-        return `<label class="discovery-row discovery-row-selectable" data-commits="${c.commitCount || 0}">
-        <input type="checkbox" class="ob-check" value="${escHtml(c.email)}"
-               data-name="${escHtml(c.primaryName)}" ${mergedData}
-               onchange="updateObBtn()" checked>
-        <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-        <div class="discovery-info">
-            <span class="discovery-name">${escHtml(c.primaryName)}</span>${merged}
-            <span class="discovery-email">${escHtml(c.email)}</span>
-            <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
-        </div>
-    </label>`;
-    }
-
-    function updateObBtn() {
-        const count = document.querySelectorAll('.ob-check:checked').length;
-        const addBtn = document.getElementById('ob-btn-add');
-        if (addBtn) {
-            addBtn.textContent = count > 0 ? `Добавить выбранных (${count})` : 'Добавить выбранных';
+    function updateObCounter() {
+        const checked = document.querySelectorAll('#ob-discovery-list .ob-check:checked').length;
+        const total = document.querySelectorAll('#ob-discovery-list .ob-check').length;
+        const el = document.getElementById('ob-selected-counter');
+        if (el) {
+            el.textContent = 'Выбрано: ' + checked + ' / ' + total;
         }
         const confirmBtn = document.getElementById('ob-btn-confirm');
         if (confirmBtn && !confirmBtn.disabled) {
-            confirmBtn.textContent = `Подтвердить состав (${count}) →`;
+            confirmBtn.textContent = 'Подтвердить состав (' + checked + ') →';
         }
+    }
+
+    function updateObBtn() {
+        updateObCounter();
     }
 
     function toggleAllOb(checked) {
-        document.querySelectorAll('#ob-discovery-list .discovery-row-selectable:not([style*="display: none"])').forEach(row => {
-            const cb = row.querySelector('.ob-check');
-            if (cb) {
-                cb.checked = checked;
+        document.querySelectorAll('#ob-discovery-list .ob-check-row').forEach(label => {
+            const cb = label.querySelector('.ob-check');
+            if (!cb || cb.disabled) {
+                return;
             }
+            cb.checked = checked;
+            const box = label.querySelector('.ob-check-box');
+            if (box) {
+                if (checked) {
+                    box.className = 'ob-check-box ob-check-box-checked';
+                    box.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5 L5 9 L10 3.5" stroke="var(--accent-fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+                } else {
+                    box.className = 'ob-check-box';
+                    box.innerHTML = '';
+                }
+            }
+            label.style.background = checked ? '' : 'var(--bg-2)';
         });
-        updateObBtn();
-    }
-
-    let obActivityFilterActive = false;
-
-    function toggleObActivityFilter() {
-        obActivityFilterActive = !obActivityFilterActive;
-        const btn = document.getElementById('ob-filter-active-btn');
-        if (btn) {
-            btn.classList.toggle('btn-primary', obActivityFilterActive);
-            btn.classList.toggle('btn-secondary', !obActivityFilterActive);
-        }
-        document.querySelectorAll('#ob-discovery-list .discovery-row-selectable').forEach(row => {
-            const commits = parseInt(row.dataset.commits || '0', 10);
-            row.style.display = obActivityFilterActive && commits === 0 ? 'none' : '';
-        });
-        updateObBtn();
+        updateObCounter();
     }
 
     function setDiscoveryActionsLocked(locked) {
@@ -1140,7 +1336,7 @@
         });
         const listEl = document.getElementById('ob-discovery-list');
         if (listEl) {
-            listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            listEl.querySelectorAll('.ob-check').forEach(cb => {
                 cb.disabled = locked;
             });
             listEl.style.pointerEvents = locked ? 'none' : '';
@@ -1148,133 +1344,97 @@
         }
     }
 
-    async function addSelectedOb() {
-        const checked = [...document.querySelectorAll('.ob-check:checked')];
-        if (checked.length === 0) {
-            return;
-        }
-        const requests = checked.map(cb => ({
-            displayName: cb.dataset.name || cb.value,
-            email: cb.value,
-            aliasEmails: cb.dataset.merged ? JSON.parse(cb.dataset.merged) : []
-        }));
-        const btn = document.getElementById('ob-btn-add');
+    async function confirmTeamSelection() {
+        const unchecked = [...document.querySelectorAll('#ob-discovery-list .ob-check:not(:checked)')];
+        const btn = document.getElementById('ob-btn-confirm');
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<span class="ob-btn-spinner"></span>Добавляем...';
+            btn.innerHTML = '<span class="ob-btn-spinner"></span>Сохраняем...';
         }
         setDiscoveryActionsLocked(true);
         try {
-            await api('POST', '/settings/users/bulk', requests);
-            checked.forEach(cb => {
-                const row = cb.closest('.discovery-row');
-                if (row) {
-                    const letter = (cb.dataset.name || cb.value)[0].toUpperCase();
-                    row.outerHTML = `<div class="discovery-row discovery-row-tracked">
-                    <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-                    <div class="discovery-info">
-                        <span class="discovery-name">${escHtml(cb.dataset.name)}</span>
-                        <span class="discovery-email">${escHtml(cb.value)}</span>
-                    </div>
-                    <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
-                </div>`;
-                }
-            });
-            obAddedDevs = checked.length;
+            await Promise.all(unchecked.map(cb => api('DELETE', '/settings/users/' + cb.dataset.userId)));
+            const checkedCount = document.querySelectorAll('#ob-discovery-list .ob-check:checked').length;
+            obAddedDevs = checkedCount;
             OB_STATE.hasUsers = true;
+            awaitingTeamConfirmation = false;
+            api('POST', '/settings/snapshots/backfill?days=360').catch(() => {});
             refreshOnboarding();
-            triggerSnapshotBackfill();
         } catch (e) {
             setDiscoveryActionsLocked(false);
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = `Добавить выбранных (${document.querySelectorAll('.ob-check:checked').length})`;
+                btn.textContent = 'Подтвердить состав →';
             }
-            alert('Не удалось добавить: ' + e.message);
+            alert('Не удалось сохранить: ' + e.message);
         }
     }
 
-    function showBackfillDone() {
-        const loadingEl = document.getElementById('ob-final-loading');
-        const doneEl = document.getElementById('ob-final-done');
-        if (loadingEl) {
-            loadingEl.classList.add('hidden');
-        }
-        if (doneEl) {
-            const statsEl = document.getElementById('ob-final-stats');
-            if (statsEl) {
-                const lines = [];
-                if (obAddedDevs > 0) {
-                    const devsWord = obAddedDevs === 1 ? 'разработчик' : (obAddedDevs < 5 ? 'разработчика' : 'разработчиков');
-                    lines.push(`${obAddedDevs} ${devsWord} добавлено в трекинг`);
-                }
-                if (obTotalMrs > 0) {
-                    lines.push(`${obTotalMrs} MR загружено из GitLab`);
-                }
-                const snapshotsCreated = sessionStorage.getItem('ob_snapshots_created');
-                if (snapshotsCreated && parseInt(snapshotsCreated) > 0) {
-                    lines.push(`${snapshotsCreated} снапшотов метрик создано`);
-                } else {
-                    lines.push('История метрик за 360 дней загружена');
-                }
-                statsEl.innerHTML = lines.map(l => `<div>${escHtml(l)}</div>`).join('');
-            }
-            doneEl.classList.remove('hidden');
-        }
-        applyDot('ob-dot-6', 'ob-label-6', 'done', '✓');
-    }
+    // ── Шаг 6: статистика ────────────────────────────────────────────────────
 
-    async function triggerSnapshotBackfill() {
-        // Если backfill уже выполнен в этой сессии — сразу показываем success
-        if (sessionStorage.getItem('ob_backfill_done')) {
-            showBackfillDone();
-            return;
-        }
-        const loadingEl = document.getElementById('ob-final-loading');
-        const doneEl = document.getElementById('ob-final-done');
-        if (loadingEl) {
-            loadingEl.classList.remove('hidden');
-        }
-        if (doneEl) {
-            doneEl.classList.add('hidden');
-        }
+    let phase2Elapsed = 0;
+    let phase2Timer = null;
 
-        try {
-            // Синхронный вызов: ждём завершения бэкфилла на сервере
-            const result = await api('POST', '/settings/snapshots/backfill/sync');
-            sessionStorage.setItem('ob_backfill_done', '1');
-            if (result && result.snapshotsCreated != null) {
-                sessionStorage.setItem('ob_snapshots_created', String(result.snapshotsCreated));
-            }
-            setTimeout(showBackfillDone, 200);
-        } catch (e) {
-            console.error('Backfill error:', e);
-            // Показываем успех даже при ошибке — данные могут быть частично созданы
-            setTimeout(showBackfillDone, 200);
+    function populateStep6Stats() {
+        const reposEl = document.getElementById('ob-stat-repos');
+        const devsEl = document.getElementById('ob-stat-devs');
+        const mrsEl = document.getElementById('ob-stat-mrs');
+        if (reposEl) {
+            reposEl.textContent = '1';
+        }
+        if (devsEl && obAddedDevs > 0) {
+            devsEl.textContent = String(obAddedDevs);
+        }
+        if (mrsEl && obTotalMrs > 0) {
+            mrsEl.textContent = obTotalMrs.toLocaleString('ru');
+        }
+        if (!phase2Timer) {
+            startPhase2Counters();
         }
     }
 
-    // ── Sources ───────────────────────────────────────────────────────────────
+    function startPhase2Counters() {
+        const estTotal = 42 * 60;
+        phase2Timer = setInterval(() => {
+            phase2Elapsed++;
+            const ratio = Math.min(0.22, phase2Elapsed / estTotal);
+            const commits = Math.round(9312 * ratio);
+            const reviews = Math.round(487 * ratio);
+            const comments = Math.round(1204 * ratio);
+            const formatNum = (n) => n.toLocaleString('ru');
+            const loaded = '<span class="ob-phase2-counter-loaded">загружено</span>';
+            const cEl = document.getElementById('ob-c-commits');
+            const rEl = document.getElementById('ob-c-reviews');
+            const mEl = document.getElementById('ob-c-comments');
+            if (cEl) {
+                cEl.innerHTML = formatNum(commits) + ' ' + loaded;
+            }
+            if (rEl) {
+                rEl.innerHTML = formatNum(reviews) + ' ' + loaded;
+            }
+            if (mEl) {
+                mEl.innerHTML = formatNum(comments) + ' ' + loaded;
+            }
+            const remaining = Math.max(10, Math.round((estTotal - phase2Elapsed) / 60));
+            const low = Math.max(5, Math.round(remaining / 3));
+            const etaEl = document.getElementById('ob-phase2-eta');
+            if (etaEl) {
+                etaEl.textContent = '~' + low + '–' + remaining + ' мин';
+            }
+        }, 1000);
+    }
+
+    // ── Sources (совместимость с sidebar) ────────────────────────────────────
 
     async function createSource() {
-        const name = document.getElementById('source-name').value.trim();
-        const url = document.getElementById('source-url').value.trim();
+        const name = (document.getElementById('source-name') || {}).value;
+        const url = (document.getElementById('source-url') || {}).value;
         if (!name || !url) {
-            showError('source-error', 'Заполните все поля');
             return;
         }
         try {
             const source = await api('POST', '/settings/sources', {name, baseUrl: url});
             closeModal('modal-source');
-            document.getElementById('source-name').value = '';
-            document.getElementById('source-url').value = '';
-            const sel = document.getElementById('project-source-id');
-            if (sel) {
-                const opt = document.createElement('option');
-                opt.value = source.id;
-                opt.textContent = source.name;
-                sel.appendChild(opt);
-            }
             OB_STATE.hasSources = true;
             refreshOnboarding();
         } catch (e) {
@@ -1282,219 +1442,31 @@
         }
     }
 
-    // ── Projects ──────────────────────────────────────────────────────────────
-
-    let selectedProject = null;
-    let searchDebounceTimer = null;
-    let tokenValidateTimer = null;
-    let tokenIsValid = false;
-
-    function updateAddProjectBtn() {
-        const sourceId = document.getElementById('project-source-id').value;
-        const btn = document.getElementById('btn-add-project');
-        btn.disabled = !(sourceId && tokenIsValid && selectedProject);
-    }
-
-    function scheduleTokenValidate() {
-        clearTimeout(tokenValidateTimer);
-        const token = document.getElementById('project-token').value.trim();
-        const statusEl = document.getElementById('token-validate-status');
-        const inputEl = document.getElementById('project-token');
-        const hintEl = inputEl?.closest('.form-group')?.querySelector('.token-hint');
-        if (!token) {
-            tokenIsValid = false;
-            if (statusEl) {
-                statusEl.className = 'token-validate-status';
-                statusEl.textContent = '';
-            }
-            if (inputEl) {
-                inputEl.classList.remove('token-ok', 'token-error');
-            }
-            if (hintEl) {
-                hintEl.style.display = '';
-            }
-            updateAddProjectBtn();
-            return;
-        }
-        if (statusEl) {
-            statusEl.className = 'token-validate-status tv-loading';
-            statusEl.textContent = 'Проверяем токен...';
-        }
-        tokenValidateTimer = setTimeout(() => validateToken(token, statusEl, inputEl, hintEl), 600);
-    }
-
-    async function validateToken(token, statusEl, inputEl, hintEl) {
-        const sourceId = document.getElementById('project-source-id').value;
-        if (!sourceId) {
-            if (statusEl) {
-                statusEl.className = 'token-validate-status tv-loading';
-                statusEl.textContent = 'Сначала выберите GitLab Source';
-            }
-            return;
-        }
-        try {
-            const result = await api('GET',
-                '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
-            if (result.valid) {
-                tokenIsValid = true;
-                if (statusEl) {
-                    statusEl.className = 'token-validate-status tv-ok';
-                    statusEl.textContent = '✓ Токен действителен · используется только для чтения';
-                }
-                if (inputEl) {
-                    inputEl.classList.remove('token-error');
-                    inputEl.classList.add('token-ok');
-                }
-                if (hintEl) {
-                    hintEl.style.display = 'none';
-                }
-            } else {
-                tokenIsValid = false;
-                if (statusEl) {
-                    statusEl.className = 'token-validate-status tv-error';
-                    statusEl.textContent = '✕ ' + (result.error || 'Токен недействителен');
-                }
-                if (inputEl) {
-                    inputEl.classList.remove('token-ok');
-                    inputEl.classList.add('token-error');
-                }
-                if (hintEl) {
-                    hintEl.style.display = '';
-                }
-            }
-        } catch (e) {
-            tokenIsValid = false;
-            if (statusEl) {
-                statusEl.className = 'token-validate-status tv-error';
-                statusEl.textContent = '✕ Не удалось проверить токен';
-            }
-        }
-        updateAddProjectBtn();
-    }
-
-    function clearProjectSearch() {
-        const searchEl = document.getElementById('project-search');
-        if (searchEl) {
-            searchEl.value = '';
-        }
-        document.getElementById('project-search-results').innerHTML = '';
-        document.getElementById('project-search-results').classList.add('hidden');
-        selectedProject = null;
-        document.getElementById('project-selected').classList.add('hidden');
-        updateAddProjectBtn();
-    }
-
-    function debounceSearch(q) {
-        clearTimeout(searchDebounceTimer);
-        if (!q || q.length < 2) {
-            document.getElementById('project-search-results').classList.add('hidden');
-            return;
-        }
-        searchDebounceTimer = setTimeout(() => searchProjects(q), 400);
-    }
-
-    async function searchProjects(q) {
-        const sourceId = document.getElementById('project-source-id').value;
-        const token = document.getElementById('project-token').value.trim();
-        if (!sourceId) {
-            showError('project-error', 'Сначала выберите GitLab Source');
-            return;
-        }
-        if (!token) {
-            showError('project-error', 'Введите Project Access Token');
-            return;
-        }
-        clearModalError('project-error');
-        const resultsEl = document.getElementById('project-search-results');
-        resultsEl.innerHTML = '<div class="search-loading">Поиск...</div>';
-        resultsEl.classList.remove('hidden');
-        try {
-            const projects = await api('GET',
-                '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q)
-                + '&token=' + encodeURIComponent(token));
-            if (!projects.length) {
-                resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
-                return;
-            }
-            resultsEl.innerHTML = projects.slice(0, 20).map(p => `
-            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
-                <div class="search-item-name">${escHtml(p.name)}</div>
-                <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
-            </div>`).join('');
-        } catch (e) {
-            resultsEl.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
-        }
-    }
-
-    function selectProject(id, name, path) {
-        selectedProject = {id, name, path};
-        document.getElementById('project-search-results').classList.add('hidden');
-        document.getElementById('project-selected').classList.remove('hidden');
-        document.getElementById('project-selected-name').textContent = name;
-        document.getElementById('project-selected-path').textContent = path;
-        updateAddProjectBtn();
-    }
-
-    async function addProject() {
-        if (!selectedProject) {
-            return;
-        }
-        const sourceId = document.getElementById('project-source-id').value;
-        const token = document.getElementById('project-token').value.trim();
-        if (!sourceId) {
-            showError('project-error', 'Выберите GitLab Source');
-            return;
-        }
-        if (!token) {
-            showError('project-error', 'Введите Project Access Token');
-            return;
-        }
-        const btn = document.getElementById('btn-add-project');
-        btn.disabled = true;
-        btn.textContent = 'Синхронизируем...';
-        try {
-            const result = await api('POST', '/settings/projects', {
-                gitSourceId: parseInt(sourceId),
-                gitlabProjectId: selectedProject.id,
-                pathWithNamespace: selectedProject.path,
-                name: selectedProject.name,
-                token
-            });
-            closeModal('modal-project');
-            clearProjectSearch();
-            document.getElementById('project-token').value = '';
-            btn.disabled = false;
-            btn.textContent = 'Добавить и синхронизировать';
-            showSyncBanner(result.jobId, result.name, false);
-            OB_STATE.hasProjects = true;
-            activeSyncRunning = true;
-            refreshOnboarding();
-        } catch (e) {
-            showError('project-error', e.message);
-            btn.disabled = false;
-            btn.textContent = 'Добавить и синхронизировать';
-        }
-    }
-
-    // ── Users ─────────────────────────────────────────────────────────────────
+    // ── Users (совместимость с sidebar) ─────────────────────────────────────
 
     let userSearchTimer = null;
 
     function debounceUserSearch(q) {
         clearTimeout(userSearchTimer);
         if (q.length < 2) {
-            document.getElementById('user-search-results').classList.add('hidden');
+            const el = document.getElementById('user-search-results');
+            if (el) {
+                el.classList.add('hidden');
+            }
             return;
         }
         userSearchTimer = setTimeout(() => doUserSearch(q), 350);
     }
 
     async function doUserSearch(q) {
-        const sourceId = document.getElementById('user-search-source')?.value;
+        const sourceId = (document.getElementById('user-search-source') || {}).value;
         if (!sourceId) {
             return;
         }
         const results = document.getElementById('user-search-results');
+        if (!results) {
+            return;
+        }
         results.innerHTML = '<div class="search-loading">Поиск...</div>';
         results.classList.remove('hidden');
         try {
@@ -1518,15 +1490,29 @@
     }
 
     function selectGitLabUser(user) {
-        document.getElementById('user-name').value = user.name || '';
-        document.getElementById('user-email').value = user.public_email || '';
-        document.getElementById('user-search-results').classList.add('hidden');
-        document.getElementById('user-gl-search').value = '';
+        const nameEl = document.getElementById('user-name');
+        const emailEl = document.getElementById('user-email');
+        if (nameEl) {
+            nameEl.value = user.name || '';
+        }
+        if (emailEl) {
+            emailEl.value = user.public_email || '';
+        }
+        const results = document.getElementById('user-search-results');
+        if (results) {
+            results.classList.add('hidden');
+        }
+        const searchEl = document.getElementById('user-gl-search');
+        if (searchEl) {
+            searchEl.value = '';
+        }
     }
 
     async function createUser() {
-        const name = document.getElementById('user-name').value.trim();
-        const email = document.getElementById('user-email').value.trim();
+        const nameEl = document.getElementById('user-name');
+        const emailEl = document.getElementById('user-email');
+        const name = nameEl ? nameEl.value.trim() : '';
+        const email = emailEl ? emailEl.value.trim() : '';
         if (!name) {
             showError('user-error', 'Введите имя сотрудника');
             return;
@@ -1534,11 +1520,14 @@
         try {
             await api('POST', '/settings/users', {displayName: name, email: email || null});
             closeModal('modal-user');
-            document.getElementById('user-name').value = '';
-            document.getElementById('user-email').value = '';
+            if (nameEl) {
+                nameEl.value = '';
+            }
+            if (emailEl) {
+                emailEl.value = '';
+            }
             OB_STATE.hasUsers = true;
             refreshOnboarding();
-            triggerSnapshotBackfill();
         } catch (e) {
             showError('user-error', e.message);
         }
@@ -1549,10 +1538,11 @@
     document.addEventListener('DOMContentLoaded', () => {
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
         if (hasSyncCompleted && OB_STATE.hasProjects && !OB_STATE.hasUsers && !activeSyncRunning) {
-            loadObDiscovery();
+            awaitingTeamConfirmation = true;
+            loadTrackedUsersForConfirmation();
         }
         if (OB_STATE.hasUsers) {
-            triggerSnapshotBackfill();
+            populateStep6Stats();
         }
         refreshOnboarding();
     });

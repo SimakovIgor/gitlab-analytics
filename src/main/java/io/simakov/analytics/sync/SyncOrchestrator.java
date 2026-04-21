@@ -13,6 +13,7 @@ import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabMergeRequestDto;
 import io.simakov.analytics.gitlab.mapper.GitLabMapper;
+import io.simakov.analytics.snapshot.SnapshotService;
 import io.simakov.analytics.sync.step.SyncContext;
 import io.simakov.analytics.sync.step.SyncStep;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class SyncOrchestrator {
 
+    private static final int BACKFILL_DAYS = 360;
+
     private final GitLabApiClient gitLabApiClient;
     private final GitLabMapper gitLabMapper;
     private final EncryptionService encryptionService;
@@ -42,6 +45,7 @@ public class SyncOrchestrator {
 
     private final SyncJobService syncJobService;
     private final MrAuthorDiscoveryService authorDiscoveryService;
+    private final SnapshotService snapshotService;
     private final List<SyncStep> syncSteps;
 
     @Qualifier("mrProcessingExecutor")
@@ -65,6 +69,11 @@ public class SyncOrchestrator {
 
             if (phase == SyncJobPhase.FAST) {
                 chainEnrichmentPhase(jobId, request);
+            } else if (phase == SyncJobPhase.ENRICH) {
+                Long workspaceId = syncJobService.findById(jobId).getWorkspaceId();
+                int linked = authorDiscoveryService.syncCommitEmails(request.projectIds());
+                log.info("ENRICH phase complete for job {}: linked {} commit email(s), triggering snapshot backfill", jobId, linked);
+                snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
             }
         } catch (Exception e) {
             log.error("Sync job {} failed with error: {}", jobId, e.getMessage(), e);

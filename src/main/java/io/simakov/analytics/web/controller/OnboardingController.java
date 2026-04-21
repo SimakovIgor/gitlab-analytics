@@ -44,6 +44,7 @@ public class OnboardingController {
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("lastFailedSyncJobId", data.lastFailedSyncJobId());
         model.addAttribute("sources", data.sources());
+        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
         return "onboarding";
     }
 

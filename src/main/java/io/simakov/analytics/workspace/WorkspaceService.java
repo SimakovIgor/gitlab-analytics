@@ -63,6 +63,12 @@ public class WorkspaceService {
         return workspace;
     }
 
+    public String findWorkspaceName(Long workspaceId) {
+        return workspaceRepository.findById(workspaceId)
+            .map(Workspace::getName)
+            .orElse("");
+    }
+
     private String generateUniqueSlug(String name) {
         String base = slugify(name);
         if (!workspaceRepository.existsBySlug(base)) {

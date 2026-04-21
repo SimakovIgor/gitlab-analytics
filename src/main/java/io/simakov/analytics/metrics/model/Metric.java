@@ -39,7 +39,7 @@ public enum Metric {
         "Число репозиториев, в которых был хотя бы один коммит в периоде.",
         Category.DELIVERY, false, false),
 
-    COMMITS_IN_MR_COUNT("commits_in_mr_count", "Коммиты в MR",
+    COMMITS_IN_MR_COUNT("commits_in_mr_count", "Коммиты",
         "Число коммитов в смерджённых MR, авторство которых принадлежит сотруднику.",
         Category.DELIVERY, false, true),
 
@@ -75,11 +75,11 @@ public enum Metric {
 
     // ── Review ────────────────────────────────────────────────────────────────
 
-    REVIEW_COMMENTS_WRITTEN_COUNT("review_comments_written_count", "Комментарии к ревью",
+    REVIEW_COMMENTS_WRITTEN_COUNT("review_comments_written_count", "Комментарии",
         "Комментарии, оставленные при ревью чужих MR. Показывает вовлечённость в код-ревью.",
         Category.REVIEW, false, true),
 
-    MRS_REVIEWED_COUNT("mrs_reviewed_count", "MR отревьюено",
+    MRS_REVIEWED_COUNT("mrs_reviewed_count", "Ревью MR",
         "Число чужих MR, в которых сотрудник оставил хотя бы один комментарий или аппрув.",
         Category.REVIEW, false, true),
 
@@ -87,13 +87,13 @@ public enum Metric {
         "Число выданных аппрувов. Не равно MR отревьюено — можно смотреть без аппрува.",
         Category.REVIEW, false, true),
 
-    REVIEW_THREADS_STARTED_COUNT("review_threads_started_count", "Треды в ревью",
+    REVIEW_THREADS_STARTED_COUNT("review_threads_started_count", "Треды",
         "Число дискуссионных тредов, открытых сотрудником в чужих MR.",
         Category.REVIEW, false, true),
 
     // ── Flow ──────────────────────────────────────────────────────────────────
 
-    AVG_TIME_TO_FIRST_REVIEW_MINUTES("avg_time_to_first_review_minutes", "Среднее до первого ревью (ч)",
+    AVG_TIME_TO_FIRST_REVIEW_MINUTES("avg_time_to_first_review_minutes", "До ревью",
         "Среднее время от открытия MR до первого комментария или аппрува (в часах).",
         Category.FLOW, true, true),
 
@@ -101,11 +101,11 @@ public enum Metric {
         "Медиана времени от открытия MR до первого комментария или аппрува (в часах).",
         Category.FLOW, true, false),
 
-    AVG_TIME_TO_MERGE_MINUTES("avg_time_to_merge_minutes", "Среднее до мержа (ч)",
+    AVG_TIME_TO_MERGE_MINUTES("avg_time_to_merge_minutes", "До мержа",
         "Среднее время от открытия MR до мержа (в часах). Чем меньше — тем быстрее проходит ревью.",
         Category.FLOW, true, true),
 
-    MEDIAN_TIME_TO_MERGE_MINUTES("median_time_to_merge_minutes", "Медиана до мержа (ч)",
+    MEDIAN_TIME_TO_MERGE_MINUTES("median_time_to_merge_minutes", "Медиана TTM",
         "Медиана времени от открытия MR до мержа (в часах).",
         Category.FLOW, true, true),
 

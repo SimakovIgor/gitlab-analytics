@@ -1,11 +1,13 @@
 package io.simakov.analytics.web.controller;
 
+import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.HistoryViewService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.ReportViewService;
 import io.simakov.analytics.web.dto.HistoryPageData;
 import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
+import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -25,6 +27,7 @@ public class WebController {
     private final ReportViewService reportViewService;
     private final HistoryViewService historyViewService;
     private final OAuth2UserResolver userResolver;
+    private final WorkspaceService workspaceService;
 
     @GetMapping("/")
     public String home() {
@@ -59,6 +62,7 @@ public class WebController {
         model.addAttribute("sources", data.sources());
         model.addAttribute("hasProjects", data.hasProjects());
         model.addAttribute("activeJobIds", data.activeJobIds());
+        model.addAttribute("enrichmentJobId", data.enrichmentJobId());
         model.addAttribute("usersWithAliases", data.usersWithAliases());
         model.addAttribute("allProjects", data.allProjects());
         model.addAttribute("selectedProjectIds", data.selectedProjectIds());
@@ -75,6 +79,7 @@ public class WebController {
         model.addAttribute("selectedMetric", historyData.selectedMetric());
         model.addAttribute("metricLabel", historyData.metricLabel());
         model.addAttribute("metricOptions", historyData.metricOptions());
+        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
 
         return "report";
     }

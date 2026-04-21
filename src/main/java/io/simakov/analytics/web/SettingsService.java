@@ -14,8 +14,10 @@ import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
+import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.domain.repository.UserMrCountProjection;
 import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
@@ -34,8 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -47,6 +51,7 @@ public class SettingsService {
     private final GitSourceRepository gitSourceRepository;
     private final TrackedProjectRepository trackedProjectRepository;
     private final TrackedUserRepository trackedUserRepository;
+    private final MergeRequestRepository mergeRequestRepository;
     private final EncryptionService encryptionService;
     private final GitLabApiClient gitLabApiClient;
     private final TrackedProjectMapper trackedProjectMapper;
@@ -154,8 +159,20 @@ public class SettingsService {
         return contributorDiscoveryService.discover();
     }
 
-    public List<TrackedUser> getTrackedUsers() {
-        return trackedUserRepository.findAllByWorkspaceId(WorkspaceContext.get());
+    public List<Map<String, Object>> getTrackedUsersWithMrCount() {
+        Long workspaceId = WorkspaceContext.get();
+        Map<Long, Long> mrCountById = mergeRequestRepository.countMrsByTrackedUser(workspaceId)
+            .stream()
+            .collect(Collectors.toMap(UserMrCountProjection::getTrackedUserId, UserMrCountProjection::getMrCount));
+
+        return trackedUserRepository.findAllByWorkspaceId(workspaceId).stream()
+            .map(u -> Map.<String, Object>of(
+                "id", u.getId(),
+                "displayName", u.getDisplayName(),
+                "mrCount", mrCountById.getOrDefault(u.getId(), 0L)
+            ))
+            .sorted(Comparator.comparingLong((Map<String, Object> m) -> (Long) m.get("mrCount")).reversed())
+            .toList();
     }
 
     @Transactional

@@ -80,6 +80,23 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                                                         @Param("dateTo") Instant dateTo);
 
     /**
+     * MR count per tracked user for the given workspace.
+     * Joins through tracked_user_alias to resolve gitlab_user_id → tracked_user_id.
+     */
+    @Query(nativeQuery = true,
+           value = """
+               SELECT ta.tracked_user_id AS tracked_user_id,
+                      COUNT(mr.id)       AS mr_count
+               FROM tracked_user_alias ta
+               JOIN merge_request mr ON mr.author_gitlab_user_id = ta.gitlab_user_id
+               JOIN tracked_user tu  ON tu.id = ta.tracked_user_id
+               WHERE ta.gitlab_user_id IS NOT NULL
+                 AND tu.workspace_id = :workspaceId
+               GROUP BY ta.tracked_user_id
+               """)
+    List<UserMrCountProjection> countMrsByTrackedUser(@Param("workspaceId") Long workspaceId);
+
+    /**
      * Weekly lead time distribution (MR open → merge) for DORA chart.
      * Returns rows: [period_date, mr_count, median_hours, p75_hours, p95_hours]
      */

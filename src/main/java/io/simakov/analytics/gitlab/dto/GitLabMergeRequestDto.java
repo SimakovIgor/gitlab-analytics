@@ -21,7 +21,8 @@ public record GitLabMergeRequestDto(
     Integer additions,
     Integer deletions,
     @JsonProperty("changes_count") String changesCount,
-    @JsonProperty("web_url") String webUrl
+    @JsonProperty("web_url") String webUrl,
+    @JsonProperty("diff_stats_summary") DiffStatsSummaryDto diffStatsSummary
 ) {
 
 }

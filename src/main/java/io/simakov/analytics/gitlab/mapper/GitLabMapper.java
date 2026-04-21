@@ -46,6 +46,11 @@ public class GitLabMapper {
         mr.setAdditions(nullToZero(dto.additions()));
         mr.setDeletions(nullToZero(dto.deletions()));
 
+        if (dto.diffStatsSummary() != null) {
+            mr.setNetAdditions(dto.diffStatsSummary().additions());
+            mr.setNetDeletions(dto.diffStatsSummary().deletions());
+        }
+
         int changes = parseChangesCount(dto.changesCount());
         mr.setChangesCount(changes);
 
@@ -62,6 +67,11 @@ public class GitLabMapper {
         existing.setAdditions(nullToZero(dto.additions()));
         existing.setDeletions(nullToZero(dto.deletions()));
         existing.setChangesCount(parseChangesCount(dto.changesCount()));
+
+        if (dto.diffStatsSummary() != null) {
+            existing.setNetAdditions(dto.diffStatsSummary().additions());
+            existing.setNetDeletions(dto.diffStatsSummary().deletions());
+        }
 
         if (dto.mergedBy() != null) {
             existing.setMergedByGitlabUserId(dto.mergedBy().id());

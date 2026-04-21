@@ -1,6 +1,7 @@
 package io.simakov.analytics.api.dto.response;
 
 import io.simakov.analytics.domain.model.SyncJob;
+import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.model.enums.SyncStatus;
 
 import java.time.Instant;
@@ -8,6 +9,7 @@ import java.time.Instant;
 public record SyncJobResponse(
     Long jobId,
     SyncStatus status,
+    SyncJobPhase phase,
     Instant startedAt,
     Instant finishedAt,
     Instant dateFrom,
@@ -18,8 +20,8 @@ public record SyncJobResponse(
 ) {
 
     public static SyncJobResponse from(SyncJob job) {
-        return new SyncJobResponse(job.getId(), job.getStatus(), job.getStartedAt(),
-            job.getFinishedAt(), job.getDateFrom(), job.getDateTo(), job.getErrorMessage(),
-            job.getTotalMrs(), job.getProcessedMrs());
+        return new SyncJobResponse(job.getId(), job.getStatus(), job.getPhase(),
+            job.getStartedAt(), job.getFinishedAt(), job.getDateFrom(), job.getDateTo(),
+            job.getErrorMessage(), job.getTotalMrs(), job.getProcessedMrs());
     }
 }
