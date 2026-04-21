@@ -14,57 +14,53 @@
 
 <div class="report-page">
 
-    <!-- ── Боковая панель ──────────────────────────────────── -->
-    <aside class="sidebar">
-        <div class="sidebar-section">
-            <div class="sidebar-label">Период</div>
-            <div class="period-segmented" style="flex-direction: column; gap: 4px;">
-                <button onclick="applyPeriod('LAST_7_DAYS')"
-                        th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                        type="button">7 дней</button>
-                <button onclick="applyPeriod('LAST_30_DAYS')"
-                        th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                        type="button">30 дней</button>
-                <button onclick="applyPeriod('LAST_90_DAYS')"
-                        th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                        type="button">90 дней</button>
-                <button onclick="applyPeriod('LAST_180_DAYS')"
-                        th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                        type="button">180 дней</button>
-                <button onclick="applyPeriod('LAST_360_DAYS')"
-                        th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                        type="button">360 дней</button>
-            </div>
-        </div>
-
-        <div class="sidebar-section" th:if="${allProjects != null and !#lists.isEmpty(allProjects)}">
-            <div class="sidebar-label">Репозитории</div>
-            <div class="sidebar-projects">
-                <th:block th:each="proj : ${allProjects}">
-                    <label class="sidebar-project-row">
-                        <input type="checkbox"
-                               class="proj-checkbox"
-                               th:value="${proj.id}"
-                               th:checked="${#lists.contains(selectedProjectIds, proj.id)}">
-                        <span class="sidebar-project-name" th:text="${proj.name}">repo</span>
-                    </label>
-                </th:block>
-            </div>
-        </div>
-    </aside>
+    <!-- ── Боковая панель (общий фрагмент) ──────────────── -->
+    <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
 
     <!-- ── Основная область ─────────────────────────────── -->
     <main class="report-main">
 
-        <!-- Заголовок -->
+        <!-- Заголовок + период -->
         <div class="page-header">
             <div>
                 <h1 class="page-title">Инсайты</h1>
                 <div class="page-subtitle">
                     Система автоматически находит аномалии и закономерности в работе команды.
-                    Алгоритмические правила работают постоянно и бесплатно.
-                    AI-инсайты — опциональный модуль.
                 </div>
+            </div>
+            <div class="page-header-right">
+                <div class="period-segmented">
+                    <button onclick="applyPeriod('LAST_7_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">7д</button>
+                    <button onclick="applyPeriod('LAST_30_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">30д</button>
+                    <button onclick="applyPeriod('LAST_90_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">90д</button>
+                    <button onclick="applyPeriod('LAST_180_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">180д</button>
+                    <button onclick="applyPeriod('LAST_360_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">360д</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фильтр репозиториев -->
+        <div class="repo-filter-row" th:if="${allProjects != null and allProjects.size() > 1}">
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3)">Репозитории</span>
+            <div class="filter-checkboxes">
+                <th:block th:each="project : ${allProjects}">
+                    <label class="filter-checkbox-label">
+                        <input class="filter-project-check" onchange="applyProjectFilter()"
+                               th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
+                               th:value="${project.id}" type="checkbox">
+                        <span th:text="${project.name}">repo</span>
+                    </label>
+                </th:block>
             </div>
         </div>
 
@@ -75,11 +71,11 @@
                 <div>
                     <div class="insight-meta-title">
                         Алгоритмические
-                        <span class="insight-meta-count" th:text="'· ' + ${algoCount} + ' активных'"></span>
+                        <span class="insight-meta-count" th:text="'· ' + ${algoCount} + ' активных'">· 0 активных</span>
                     </div>
                     <div class="insight-meta-desc">
                         Детерминированные правила на метриках: пороги, дельты, распределения (Gini).
-                        Работают непрерывно, без внешних вызовов. Прозрачные — виден конкретный triggered rule.
+                        Прозрачные — виден конкретный triggered rule.
                     </div>
                 </div>
             </div>
@@ -93,13 +89,13 @@
                     </div>
                     <div class="insight-meta-desc">
                         LLM анализирует паттерны (burnout, риски, рост) и формулирует рекомендации текстом.
-                        Данные анонимизируются, запуск раз в сутки. В будущем — по подписке.
+                        В будущем — по подписке.
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Фильтр по типу -->
+        <!-- Фильтр по типу + сортировка -->
         <div class="insight-filter-bar">
             <div class="insight-filter-group" id="kind-filter">
                 <button class="insight-filter-btn insight-filter-btn-active"
@@ -123,7 +119,7 @@
                         type="button"
                         th:text="'Инфо · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).INFO) ?: 0}">Инфо</button>
             </div>
-            <span class="insight-sort-label">Сортировка: severity ↓</span>
+            <span class="insight-sort-label">severity ↓</span>
         </div>
 
         <!-- Список инсайтов -->
@@ -162,7 +158,7 @@
                             <span class="insight-row-badge-algo">⚙ Algo</span>
                             <span class="insight-row-severity"
                                   th:classappend="'insight-row-severity--' + ${ins.kind().cssValue()}"
-                                  th:text="'Severity ' + ${ins.severity()} + '/5'"></span>
+                                  th:text="'S' + ${ins.severity()}"></span>
                             <code class="insight-row-code" th:text="${ins.rule().code()}"></code>
                         </div>
                         <div class="insight-row-desc" th:text="${ins.body()}"></div>
@@ -195,42 +191,118 @@
 
         <!-- Footer-пояснение -->
         <div class="insight-footer-explainer" th:if="${!#lists.isEmpty(insights)}">
-            <strong>Как это работает:</strong>
-            алгоритмические правила пересчитываются при каждой синхронизации GitLab.
-            AI-модуль запускается раз в сутки и использует сырые метрики без имён и кода.
+            Алгоритмические правила пересчитываются при каждом открытии страницы.
+            AI-модуль будет запускаться раз в сутки — скоро.
         </div>
 
     </main>
 </div>
 
-<script th:inline="javascript">
+<!-- Modal overlays (необходимы для sidebar :: sidebar) -->
+<div class="modal-overlay hidden" id="modal-project"
+     onclick="handleOverlayClick(event, 'modal-project')">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Подключить репозиторий</span>
+            <button class="modal-close" onclick="closeModal('modal-project')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="project-error"></div>
+            <div class="form-group" th:if="${sources != null and sources.size() > 1}">
+                <label class="form-label">Git-система</label>
+                <select class="form-select" id="project-source-id" onchange="onTokenInputChange()">
+                    <option value="">— выберите источник —</option>
+                    <option th:each="source : ${sources}"
+                            th:text="${source.name}"
+                            th:value="${source.id}">Source</option>
+                </select>
+            </div>
+            <div th:unless="${sources != null and sources.size() > 1}">
+                <input type="hidden" id="project-source-id"
+                       th:value="${sources != null and !sources.isEmpty()} ? ${sources[0].id} : ''"/>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Access Token</label>
+                <input class="form-input" id="project-token"
+                       onblur="onTokenInputBlur()"
+                       oninput="onTokenInputChange()"
+                       placeholder="glpat-••••••••••••••••"
+                       style="font-family:var(--font-mono)"
+                       type="password">
+                <div class="token-validate-status" id="token-status-line"
+                     style="margin-top:10px;min-height:18px;line-height:1.5"></div>
+                <div id="token-check-btn-wrap" style="margin-top:14px">
+                    <button class="btn-secondary" id="btn-check-token"
+                            onclick="validateTokenAndFetch()" type="button">Проверить токен</button>
+                </div>
+            </div>
+            <div class="hidden" id="repo-list-wrap" style="margin-bottom:16px">
+                <label class="form-label" style="margin-bottom:10px">Выберите репозиторий</label>
+                <div class="repo-list-container" id="repo-list-container"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
+            <button class="btn-primary" disabled id="btn-add-project"
+                    onclick="addProject()">Добавить и синхронизировать</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay hidden" id="modal-user"
+     onclick="handleOverlayClick(event, 'modal-user')">
+    <div class="modal">
+        <div class="modal-header">
+            <span>Новый сотрудник</span>
+            <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error hidden" id="user-error"></div>
+            <div class="form-group">
+                <label class="form-label">Имя <span style="color:var(--bad)">*</span></label>
+                <input class="form-input" id="user-name" placeholder="Иван Иванов" type="text">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email <span style="color:var(--bad)">*</span></label>
+                <input class="form-input" id="user-email"
+                       placeholder="ivan@example.com" type="email">
+                <div class="form-hint">Должен совпадать с email в git-коммитах</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-user')">Отмена</button>
+            <button class="btn-primary" onclick="createUser()">Добавить</button>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/sidebar.js}"></script>
+
+<script>
     function applyPeriod(period) {
         const url = new URL(window.location.href);
         url.searchParams.set('period', period);
         window.location.href = url.toString();
     }
 
-    // Project checkboxes
-    document.querySelectorAll('.proj-checkbox').forEach(function(cb) {
-        cb.addEventListener('change', function() {
-            const checked = Array.from(document.querySelectorAll('.proj-checkbox:checked'))
-                .map(function(c) { return c.value; });
-            const url = new URL(window.location.href);
-            url.searchParams.delete('projectIds');
-            checked.forEach(function(id) { url.searchParams.append('projectIds', id); });
-            window.location.href = url.toString();
-        });
-    });
+    function applyProjectFilter() {
+        const checked = Array.from(document.querySelectorAll('.filter-project-check:checked'))
+            .map(function (c) { return c.value; });
+        const url = new URL(window.location.href);
+        url.searchParams.delete('projectIds');
+        checked.forEach(function (id) { url.searchParams.append('projectIds', id); });
+        window.location.href = url.toString();
+    }
 
-    // Kind filter
-    document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+    // Kind filter (client-side)
+    document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
             const kind = btn.dataset.kind;
-            document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function(b) {
+            document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function (b) {
                 b.classList.remove('insight-filter-btn-active');
             });
             btn.classList.add('insight-filter-btn-active');
-            document.querySelectorAll('#insight-list .insight-row').forEach(function(row) {
+            document.querySelectorAll('#insight-list .insight-row').forEach(function (row) {
                 const rowKind = row.dataset.kind;
                 row.style.display = (kind === 'all' || rowKind === kind) ? '' : 'none';
             });

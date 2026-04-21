@@ -1,15 +1,17 @@
 package io.simakov.analytics.web.controller;
 
+import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.TrackedUser;
-import io.simakov.analytics.domain.repository.TrackedProjectRepository;
-import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.insights.InsightService;
 import io.simakov.analytics.insights.model.InsightKind;
 import io.simakov.analytics.insights.model.TeamInsight;
 import io.simakov.analytics.security.WorkspaceContext;
+import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.OAuth2UserResolver;
-import io.simakov.analytics.web.dto.InsightsPageData;
+import io.simakov.analytics.web.SettingsViewService;
+import io.simakov.analytics.web.dto.SettingsPageData;
+import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
@@ -26,9 +28,10 @@ import java.util.stream.Collectors;
 public class InsightsController {
 
     private final InsightService insightService;
-    private final TrackedProjectRepository trackedProjectRepository;
-    private final TrackedUserRepository trackedUserRepository;
     private final OAuth2UserResolver userResolver;
+    private final SettingsViewService settingsViewService;
+    private final WorkspaceService workspaceService;
+    private final SyncJobService syncJobService;
 
     @GetMapping("/insights")
     public String insights(OAuth2AuthenticationToken authentication,
@@ -41,34 +44,44 @@ public class InsightsController {
             model.addAttribute("currentUser", userResolver.resolve(authentication));
         }
 
-        List<TrackedProject> allProjects = trackedProjectRepository.findAllByWorkspaceId(workspaceId);
-        List<TrackedUser> allUsers = trackedUserRepository.findAllByWorkspaceId(workspaceId);
+        SettingsPageData sidebarData = settingsViewService.buildSettingsPage();
+        List<TrackedProject> allProjects = sidebarData.projects();
 
         List<TeamInsight> insights = insightService.evaluate(workspaceId, period, projectIds);
 
-        Map<Long, String> usersMap = allUsers.stream()
-            .collect(Collectors.toMap(TrackedUser::getId, TrackedUser::getDisplayName));
+        Map<Long, String> usersMap = sidebarData.usersWithAliases().stream()
+            .collect(Collectors.toMap(
+                u -> ((TrackedUser) u.get("user")).getId(),
+                u -> ((TrackedUser) u.get("user")).getDisplayName()
+            ));
 
         List<Long> selectedProjectIds = (projectIds != null && !projectIds.isEmpty())
             ? projectIds
             : allProjects.stream().map(TrackedProject::getId).toList();
 
-        int algoCount = insights.size(); // all are algo for now
+        int algoCount = insights.size();
         Map<InsightKind, Long> kindCounts = insights.stream()
             .collect(Collectors.groupingBy(TeamInsight::kind, Collectors.counting()));
 
-        InsightsPageData data = new InsightsPageData(
-            insights, usersMap, allProjects, selectedProjectIds, period, algoCount, kindCounts
-        );
+        // Sidebar required attributes
+        model.addAttribute("allProjects", allProjects);
+        model.addAttribute("sources", sidebarData.sources());
+        model.addAttribute("usersWithAliases", sidebarData.usersWithAliases());
+        model.addAttribute("activeJobIds", sidebarData.activeJobIds());
+        model.addAttribute("hasProjects", sidebarData.hasProjects());
+        model.addAttribute("showInactive", false);
+        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(workspaceId));
+        Long enrichmentJobId = syncJobService.findActiveEnrichmentJob(workspaceId)
+            .map(SyncJob::getId).orElse(null);
+        model.addAttribute("enrichmentJobId", enrichmentJobId);
 
-        model.addAttribute("data", data);
-        model.addAttribute("insights", data.insights());
-        model.addAttribute("users", data.users());
-        model.addAttribute("allProjects", data.allProjects());
-        model.addAttribute("selectedProjectIds", data.selectedProjectIds());
-        model.addAttribute("selectedPeriod", data.selectedPeriod());
-        model.addAttribute("algoCount", data.algoCount());
-        model.addAttribute("kindCounts", data.kindCounts());
+        // Page-specific attributes
+        model.addAttribute("insights", insights);
+        model.addAttribute("users", usersMap);
+        model.addAttribute("selectedProjectIds", selectedProjectIds);
+        model.addAttribute("selectedPeriod", period);
+        model.addAttribute("algoCount", algoCount);
+        model.addAttribute("kindCounts", kindCounts);
         model.addAttribute("totalCount", insights.size());
 
         return "insights";
