@@ -125,156 +125,101 @@
 
     // ── Sync banners ──────────────────────────────────────────────────────────
 
-    function buildBannerHtml(jobId, descHtml, initialLabel) {
-        const label = initialLabel || 'получение списка MR...';
-        return `
-        <div class="sync-banner-icon-box"><span class="sync-spinner"></span></div>
-        <div class="sync-main">
-            <span class="sync-text">${descHtml}</span>
-            <div class="sync-progress-row">
-                <div class="sync-progress-bar">
-                    <div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-${jobId}"></div>
+    // ── Unified sync card ─────────────────────────────────────────────────────
+
+    function buildSyncCardHtml(jobId, repoName, phaseNum, phaseDesc, initialLabel) {
+        const label = initialLabel || (phaseNum === 2 ? 'дозагружаем детали...' : 'загружаем список MR...');
+        return `<div class="sync-card-row">
+            <div class="sync-card-icon-box"><span class="sync-spinner"></span></div>
+            <div class="sync-card-body">
+                <div class="sync-card-title">
+                    <strong class="num">${escHtml(repoName)}</strong>
+                    <span class="sync-phase-badge">[${phaseNum}/2]</span>
+                    <span class="sync-card-phase-desc">${escHtml(phaseDesc)}</span>
                 </div>
-                <span class="sync-progress-label" id="sync-plabel-${jobId}">${escHtml(label)}</span>
+                <div class="sync-card-progress-row">
+                    <span class="sync-phase-label" id="sync-phase-label-${jobId}">Фаза ${phaseNum} из 2</span>
+                    <div class="sync-progress-bar">
+                        <div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-${jobId}"></div>
+                    </div>
+                    <span class="sync-progress-label num" id="sync-plabel-${jobId}">${escHtml(label)}</span>
+                </div>
+                <div class="sync-card-counters hidden" id="sync-counters-${jobId}">
+                    <span>Коммиты: <span class="num" id="sync-commits-${jobId}">0</span></span>
+                    <span>Ревью: <span class="num" id="sync-reviews-${jobId}">0</span></span>
+                    <span>Коммент.: <span class="num" id="sync-comments-${jobId}">0</span></span>
+                </div>
             </div>
-        </div>
-        <span class="sync-duration" id="sync-duration-${jobId}"></span>
-    `;
+            <span class="sync-duration num" id="sync-duration-${jobId}"></span>
+        </div>`;
     }
 
-    function getSyncProjectDesc(phase) {
+    function getRepoNameFromSidebar() {
         const items = [...document.querySelectorAll('#sidebar-repos-list .sidebar-item-name')];
         const names = items.map(el => el.textContent.trim()).filter(Boolean);
-        if (names.length === 0) {
-            return phase === 'ENRICH'
-                ? 'Дозагружаем данные — коммиты, комментарии и аппрувы'
-                : 'Синхронизация — загружаем список MR за 360 дней';
-        }
-        const repoStr = names.length === 1
-            ? `<strong>${escHtml(names[0])}</strong>`
-            : `<strong>${escHtml(names[0])}</strong> и ещё ${names.length - 1}`;
-        return phase === 'ENRICH'
-            ? `Дозагружаем ${repoStr} — коммиты, комментарии и аппрувы`
-            : `Синхронизация ${repoStr} — загружаем список MR за 360 дней`;
+        return names.length === 1 ? names[0] : (names.length > 1 ? names[0] + ' (+' + (names.length - 1) + ')' : '...');
     }
 
     window.showSyncBanner = function (jobId, projectName, isRetry) {
-        const banners = document.getElementById('sync-banners');
-        if (!banners) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
             return;
         }
-        const id = 'sync-banner-' + jobId;
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
         const div = document.createElement('div');
         div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        div.dataset.descSet = '1';
-        const desc = isRetry
-            ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
-            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем список MR за 360 дней`;
-        div.innerHTML = buildBannerHtml(jobId, desc);
-        banners.prepend(div);
-        startBannerTimers(jobId, id, Date.now());
+        div.className = 'sync-card sync-card-running';
+        div.innerHTML = buildSyncCardHtml(
+            jobId, projectName, 1,
+            isRetry ? 'повторная загрузка MR' : 'загрузка MR', null
+        );
+        container.prepend(div);
+        startCardTimers(jobId, id, Date.now());
     };
 
-    function restoreSyncBanner(jobId) {
-        const banners = document.getElementById('sync-banners');
-        if (!banners) {
+    function restoreSyncCard(jobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
             return;
         }
-        const id = 'sync-banner-' + jobId;
+        const id = 'sync-card-' + jobId;
         if (document.getElementById(id)) {
             return;
         }
         const div = document.createElement('div');
         div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...');
-        banners.prepend(div);
-        startBannerTimers(jobId, id, null);
+        div.className = 'sync-card sync-card-running';
+        div.dataset.needsRepoName = '1';
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 1, 'синхронизация в процессе', null);
+        container.prepend(div);
+        startCardTimers(jobId, id, null);
     }
 
-    function restoreEnrichmentBanner(jobId) {
-        // If the page has a phase2-card element, use it (same as report.html)
-        if (document.getElementById('phase2-card')) {
-            initPhase2Card(jobId);
+    function restoreEnrichCard(jobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
             return;
         }
-        const banners = document.getElementById('sync-banners');
-        if (!banners) {
-            return;
-        }
-        const id = 'sync-banner-' + jobId;
+        const id = 'sync-card-' + jobId;
         if (document.getElementById(id)) {
             return;
         }
         const div = document.createElement('div');
         div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        div.dataset.descSet = '1';
-        div.innerHTML = buildBannerHtml(jobId, getSyncProjectDesc('ENRICH'), 'дозагружаем детали...');
-        banners.prepend(div);
-        startBannerTimers(jobId, id, null);
-    }
-
-    function initPhase2Card(jobId) {
-        const card = document.getElementById('phase2-card');
-        if (!card) {
-            return;
+        div.className = 'sync-card sync-card-running';
+        div.innerHTML = buildSyncCardHtml(jobId, getRepoNameFromSidebar(), 2, 'коммиты, ревью, комментарии', null);
+        const counters = div.querySelector('.sync-card-counters');
+        if (counters) {
+            counters.classList.remove('hidden');
         }
-        const commitsEl = document.getElementById('p2-commits');
-        const reviewsEl = document.getElementById('p2-reviews');
-        const commentsEl = document.getElementById('p2-comments');
-        const pctEl = document.getElementById('p2-pct');
-        const barEl = document.getElementById('p2-bar');
-        let lastProcessed = 0;
-        const interval = setInterval(async () => {
-            try {
-                const job = await api('GET', '/settings/sync/' + jobId);
-                if (job.processedMrs > lastProcessed) {
-                    lastProcessed = job.processedMrs;
-                }
-                const pct = job.totalMrs > 0 ? Math.round(lastProcessed / job.totalMrs * 100) : 0;
-                if (commitsEl) {
-                    commitsEl.textContent = Math.round(lastProcessed * 2.8).toLocaleString('ru');
-                }
-                if (reviewsEl) {
-                    reviewsEl.textContent = Math.round(lastProcessed * 0.6).toLocaleString('ru');
-                }
-                if (commentsEl) {
-                    commentsEl.textContent = Math.round(lastProcessed * 1.4).toLocaleString('ru');
-                }
-                if (pctEl) {
-                    pctEl.textContent = pct;
-                }
-                if (barEl) {
-                    barEl.style.width = pct + '%';
-                }
-                if (job.status === 'COMPLETED') {
-                    clearInterval(interval);
-                    if (pctEl) {
-                        pctEl.textContent = '100';
-                    }
-                    if (barEl) {
-                        barEl.style.width = '100%';
-                    }
-                    setTimeout(() => {
-                        if (card.parentNode) {
-                            card.remove();
-                        }
-                    }, 3000);
-                } else if (job.status === 'FAILED') {
-                    clearInterval(interval);
-                    if (card.parentNode) {
-                        card.remove();
-                    }
-                }
-            } catch (e) {
-                // продолжаем поллинг при сетевой ошибке
-            }
-        }, 4000);
+        container.prepend(div);
+        startCardTimers(jobId, id, null);
     }
 
-    function startBannerTimers(jobId, bannerId, localStartMs) {
+    function startCardTimers(jobId, cardId, localStartMs) {
         let serverStartMs = localStartMs;
         const durationEl = document.getElementById('sync-duration-' + jobId);
         const durationTimer = setInterval(() => {
@@ -286,7 +231,7 @@
                 durationEl.textContent = formatSec(sec);
             }
         }, 1000);
-        pollSyncJob(jobId, bannerId, durationTimer, (startedAt) => {
+        pollSyncJob(jobId, cardId, durationTimer, (startedAt) => {
             if (!serverStartMs) {
                 serverStartMs = new Date(startedAt).getTime();
             }
@@ -312,7 +257,7 @@
 
     let reloadScheduled = false;
 
-    function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
+    function pollSyncJob(jobId, cardId, durationTimer, onStartedAt) {
         const fillEl = () => document.getElementById('sync-fill-' + jobId);
         const labelEl = () => document.getElementById('sync-plabel-' + jobId);
 
@@ -322,18 +267,46 @@
                 if (onStartedAt && job.startedAt) {
                     onStartedAt(job.startedAt);
                 }
-                const bannerEl = document.getElementById(bannerId);
-                if (bannerEl && !bannerEl.dataset.descSet) {
-                    bannerEl.dataset.descSet = '1';
-                    const textEl = bannerEl.querySelector('.sync-text');
-                    if (textEl) {
-                        textEl.innerHTML = getSyncProjectDesc(job.phase);
+                const cardEl = document.getElementById(cardId);
+                // First poll: resolve repo name if unknown, update phase info
+                if (cardEl && cardEl.dataset.needsRepoName) {
+                    delete cardEl.dataset.needsRepoName;
+                    const nameEl = cardEl.querySelector('.sync-card-title strong');
+                    if (nameEl) {
+                        nameEl.textContent = getRepoNameFromSidebar();
+                    }
+                    const phaseNum = job.phase === 'ENRICH' ? 2 : 1;
+                    const badgeEl = cardEl.querySelector('.sync-phase-badge');
+                    if (badgeEl) {
+                        badgeEl.textContent = '[' + phaseNum + '/2]';
+                    }
+                    const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
+                    if (phaseLabelEl) {
+                        phaseLabelEl.textContent = 'Фаза ' + phaseNum + ' из 2';
+                    }
+                    const descEl = cardEl.querySelector('.sync-card-phase-desc');
+                    if (descEl) {
+                        descEl.textContent = job.phase === 'ENRICH'
+                            ? 'коммиты, ревью, комментарии' : 'загрузка MR';
                     }
                     if (job.phase === 'ENRICH') {
-                        const lbl = labelEl();
-                        if (lbl && lbl.textContent === 'получение списка MR...') {
-                            lbl.textContent = 'дозагружаем детали...';
-                        }
+                        document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
+                    }
+                }
+                // Update Phase 2 counters
+                if (job.phase === 'ENRICH' && job.processedMrs > 0) {
+                    document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
+                    const c = document.getElementById('sync-commits-' + jobId);
+                    const r = document.getElementById('sync-reviews-' + jobId);
+                    const cm = document.getElementById('sync-comments-' + jobId);
+                    if (c) {
+                        c.textContent = Math.round(job.processedMrs * 2.8).toLocaleString('ru');
+                    }
+                    if (r) {
+                        r.textContent = Math.round(job.processedMrs * 0.6).toLocaleString('ru');
+                    }
+                    if (cm) {
+                        cm.textContent = Math.round(job.processedMrs * 1.4).toLocaleString('ru');
                     }
                 }
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
@@ -344,11 +317,11 @@
                     }
                     const serverStartMs = new Date(job.startedAt).getTime();
                     const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
-                    let label = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
+                    let label = job.processedMrs + ' / ' + job.totalMrs + ' MR (' + pct + '%)';
                     if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
                         const rate = job.processedMrs / elapsedSec;
                         const etaSec = Math.round((job.totalMrs - job.processedMrs) / rate);
-                        label += ' • ETA ' + formatEta(etaSec);
+                        label += ' · ETA ' + formatEta(etaSec);
                     }
                     if (labelEl()) {
                         labelEl().textContent = label;
@@ -357,18 +330,11 @@
                 if (job.status === 'COMPLETED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
-                    if (fillEl()) {
-                        fillEl().classList.remove('sync-progress-fill--indeterminate');
-                        fillEl().style.width = '100%';
-                    }
-                    if (labelEl()) {
-                        labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
-                    }
-                    updateBanner(bannerId, 'ok', 'Синхронизация завершена');
+                    updateSyncCard(cardId, job);
                 } else if (job.status === 'FAILED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
-                    updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
+                    updateSyncCard(cardId, job);
                 }
             } catch (e) {
                 // продолжаем поллинг при сетевой ошибке
@@ -376,18 +342,34 @@
         }, 3000);
     }
 
-    function updateBanner(bannerId, type, message) {
-        const el = document.getElementById(bannerId);
+    function updateSyncCard(cardId, job) {
+        const el = document.getElementById(cardId);
         if (!el) {
             return;
         }
-        el.className = 'sync-banner sync-banner-' + (type === 'ok' ? 'done' : 'error');
-        el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
-        if (type === 'ok' && !reloadScheduled) {
-            reloadScheduled = true;
-            setTimeout(() => window.location.reload(), 3000);
-        } else if (type === 'ok') {
-            setTimeout(() => el.remove(), 5000);
+        const isOk = job.status === 'COMPLETED';
+        const phaseLabel = job.phase === 'ENRICH' ? '2/2' : '1/2';
+        if (isOk) {
+            el.className = 'sync-card sync-card-done';
+            const detail = job.phase === 'ENRICH'
+                ? 'данные загружены'
+                : (job.totalMrs > 0 ? job.totalMrs + ' MR' : 'завершено');
+            el.innerHTML = '<div class="sync-card-done-row">'
+                + '<span class="sync-card-done-icon">&#10003;</span>'
+                + '<span>Фаза [' + phaseLabel + '] завершена &middot; ' + escHtml(detail) + '</span>'
+                + '</div>';
+            if (!reloadScheduled) {
+                reloadScheduled = true;
+                setTimeout(() => window.location.reload(), 3000);
+            } else {
+                setTimeout(() => el.remove(), 5000);
+            }
+        } else {
+            el.className = 'sync-card sync-card-error';
+            el.innerHTML = '<div class="sync-card-done-row">'
+                + '<span>&#10005;</span>'
+                + '<span>Фаза [' + phaseLabel + '] · ошибка: ' + escHtml(job.errorMessage || '') + '</span>'
+                + '</div>';
         }
     }
 
@@ -801,9 +783,9 @@
         const enrichmentJobId = window.ENRICHMENT_JOB_ID || null;
         activeJobIds
             .filter(jobId => jobId !== enrichmentJobId)
-            .forEach(jobId => restoreSyncBanner(jobId));
+            .forEach(jobId => restoreSyncCard(jobId));
         if (enrichmentJobId) {
-            restoreEnrichmentBanner(enrichmentJobId);
+            restoreEnrichCard(enrichmentJobId);
         }
     });
 
