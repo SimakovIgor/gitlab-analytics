@@ -44,13 +44,17 @@ public class InactiveMemberEvaluator implements InsightEvaluator {
         String title = String.format(
             "%d %s без активности за период",
             inactive.size(),
-            inactive.size() == 1 ? "участник" : "участника"
+            inactive.size() == 1
+                ? "участник"
+                : "участника"
         );
         String body = String.format(
             "%s%s. Возможные причины: отпуск, больничный, неверная настройка email-алиасов"
                 + " или устаревшая запись в системе.",
             names,
-            inactive.size() > 5 ? " и другие" : ""
+            inactive.size() > 5
+                ? " и другие"
+                : ""
         );
 
         return List.of(TeamInsight.of(InsightRule.INACTIVE_MEMBER, title, body, affectedIds));

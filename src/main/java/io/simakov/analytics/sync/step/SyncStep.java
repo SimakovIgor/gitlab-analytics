@@ -11,9 +11,14 @@ import io.simakov.analytics.domain.model.MergeRequest;
  */
 public interface SyncStep {
 
-    /** Returns {@code true} when this step should run for the given sync request. */
+    /**
+     * Returns {@code true} when this step should run for the given sync request.
+     */
     boolean isEnabled(ManualSyncRequest request);
 
-    /** Performs the sync using the supplied GitLab context and persists results to the DB. */
-    void sync(SyncContext ctx, MergeRequest mr);
+    /**
+     * Performs the sync using the supplied GitLab context and persists results to the DB.
+     */
+    void sync(SyncContext ctx,
+              MergeRequest mr);
 }

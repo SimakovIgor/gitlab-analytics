@@ -14,5 +14,6 @@ import io.simakov.analytics.metrics.model.UserMetrics;
  */
 public interface MetricProvider {
 
-    void populate(MetricContext ctx, UserMetrics.UserMetricsBuilder builder);
+    void populate(MetricContext ctx,
+                  UserMetrics.UserMetricsBuilder builder);
 }

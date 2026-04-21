@@ -24,7 +24,10 @@ public record TeamInsight(
     /**
      * Convenience factory using the rule's default kind and severity.
      */
-    public static TeamInsight of(InsightRule rule, String title, String body, List<Long> affectedUserIds) {
+    public static TeamInsight of(InsightRule rule,
+                                 String title,
+                                 String body,
+                                 List<Long> affectedUserIds) {
         return new TeamInsight(rule, rule.defaultKind(), rule.defaultSeverity(), title, body, affectedUserIds);
     }
 }

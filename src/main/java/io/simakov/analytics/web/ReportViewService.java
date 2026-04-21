@@ -80,9 +80,9 @@ public class ReportViewService {
 
         Long lastFailedSyncJobId = activeJobIds.isEmpty() && !hasSyncCompleted
             ? syncJobRepository
-                .findTopByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.FAILED)
-                .map(SyncJob::getId)
-                .orElse(null)
+              .findTopByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.FAILED)
+              .map(SyncJob::getId)
+              .orElse(null)
             : null;
 
         Long enrichmentJobId = syncJobService.findActiveEnrichmentJob(workspaceId)
@@ -166,7 +166,8 @@ public class ReportViewService {
         return result;
     }
 
-    private Map<String, Number> computeDelta(UserMetrics m, UserMetrics p) {
+    private Map<String, Number> computeDelta(UserMetrics m,
+                                             UserMetrics p) {
         Map<String, Number> d = new HashMap<>();
         d.put(Metric.MR_MERGED_COUNT.key(), m.getMrMergedCount() - p.getMrMergedCount());
         d.put(Metric.LINES_ADDED.key(), m.getLinesAdded() - p.getLinesAdded());
@@ -273,10 +274,10 @@ public class ReportViewService {
     }
 
     private List<MergeRequest> findMrsByEmailFallbackRaw(Long userId,
-                                                          List<TrackedUserAlias> aliases,
-                                                          List<Long> projectIds,
-                                                          Instant dateFrom,
-                                                          Instant dateTo) {
+                                                         List<TrackedUserAlias> aliases,
+                                                         List<Long> projectIds,
+                                                         Instant dateFrom,
+                                                         Instant dateTo) {
         TrackedUser user = trackedUserRepository.findById(userId).orElse(null);
         if (user == null) {
             return List.of();
@@ -289,7 +290,8 @@ public class ReportViewService {
             .findMergedInPeriodByCommitEmails(projectIds, List.copyOf(emails), dateFrom, dateTo);
     }
 
-    private Set<String> buildUserEmails(Long userId, List<TrackedUserAlias> aliases) {
+    private Set<String> buildUserEmails(Long userId,
+                                        List<TrackedUserAlias> aliases) {
         Set<String> emails = new HashSet<>();
         aliases.forEach(a -> {
             if (a.getEmail() != null) {
@@ -305,8 +307,8 @@ public class ReportViewService {
     }
 
     List<MrSummaryDto> toMrSummaries(List<MergeRequest> mrs,
-                                      Map<Long, String> projectPathById,
-                                      Set<String> userEmails) {
+                                     Map<Long, String> projectPathById,
+                                     Set<String> userEmails) {
         if (mrs.isEmpty()) {
             return List.of();
         }
@@ -317,18 +319,25 @@ public class ReportViewService {
             .toList();
     }
 
-    private Map<Long, MrCommitStats> buildCommitStats(List<Long> mrIds, Set<String> userEmails) {
+    private Map<Long, MrCommitStats> buildCommitStats(List<Long> mrIds,
+                                                      Set<String> userEmails) {
         List<MergeRequestCommit> commits = commitRepository.findByMergeRequestIdIn(mrIds);
         Map<Long, MrCommitStats> result = new HashMap<>();
         for (MergeRequestCommit c : commits) {
-            String email = c.getAuthorEmail() != null ? c.getAuthorEmail().toLowerCase(Locale.ROOT) : "";
+            String email = c.getAuthorEmail() != null
+                ? c.getAuthorEmail().toLowerCase(Locale.ROOT)
+                : "";
             if (!userEmails.isEmpty() && !userEmails.contains(email)) {
                 continue;
             }
             // Merge commits (parent_ids > 1) carry inflated stats from the merged branch —
             // they must not contribute to line counts (commit count still includes them).
-            int additions = c.isMergeCommit() ? 0 : c.getAdditions();
-            int deletions = c.isMergeCommit() ? 0 : c.getDeletions();
+            int additions = c.isMergeCommit()
+                ? 0
+                : c.getAdditions();
+            int deletions = c.isMergeCommit()
+                ? 0
+                : c.getDeletions();
             result.merge(c.getMergeRequestId(),
                 new MrCommitStats(additions, deletions, 1),
                 MrCommitStats::merge);
@@ -345,11 +354,19 @@ public class ReportViewService {
             long seconds = mr.getMergedAtGitlab().getEpochSecond() - mr.getCreatedAtGitlab().getEpochSecond();
             hoursToMerge = Math.round(seconds / 3600.0 * 10.0) / 10.0;
         }
-        String createdAt = mr.getCreatedAtGitlab() != null ? mr.getCreatedAtGitlab().toString() : null;
-        String mergedAt = mr.getMergedAtGitlab() != null ? mr.getMergedAtGitlab().toString() : null;
+        String createdAt = mr.getCreatedAtGitlab() != null
+            ? mr.getCreatedAtGitlab().toString()
+            : null;
+        String mergedAt = mr.getMergedAtGitlab() != null
+            ? mr.getMergedAtGitlab().toString()
+            : null;
         // Prefer net diff from /diffs endpoint (matches GitLab UI); fall back to commit stats.
-        int linesAdded = mr.getNetAdditions() != null ? mr.getNetAdditions() : stats.linesAdded();
-        int linesDeleted = mr.getNetDeletions() != null ? mr.getNetDeletions() : stats.linesDeleted();
+        int linesAdded = mr.getNetAdditions() != null
+            ? mr.getNetAdditions()
+            : stats.linesAdded();
+        int linesDeleted = mr.getNetDeletions() != null
+            ? mr.getNetDeletions()
+            : stats.linesDeleted();
         return new MrSummaryDto(mr.getTitle(), projectPath, mr.getWebUrl(),
             createdAt, mergedAt, hoursToMerge,
             linesAdded, linesDeleted, stats.commitCount());
@@ -364,9 +381,11 @@ public class ReportViewService {
     }
 
     record MrCommitStats(int linesAdded, int linesDeleted, int commitCount) {
+
         static final MrCommitStats EMPTY = new MrCommitStats(0, 0, 0);
 
-        static MrCommitStats merge(MrCommitStats a, MrCommitStats b) {
+        static MrCommitStats merge(MrCommitStats a,
+                                   MrCommitStats b) {
             return new MrCommitStats(a.linesAdded + b.linesAdded,
                 a.linesDeleted + b.linesDeleted,
                 a.commitCount + b.commitCount);

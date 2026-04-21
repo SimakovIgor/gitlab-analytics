@@ -96,13 +96,17 @@ public class MergeRequest {
             nullable = false)
     private int filesChangedCount;
 
-    /** Net diff additions from GET /merge_requests/:iid/diffs — matches GitLab UI.
-     *  NULL if not yet fetched (requires fetchDiffStats=true in sync request). */
+    /**
+     * Net diff additions from GET /merge_requests/:iid/diffs — matches GitLab UI.
+     * NULL if not yet fetched (requires fetchDiffStats=true in sync request).
+     */
     @Column(name = "net_additions")
     private Integer netAdditions;
 
-    /** Net diff deletions from GET /merge_requests/:iid/diffs — matches GitLab UI.
-     *  NULL if not yet fetched (requires fetchDiffStats=true in sync request). */
+    /**
+     * Net diff deletions from GET /merge_requests/:iid/diffs — matches GitLab UI.
+     * NULL if not yet fetched (requires fetchDiffStats=true in sync request).
+     */
     @Column(name = "net_deletions")
     private Integer netDeletions;
 

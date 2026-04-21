@@ -11,10 +11,12 @@ chmod +x scripts/*.sh
 ## Предварительные условия
 
 ### Локальная разработка
+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) — используется как Docker-движок
 - Файл `.env.local` в корне проекта (скопируйте из `.env.example`)
 
 ### Работа с удалённым сервером
+
 - Файл `.env.prod` в корне проекта (скопируйте из `.env.prod.example`)
 - SSH-доступ к серверу без пароля (ключ в `~/.ssh/`)
 - Сервер подготовлен через `scripts/setup-server.sh`
@@ -34,6 +36,7 @@ chmod +x scripts/*.sh
 ```
 
 После старта доступно:
+
 - http://localhost:8080 — приложение
 - http://localhost:8080/swagger-ui.html — Swagger UI
 - http://localhost:8080/actuator/health — health
@@ -53,6 +56,7 @@ chmod +x scripts/*.sh
 Требует `.env.prod` с заполненными `SERVER_IP` и `SERVER_USER`.
 
 **Что происходит:**
+
 1. `./gradlew bootJar` — сборка JAR
 2. `rsync` — синхронизация проекта на сервер (исключая `.git`, `.gradle`, `build/tmp` и т.д.)
 3. `scp .env.prod` → сервер как `.env`
@@ -139,12 +143,14 @@ ssh root@<SERVER_IP> bash /tmp/setup-server.sh
 ## Типовые сценарии
 
 ### Первый запуск локально
+
 ```bash
 cp .env.example .env.local     # заполнить GITHUB_CLIENT_ID и GITHUB_CLIENT_SECRET
 ./scripts/dev-start.sh
 ```
 
 ### Первый деплой на сервер
+
 ```bash
 cp .env.prod.example .env.prod  # заполнить SERVER_IP, SERVER_USER и остальные переменные
 ssh root@<SERVER_IP> bash /tmp/setup-server.sh  # один раз
@@ -152,6 +158,7 @@ ssh root@<SERVER_IP> bash /tmp/setup-server.sh  # один раз
 ```
 
 ### Что-то пошло не так на сервере
+
 ```bash
 ./scripts/health.sh --remote          # посмотреть что не UP
 ./scripts/logs.sh --remote -n 300     # найти причину в логах
@@ -159,6 +166,7 @@ ssh root@<SERVER_IP> bash /tmp/setup-server.sh  # один раз
 ```
 
 ### Чистый пересброс для отладки
+
 ```bash
 # Локально:
 ./scripts/db-reset-local.sh --full && ./scripts/dev-start.sh

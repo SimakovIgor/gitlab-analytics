@@ -41,7 +41,8 @@ class DiscussionSyncStep implements SyncStep {
     }
 
     @Override
-    public void sync(SyncContext ctx, MergeRequest mr) {
+    public void sync(SyncContext ctx,
+                     MergeRequest mr) {
         List<GitLabDiscussionDto> discussions = gitLabApiClient.getMergeRequestDiscussions(
             ctx.baseUrl(), ctx.token(), ctx.gitlabProjectId(), mr.getGitlabMrIid());
 

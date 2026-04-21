@@ -242,7 +242,9 @@ public class SettingsController {
                                    @RequestParam(required = false) String name,
                                    Model model) {
         model.addAttribute("jobId", jobId);
-        model.addAttribute("projectName", name != null ? name : "репозиторий");
+        model.addAttribute("projectName", name != null
+            ? name
+            : "репозиторий");
         return "sync-progress";
     }
 

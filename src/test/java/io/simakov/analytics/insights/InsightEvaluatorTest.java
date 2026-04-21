@@ -35,16 +35,9 @@ class InsightEvaluatorTest {
 
     private InsightProperties props;
 
-    @BeforeEach
-    void setUp() {
-        props = new InsightProperties();
-        // Use defaults: stuck=24h, maxMedianTtm=24h, spikeRatio=2.0, gini=0.45,
-        // largeMrLines=500, deliveryDrop=0.70, minComments=1.5, maxRework=0.35, minMrs=5
-    }
-
-    // ── helpers ────────────────────────────────────────────────────────────
-
-    private static UserMetrics activeUser(long id, int mrMerged, int mrsReviewed) {
+    private static UserMetrics activeUser(long id,
+                                          int mrMerged,
+                                          int mrsReviewed) {
         return UserMetrics.builder()
             .trackedUserId(id)
             .displayName("User " + id)
@@ -56,7 +49,10 @@ class InsightEvaluatorTest {
             .build();
     }
 
-    private static UserMetrics userWithTtm(long id, double medianTtmMinutes) {
+    // ── helpers ────────────────────────────────────────────────────────────
+
+    private static UserMetrics userWithTtm(long id,
+                                           double medianTtmMinutes) {
         return UserMetrics.builder()
             .trackedUserId(id)
             .displayName("User " + id)
@@ -69,12 +65,21 @@ class InsightEvaluatorTest {
             .build();
     }
 
-    private static InsightContext ctx(Map<Long, UserMetrics> current, Map<Long, UserMetrics> previous) {
+    private static InsightContext ctx(Map<Long, UserMetrics> current,
+                                      Map<Long, UserMetrics> previous) {
         return new InsightContext(List.of(), current, previous, List.of(), Map.of());
     }
 
-    private static InsightContext ctxWithOpenMrs(Map<Long, UserMetrics> current, List<MergeRequest> openMrs) {
+    private static InsightContext ctxWithOpenMrs(Map<Long, UserMetrics> current,
+                                                 List<MergeRequest> openMrs) {
         return new InsightContext(List.of(), current, Map.of(), openMrs, Map.of());
+    }
+
+    @BeforeEach
+    void setUp() {
+        props = new InsightProperties();
+        // Use defaults: stuck=24h, maxMedianTtm=24h, spikeRatio=2.0, gini=0.45,
+        // largeMrLines=500, deliveryDrop=0.70, minComments=1.5, maxRework=0.35, minMrs=5
     }
 
     // ── HIGH_MERGE_TIME ────────────────────────────────────────────────────

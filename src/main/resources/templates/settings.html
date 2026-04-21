@@ -12,270 +12,204 @@
 
 <header th:replace="~{fragments/topbar :: topbar('sync')}"></header>
 
-<!-- Баннеры синхронизации (полная ширина) -->
-<div class="sync-banners-global" id="sync-banners"></div>
-
 <div class="report-page">
 
     <!-- ── Боковая панель ──────────────────────────────────── -->
     <th:block th:replace="~{fragments/sidebar :: sidebar-only}"></th:block>
 
-<main class="report-main settings-main">
+    <main class="report-main settings-main">
 
-    <div class="page-title">Настройки</div>
-    <div class="page-subtitle">Управление источниками GitLab, репозиториями и сотрудниками</div>
+        <!-- Карточки синхронизации -->
+        <div id="sync-banners"></div>
 
-    <!-- Вкладки -->
-    <div class="settings-tabs">
-        <button class="tab-btn tab-btn-active" onclick="switchTab('sources')">GitLab Sources</button>
-        <button class="tab-btn" onclick="switchTab('projects')">Репозитории</button>
-        <button class="tab-btn" onclick="switchTab('users')">Сотрудники</button>
-        <button class="tab-btn" onclick="switchTab('jobs')">
-            Синхронизация
-            <span class="tab-badge-running" th:if="${!activeJobIds.isEmpty()}" th:text="${activeJobIds.size()}">0</span>
-        </button>
-    </div>
+        <div class="page-title">Настройки</div>
+        <div class="page-subtitle">Управление источниками GitLab, репозиториями и сотрудниками</div>
 
-    <!-- ── GitLab Sources ─────────────────────────────────────────────────── -->
-    <div class="tab-content" id="tab-sources">
-        <div class="tab-toolbar">
-            <span class="section-title" style="margin-bottom:0">Источники GitLab</span>
-            <button class="btn-primary" onclick="openModal('modal-source')">+ Добавить источник</button>
+        <!-- Вкладки -->
+        <div class="settings-tabs">
+            <button class="tab-btn tab-btn-active" onclick="switchTab('sources')">GitLab Sources</button>
+            <button class="tab-btn" onclick="switchTab('projects')">Репозитории</button>
+            <button class="tab-btn" onclick="switchTab('users')">Сотрудники</button>
         </div>
 
-        <table class="data-table" th:if="${!sources.isEmpty()}">
-            <thead>
-            <tr>
-                <th>Название</th>
-                <th>URL</th>
-                <th>Добавлен</th>
-                <th>Действия</th>
-            </tr>
-            </thead>
-            <tbody id="sources-table-body">
-            <tr th:each="source : ${sources}" th:id="'source-row-' + ${source.id}">
-                <td th:text="${source.name}">—</td>
-                <td><span class="repo-path" th:text="${source.baseUrl}">—</span></td>
-                <td th:text="${#strings.substring(source.createdAt.toString(), 0, 10)}">—</td>
-                <td class="actions-cell">
-                    <button class="btn-sm btn-danger"
-                            onclick="deleteSource(this.dataset.id, this.dataset.name)"
-                            th:data-id="${source.id}"
-                            th:data-name="${source.name}">
-                        Удалить
-                    </button>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-        <div class="empty-state" id="sources-empty" th:if="${sources.isEmpty()}">
-            Нет источников GitLab. Добавьте первый.
-        </div>
-    </div>
-
-    <!-- ── Репозитории ─────────────────────────────────────────────────────── -->
-    <div class="tab-content hidden" id="tab-projects">
-        <div class="tab-toolbar">
-            <span class="section-title" style="margin-bottom:0">Репозитории</span>
-            <button class="btn-primary" onclick="openModal('modal-project')">+ Добавить репозиторий</button>
-        </div>
-
-        <table class="data-table" id="projects-table" th:if="${!projects.isEmpty()}">
-            <thead>
-            <tr>
-                <th>Название</th>
-                <th>Путь</th>
-                <th>Источник</th>
-                <th>Статус</th>
-                <th>Действия</th>
-            </tr>
-            </thead>
-            <tbody id="projects-table-body">
-            <tr th:each="project : ${projects}" th:id="'project-row-' + ${project.id}">
-                <td th:text="${project.name}">—</td>
-                <td><span class="repo-path" th:text="${project.pathWithNamespace}">—</span></td>
-                <td th:text="${sourceNames.get(project.gitSourceId) ?: '—'}">—</td>
-                <td>
-                    <span class="badge badge-active" th:if="${project.enabled}">Активен</span>
-                    <span class="badge badge-inactive" th:unless="${project.enabled}">Отключён</span>
-                </td>
-                <td class="actions-cell">
-                    <button class="btn-sm btn-secondary"
-                            onclick="triggerBackfill(this.dataset.id, this.dataset.name)"
-                            th:data-id="${project.id}"
-                            th:data-name="${project.name}">
-                        Синк
-                    </button>
-                    <button class="btn-sm btn-danger"
-                            onclick="deleteProject(this.dataset.id, this.dataset.name)"
-                            th:data-id="${project.id}"
-                            th:data-name="${project.name}">
-                        Удалить
-                    </button>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-        <div class="empty-state" id="projects-empty" th:if="${projects.isEmpty()}">
-            Нет отслеживаемых репозиториев. Добавьте первый.
-        </div>
-    </div>
-
-    <!-- ── Сотрудники ──────────────────────────────────────────────────────── -->
-    <div class="tab-content hidden" id="tab-users">
-        <div class="tab-toolbar">
-            <span class="section-title" style="margin-bottom:0">Сотрудники</span>
-            <button class="btn-primary" onclick="openModal('modal-user')">+ Добавить вручную</button>
-        </div>
-
-        <!-- Панель обнаружения контрибьютеров -->
-        <div class="discovery-panel hidden" id="discovery-panel">
-            <div class="discovery-header">
-                <div class="discovery-title">
-                    <span class="discovery-icon">👥</span>
-                    Обнаружены участники из синхронизированных репозиториев
-                </div>
-                <div class="discovery-actions">
-                    <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(false)">Снять все</button>
-                    <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(true)">Выбрать всех</button>
-                    <button class="btn-sm btn-primary" disabled id="btn-add-discovered" onclick="addSelectedDiscovered()">
-                        Добавить выбранных
-                    </button>
-                </div>
+        <!-- ── GitLab Sources ─────────────────────────────────────────────────── -->
+        <div class="tab-content" id="tab-sources">
+            <div class="tab-toolbar">
+                <span class="section-title" style="margin-bottom:0">Источники GitLab</span>
+                <button class="btn-primary" onclick="openModal('modal-source')">+ Добавить источник</button>
             </div>
-            <div class="discovery-list" id="discovery-list"></div>
+
+            <table class="data-table" th:if="${!sources.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>URL</th>
+                    <th>Добавлен</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody id="sources-table-body">
+                <tr th:each="source : ${sources}" th:id="'source-row-' + ${source.id}">
+                    <td th:text="${source.name}">—</td>
+                    <td><span class="repo-path" th:text="${source.baseUrl}">—</span></td>
+                    <td th:text="${#strings.substring(source.createdAt.toString(), 0, 10)}">—</td>
+                    <td class="actions-cell">
+                        <button class="btn-sm btn-danger"
+                                onclick="deleteSource(this.dataset.id, this.dataset.name)"
+                                th:data-id="${source.id}"
+                                th:data-name="${source.name}">
+                            Удалить
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="empty-state" id="sources-empty" th:if="${sources.isEmpty()}">
+                Нет источников GitLab. Добавьте первый.
+            </div>
         </div>
 
-        <div class="discovery-loading hidden" id="discovery-loading">
-            <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-            Ищем участников в синхронизированных данных...
+        <!-- ── Репозитории ─────────────────────────────────────────────────────── -->
+        <div class="tab-content hidden" id="tab-projects">
+            <div class="tab-toolbar">
+                <span class="section-title" style="margin-bottom:0">Репозитории</span>
+                <button class="btn-primary" onclick="openModal('modal-project')">+ Добавить репозиторий</button>
+            </div>
+
+            <table class="data-table" id="projects-table" th:if="${!projects.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Путь</th>
+                    <th>Источник</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody id="projects-table-body">
+                <tr th:each="project : ${projects}" th:id="'project-row-' + ${project.id}">
+                    <td th:text="${project.name}">—</td>
+                    <td><span class="repo-path" th:text="${project.pathWithNamespace}">—</span></td>
+                    <td th:text="${sourceNames.get(project.gitSourceId) ?: '—'}">—</td>
+                    <td>
+                        <span class="badge badge-active" th:if="${project.enabled}">Активен</span>
+                        <span class="badge badge-inactive" th:unless="${project.enabled}">Отключён</span>
+                    </td>
+                    <td class="actions-cell">
+                        <button class="btn-sm btn-secondary"
+                                onclick="triggerBackfill(this.dataset.id, this.dataset.name)"
+                                th:data-id="${project.id}"
+                                th:data-name="${project.name}">
+                            Синк
+                        </button>
+                        <button class="btn-sm btn-danger"
+                                onclick="deleteProject(this.dataset.id, this.dataset.name)"
+                                th:data-id="${project.id}"
+                                th:data-name="${project.name}">
+                            Удалить
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="empty-state" id="projects-empty" th:if="${projects.isEmpty()}">
+                Нет отслеживаемых репозиториев. Добавьте первый.
+            </div>
         </div>
 
-        <table class="data-table" id="users-table" th:if="${!usersWithAliases.isEmpty()}">
-            <thead>
-            <tr>
-                <th>Имя</th>
-                <th>Email</th>
-                <th>Статус</th>
-                <th>GitLab алиасы</th>
-                <th>Действия</th>
-            </tr>
-            </thead>
-            <tbody id="users-table-body">
-            <tr th:each="entry : ${usersWithAliases}" th:id="'user-row-' + ${entry.user.id}">
-                <td>
-                    <div class="user-cell">
-                        <div class="user-avatar"
-                             th:text="${#strings.substring(entry.user.displayName, 0, 1)}">?
-                        </div>
-                        <span class="user-name" th:text="${entry.user.displayName}">Имя</span>
+        <!-- ── Сотрудники ──────────────────────────────────────────────────────── -->
+        <div class="tab-content hidden" id="tab-users">
+            <div class="tab-toolbar">
+                <span class="section-title" style="margin-bottom:0">Сотрудники</span>
+                <button class="btn-primary" onclick="openModal('modal-user')">+ Добавить вручную</button>
+            </div>
+
+            <!-- Панель обнаружения контрибьютеров -->
+            <div class="discovery-panel hidden" id="discovery-panel">
+                <div class="discovery-header">
+                    <div class="discovery-title">
+                        <span class="discovery-icon">👥</span>
+                        Обнаружены участники из синхронизированных репозиториев
                     </div>
-                </td>
-                <td th:text="${entry.user.email ?: '—'}">—</td>
-                <td>
-                    <span class="badge badge-active" th:if="${entry.user.enabled}">Активен</span>
-                    <span class="badge badge-inactive" th:unless="${entry.user.enabled}">Отключён</span>
-                </td>
-                <td>
-                    <div class="alias-empty" th:if="${entry.aliases.isEmpty()}">нет алиасов</div>
-                    <div th:each="alias : ${entry.aliases}">
-                        <div class="alias-chip" th:if="${alias.username != null}">
-                            <span th:text="'@' + ${alias.username}">@user</span>
-                        </div>
-                        <div class="alias-chip" th:if="${alias.username == null and alias.email != null}">
-                            <span th:text="${alias.email}">email</span>
-                        </div>
-                        <div class="alias-chip alias-chip-placeholder"
-                             th:if="${alias.username == null and alias.email == null and alias.gitlabUserId != null}">
-                            <span th:text="'GitLab #' + ${alias.gitlabUserId}">GitLab #</span>
-                        </div>
+                    <div class="discovery-actions">
+                        <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(false)">Снять все</button>
+                        <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(true)">Выбрать всех</button>
+                        <button class="btn-sm btn-primary" disabled id="btn-add-discovered" onclick="addSelectedDiscovered()">
+                            Добавить выбранных
+                        </button>
                     </div>
-                </td>
-                <td class="actions-cell">
-                    <button class="btn-sm btn-secondary"
-                            onclick="openLinkGitlabModal(this.dataset.id, this.dataset.name)"
-                            th:data-id="${entry.user.id}"
-                            th:data-name="${entry.user.displayName}">
-                        Привязать GitLab
-                    </button>
-                    <button class="btn-sm btn-danger"
-                            onclick="deleteUser(this.dataset.id, this.dataset.name)"
-                            th:data-id="${entry.user.id}"
-                            th:data-name="${entry.user.displayName}">
-                        Удалить
-                    </button>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-        <div class="empty-state" id="users-empty" th:if="${usersWithAliases.isEmpty()}">
-            Нет отслеживаемых сотрудников. Добавьте первого.
-        </div>
-    </div>
+                </div>
+                <div class="discovery-list" id="discovery-list"></div>
+            </div>
 
-    <!-- ── Синхронизация ──────────────────────────────────────────────────── -->
-    <div class="tab-content hidden" id="tab-jobs">
-        <div class="tab-toolbar">
-            <span class="section-title" style="margin-bottom:0">История синхронизаций</span>
-            <span class="section-subtitle">Последние 30 запусков · время в UTC</span>
-        </div>
+            <div class="discovery-loading hidden" id="discovery-loading">
+                <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+                Ищем участников в синхронизированных данных...
+            </div>
 
-        <table class="data-table" th:if="${!recentJobs.isEmpty()}">
-            <thead>
-            <tr>
-                <th>#</th>
-                <th>Статус</th>
-                <th>Запущена</th>
-                <th>Завершена</th>
-                <th>Длительность</th>
-                <th>Ошибка</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:class="${job.status == 'STARTED'} ? 'job-row-running' : ''" th:each="job : ${recentJobs}"
-                th:id="'job-row-' + ${job.id}">
-                <td class="job-id-cell" th:text="${job.id}">—</td>
-                <td>
-                    <span class="job-status job-status-ok" th:if="${job.status == 'COMPLETED'}">✓ Выполнен</span>
-                    <span class="job-status job-status-err" th:if="${job.status == 'FAILED'}">✕ Ошибка</span>
-                    <span class="job-status job-status-run" th:if="${job.status == 'STARTED'}">
-                            <span class="sync-spinner-sm"></span> Выполняется
-                        </span>
-                    <div class="job-progress-wrap" th:id="'job-progress-' + ${job.id}"
-                         th:if="${job.status == 'STARTED'}">
-                        <div class="job-progress-bar">
-                            <div class="job-progress-fill" style="width:0%"
-                                 th:id="'row-fill-' + ${job.id}"></div>
+            <table class="data-table" id="users-table" th:if="${!usersWithAliases.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>Имя</th>
+                    <th>Email</th>
+                    <th>Статус</th>
+                    <th>GitLab алиасы</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody id="users-table-body">
+                <tr th:each="entry : ${usersWithAliases}" th:id="'user-row-' + ${entry.user.id}">
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar"
+                                 th:text="${#strings.substring(entry.user.displayName, 0, 1)}">?
+                            </div>
+                            <span class="user-name" th:text="${entry.user.displayName}">Имя</span>
                         </div>
-                        <span class="job-progress-label" th:id="'row-plabel-' + ${job.id}">
-                                получение списка MR...
-                            </span>
-                    </div>
-                </td>
-                <td class="job-time-cell" th:text="${job.startedAt}">—</td>
-                <td class="job-time-cell" th:text="${job.finishedAt ?: '—'}">—</td>
-                <td th:text="${job.duration}">—</td>
-                <td class="job-error-cell"
-                    th:text="${job.status != 'COMPLETED' ? (job.errorMessage ?: '') : ''}"></td>
-                <td class="actions-cell">
-                    <button class="btn-sm btn-secondary"
-                            onclick="retryJob(this.dataset.jobId)"
-                            th:data-job-id="${job.id}"
-                            th:if="${job.canRetry}"
-                            title="Запустить повтор с теми же параметрами. Уже загруженные коммиты и ревью будут пропущены.">
-                        ↺ Повторить
-                    </button>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-        <div class="empty-state" th:if="${recentJobs.isEmpty()}">
-            Синхронизаций ещё не было. Добавьте репозиторий, чтобы запустить первую.
+                    </td>
+                    <td th:text="${entry.user.email ?: '—'}">—</td>
+                    <td>
+                        <span class="badge badge-active" th:if="${entry.user.enabled}">Активен</span>
+                        <span class="badge badge-inactive" th:unless="${entry.user.enabled}">Отключён</span>
+                    </td>
+                    <td>
+                        <div class="alias-empty" th:if="${entry.aliases.isEmpty()}">нет алиасов</div>
+                        <div th:each="alias : ${entry.aliases}">
+                            <div class="alias-chip" th:if="${alias.username != null}">
+                                <span th:text="'@' + ${alias.username}">@user</span>
+                            </div>
+                            <div class="alias-chip" th:if="${alias.username == null and alias.email != null}">
+                                <span th:text="${alias.email}">email</span>
+                            </div>
+                            <div class="alias-chip alias-chip-placeholder"
+                                 th:if="${alias.username == null and alias.email == null and alias.gitlabUserId != null}">
+                                <span th:text="'GitLab #' + ${alias.gitlabUserId}">GitLab #</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="actions-cell">
+                        <button class="btn-sm btn-secondary"
+                                onclick="openLinkGitlabModal(this.dataset.id, this.dataset.name)"
+                                th:data-id="${entry.user.id}"
+                                th:data-name="${entry.user.displayName}">
+                            Привязать GitLab
+                        </button>
+                        <button class="btn-sm btn-danger"
+                                onclick="deleteUser(this.dataset.id, this.dataset.name)"
+                                th:data-id="${entry.user.id}"
+                                th:data-name="${entry.user.displayName}">
+                            Удалить
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="empty-state" id="users-empty" th:if="${usersWithAliases.isEmpty()}">
+                Нет отслеживаемых сотрудников. Добавьте первого.
+            </div>
         </div>
-    </div>
 
-</main>
+    </main>
 
 </div><!-- /.report-page -->
 
@@ -502,16 +436,22 @@
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-btn-active'));
         document.getElementById('tab-' + name).classList.remove('hidden');
         const buttons = document.querySelectorAll('.tab-btn');
-        const map = {sources: 0, projects: 1, users: 2, jobs: 3};
-        if (map[name] !== undefined) buttons[map[name]].classList.add('tab-btn-active');
+        const map = {sources: 0, projects: 1, users: 2};
+        if (map[name] !== undefined) {
+            buttons[map[name]].classList.add('tab-btn-active');
+        }
         sessionStorage.setItem(TAB_STORAGE_KEY, name);
-        if (name === 'users') loadDiscoveredContributors();
+        if (name === 'users') {
+            loadDiscoveredContributors();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const defaultTab = sessionStorage.getItem(TAB_STORAGE_KEY) || 'sources';
+        const saved = sessionStorage.getItem(TAB_STORAGE_KEY);
+        const validTabs = ['sources', 'projects', 'users'];
+        const defaultTab = validTabs.includes(saved) ? saved : 'sources';
         switchTab(defaultTab);
-        ACTIVE_JOB_IDS.forEach(jobId => restoreSyncBanner(jobId));
+        ACTIVE_JOB_IDS.forEach(jobId => restoreSyncCard(jobId));
     });
 
     // ── Модалки ───────────────────────────────────────────────────────────────
@@ -543,41 +483,81 @@
         }
     }
 
-    // ── Баннеры синхронизации ─────────────────────────────────────────────────
+    // ── Unified sync cards ────────────────────────────────────────────────────
 
-    function buildBannerHtml(jobId, descHtml) {
-        return `
-        <span class="sync-spinner"></span>
-        <div class="sync-main">
-            <span class="sync-text">${descHtml}</span>
-            <div class="sync-progress-row">
-                <div class="sync-progress-bar">
-                    <div class="sync-progress-fill" id="sync-fill-${jobId}" style="width:0%"></div>
-                </div>
-                <span class="sync-progress-label" id="sync-plabel-${jobId}">получение списка MR...</span>
-            </div>
-        </div>
-        <span class="sync-duration" id="sync-duration-${jobId}"></span>
-    `;
+    function buildSyncCardHtml(jobId, repoName, phaseNum, phaseDesc) {
+        return '<div class="sync-card-row">'
+            + '<div class="sync-card-icon-box"><span class="sync-spinner"></span></div>'
+            + '<div class="sync-card-body">'
+            + '<div class="sync-card-title">'
+            + '<strong class="num">' + escHtml(repoName) + '</strong>'
+            + '<span class="sync-card-phase-desc">\xb7 ' + escHtml(phaseDesc) + '</span>'
+            + '<span class="sync-phase-badge" id="sync-phase-label-' + jobId + '">\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2</span>'
+            + '</div>'
+            + '<div class="sync-card-meter-row">'
+            + '<div class="sync-card-counters hidden" id="sync-counters-' + jobId + '">'
+            + '<span>\u041a\u043e\u043c\u043c\u0438\u0442\u044b: <span class="num" id="sync-commits-' + jobId + '">0</span></span>'
+            + '<span>\u0420\u0435\u0432\u044e: <span class="num" id="sync-reviews-' + jobId + '">0</span></span>'
+            + '<span>\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0435\u043d\u0442.: <span class="num" id="sync-comments-' + jobId + '">0</span></span>'
+            + '</div>'
+            + '<span class="sync-progress-label num" id="sync-plabel-' + jobId + '"></span>'
+            + '</div>'
+            + '<div class="sync-progress-bar">'
+            + '<div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-' + jobId + '"></div>'
+            + '</div>'
+            + '<span class="sync-eta-label num" id="sync-eta-' + jobId + '"></span>'
+            + '</div>'
+            + '</div>';
     }
 
-    function showSyncBanner(jobId) {
-        startBannerTimers(jobId, 'sync-banner-' + jobId, Date.now());
+    function showSyncBanner(jobId, name) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.innerHTML = buildSyncCardHtml(jobId, name || '...', 1, '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        container.prepend(div);
+        startCardTimers(jobId, id, Date.now());
     }
 
-    function restoreSyncBanner(jobId) {
-        startBannerTimers(jobId, 'sync-banner-' + jobId, null);
+    function restoreSyncCard(jobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.dataset.needsRepoName = '1';
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 1, '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        container.prepend(div);
+        startCardTimers(jobId, id, null);
     }
 
-    function startBannerTimers(jobId, bannerId, localStartMs) {
+    function startCardTimers(jobId, cardId, localStartMs) {
         let serverStartMs = localStartMs;
         const durationEl = document.getElementById('sync-duration-' + jobId);
         const durationTimer = setInterval(() => {
-            if (!serverStartMs || !durationEl) return;
+            if (!serverStartMs) {
+                return;
+            }
             const sec = Math.floor((Date.now() - serverStartMs) / 1000);
-            durationEl.textContent = formatSec(sec);
+            if (durationEl) {
+                durationEl.textContent = formatSec(sec);
+            }
         }, 1000);
-        pollSyncJob(jobId, bannerId, durationTimer, (startedAt) => {
+        pollSyncJob(jobId, cardId, durationTimer, (startedAt) => {
             if (!serverStartMs) {
                 serverStartMs = new Date(startedAt).getTime();
             }
@@ -585,72 +565,90 @@
     }
 
     function formatSec(sec) {
-        if (sec < 60) return sec + ' с';
+        if (sec < 60) {
+            return sec + ' с';
+        }
         return Math.floor(sec / 60) + ' м ' + (sec % 60) + ' с';
     }
 
     function formatEta(sec) {
-        if (sec < 10) return 'почти готово';
-        if (sec < 60) return '~' + sec + ' с';
-        const m = Math.round(sec / 60);
-        return '~' + m + ' мин';
+        if (sec < 10) {
+            return 'почти готово';
+        }
+        if (sec < 60) {
+            return '~' + sec + ' с';
+        }
+        return '~' + Math.round(sec / 60) + ' мин';
     }
 
-    function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
+    function pollSyncJob(jobId, cardId, durationTimer, onStartedAt) {
         const fillEl = () => document.getElementById('sync-fill-' + jobId);
         const labelEl = () => document.getElementById('sync-plabel-' + jobId);
         const rowFillEl = () => document.getElementById('row-fill-' + jobId);
         const rowLabelEl = () => document.getElementById('row-plabel-' + jobId);
 
         function setProgress(pct, label) {
-            if (fillEl()) fillEl().style.width = pct + '%';
-            if (labelEl()) labelEl().textContent = label;
-            if (rowFillEl()) rowFillEl().style.width = pct + '%';
-            if (rowLabelEl()) rowLabelEl().textContent = label;
+            if (fillEl()) {
+                fillEl().classList.remove('sync-progress-fill--indeterminate');
+                fillEl().style.width = pct + '%';
+            }
+            if (labelEl()) {
+                labelEl().textContent = label;
+            }
+            if (rowFillEl()) {
+                rowFillEl().style.width = pct + '%';
+            }
+            if (rowLabelEl()) {
+                rowLabelEl().textContent = label;
+            }
         }
 
         const interval = setInterval(async () => {
             try {
                 const job = await api('GET', '/settings/sync/' + jobId);
-
                 if (onStartedAt && job.startedAt) {
                     onStartedAt(job.startedAt);
                 }
-
+                const cardEl = document.getElementById(cardId);
+                if (cardEl && cardEl.dataset.needsRepoName) {
+                    delete cardEl.dataset.needsRepoName;
+                    const nameEl = cardEl.querySelector('.sync-card-title strong');
+                    if (nameEl && job.projectName) {
+                        nameEl.textContent = job.projectName;
+                    }
+                    const phaseNum = job.phase === 'ENRICH' ? 2 : 1;
+                    const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
+                    if (phaseLabelEl) {
+                        phaseLabelEl.textContent = '\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2';
+                    }
+                    if (job.phase === 'ENRICH') {
+                        document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
+                    }
+                }
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
                     const pct = Math.round(job.processedMrs / job.totalMrs * 100);
-                    const serverStartMs = new Date(job.startedAt).getTime();
-                    const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
-                    let label = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
-
-                    if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
-                        const rate = job.processedMrs / elapsedSec;
-                        const remaining = job.totalMrs - job.processedMrs;
-                        const etaSec = Math.round(remaining / rate);
-                        label += ' • ETA ' + formatEta(etaSec);
+                    setProgress(pct, pct + '%');
+                    const etaEl = document.getElementById('sync-eta-' + jobId);
+                    if (etaEl && job.processedMrs > 0 && job.processedMrs < job.totalMrs && job.startedAt) {
+                        const elapsedSec = Math.max(1, (Date.now() - new Date(job.startedAt).getTime()) / 1000);
+                        const etaSec = Math.round((job.totalMrs - job.processedMrs) / (job.processedMrs / elapsedSec));
+                        etaEl.textContent = formatEta(etaSec);
                     }
-                    setProgress(pct, label);
-                } else if (job.status === 'STARTED' && job.totalMrs === 0) {
-                    setProgress(0, 'получение списка MR...');
                 }
-
                 if (job.status === 'COMPLETED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
                     activeSyncRunning = false;
                     const doneLabel = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
                     setProgress(100, doneLabel);
-                    updateBanner(bannerId, 'ok', 'Синхронизация завершена');
-                    updateJobRow(jobId, 'COMPLETED', null);
-                    // Обновляем список участников вне зависимости от наличия баннера в DOM
+                    updateSyncCard(cardId, job);
                     discoveryLoaded = false;
                     loadDiscoveredContributors();
                 } else if (job.status === 'FAILED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
                     activeSyncRunning = false;
-                    updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
-                    updateJobRow(jobId, 'FAILED', job.errorMessage);
+                    updateSyncCard(cardId, job);
                 }
             } catch (e) {
                 // продолжаем поллинг при сетевой ошибке
@@ -658,84 +656,40 @@
         }, 3000);
     }
 
-    function prependJobRow(jobId) {
-        const table = document.querySelector('#tab-jobs .data-table');
-        const now = new Date();
-        const pad = n => String(n).padStart(2, '0');
-        const timeStr = pad(now.getUTCDate()) + '.' + pad(now.getUTCMonth() + 1) + '.' + now.getUTCFullYear()
-            + ' ' + pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes());
-        const tr = document.createElement('tr');
-        tr.id = 'job-row-' + jobId;
-        tr.className = 'job-row-running';
-        tr.innerHTML = `
-        <td class="job-id-cell">${jobId}</td>
-        <td>
-            <span class="job-status job-status-run"><span class="sync-spinner-sm"></span> Выполняется</span>
-            <div class="job-progress-wrap" id="job-progress-${jobId}">
-                <div class="job-progress-bar">
-                    <div class="job-progress-fill" id="row-fill-${jobId}" style="width:0%"></div>
-                </div>
-                <span class="job-progress-label" id="row-plabel-${jobId}">получение списка MR...</span>
-            </div>
-        </td>
-        <td class="job-time-cell">${timeStr}</td>
-        <td class="job-time-cell">—</td>
-        <td>в процессе</td>
-        <td class="job-error-cell"></td>
-        <td></td>
-    `;
-        if (table) {
-            table.querySelector('tbody').prepend(tr);
-            document.querySelector('#tab-jobs .empty-state')?.remove();
+    let reloadScheduled = false;
+
+    function updateSyncCard(cardId, job) {
+        const el = document.getElementById(cardId);
+        if (!el) {
+            return;
+        }
+        const isOk = job.status === 'COMPLETED';
+        const phaseLabel = job.phase === 'ENRICH' ? '2 \u0438\u0437 2' : '1 \u0438\u0437 2';
+        if (isOk) {
+            el.className = 'sync-card sync-card-done';
+            const detail = job.totalMrs > 0 ? job.totalMrs + ' MR' : '\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e';
+            el.innerHTML = '<div class="sync-card-done-row">'
+                + '<span class="sync-card-done-icon">&#10003;</span>'
+                + '<span>\u0424\u0430\u0437\u0430 ' + phaseLabel + ' \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430 &middot; ' + escHtml(detail) + '</span>'
+                + '</div>';
+            if (!reloadScheduled) {
+                setTimeout(() => el.remove(), 5000);
+            }
+        } else {
+            el.className = 'sync-card sync-card-error';
+            el.innerHTML = '<div class="sync-card-done-row">'
+                + '<span>&#10005;</span>'
+                + '<span>\u0424\u0430\u0437\u0430 ' + phaseLabel + ' \xb7 \u043e\u0448\u0438\u0431\u043a\u0430: ' + escHtml(job.errorMessage || '') + '</span>'
+                + '</div>';
         }
     }
 
     async function retryJob(jobId) {
         try {
             const job = await api('POST', '/settings/sync/' + jobId + '/retry');
-            const origRow = document.getElementById('job-row-' + jobId);
-            if (origRow) {
-                origRow.querySelector('.btn-sm')?.remove();
-            }
-            prependJobRow(job.jobId);
-            showSyncBanner(job.jobId);
+            showSyncBanner(job.jobId, '\u043f\u043e\u0432\u0442\u043e\u0440\u043d\u0430\u044f \u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u044f');
         } catch (e) {
             alert('Не удалось запустить повтор: ' + e.message);
-        }
-    }
-
-    function updateJobRow(jobId, status, errorMessage) {
-        const row = document.getElementById('job-row-' + jobId);
-        if (!row) return;
-        row.classList.remove('job-row-running');
-        const statusCell = row.cells[1];
-        if (status === 'COMPLETED') {
-            statusCell.innerHTML = '<span class="job-status job-status-ok">✓ Выполнен</span>';
-        } else {
-            statusCell.innerHTML = '<span class="job-status job-status-err">✕ Ошибка</span>';
-        }
-        document.getElementById('job-progress-' + jobId)?.remove();
-        if (errorMessage) {
-            row.cells[5].textContent = errorMessage;
-        }
-        const badge = document.querySelector('.tab-badge-running');
-        if (badge) {
-            const count = parseInt(badge.textContent, 10) - 1;
-            if (count <= 0) {
-                badge.remove();
-            } else {
-                badge.textContent = count;
-            }
-        }
-    }
-
-    function updateBanner(bannerId, type, message) {
-        const el = document.getElementById(bannerId);
-        if (!el) return;
-        el.className = 'sync-banner sync-banner-' + (type === 'ok' ? 'done' : 'error');
-        el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
-        if (type === 'ok') {
-            setTimeout(() => el.remove(), 5000);
         }
     }
 
@@ -980,7 +934,7 @@
             });
             closeModal('modal-project');
             addProjectRow(result);
-            showSyncBanner(result.jobId);
+            showSyncBanner(result.jobId, selectedProject.name);
             prependJobRow(result.jobId);
             switchTab('projects');
             clearProjectSearch();
@@ -1025,8 +979,7 @@
         if (!confirm('Запустить синхронизацию репозитория «' + name + '» за последние 360 дней?')) return;
         try {
             const job = await api('POST', '/settings/projects/' + id + '/backfill');
-            showSyncBanner(job.jobId);
-            prependJobRow(job.jobId);
+            showSyncBanner(job.jobId, name);
         } catch (e) {
             alert('Ошибка запуска синхронизации: ' + e.message);
         }
@@ -1407,13 +1360,17 @@
                 alert('Ошибка: ' + e.message);
             });
     }
+
     function sidebarDeleteProject(id, name) {
         deleteProject(id, name);
     }
+
     function sidebarDeleteUser(id, name) {
         deleteUser(id, name);
     }
-    function applyFilters() { /* no-op: inactive filter не применяется на странице настроек */ }
+
+    function applyFilters() { /* no-op: inactive filter не применяется на странице настроек */
+    }
 </script>
 
 </body>

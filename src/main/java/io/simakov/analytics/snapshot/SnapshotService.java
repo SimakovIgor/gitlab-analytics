@@ -52,7 +52,8 @@ public class SnapshotService {
      * Использует текущий WorkspaceContext.
      */
     @Async("snapshotExecutor")
-    public void runDailyBackfillAsync(Long workspaceId, int days) {
+    public void runDailyBackfillAsync(Long workspaceId,
+                                      int days) {
         runDailyBackfill(workspaceId, days);
     }
 
@@ -156,7 +157,9 @@ public class SnapshotService {
             allMetrics.putAll(userMetrics.toNormalizedMap());
             String json = objectMapper.writeValueAsString(allMetrics);
 
-            MetricSnapshot snapshot = existing != null ? existing : new MetricSnapshot();
+            MetricSnapshot snapshot = existing != null
+                ? existing
+                : new MetricSnapshot();
             snapshot.setWorkspaceId(workspaceId);
             snapshot.setTrackedUserId(userId);
             snapshot.setSnapshotDate(snapshotDate);

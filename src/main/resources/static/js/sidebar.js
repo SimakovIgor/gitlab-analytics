@@ -127,30 +127,28 @@
 
     // ── Unified sync card ─────────────────────────────────────────────────────
 
-    function buildSyncCardHtml(jobId, repoName, phaseNum, phaseDesc, initialLabel) {
-        const label = initialLabel || (phaseNum === 2 ? 'дозагружаем детали...' : 'загружаем список MR...');
+    function buildSyncCardHtml(jobId, repoName, phaseNum, phaseDesc) {
         return `<div class="sync-card-row">
             <div class="sync-card-icon-box"><span class="sync-spinner"></span></div>
             <div class="sync-card-body">
                 <div class="sync-card-title">
                     <strong class="num">${escHtml(repoName)}</strong>
-                    <span class="sync-phase-badge">[${phaseNum}/2]</span>
-                    <span class="sync-card-phase-desc">${escHtml(phaseDesc)}</span>
+                    <span class="sync-card-phase-desc">· ${escHtml(phaseDesc)}</span>
+                    <span class="sync-phase-badge" id="sync-phase-label-${jobId}">Фаза ${phaseNum} из 2</span>
                 </div>
-                <div class="sync-card-progress-row">
-                    <span class="sync-phase-label" id="sync-phase-label-${jobId}">Фаза ${phaseNum} из 2</span>
-                    <div class="sync-progress-bar">
-                        <div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-${jobId}"></div>
+                <div class="sync-card-meter-row">
+                    <div class="sync-card-counters hidden" id="sync-counters-${jobId}">
+                        <span>Коммиты: <span class="num" id="sync-commits-${jobId}">0</span></span>
+                        <span>Ревью: <span class="num" id="sync-reviews-${jobId}">0</span></span>
+                        <span>Комментент.: <span class="num" id="sync-comments-${jobId}">0</span></span>
                     </div>
-                    <span class="sync-progress-label num" id="sync-plabel-${jobId}">${escHtml(label)}</span>
+                    <span class="sync-progress-label num" id="sync-plabel-${jobId}"></span>
                 </div>
-                <div class="sync-card-counters hidden" id="sync-counters-${jobId}">
-                    <span>Коммиты: <span class="num" id="sync-commits-${jobId}">0</span></span>
-                    <span>Ревью: <span class="num" id="sync-reviews-${jobId}">0</span></span>
-                    <span>Коммент.: <span class="num" id="sync-comments-${jobId}">0</span></span>
+                <div class="sync-progress-bar">
+                    <div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-${jobId}"></div>
                 </div>
+                <span class="sync-eta-label num" id="sync-eta-${jobId}"></span>
             </div>
-            <span class="sync-duration num" id="sync-duration-${jobId}"></span>
         </div>`;
     }
 
@@ -174,8 +172,9 @@
         div.className = 'sync-card sync-card-running';
         div.innerHTML = buildSyncCardHtml(
             jobId, projectName, 1,
-            isRetry ? 'повторная загрузка MR' : 'загрузка MR', null
+            isRetry ? 'повторная загрузка merge requests' : 'загружаем merge requests'
         );
+
         container.prepend(div);
         startCardTimers(jobId, id, Date.now());
     };
@@ -193,7 +192,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 1, 'синхронизация в процессе', null);
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 1, 'загружаем merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -210,7 +209,8 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-card sync-card-running';
-        div.innerHTML = buildSyncCardHtml(jobId, getRepoNameFromSidebar(), 2, 'коммиты, ревью, комментарии', null);
+        div.dataset.needsRepoName = '1';
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 2, 'данные появляются в отчёте по мере загрузки');
         const counters = div.querySelector('.sync-card-counters');
         if (counters) {
             counters.classList.remove('hidden');
@@ -268,18 +268,14 @@
                     onStartedAt(job.startedAt);
                 }
                 const cardEl = document.getElementById(cardId);
-                // First poll: resolve repo name if unknown, update phase info
+                // First poll: resolve repo name and phase from API
                 if (cardEl && cardEl.dataset.needsRepoName) {
                     delete cardEl.dataset.needsRepoName;
                     const nameEl = cardEl.querySelector('.sync-card-title strong');
-                    if (nameEl) {
-                        nameEl.textContent = getRepoNameFromSidebar();
+                    if (nameEl && job.projectName) {
+                        nameEl.textContent = job.projectName;
                     }
                     const phaseNum = job.phase === 'ENRICH' ? 2 : 1;
-                    const badgeEl = cardEl.querySelector('.sync-phase-badge');
-                    if (badgeEl) {
-                        badgeEl.textContent = '[' + phaseNum + '/2]';
-                    }
                     const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
                     if (phaseLabelEl) {
                         phaseLabelEl.textContent = 'Фаза ' + phaseNum + ' из 2';
@@ -287,7 +283,7 @@
                     const descEl = cardEl.querySelector('.sync-card-phase-desc');
                     if (descEl) {
                         descEl.textContent = job.phase === 'ENRICH'
-                            ? 'коммиты, ревью, комментарии' : 'загрузка MR';
+                            ? '· данные появляются в отчёте по мере загрузки' : '· загружаем merge requests';
                     }
                     if (job.phase === 'ENRICH') {
                         document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
@@ -315,16 +311,14 @@
                         fillEl().classList.remove('sync-progress-fill--indeterminate');
                         fillEl().style.width = pct + '%';
                     }
-                    const serverStartMs = new Date(job.startedAt).getTime();
-                    const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
-                    let label = job.processedMrs + ' / ' + job.totalMrs + ' MR (' + pct + '%)';
-                    if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
-                        const rate = job.processedMrs / elapsedSec;
-                        const etaSec = Math.round((job.totalMrs - job.processedMrs) / rate);
-                        label += ' · ETA ' + formatEta(etaSec);
-                    }
                     if (labelEl()) {
-                        labelEl().textContent = label;
+                        labelEl().textContent = pct + '%';
+                    }
+                    const etaEl = document.getElementById('sync-eta-' + jobId);
+                    if (etaEl && job.processedMrs > 0 && job.processedMrs < job.totalMrs && job.startedAt) {
+                        const elapsedSec = Math.max(1, (Date.now() - new Date(job.startedAt).getTime()) / 1000);
+                        const etaSec = Math.round((job.totalMrs - job.processedMrs) / (job.processedMrs / elapsedSec));
+                        etaEl.textContent = formatEta(etaSec);
                     }
                 }
                 if (job.status === 'COMPLETED') {
@@ -348,7 +342,7 @@
             return;
         }
         const isOk = job.status === 'COMPLETED';
-        const phaseLabel = job.phase === 'ENRICH' ? '2/2' : '1/2';
+        const phaseLabel = job.phase === 'ENRICH' ? '2 из 2' : '1 из 2';
         if (isOk) {
             el.className = 'sync-card sync-card-done';
             const detail = job.phase === 'ENRICH'
@@ -356,7 +350,7 @@
                 : (job.totalMrs > 0 ? job.totalMrs + ' MR' : 'завершено');
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span class="sync-card-done-icon">&#10003;</span>'
-                + '<span>Фаза [' + phaseLabel + '] завершена &middot; ' + escHtml(detail) + '</span>'
+                + '<span>Фаза ' + phaseLabel + ' завершена &middot; ' + escHtml(detail) + '</span>'
                 + '</div>';
             if (!reloadScheduled) {
                 reloadScheduled = true;
@@ -368,7 +362,7 @@
             el.className = 'sync-card sync-card-error';
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span>&#10005;</span>'
-                + '<span>Фаза [' + phaseLabel + '] · ошибка: ' + escHtml(job.errorMessage || '') + '</span>'
+                + '<span>Фаза ' + phaseLabel + ' · ошибка: ' + escHtml(job.errorMessage || '') + '</span>'
                 + '</div>';
         }
     }

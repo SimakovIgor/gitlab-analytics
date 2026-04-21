@@ -41,7 +41,8 @@ class ApprovalSyncStep implements SyncStep {
     }
 
     @Override
-    public void sync(SyncContext ctx, MergeRequest mr) {
+    public void sync(SyncContext ctx,
+                     MergeRequest mr) {
         try {
             GitLabApprovalsDto approvalsDto = gitLabApiClient.getMergeRequestApprovals(
                 ctx.baseUrl(), ctx.token(), ctx.gitlabProjectId(), mr.getGitlabMrIid());

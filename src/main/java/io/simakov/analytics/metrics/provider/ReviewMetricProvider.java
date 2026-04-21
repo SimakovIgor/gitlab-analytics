@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
 class ReviewMetricProvider implements MetricProvider {
 
     @Override
-    public void populate(MetricContext ctx, UserMetrics.UserMetricsBuilder builder) {
+    public void populate(MetricContext ctx,
+                         UserMetrics.UserMetricsBuilder builder) {
         Set<Long> authoredMrIds = ctx.authoredMrs().stream()
             .map(MergeRequest::getId)
             .collect(Collectors.toSet());
@@ -80,7 +81,9 @@ class ReviewMetricProvider implements MetricProvider {
             .forEach(n -> firstNoteByDiscussion.merge(
                 n.getDiscussionId(),
                 n.getCreatedAtGitlab(),
-                (a, b) -> a.isBefore(b) ? a : b));
+                (a, b) -> a.isBefore(b)
+                    ? a
+                    : b));
 
         return reviewNotes.stream()
             .filter(n -> n.getDiscussionId() != null && n.getCreatedAtGitlab() != null)

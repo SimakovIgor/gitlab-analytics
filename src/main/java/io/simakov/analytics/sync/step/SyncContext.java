@@ -8,4 +8,5 @@ package io.simakov.analytics.sync.step;
  * @param gitlabProjectId GitLab's own numeric project ID (not our DB ID)
  */
 public record SyncContext(String baseUrl, String token, Long gitlabProjectId) {
+
 }

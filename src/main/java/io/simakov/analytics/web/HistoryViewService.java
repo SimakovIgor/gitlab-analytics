@@ -53,7 +53,9 @@ public class HistoryViewService {
                                             String period,
                                             List<Long> requestedProjectIds,
                                             boolean showInactive) {
-        String effectiveMetric = (metric != null && !metric.isBlank()) ? metric : Metric.MR_MERGED_COUNT.key();
+        String effectiveMetric = (metric != null && !metric.isBlank())
+            ? metric
+            : Metric.MR_MERGED_COUNT.key();
         PeriodType periodType;
         try {
             periodType = PeriodType.valueOf(period);
@@ -166,7 +168,8 @@ public class HistoryViewService {
         }
     }
 
-    private Object extractMetricValue(MetricSnapshot snap, String metric) {
+    private Object extractMetricValue(MetricSnapshot snap,
+                                      String metric) {
         try {
             Map<String, Object> metrics = objectMapper.readValue(snap.getMetricsJson(), MAP_TYPE);
             Object value = metrics.get(metric);
@@ -180,7 +183,9 @@ public class HistoryViewService {
         }
     }
 
-    private Map<String, Object> buildDataset(String label, List<Object> data, String color) {
+    private Map<String, Object> buildDataset(String label,
+                                             List<Object> data,
+                                             String color) {
         Map<String, Object> dataset = new LinkedHashMap<>();
         dataset.put("label", label);
         dataset.put("data", data);

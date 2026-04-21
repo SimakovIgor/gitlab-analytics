@@ -20,7 +20,8 @@ public interface TrackedProjectRepository extends JpaRepository<TrackedProject, 
 
     Optional<TrackedProject> findFirstByGitSourceId(Long gitSourceId);
 
-    Optional<TrackedProject> findFirstByWorkspaceIdAndGitSourceId(Long workspaceId, Long gitSourceId);
+    Optional<TrackedProject> findFirstByWorkspaceIdAndGitSourceId(Long workspaceId,
+                                                                  Long gitSourceId);
 
     Optional<TrackedProject> findTopByWorkspaceIdAndEnabledTrue(Long workspaceId);
 }

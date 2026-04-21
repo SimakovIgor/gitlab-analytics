@@ -35,7 +35,8 @@ class MrDiffStatsSyncStep implements SyncStep {
     }
 
     @Override
-    public void sync(SyncContext ctx, MergeRequest mr) {
+    public void sync(SyncContext ctx,
+                     MergeRequest mr) {
         if (mr.getNetAdditions() != null) {
             // Already set from diff_stats_summary during FAST phase — skip expensive /diffs parsing.
             log.debug("Skipping /diffs for MR iid={}: netAdditions already set to {}",

@@ -1,12 +1,17 @@
 package io.simakov.analytics.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.HistoryViewService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.ReportViewService;
+import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.HistoryPageData;
 import io.simakov.analytics.web.dto.MrSummaryDto;
 import io.simakov.analytics.web.dto.ReportPageData;
+import io.simakov.analytics.web.dto.SettingsPageData;
+import io.simakov.analytics.web.dto.SyncHistoryPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -26,8 +31,10 @@ public class WebController {
 
     private final ReportViewService reportViewService;
     private final HistoryViewService historyViewService;
+    private final SettingsViewService settingsViewService;
     private final OAuth2UserResolver userResolver;
     private final WorkspaceService workspaceService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/")
     public String home() {
@@ -92,6 +99,38 @@ public class WebController {
                             @RequestParam(defaultValue = "false") boolean showInactive,
                             @RequestParam(required = false) String metric) {
         return historyViewService.buildHistoryPage(metric, period, projectIds, showInactive).chartJson();
+    }
+
+    @GetMapping("/sync")
+    public String syncHistory(OAuth2AuthenticationToken authentication,
+                              Model model) {
+        if (authentication != null) {
+            model.addAttribute("currentUser", userResolver.resolve(authentication));
+        }
+        SettingsPageData sidebar = settingsViewService.buildSettingsPage();
+        model.addAttribute("allProjects", sidebar.projects());
+        model.addAttribute("usersWithAliases", sidebar.usersWithAliases());
+        model.addAttribute("sources", sidebar.sources());
+        model.addAttribute("showInactive", false);
+
+        SyncHistoryPageData data = settingsViewService.buildSyncHistoryPage();
+        model.addAttribute("activeJobIds", data.activeJobIds());
+        model.addAttribute("enrichmentJobId", data.enrichmentJobId());
+        model.addAttribute("total14d", data.total14d());
+        model.addAttribute("ok14d", data.ok14d());
+        model.addAttribute("partial14d", data.partial14d());
+        model.addAttribute("failed14d", data.failed14d());
+        model.addAttribute("avgDurLabel14d", data.avgDurLabel14d());
+        model.addAttribute("projects", data.projects());
+        try {
+            model.addAttribute("jobsJson", objectMapper.writeValueAsString(data.jobs()));
+            model.addAttribute("chartBarsJson", objectMapper.writeValueAsString(data.chartBars()));
+        } catch (JsonProcessingException e) {
+            model.addAttribute("jobsJson", "[]");
+            model.addAttribute("chartBarsJson", "[]");
+        }
+        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
+        return "sync";
     }
 
     @GetMapping(value = "/report/user/{id}/mrs",

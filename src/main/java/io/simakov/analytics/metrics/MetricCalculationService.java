@@ -118,7 +118,8 @@ public class MetricCalculationService {
 
     // ---- Data preparation helpers ------------------------------------------
 
-    private Set<String> buildAliasEmails(TrackedUser user, AliasData alias) {
+    private Set<String> buildAliasEmails(TrackedUser user,
+                                         AliasData alias) {
         Set<String> emails = new HashSet<>(alias.emails());
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
             emails.add(user.getEmail().toLowerCase(Locale.ROOT));

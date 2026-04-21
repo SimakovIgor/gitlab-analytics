@@ -48,7 +48,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class EnrichPhaseSnapshotBackfillTest extends BaseIT {
 
-    /** Run backfill only for today — keeps tests fast. */
+    /**
+     * Run backfill only for today — keeps tests fast.
+     */
     private static final int BACKFILL_ONLY_TODAY = 0;
     private static final int WINDOW_DAYS = 30;
 
@@ -206,7 +208,7 @@ class EnrichPhaseSnapshotBackfillTest extends BaseIT {
 
     /**
      * Regression: commits_in_mr_count=0 for auto-discovered users.
-     *
+     * <p>
      * Auto-discovered users have a gitlab_user_id alias but no email alias —
      * MR attribution works (by gitlab_user_id) but commit attribution fails (by email).
      * syncCommitEmails() reads commit author emails from the DB and links them to the
@@ -303,7 +305,9 @@ class EnrichPhaseSnapshotBackfillTest extends BaseIT {
 
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
-    private void saveStaleSnapshot(Long userId, LocalDate date, int windowDays) {
+    private void saveStaleSnapshot(Long userId,
+                                   LocalDate date,
+                                   int windowDays) {
         Instant dateTo = date.atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant dateFrom = date.minusDays(windowDays).atStartOfDay().toInstant(ZoneOffset.UTC);
         snapshotRepository.save(MetricSnapshot.builder()
@@ -319,13 +323,15 @@ class EnrichPhaseSnapshotBackfillTest extends BaseIT {
             .build());
     }
 
-    private Map<String, Object> loadMetrics(Long userId, LocalDate date) {
+    private Map<String, Object> loadMetrics(Long userId,
+                                            LocalDate date) {
         MetricSnapshot snapshot = snapshotRepository
             .findByWorkspaceIdAndSnapshotDateAndTrackedUserIdIn(testWorkspaceId, date, List.of(userId))
             .stream().findFirst()
             .orElseThrow(() -> new AssertionError("Snapshot not found for user=" + userId + " date=" + date));
         try {
-            return objectMapper.readValue(snapshot.getMetricsJson(), new TypeReference<>() { });
+            return objectMapper.readValue(snapshot.getMetricsJson(), new TypeReference<>() {
+            });
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new AssertionError("Failed to parse metricsJson", e);
         }

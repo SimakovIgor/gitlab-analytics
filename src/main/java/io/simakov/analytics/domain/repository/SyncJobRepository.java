@@ -14,7 +14,7 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
     List<SyncJob> findByStatusOrderByStartedAtDesc(SyncStatus status);
 
     List<SyncJob> findByWorkspaceIdAndStatusOrderByStartedAtDesc(Long workspaceId,
-                                                                  SyncStatus status);
+                                                                 SyncStatus status);
 
     List<SyncJob> findByStatusAndStartedAtBefore(SyncStatus status,
                                                  Instant threshold);
@@ -29,8 +29,10 @@ public interface SyncJobRepository extends JpaRepository<SyncJob, Long> {
                                          SyncStatus status);
 
     Optional<SyncJob> findTopByWorkspaceIdAndStatusOrderByStartedAtDesc(Long workspaceId,
-                                                                         SyncStatus status);
+                                                                        SyncStatus status);
 
     Optional<SyncJob> findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(
-        Long workspaceId, SyncStatus status, SyncJobPhase phase);
+        Long workspaceId,
+        SyncStatus status,
+        SyncJobPhase phase);
 }

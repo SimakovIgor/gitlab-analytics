@@ -25,4 +25,5 @@ public record InsightContext(
     List<MergeRequest> openMrs,
     Map<Long, Long> gitlabUserIdToTrackedUserId
 ) {
+
 }

@@ -219,7 +219,8 @@ class MrSummaryLinesTest extends BaseIT {
             "http://localhost:" + port + "/report/user/" + userId + "/mrs?period=LAST_30_DAYS",
             HttpMethod.GET,
             new HttpEntity<>(headers),
-            new ParameterizedTypeReference<>() { });
+            new ParameterizedTypeReference<>() {
+            });
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody()).isNotNull();
         return resp.getBody();

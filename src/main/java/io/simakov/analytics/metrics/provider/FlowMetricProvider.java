@@ -28,7 +28,8 @@ import java.util.stream.Collectors;
 class FlowMetricProvider implements MetricProvider {
 
     @Override
-    public void populate(MetricContext ctx, UserMetrics.UserMetricsBuilder builder) {
+    public void populate(MetricContext ctx,
+                         UserMetrics.UserMetricsBuilder builder) {
         // Group user's own commits by MR for rework detection
         Map<Long, List<MergeRequestCommit>> userCommitsByMrId = ctx.userCommits().stream()
             .collect(Collectors.groupingBy(MergeRequestCommit::getMergeRequestId));
@@ -59,7 +60,9 @@ class FlowMetricProvider implements MetricProvider {
 
         int mrMergedCount = (int) ctx.authoredMrs().stream()
             .filter(mr -> mr.getMergedAtGitlab() != null).count();
-        double reworkRatio = mrMergedCount > 0 ? (double) reworkMrCount / mrMergedCount : 0.0;
+        double reworkRatio = mrMergedCount > 0
+            ? (double) reworkMrCount / mrMergedCount
+            : 0.0;
 
         builder
             .avgTimeToFirstReviewMinutes(MetricsMathUtils.optMean(timeToFirstReview))
@@ -95,7 +98,9 @@ class FlowMetricProvider implements MetricProvider {
             return firstApproval;
         }
         return firstApproval
-            .map(instant -> firstNote.get().isBefore(instant) ? firstNote.get() : instant)
+            .map(instant -> firstNote.get().isBefore(instant)
+                ? firstNote.get()
+                : instant)
             .or(() -> firstNote);
     }
 
@@ -110,7 +115,8 @@ class FlowMetricProvider implements MetricProvider {
             .anyMatch(c -> c.getAuthoredDate().isAfter(firstExternalReview));
     }
 
-    private void collectTimeToMerge(MergeRequest mr, List<Long> timeToMerge) {
+    private void collectTimeToMerge(MergeRequest mr,
+                                    List<Long> timeToMerge) {
         if (mr.getMergedAtGitlab() == null) {
             return;
         }

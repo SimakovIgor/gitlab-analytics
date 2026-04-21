@@ -45,13 +45,15 @@ public class InsightService {
     /**
      * Evaluates all insight rules for the given workspace and period.
      *
-     * @param workspaceId       the current workspace
-     * @param period            period type string (e.g. "LAST_30_DAYS")
+     * @param workspaceId        the current workspace
+     * @param period             period type string (e.g. "LAST_30_DAYS")
      * @param selectedProjectIds project filter; if null or empty, all workspace projects are used
      * @return insights sorted by severity descending
      */
     @Transactional(readOnly = true)
-    public List<TeamInsight> evaluate(Long workspaceId, String period, List<Long> selectedProjectIds) {
+    public List<TeamInsight> evaluate(Long workspaceId,
+                                      String period,
+                                      List<Long> selectedProjectIds) {
         List<TrackedUser> users = trackedUserRepository.findAllByWorkspaceId(workspaceId);
         if (users.isEmpty()) {
             return List.of();
@@ -84,7 +86,8 @@ public class InsightService {
             .collect(Collectors.toList());
     }
 
-    private List<Long> resolveProjectIds(Long workspaceId, List<Long> requested) {
+    private List<Long> resolveProjectIds(Long workspaceId,
+                                         List<Long> requested) {
         if (requested != null && !requested.isEmpty()) {
             return requested;
         }

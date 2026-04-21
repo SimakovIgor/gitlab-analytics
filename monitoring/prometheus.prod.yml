@@ -15,19 +15,19 @@ scrape_configs:
       - target_label: application
         replacement: gitlab-analytics
     metric_relabel_configs:
-      - source_labels: [uri]
+      - source_labels: [ uri ]
         regex: '([^?]+)\?.*'
         target_label: uri
         replacement: '${1}'
-      - source_labels: [uri]
+      - source_labels: [ uri ]
         regex: '(/api/v4/[^/]+)/([0-9]+)(.*)'
         target_label: uri
         replacement: '${1}/:id${3}'
-      - source_labels: [uri]
+      - source_labels: [ uri ]
         regex: '(/api/v4/[^/]+/:id/[^/]+)/([0-9]+)(.*)'
         target_label: uri
         replacement: '${1}/:id${3}'
-      - source_labels: [uri]
+      - source_labels: [ uri ]
         regex: '(.*)/([0-9a-f]{7,40})$'
         target_label: uri
         replacement: '${1}/:sha'

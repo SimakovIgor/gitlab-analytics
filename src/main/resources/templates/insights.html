@@ -103,36 +103,51 @@
             </div>
         </div>
 
-        <!-- Фильтр по типу + сортировка -->
+        <!-- Фильтр по источнику + типу + сортировка -->
         <div class="insight-filter-bar">
-            <div class="insight-filter-group" id="kind-filter">
+
+            <!-- Левая группа: источник (Algo / AI / Все) -->
+            <div class="insight-filter-group" id="source-filter">
                 <button class="insight-filter-btn insight-filter-btn-active"
-                        data-kind="all"
-                        th:text="'Все · ' + ${totalCount}"
-                        type="button">Все
+                        data-source="all" type="button">Все
                 </button>
-                <button class="insight-filter-btn insight-filter-btn-bad"
-                        data-kind="bad"
-                        th:text="'Проблемы · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).BAD) ?: 0}"
-                        type="button">Проблемы
-                </button>
-                <button class="insight-filter-btn insight-filter-btn-warn"
-                        data-kind="warn"
-                        th:text="'Внимание · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).WARN) ?: 0}"
-                        type="button">Внимание
-                </button>
-                <button class="insight-filter-btn insight-filter-btn-good"
-                        data-kind="good"
-                        th:text="'Улучшения · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).GOOD) ?: 0}"
-                        type="button">Улучшения
-                </button>
-                <button class="insight-filter-btn insight-filter-btn-info"
-                        data-kind="info"
-                        th:text="'Инфо · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).INFO) ?: 0}"
-                        type="button">Инфо
+                <button class="insight-filter-btn" data-source="algo" type="button">Algo</button>
+                <button class="insight-filter-btn insight-filter-src-ai" data-source="ai"
+                        disabled type="button">AI
                 </button>
             </div>
-            <span class="insight-sort-label">важность ↓</span>
+
+            <!-- Правая группа: вид (Проблемы / Внимание / ...) + важность -->
+            <div class="insight-filter-right">
+                <div class="insight-filter-group" id="kind-filter">
+                    <button class="insight-filter-btn insight-filter-btn-active"
+                            data-kind="all"
+                            th:text="'Все · ' + ${totalCount}"
+                            type="button">Все
+                    </button>
+                    <button class="insight-filter-btn insight-filter-btn-bad"
+                            data-kind="bad"
+                            th:text="'Проблемы · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).BAD) ?: 0}"
+                            type="button">Проблемы
+                    </button>
+                    <button class="insight-filter-btn insight-filter-btn-warn"
+                            data-kind="warn"
+                            th:text="'Внимание · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).WARN) ?: 0}"
+                            type="button">Внимание
+                    </button>
+                    <button class="insight-filter-btn insight-filter-btn-good"
+                            data-kind="good"
+                            th:text="'Улучшения · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).GOOD) ?: 0}"
+                            type="button">Улучшения
+                    </button>
+                    <button class="insight-filter-btn insight-filter-btn-info"
+                            data-kind="info"
+                            th:text="'Инфо · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).INFO) ?: 0}"
+                            type="button">Инфо
+                    </button>
+                </div>
+                <span class="insight-sort-label">важность ↓</span>
+            </div>
         </div>
 
         <!-- Список инсайтов -->
@@ -150,6 +165,7 @@
             <!-- Insight row -->
             <th:block th:each="ins : ${insights}">
                 <div class="insight-row"
+                     data-source="algo"
                      th:attr="data-kind=${ins.kind().cssValue()}"
                      th:classappend="'insight-row--' + ${ins.kind().cssValue()}">
 
@@ -320,18 +336,37 @@
         window.location.href = url.toString();
     }
 
-    // Kind filter (client-side)
+    // Client-side filtering by source and kind
+    var activeSource = 'all';
+    var activeKind = 'all';
+
+    function applyInsightFilters() {
+        document.querySelectorAll('#insight-list .insight-row').forEach(function (row) {
+            var srcMatch = activeSource === 'all' || row.dataset.source === activeSource;
+            var kindMatch = activeKind === 'all' || row.dataset.kind === activeKind;
+            row.style.display = (srcMatch && kindMatch) ? '' : 'none';
+        });
+    }
+
+    document.querySelectorAll('#source-filter .insight-filter-btn:not([disabled])').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            activeSource = btn.dataset.source;
+            document.querySelectorAll('#source-filter .insight-filter-btn').forEach(function (b) {
+                b.classList.remove('insight-filter-btn-active');
+            });
+            btn.classList.add('insight-filter-btn-active');
+            applyInsightFilters();
+        });
+    });
+
     document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            const kind = btn.dataset.kind;
+            activeKind = btn.dataset.kind;
             document.querySelectorAll('#kind-filter .insight-filter-btn').forEach(function (b) {
                 b.classList.remove('insight-filter-btn-active');
             });
             btn.classList.add('insight-filter-btn-active');
-            document.querySelectorAll('#insight-list .insight-row').forEach(function (row) {
-                const rowKind = row.dataset.kind;
-                row.style.display = (kind === 'all' || rowKind === kind) ? '' : 'none';
-            });
+            applyInsightFilters();
         });
     });
 </script>

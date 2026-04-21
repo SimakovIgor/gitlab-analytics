@@ -46,7 +46,9 @@ public class NoCodeReviewEvaluator implements InsightEvaluator {
         String title = String.format(
             "%d %s мержит MR, но не ревьюит чужие",
             offenders.size(),
-            offenders.size() == 1 ? "участник" : "участника"
+            offenders.size() == 1
+                ? "участник"
+                : "участника"
         );
         String body = String.format(
             "%s. Отсутствие участия в ревью создаёт дисбаланс нагрузки и снижает качество knowledge sharing.",

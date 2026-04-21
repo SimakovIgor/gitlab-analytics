@@ -10,4 +10,5 @@ import java.util.List;
  * Replaces the raw {@code Map<String, Object>} used previously.
  */
 public record UserWithAliases(TrackedUser user, List<TrackedUserAlias> aliases) {
+
 }

@@ -48,7 +48,9 @@ public class HighReworkRatioEvaluator implements InsightEvaluator {
         String title = String.format(
             "Высокая доля доработок у %d %s",
             offenders.size(),
-            offenders.size() == 1 ? "участника" : "участников"
+            offenders.size() == 1
+                ? "участника"
+                : "участников"
         );
         String body = String.format(
             "%s. Высокий rework ratio означает, что MR часто требуют существенных правок после открытия ревью.",

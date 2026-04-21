@@ -104,7 +104,8 @@ GITHUB_CLIENT_SECRET=your-github-client-secret \
 3. Начните вводить название репозитория — появится поиск по GitLab.
 4. Выберите нужный репозиторий из результатов и нажмите **Добавить**.
 
-Синхронизация запустится автоматически — загружаются данные за последние 360 дней (MR, коммиты, ревью, апрувалы). Для больших репозиториев открывается отдельная страница прогресса (`/settings/sync/progress/{jobId}`) с ETA и статистикой в реальном времени.
+Синхронизация запустится автоматически — загружаются данные за последние 360 дней (MR, коммиты, ревью, апрувалы). Для больших репозиториев открывается отдельная страница прогресса (
+`/settings/sync/progress/{jobId}`) с ETA и статистикой в реальном времени.
 
 Для повторной синхронизации — кнопка **Синк** рядом с репозиторием.
 
@@ -153,14 +154,15 @@ GITHUB_CLIENT_SECRET=your-github-client-secret \
 
 **Типы сигналов:**
 
-| Тип | Цвет | Описание |
-|-----|------|----------|
-| BAD | красный | Критические проблемы, требующие внимания |
-| WARN | жёлтый | Потенциальные риски |
-| INFO | синий | Информационные наблюдения |
-| GOOD | зелёный | Положительные паттерны |
+| Тип  | Цвет    | Описание                                 |
+|------|---------|------------------------------------------|
+| BAD  | красный | Критические проблемы, требующие внимания |
+| WARN | жёлтый  | Потенциальные риски                      |
+| INFO | синий   | Информационные наблюдения                |
+| GOOD | зелёный | Положительные паттерны                   |
 
-**Алгоритмические правила** (10 штук): HIGH_MERGE_TIME, MERGE_TIME_SPIKE, STUCK_MRS, REVIEW_LOAD_IMBALANCE, LARGE_MR_HABIT, DELIVERY_DROP, LOW_REVIEW_DEPTH, HIGH_REWORK_RATIO, INACTIVE_MEMBER, NO_CODE_REVIEW.
+**Алгоритмические правила** (10 штук): HIGH_MERGE_TIME, MERGE_TIME_SPIKE, STUCK_MRS, REVIEW_LOAD_IMBALANCE, LARGE_MR_HABIT, DELIVERY_DROP, LOW_REVIEW_DEPTH, HIGH_REWORK_RATIO, INACTIVE_MEMBER,
+NO_CODE_REVIEW.
 
 Пороги для всех правил настраиваются в `application.yml` через `app.insights.thresholds.*`.
 
@@ -221,13 +223,13 @@ GITHUB_CLIENT_SECRET=your-github-client-secret \
 
 ### Порты
 
-| Сервис       | Порт   | URL                                        |
-|--------------|--------|--------------------------------------------|
-| Приложение   | `8080` | http://localhost:8080                      |
-| Prometheus   | `9090` | http://localhost:9090                      |
-| Grafana      | `3000` | http://localhost:3000  (admin / admin)     |
-| Portainer    | `9000` | http://localhost:9000  (Docker UI)         |
-| Loki         | `3100` | внутренний, scrape через Promtail          |
+| Сервис     | Порт   | URL                                    |
+|------------|--------|----------------------------------------|
+| Приложение | `8080` | http://localhost:8080                  |
+| Prometheus | `9090` | http://localhost:9090                  |
+| Grafana    | `3000` | http://localhost:3000  (admin / admin) |
+| Portainer  | `9000` | http://localhost:9000  (Docker UI)     |
+| Loki       | `3100` | внутренний, scrape через Promtail      |
 
 ### Health / Actuator endpoints
 
@@ -249,10 +251,10 @@ GITHUB_CLIENT_SECRET=your-github-client-secret \
 docker compose -f docker/docker-compose.monitoring.yml --project-name gitlab-analytics up -d
 ```
 
-| Сервис    | URL                       | Логин         |
-|-----------|---------------------------|---------------|
-| Grafana   | http://localhost:3000     | admin / admin |
-| Portainer | http://localhost:9000     | создаётся при первом входе (≥12 символов) |
+| Сервис    | URL                   | Логин                                     |
+|-----------|-----------------------|-------------------------------------------|
+| Grafana   | http://localhost:3000 | admin / admin                             |
+| Portainer | http://localhost:9000 | создаётся при первом входе (≥12 символов) |
 
 Grafana: datasource и dashboards (Spring Boot / JVM / Application) provisioned автоматически из `monitoring/grafana/`.
 

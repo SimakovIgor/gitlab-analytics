@@ -58,7 +58,9 @@ public class StuckMrsEvaluator implements InsightEvaluator {
         String title = String.format(
             "%d MR %s открытыми больше %d ч",
             stuckMrs.size(),
-            stuckMrs.size() == 1 ? "висит" : "висят",
+            stuckMrs.size() == 1
+                ? "висит"
+                : "висят",
             props.getStuckMrHours()
         );
         String body = String.format(

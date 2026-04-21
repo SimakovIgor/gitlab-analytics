@@ -13,9 +13,9 @@
 <!-- Минимальный топбар — только логотип + "Первичная настройка" -->
 <header class="topbar">
     <a class="topbar-brand" href="/">
-        <svg class="topbar-brand-logo" viewBox="0 0 22 22" fill="none">
+        <svg class="topbar-brand-logo" fill="none" viewBox="0 0 22 22">
             <defs>
-                <linearGradient id="gl-ob" x1="0" y1="0" x2="1" y2="1">
+                <linearGradient id="gl-ob" x1="0" x2="1" y1="0" y2="1">
                     <stop offset="0" stop-color="var(--accent)"/>
                     <stop offset="1" stop-color="var(--accent-dim)"/>
                 </linearGradient>
@@ -72,16 +72,16 @@
         </p>
 
         <form method="post" th:action="@{/onboarding}">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
             <label class="ob-field-label">Название workspace</label>
-            <input class="ob-text-input" type="text" name="workspaceName"
-                   placeholder="Backend · Marketplace · ke-platform…"
-                   required maxlength="255" autofocus>
+            <input autofocus class="ob-text-input" maxlength="255"
+                   name="workspaceName"
+                   placeholder="Backend · Marketplace · ke-platform…" required type="text">
             <div class="ob-field-hint">
                 Отображается в заголовке дашборда. Переименовать можно из настроек.
             </div>
             <div class="ob-nav-footer-end">
-                <button type="submit" class="ob-primary-btn">Продолжить →</button>
+                <button class="ob-primary-btn" type="submit">Продолжить →</button>
             </div>
         </form>
 
@@ -121,18 +121,23 @@
             <div class="ob-stepper-labels">
                 <div class="ob-slabel ob-slabel-done" id="ob-slabel-1">Workspace</div>
                 <div id="ob-slabel-2"
-                     th:class="${hasSources} ? 'ob-slabel ob-slabel-done' : 'ob-slabel ob-slabel-active'">Git-система</div>
+                     th:class="${hasSources} ? 'ob-slabel ob-slabel-done' : 'ob-slabel ob-slabel-active'">Git-система
+                </div>
                 <div id="ob-slabel-3"
                      th:class="${hasProjects} ? 'ob-slabel ob-slabel-done'
-                               : (${hasSources} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Репозиторий и доступ</div>
+                               : (${hasSources} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Репозиторий и доступ
+                </div>
                 <div id="ob-slabel-4"
                      th:class="${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-slabel ob-slabel-done'
-                               : (${hasProjects} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Синхронизация</div>
+                               : (${hasProjects} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Синхронизация
+                </div>
                 <div id="ob-slabel-5"
                      th:class="${hasUsers} ? 'ob-slabel ob-slabel-done'
-                               : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Сотрудники</div>
+                               : (${hasProjects and hasSyncCompleted and activeJobIds.isEmpty()} ? 'ob-slabel ob-slabel-active' : 'ob-slabel')">Сотрудники
+                </div>
                 <div id="ob-slabel-6"
-                     th:class="${hasUsers} ? 'ob-slabel ob-slabel-active' : 'ob-slabel'">Готово</div>
+                     th:class="${hasUsers} ? 'ob-slabel ob-slabel-active' : 'ob-slabel'">Готово
+                </div>
             </div>
         </div>
 
@@ -147,8 +152,8 @@
 
             <div class="ob-option-cards">
                 <!-- Self-hosted GitLab — активна по умолчанию -->
-                <button type="button" class="ob-option-card ob-option-card-active"
-                        id="ob-option-self-hosted" onclick="selectGitOption('self-hosted')">
+                <button class="ob-option-card ob-option-card-active" id="ob-option-self-hosted"
+                        onclick="selectGitOption('self-hosted')" type="button">
                     <div class="ob-option-radio ob-option-radio-active" id="ob-radio-self-hosted"></div>
                     <div style="flex:1;min-width:0">
                         <div class="ob-option-title">
@@ -159,7 +164,7 @@
                     </div>
                 </button>
                 <!-- GitLab.com — недоступна -->
-                <button type="button" class="ob-option-card" id="ob-option-gitlab-com" disabled>
+                <button class="ob-option-card" disabled id="ob-option-gitlab-com" type="button">
                     <div class="ob-option-radio" id="ob-radio-gitlab-com"></div>
                     <div style="flex:1;min-width:0">
                         <div class="ob-option-title">
@@ -176,11 +181,11 @@
             <div id="ob-host-wrap" style="margin-bottom:20px">
                 <label class="ob-field-label">Адрес GitLab</label>
                 <input class="ob-text-input ob-mono" id="ob-host"
-                       type="text" placeholder="gitlab.yourcompany.ru"
-                       oninput="updateStep2NextBtn()"
-                       onchange="updateStep2NextBtn()"
+                       onchange="updateStep2NextBtn()" oninput="updateStep2NextBtn()"
+                       onkeyup="updateStep2NextBtn()"
                        onpaste="setTimeout(updateStep2NextBtn,0)"
-                       onkeyup="updateStep2NextBtn()">
+                       placeholder="gitlab.yourcompany.ru"
+                       type="text">
                 <div class="ob-field-hint">
                     Без <code style="font-family:var(--font-mono)">https://</code> — только домен. Нужен доступ из сети gitlens.
                 </div>
@@ -188,12 +193,13 @@
 
             <div class="ob-info-box">GitHub и Bitbucket — в roadmap на Q2.</div>
 
-            <div id="ob-step2-error" class="modal-error hidden" style="margin-top:10px"></div>
+            <div class="modal-error hidden" id="ob-step2-error" style="margin-top:10px"></div>
 
             <div class="ob-nav-footer">
                 <div></div>
-                <button type="button" class="ob-primary-btn" id="ob-step2-next-btn"
-                        onclick="ob_step2_next()" disabled>Продолжить →</button>
+                <button class="ob-primary-btn" disabled id="ob-step2-next-btn"
+                        onclick="ob_step2_next()" type="button">Продолжить →
+                </button>
             </div>
         </div>
 
@@ -209,18 +215,18 @@
             </p>
 
             <!-- Скрытый source ID, заполняется JS после создания source -->
-            <input type="hidden" id="project-source-id"
-                   th:value="${sources != null and !sources.isEmpty()} ? ${sources[0].id} : ''">
+            <input id="project-source-id" th:value="${sources != null and !sources.isEmpty()} ? ${sources[0].id} : ''"
+                   type="hidden">
 
             <!-- Token input -->
             <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
                 <label class="ob-field-label" style="margin:0">Access Token</label>
-                <a class="ob-token-link" id="ob-token-link"
-                   href="#" target="_blank" rel="noreferrer">Где взять токен ↗</a>
+                <a class="ob-token-link" href="#"
+                   id="ob-token-link" rel="noreferrer" target="_blank">Где взять токен ↗</a>
             </div>
             <input class="ob-text-input ob-mono" id="project-token"
-                   type="password" placeholder="glpat-••••••••••••••••"
-                   oninput="ob_onTokenChange(this.value)">
+                   oninput="ob_onTokenChange(this.value)" placeholder="glpat-••••••••••••••••"
+                   type="password">
             <div class="ob-token-status" id="ob-token-status">
                 Scope <code style="font-family:var(--font-mono);color:var(--fg-1)">read_api</code>
                 + <code style="font-family:var(--font-mono);color:var(--fg-1)">read_repository</code>
@@ -228,12 +234,13 @@
             </div>
 
             <div style="margin-top:16px">
-                <button type="button" class="ob-outline-btn" id="ob-validate-btn"
-                        onclick="ob_validateToken()" disabled>Проверить токен</button>
+                <button class="ob-outline-btn" disabled id="ob-validate-btn"
+                        onclick="ob_validateToken()" type="button">Проверить токен
+                </button>
             </div>
 
             <!-- Repo list (показывается после валидации токена) -->
-            <div id="ob-repo-list-wrap" class="hidden" style="margin-top:26px">
+            <div class="hidden" id="ob-repo-list-wrap" style="margin-top:26px">
                 <label class="ob-field-label">Выберите репозиторий</label>
                 <div class="ob-repo-list" id="ob-repo-list-items">
                     <div style="padding:16px;font-size:12.5px;color:var(--fg-3)">Загружаем список репозиториев…</div>
@@ -249,12 +256,13 @@
                 </div>
             </div>
 
-            <div id="ob-step3-error" class="modal-error hidden" style="margin-top:10px"></div>
+            <div class="modal-error hidden" id="ob-step3-error" style="margin-top:10px"></div>
 
             <div class="ob-nav-footer">
-                <button type="button" class="ob-link-btn" onclick="ob_backToStep2()">← Назад</button>
-                <button type="button" class="ob-primary-btn" id="btn-add-project"
-                        onclick="ob_step3_addProject()" disabled>Продолжить →</button>
+                <button class="ob-link-btn" onclick="ob_backToStep2()" type="button">← Назад</button>
+                <button class="ob-primary-btn" disabled id="btn-add-project"
+                        onclick="ob_step3_addProject()" type="button">Продолжить →
+                </button>
             </div>
         </div>
 
@@ -304,7 +312,7 @@
         </div>
 
         <!-- ── Шаг 5: Состав команды ──────────────────────────────────────── -->
-        <div id="ob-content-5" class="ob-step-body hidden">
+        <div class="ob-step-body hidden" id="ob-content-5">
             <div class="ob-eyebrow">Сотрудники</div>
             <h1 class="ob-title">Выберите, за кем следим</h1>
             <p class="ob-sub">
@@ -317,7 +325,7 @@
                 <span class="sync-spinner" style="border-color:var(--border-2);border-top-color:var(--fg-2)"></span>
                 Загружаем список авторов...
             </div>
-            <div class="ob-check-list" id="ob-discovery-list"></div>
+            <div class="ob-check-list" id="ob-discovery-list" style="overflow-x:hidden"></div>
 
             <div class="ob-discovery-actions hidden" id="ob-discovery-actions"
                  style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
@@ -330,7 +338,8 @@
 
             <div style="display:flex;justify-content:flex-end;margin-top:32px">
                 <button class="ob-primary-btn" id="ob-btn-confirm"
-                        onclick="confirmTeamSelection()">Подтвердить состав →</button>
+                        onclick="confirmTeamSelection()">Подтвердить состав →
+                </button>
             </div>
         </div>
 
@@ -365,9 +374,9 @@
             <!-- Фаза 1: MR загружены -->
             <div class="ob-phase-card ob-phase-card-good">
                 <div class="ob-phase-check">
-                    <svg width="12" height="12" viewBox="0 0 20 20">
-                        <path d="M4 10.5 L8 14.5 L16 6" stroke="#fff" stroke-width="2.5"
-                              fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <svg height="12" viewBox="0 0 20 20" width="12">
+                        <path d="M4 10.5 L8 14.5 L16 6" fill="none" stroke="#fff"
+                              stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
                     </svg>
                 </div>
                 <div>
@@ -379,10 +388,10 @@
             <!-- Фаза 2: идёт фоновая загрузка -->
             <div class="ob-phase-card ob-phase-card-running">
                 <div class="ob-phase2-running-header">
-                    <svg class="ob-sync-spinner" width="22" height="22" viewBox="0 0 22 22">
-                        <circle cx="11" cy="11" r="8" stroke="var(--border-2)" stroke-width="2" fill="none"/>
-                        <path d="M19 11 A 8 8 0 0 0 11 3" stroke="var(--accent)" stroke-width="2"
-                              fill="none" stroke-linecap="round"/>
+                    <svg class="ob-sync-spinner" height="22" viewBox="0 0 22 22" width="22">
+                        <circle cx="11" cy="11" fill="none" r="8" stroke="var(--border-2)" stroke-width="2"/>
+                        <path d="M19 11 A 8 8 0 0 0 11 3" fill="none" stroke="var(--accent)"
+                              stroke-linecap="round" stroke-width="2"/>
                     </svg>
                     <div style="flex:1">
                         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
@@ -437,7 +446,7 @@
 
 <!-- Добавить источник (для report/settings страниц) — здесь не отображается -->
 
-<script th:inline="javascript" th:if="${workspaceReady}">
+<script th:if="${workspaceReady}" th:inline="javascript">
     /*<![CDATA[*/
 
     const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]').content;
@@ -1250,7 +1259,7 @@
         const letter = (u.displayName || '?')[0].toUpperCase();
         const botBadge = ghost ? '<span class="ob-bot-badge">bot?</span>' : '';
         const mrCount = u.mrCount > 0 ? `<div class="ob-check-mrs num">${u.mrCount} MR · 360d</div>` : '';
-        return `<label class="ob-check-row" onclick="obToggleRow(this)">
+        return `<label class="ob-check-row" onclick="obToggleRow(event, this)">
             <input type="checkbox" class="ob-check" data-user-id="${u.id}" checked
                    style="position:absolute;opacity:0;pointer-events:none" onchange="updateObCounter()">
             <div class="ob-check-box ob-check-box-checked" id="ob-chkbox-${u.id}">
@@ -1267,7 +1276,8 @@
         </label>`;
     }
 
-    function obToggleRow(label) {
+    function obToggleRow(e, label) {
+        e.preventDefault();
         const cb = label.querySelector('.ob-check');
         if (!cb || cb.disabled) {
             return;
@@ -1358,7 +1368,8 @@
             obAddedDevs = checkedCount;
             OB_STATE.hasUsers = true;
             awaitingTeamConfirmation = false;
-            api('POST', '/settings/snapshots/backfill?days=360').catch(() => {});
+            api('POST', '/settings/snapshots/backfill?days=360').catch(() => {
+            });
             refreshOnboarding();
         } catch (e) {
             setDiscoveryActionsLocked(false);

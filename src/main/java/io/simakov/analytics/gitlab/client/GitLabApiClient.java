@@ -293,13 +293,14 @@ public class GitLabApiClient {
                 Throwable failure = signal.failure();
                 int attempt = (int) signal.totalRetries() + 1;
                 if (failure instanceof GitLabApiException glEx
-                        && glEx.getStatusCode() != null
-                        && glEx.getStatusCode().value() == 429) {
+                    && glEx.getStatusCode() != null
+                    && glEx.getStatusCode().value() == 429) {
                     log.warn("GitLab rate limit (429) hit, retry attempt {}/{}", attempt, maxRetries);
                 } else {
                     log.warn("GitLab transient error ({}), retry attempt {}/{}: {}",
                         failure instanceof GitLabApiException glEx2 && glEx2.getStatusCode() != null
-                            ? glEx2.getStatusCode().value() : "?",
+                            ? glEx2.getStatusCode().value()
+                            : "?",
                         attempt, maxRetries, failure.getMessage());
                 }
             })

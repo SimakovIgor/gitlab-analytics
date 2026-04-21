@@ -1,5 +1,7 @@
 package io.simakov.analytics.web;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.api.dto.request.CreateGitSourceRequest;
 import io.simakov.analytics.api.dto.request.CreateTrackedProjectRequest;
 import io.simakov.analytics.api.dto.request.CreateTrackedUserRequest;
@@ -58,6 +60,7 @@ public class SettingsService {
     private final TrackedUserMapper trackedUserMapper;
     private final SyncJobService syncJobService;
     private final SyncOrchestrator syncOrchestrator;
+    private final ObjectMapper objectMapper;
     private final ContributorDiscoveryService contributorDiscoveryService;
     private final UserAliasService userAliasService;
     private final SnapshotService snapshotService;
@@ -224,12 +227,16 @@ public class SettingsService {
 
     // ── Snapshots ────────────────────────────────────────────────────────────
 
-    /** Synchronous: blocks until all snapshots are created, returns count. Used by onboarding. */
+    /**
+     * Synchronous: blocks until all snapshots are created, returns count. Used by onboarding.
+     */
     public int triggerSnapshotBackfill() {
         return snapshotService.runDailyBackfill(WorkspaceContext.get(), BACKFILL_DAYS);
     }
 
-    /** Async: submits backfill to snapshotExecutor and returns immediately. Used by settings page. */
+    /**
+     * Async: submits backfill to snapshotExecutor and returns immediately. Used by settings page.
+     */
     public void scheduleSnapshotBackfill() {
         scheduleBackfill(WorkspaceContext.get());
     }
@@ -252,7 +259,33 @@ public class SettingsService {
         if (!workspaceId.equals(job.getWorkspaceId())) {
             throw new ResourceNotFoundException("SyncJob", jobId);
         }
-        return SyncJobResponse.from(job);
+        return SyncJobResponse.from(job, resolveProjectName(job));
+    }
+
+    private String resolveProjectName(SyncJob job) {
+        String payload = job.getPayloadJson();
+        if (payload == null || payload.isBlank()) {
+            return null;
+        }
+        try {
+            Map<String, Object> map = objectMapper.readValue(payload, new TypeReference<>() { });
+            @SuppressWarnings("unchecked")
+            List<Integer> ids = (List<Integer>) map.get("projectIds");
+            if (ids == null || ids.isEmpty()) {
+                return null;
+            }
+            List<Long> projectIds = ids.stream().map(Integer::longValue).toList();
+            List<TrackedProject> projects = trackedProjectRepository.findAllById(projectIds);
+            if (projects.isEmpty()) {
+                return null;
+            }
+            return projects.stream()
+                .map(TrackedProject::getName)
+                .collect(Collectors.joining(", "));
+        } catch (Exception e) {
+            log.warn("Failed to resolve project name for job {}: {}", job.getId(), e.getMessage());
+            return null;
+        }
     }
 
     public SyncJobResponse retrySync(Long jobId) {
@@ -262,7 +295,9 @@ public class SettingsService {
             throw new ResourceNotFoundException("SyncJob", jobId);
         }
         ManualSyncRequest request = syncJobService.getPayload(jobId);
-        SyncJobPhase phase = job.getPhase() != null ? job.getPhase() : SyncJobPhase.ENRICH;
+        SyncJobPhase phase = job.getPhase() != null
+            ? job.getPhase()
+            : SyncJobPhase.ENRICH;
         SyncJob newJob = syncJobService.create(workspaceId, request, phase);
         syncOrchestrator.orchestrateAsync(newJob.getId(), request, phase);
         return SyncJobResponse.from(newJob);

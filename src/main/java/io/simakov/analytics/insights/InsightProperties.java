@@ -9,10 +9,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.insights.thresholds")
 public class InsightProperties {
 
-    /** Hours an open MR must sit before it is flagged as stuck (STUCK_MRS). */
+    /**
+     * Hours an open MR must sit before it is flagged as stuck (STUCK_MRS).
+     */
     private int stuckMrHours = 24;
 
-    /** Team median TTM above this value (hours) triggers HIGH_MERGE_TIME. */
+    /**
+     * Team median TTM above this value (hours) triggers HIGH_MERGE_TIME.
+     */
     private double maxMedianTtmHours = 24.0;
 
     /**
@@ -21,10 +25,14 @@ public class InsightProperties {
      */
     private double mergeTimeSpikeRatio = 2.0;
 
-    /** Gini coefficient of review load above which REVIEW_LOAD_IMBALANCE fires. */
+    /**
+     * Gini coefficient of review load above which REVIEW_LOAD_IMBALANCE fires.
+     */
     private double reviewGini = 0.45;
 
-    /** Average MR size in lines above which a user is flagged by LARGE_MR_HABIT. */
+    /**
+     * Average MR size in lines above which a user is flagged by LARGE_MR_HABIT.
+     */
     private int largeMrLines = 500;
 
     /**
@@ -39,7 +47,9 @@ public class InsightProperties {
      */
     private double minCommentsPerMr = 1.5;
 
-    /** Rework ratio above which HIGH_REWORK_RATIO fires. */
+    /**
+     * Rework ratio above which HIGH_REWORK_RATIO fires.
+     */
     private double maxReworkRatio = 0.35;
 
     /**

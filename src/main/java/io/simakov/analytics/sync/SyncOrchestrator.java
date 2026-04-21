@@ -137,9 +137,11 @@ public class SyncOrchestrator {
                 try {
                     syncMergeRequest(mrDto, trackedProjectId, ctx, request);
                 } catch (Exception e) {
-                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    Throwable cause = e.getCause() != null
+                        ? e.getCause()
+                        : e;
                     if (cause instanceof GitLabApiException glEx && glEx.getStatusCode() != null
-                            && glEx.getStatusCode().value() == 429) {
+                        && glEx.getStatusCode().value() == 429) {
                         log.warn("Rate limit (429) syncing MR iid={} in project {} — retries exhausted",
                             mrDto.iid(), projectPath);
                     } else {

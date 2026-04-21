@@ -24,6 +24,23 @@ public class ReviewLoadImbalanceEvaluator implements InsightEvaluator {
 
     private final InsightProperties props;
 
+    /**
+     * Computes the Gini coefficient for a sorted list of non-negative integers.
+     * Uses the standard discrete formula: G = (2 * Σ(i * x_i) / (n * Σx_i)) - (n+1)/n
+     */
+    public static double computeGini(List<Integer> sorted) {
+        int n = sorted.size();
+        long sum = sorted.stream().mapToLong(Integer::longValue).sum();
+        if (sum == 0) {
+            return 0;
+        }
+        long weightedSum = 0;
+        for (int i = 0; i < n; i++) {
+            weightedSum += (i + 1L) * sorted.get(i);
+        }
+        return (2.0 * weightedSum / (n * sum)) - (double) (n + 1) / n;
+    }
+
     @Override
     public List<TeamInsight> evaluate(InsightContext ctx) {
         List<UserMetrics> active = ctx.current().values().stream()
@@ -64,22 +81,5 @@ public class ReviewLoadImbalanceEvaluator implements InsightEvaluator {
 
         List<Long> affected = List.of(topReviewer.getTrackedUserId());
         return List.of(TeamInsight.of(InsightRule.REVIEW_LOAD_IMBALANCE, title, body, affected));
-    }
-
-    /**
-     * Computes the Gini coefficient for a sorted list of non-negative integers.
-     * Uses the standard discrete formula: G = (2 * Σ(i * x_i) / (n * Σx_i)) - (n+1)/n
-     */
-    public static double computeGini(List<Integer> sorted) {
-        int n = sorted.size();
-        long sum = sorted.stream().mapToLong(Integer::longValue).sum();
-        if (sum == 0) {
-            return 0;
-        }
-        long weightedSum = 0;
-        for (int i = 0; i < n; i++) {
-            weightedSum += (i + 1L) * sorted.get(i);
-        }
-        return (2.0 * weightedSum / (n * sum)) - (double) (n + 1) / n;
     }
 }

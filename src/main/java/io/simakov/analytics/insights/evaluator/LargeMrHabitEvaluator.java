@@ -47,7 +47,9 @@ public class LargeMrHabitEvaluator implements InsightEvaluator {
         String title = String.format(
             "%d %s с крупными MR (> %d строк в среднем)",
             offenders.size(),
-            offenders.size() == 1 ? "участник" : "участника",
+            offenders.size() == 1
+                ? "участник"
+                : "участника",
             props.getLargeMrLines()
         );
         String body = String.format(

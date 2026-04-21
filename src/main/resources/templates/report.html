@@ -12,9 +12,6 @@
 
 <header th:replace="~{fragments/topbar :: topbar('overview')}"></header>
 
-<!-- Баннеры синхронизации (полная ширина) -->
-<div class="sync-banners-global" id="sync-banners"></div>
-
 <!-- ══════════════════════════════════════════════════════════
      Основной отчёт
      ══════════════════════════════════════════════════════════ -->
@@ -26,31 +23,8 @@
     <!-- ── Основная область ────────────────────────────────── -->
     <main class="report-main">
 
-        <!-- Фаза 2: обогащение данных — показывается над всем содержимым -->
-        <div id="phase2-card" th:if="${enrichmentJobId != null}" class="phase2-banner">
-            <div class="phase2-banner-row">
-                <div class="phase2-banner-icon">
-                    <span class="phase2-banner-spin"></span>
-                </div>
-                <div class="phase2-banner-body">
-                    <div class="phase2-banner-title">
-                        <strong>Первичная загрузка истории репозитория.</strong>
-                        <span>Данные появляются в отчёте по мере загрузки · обычно 15–60 минут.</span>
-                    </div>
-                    <div class="phase2-banner-counters">
-                        <span>Коммиты: <span id="p2-commits" class="phase2-banner-val">0</span></span>
-                        <span>Ревью: <span id="p2-reviews" class="phase2-banner-val">0</span></span>
-                        <span>Коммент.: <span id="p2-comments" class="phase2-banner-val">0</span></span>
-                    </div>
-                </div>
-                <div class="phase2-banner-pct num">
-                    <span id="p2-pct">0</span><span class="phase2-banner-pct-sign">%</span>
-                </div>
-            </div>
-            <div class="phase2-banner-track">
-                <div class="phase2-banner-fill" id="p2-bar"></div>
-            </div>
-        </div>
+        <!-- Карточки синхронизации (Phase 1 и Phase 2) -->
+        <div id="sync-banners"></div>
 
         <!-- Заголовок страницы + период -->
         <div class="page-header">
@@ -67,19 +41,24 @@
                 <div class="period-segmented">
                     <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')"
                             th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">7д</button>
+                            type="button">7д
+                    </button>
                     <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')"
                             th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">30д</button>
+                            type="button">30д
+                    </button>
                     <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')"
                             th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">90д</button>
+                            type="button">90д
+                    </button>
                     <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')"
                             th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">180д</button>
+                            type="button">180д
+                    </button>
                     <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')"
                             th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">360д</button>
+                            type="button">360д
+                    </button>
                 </div>
             </div>
         </div>
@@ -264,11 +243,11 @@
                 </div>
                 <div class="chart-metric-seg" id="chartMetricSeg">
                     <th:block th:each="entry : ${metricOptions}">
-                        <button type="button"
+                        <button onclick="selectChartMetric(this)"
+                                th:class="${entry.key == selectedMetric} ? 'chart-seg-btn chart-seg-btn-active' : 'chart-seg-btn'"
                                 th:data-metric="${entry.key}"
                                 th:text="${entry.value}"
-                                th:class="${entry.key == selectedMetric} ? 'chart-seg-btn chart-seg-btn-active' : 'chart-seg-btn'"
-                                onclick="selectChartMetric(this)">
+                                type="button">
                         </button>
                     </th:block>
                 </div>
@@ -297,23 +276,32 @@
                     <tr>
                         <th class="th-sortable">Сотрудник</th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Число MR, слитых в выбранном периоде.">MR</th>
+                            data-tooltip="Число MR, слитых в выбранном периоде.">MR
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Строк добавлено в смерджённых MR.">+ строк</th>
+                            data-tooltip="Строк добавлено в смерджённых MR.">+ строк
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Строк удалено в смерджённых MR.">− строк</th>
+                            data-tooltip="Строк удалено в смерджённых MR.">− строк
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Коммиты автора в смерджённых MR.">Коммиты</th>
+                            data-tooltip="Коммиты автора в смерджённых MR.">Коммиты
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Комментарии при ревью чужих MR.">Ревью-комм.</th>
+                            data-tooltip="Комментарии при ревью чужих MR.">Ревью-комм.
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Чужих MR, где оставил комментарий или аппрув.">Отревьюил</th>
+                            data-tooltip="Чужих MR, где оставил комментарий или аппрув.">Отревьюил
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Число выданных аппрувов.">Аппрувов</th>
+                            data-tooltip="Число выданных аппрувов.">Аппрувов
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Дней с хотя бы одним коммитом, комментарием или аппрувом.">Актив дней</th>
+                            data-tooltip="Дней с хотя бы одним коммитом, комментарием или аппрувом.">Актив дней
+                        </th>
                         <th class="th-sortable th-hint"
-                            data-tooltip="Среднее время от открытия MR до мержа.">До мержа</th>
+                            data-tooltip="Среднее время от открытия MR до мержа.">До мержа
+                        </th>
                         <th>Тренд</th>
                     </tr>
                     </thead>
@@ -333,13 +321,13 @@
                                     <span class="user-inactive-hint" th:if="${m.inactive}">Нет активности</span>
                                 </div>
                                 <span class="dev-status-badge dev-status-stuck"
-                                      title="STUCK — среднее время до мержа больше 24 часов. Вероятно, MR зависают без ревью."
-                                      th:if="${m.avgTimeToMergeMinutes != null and m.avgTimeToMergeMinutes > 1440}">STUCK</span>
+                                      th:if="${m.avgTimeToMergeMinutes != null and m.avgTimeToMergeMinutes > 1440}"
+                                      title="STUCK — среднее время до мержа больше 24 часов. Вероятно, MR зависают без ревью.">STUCK</span>
                                 <span class="dev-status-badge dev-status-slow"
-                                      title="SLOW — среднее время до мержа от 12 до 24 часов. Есть резерв для ускорения."
                                       th:if="${m.avgTimeToMergeMinutes != null
                                               and m.avgTimeToMergeMinutes > 720
-                                              and m.avgTimeToMergeMinutes <= 1440}">SLOW</span>
+                                              and m.avgTimeToMergeMinutes <= 1440}"
+                                      title="SLOW — среднее время до мержа от 12 до 24 часов. Есть резерв для ускорения.">SLOW</span>
                             </div>
                         </td>
                         <td class="td-num td-accent">
@@ -366,17 +354,17 @@
                         <td class="td-num">
                             <span th:text="${m.activeDaysCount}">0</span>
                         </td>
-                        <td th:with="ttm=${m.avgTimeToMergeMinutes}"
-                            th:class="${ttm != null and ttm > 1440} ? 'td-num td-ttm-bad'
-                                      : (${ttm != null and ttm > 720} ? 'td-num td-ttm-warn' : 'td-num')">
+                        <td th:class="${ttm != null and ttm > 1440} ? 'td-num td-ttm-bad'
+                                      : (${ttm != null and ttm > 720} ? 'td-num td-ttm-warn' : 'td-num')"
+                            th:with="ttm=${m.avgTimeToMergeMinutes}">
                             <span th:text="${ttm != null
                                 ? #numbers.formatDecimal(ttm / 60.0, 1, 1) + ' ч' : '—'}">—</span>
                         </td>
                         <td class="td-spark">
                             <svg class="row-sparkline"
-                                 th:id="'spark-' + ${m.trackedUserId}"
+                                 height="22"
                                  th:data-user="${m.displayName}"
-                                 width="80" height="22"></svg>
+                                 th:id="'spark-' + ${m.trackedUserId}" width="80"></svg>
                         </td>
                     </tr>
                     </tbody>
@@ -568,75 +556,101 @@
         }
     }
 
-    // ── Баннеры синхронизации ─────────────────────────────────────────────────
+    // ── Unified sync cards ────────────────────────────────────────────────────
 
-    function buildBannerHtml(jobId, descHtml, initialLabel) {
-        const label = initialLabel || 'получение списка MR...';
-        return `
-        <div class="sync-banner-icon-box"><span class="sync-spinner"></span></div>
-        <div class="sync-main">
-            <span class="sync-text">${descHtml}</span>
-            <div class="sync-progress-row">
-                <div class="sync-progress-bar">
-                    <div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-${jobId}"></div>
-                </div>
-                <span class="sync-progress-label" id="sync-plabel-${jobId}">${escHtml(label)}</span>
-            </div>
-        </div>
-        <span class="sync-duration" id="sync-duration-${jobId}"></span>
-    `;
+    function buildSyncCardHtml(jobId, repoName, phaseNum, phaseDesc) {
+        return '<div class="sync-card-row">'
+            + '<div class="sync-card-icon-box"><span class="sync-spinner"></span></div>'
+            + '<div class="sync-card-body">'
+            + '<div class="sync-card-title">'
+            + '<strong class="num">' + escHtml(repoName) + '</strong>'
+            + '<span class="sync-card-phase-desc">\xb7 ' + escHtml(phaseDesc) + '</span>'
+            + '<span class="sync-phase-badge" id="sync-phase-label-' + jobId + '">\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2</span>'
+            + '</div>'
+            + '<div class="sync-card-meter-row">'
+            + '<div class="sync-card-counters hidden" id="sync-counters-' + jobId + '">'
+            + '<span>\u041a\u043e\u043c\u043c\u0438\u0442\u044b: <span class="num" id="sync-commits-' + jobId + '">0</span></span>'
+            + '<span>\u0420\u0435\u0432\u044e: <span class="num" id="sync-reviews-' + jobId + '">0</span></span>'
+            + '<span>\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0435\u043d\u0442.: <span class="num" id="sync-comments-' + jobId + '">0</span></span>'
+            + '</div>'
+            + '<span class="sync-progress-label num" id="sync-plabel-' + jobId + '"></span>'
+            + '</div>'
+            + '<div class="sync-progress-bar">'
+            + '<div class="sync-progress-fill sync-progress-fill--indeterminate" id="sync-fill-' + jobId + '"></div>'
+            + '</div>'
+            + '<span class="sync-eta-label num" id="sync-eta-' + jobId + '"></span>'
+            + '</div>'
+            + '</div>';
     }
 
-    function getSyncProjectDesc(phase) {
+    function getRepoNameFromSidebar() {
         const items = [...document.querySelectorAll('#sidebar-repos-list .sidebar-item-name')];
         const names = items.map(el => el.textContent.trim()).filter(Boolean);
-        if (names.length === 0) {
-            return phase === 'ENRICH'
-                ? 'Дозагружаем данные — коммиты, комментарии и аппрувы'
-                : 'Синхронизация — загружаем список MR за 360 дней';
-        }
-        const repoStr = names.length === 1
-            ? `<strong>${escHtml(names[0])}</strong>`
-            : `<strong>${escHtml(names[0])}</strong> и ещё ${names.length - 1}`;
-        return phase === 'ENRICH'
-            ? `Дозагружаем ${repoStr} — коммиты, комментарии и аппрувы`
-            : `Синхронизация ${repoStr} — загружаем список MR за 360 дней`;
+        return names.length === 1 ? names[0] : (names.length > 1 ? names[0] + ' (+' + (names.length - 1) + ')' : '...');
     }
 
     function showSyncBanner(jobId, projectName, isRetry) {
-        const banners = document.getElementById('sync-banners');
-        const id = 'sync-banner-' + jobId;
-        const div = document.createElement('div');
-        div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        div.dataset.descSet = '1';
-        const desc = isRetry
-            ? 'Повторная синхронизация — уже загруженные данные будут пропущены'
-            : `Синхронизация <strong>${escHtml(projectName)}</strong> — загружаем список MR за 360 дней`;
-        div.innerHTML = buildBannerHtml(jobId, desc);
-        banners.prepend(div);
-        startBannerTimers(jobId, id, Date.now());
-    }
-
-    function restoreSyncBanner(jobId) {
-        const banners = document.getElementById('sync-banners');
-        if (!banners) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
             return;
         }
-        const id = 'sync-banner-' + jobId;
+        const id = 'sync-card-' + jobId;
         if (document.getElementById(id)) {
             return;
         }
         const div = document.createElement('div');
         div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        // desc-set not marked — will be updated on first poll based on job.phase
-        div.innerHTML = buildBannerHtml(jobId, 'Синхронизация в процессе...');
-        banners.prepend(div);
-        startBannerTimers(jobId, id, null);
+        div.className = 'sync-card sync-card-running';
+        div.innerHTML = buildSyncCardHtml(
+            jobId, projectName, 1,
+            isRetry ? '\u043f\u043e\u0432\u0442\u043e\u0440\u043d\u0430\u044f \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0430 merge requests' : '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests'
+        );
+        container.prepend(div);
+        startCardTimers(jobId, id, Date.now());
     }
 
-    function startBannerTimers(jobId, bannerId, localStartMs) {
+    function restoreSyncCard(jobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.dataset.needsRepoName = '1';
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 1, '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        container.prepend(div);
+        startCardTimers(jobId, id, null);
+    }
+
+    function restoreEnrichCard(jobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.dataset.needsRepoName = '1';
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 2,
+            '\u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u043e\u044f\u0432\u043b\u044f\u044e\u0442\u0441\u044f \u0432 \u043e\u0442\u0447\u0451\u0442\u0435 \u043f\u043e \u043c\u0435\u0440\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438');
+        const counters = div.querySelector('.sync-card-counters');
+        if (counters) {
+            counters.classList.remove('hidden');
+        }
+        container.prepend(div);
+        startCardTimers(jobId, id, null);
+    }
+
+    function startCardTimers(jobId, cardId, localStartMs) {
         let serverStartMs = localStartMs;
         const durationEl = document.getElementById('sync-duration-' + jobId);
         const durationTimer = setInterval(() => {
@@ -644,9 +658,11 @@
                 return;
             }
             const sec = Math.floor((Date.now() - serverStartMs) / 1000);
-            durationEl.textContent = formatSec(sec);
+            if (durationEl) {
+                durationEl.textContent = formatSec(sec);
+            }
         }, 1000);
-        pollSyncJob(jobId, bannerId, durationTimer, (startedAt) => {
+        pollSyncJob(jobId, cardId, durationTimer, (startedAt) => {
             if (!serverStartMs) {
                 serverStartMs = new Date(startedAt).getTime();
             }
@@ -670,7 +686,7 @@
         return '~' + Math.round(sec / 60) + ' мин';
     }
 
-    function pollSyncJob(jobId, bannerId, durationTimer, onStartedAt) {
+    function pollSyncJob(jobId, cardId, durationTimer, onStartedAt) {
         const fillEl = () => document.getElementById('sync-fill-' + jobId);
         const labelEl = () => document.getElementById('sync-plabel-' + jobId);
 
@@ -680,19 +696,40 @@
                 if (onStartedAt && job.startedAt) {
                     onStartedAt(job.startedAt);
                 }
-                // На первом поллинге обновляем заголовок баннера на основе фазы и проекта
-                const bannerEl = document.getElementById(bannerId);
-                if (bannerEl && !bannerEl.dataset.descSet) {
-                    bannerEl.dataset.descSet = '1';
-                    const textEl = bannerEl.querySelector('.sync-text');
-                    if (textEl) {
-                        textEl.innerHTML = getSyncProjectDesc(job.phase);
+                const cardEl = document.getElementById(cardId);
+                if (cardEl && cardEl.dataset.needsRepoName) {
+                    delete cardEl.dataset.needsRepoName;
+                    const nameEl = cardEl.querySelector('.sync-card-title strong');
+                    if (nameEl && job.projectName) {
+                        nameEl.textContent = job.projectName;
+                    }
+                    const phaseNum = job.phase === 'ENRICH' ? 2 : 1;
+                    const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
+                    if (phaseLabelEl) {
+                        phaseLabelEl.textContent = '\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2';
+                    }
+                    const descEl = cardEl.querySelector('.sync-card-phase-desc');
+                    if (descEl) {
+                        descEl.textContent = '\xb7 ' + (job.phase === 'ENRICH'
+                            ? '\u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u043e\u044f\u0432\u043b\u044f\u044e\u0442\u0441\u044f \u0432 \u043e\u0442\u0447\u0451\u0442\u0435 \u043f\u043e \u043c\u0435\u0440\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438' : '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
                     }
                     if (job.phase === 'ENRICH') {
-                        const lbl = labelEl();
-                        if (lbl && lbl.textContent === 'получение списка MR...') {
-                            lbl.textContent = 'дозагружаем детали...';
-                        }
+                        document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
+                    }
+                }
+                if (job.phase === 'ENRICH' && job.processedMrs > 0) {
+                    document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
+                    const c = document.getElementById('sync-commits-' + jobId);
+                    const r = document.getElementById('sync-reviews-' + jobId);
+                    const cm = document.getElementById('sync-comments-' + jobId);
+                    if (c) {
+                        c.textContent = Math.round(job.processedMrs * 2.8).toLocaleString('ru');
+                    }
+                    if (r) {
+                        r.textContent = Math.round(job.processedMrs * 0.6).toLocaleString('ru');
+                    }
+                    if (cm) {
+                        cm.textContent = Math.round(job.processedMrs * 1.4).toLocaleString('ru');
                     }
                 }
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
@@ -701,33 +738,24 @@
                         fillEl().classList.remove('sync-progress-fill--indeterminate');
                         fillEl().style.width = pct + '%';
                     }
-                    const serverStartMs = new Date(job.startedAt).getTime();
-                    const elapsedSec = Math.max(1, (Date.now() - serverStartMs) / 1000);
-                    let label = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
-                    if (job.processedMrs > 0 && job.processedMrs < job.totalMrs) {
-                        const rate = job.processedMrs / elapsedSec;
-                        const etaSec = Math.round((job.totalMrs - job.processedMrs) / rate);
-                        label += ' • ETA ' + formatEta(etaSec);
-                    }
                     if (labelEl()) {
-                        labelEl().textContent = label;
+                        labelEl().textContent = pct + '%';
+                    }
+                    const etaEl = document.getElementById('sync-eta-' + jobId);
+                    if (etaEl && job.processedMrs > 0 && job.processedMrs < job.totalMrs && job.startedAt) {
+                        const elapsedSec = Math.max(1, (Date.now() - new Date(job.startedAt).getTime()) / 1000);
+                        const etaSec = Math.round((job.totalMrs - job.processedMrs) / (job.processedMrs / elapsedSec));
+                        etaEl.textContent = formatEta(etaSec);
                     }
                 }
                 if (job.status === 'COMPLETED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
-                    if (fillEl()) {
-                        fillEl().classList.remove('sync-progress-fill--indeterminate');
-                        fillEl().style.width = '100%';
-                    }
-                    if (labelEl()) {
-                        labelEl().textContent = job.totalMrs > 0 ? job.totalMrs + ' MR' : '';
-                    }
-                    updateBanner(bannerId, 'ok', 'Синхронизация завершена');
+                    updateSyncCard(cardId, job);
                 } else if (job.status === 'FAILED') {
                     clearInterval(interval);
                     clearInterval(durationTimer);
-                    updateBanner(bannerId, 'error', 'Ошибка синхронизации: ' + (job.errorMessage || ''));
+                    updateSyncCard(cardId, job);
                 }
             } catch (e) {
                 // продолжаем поллинг при сетевой ошибке
@@ -737,87 +765,175 @@
 
     let reloadScheduled = false;
 
-    function updateBanner(bannerId, type, message) {
-        const el = document.getElementById(bannerId);
+    function updateSyncCard(cardId, job) {
+        const el = document.getElementById(cardId);
         if (!el) {
             return;
         }
-        el.className = 'sync-banner sync-banner-' + (type === 'ok' ? 'done' : 'error');
-        el.innerHTML = `<span>${type === 'ok' ? '✓' : '✕'}</span> ${escHtml(message)}`;
-        if (type === 'ok' && !reloadScheduled) {
-            reloadScheduled = true;
-            setTimeout(() => window.location.reload(), 3000);
-        } else if (type === 'ok') {
-            setTimeout(() => el.remove(), 5000);
+        const isOk = job.status === 'COMPLETED';
+        const phaseLabel = job.phase === 'ENRICH' ? '2 \u0438\u0437 2' : '1 \u0438\u0437 2';
+        if (isOk) {
+            el.className = 'sync-card sync-card-done';
+            const detail = job.phase === 'ENRICH'
+                ? '\u0434\u0430\u043d\u043d\u044b\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b'
+                : (job.totalMrs > 0 ? job.totalMrs + ' MR' : '\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e');
+            el.innerHTML = '<div class="sync-card-done-row">'
+                + '<span class="sync-card-done-icon">&#10003;</span>'
+                + '<span>\u0424\u0430\u0437\u0430 ' + phaseLabel + ' \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430 &middot; ' + escHtml(detail) + '</span>'
+                + '</div>';
+            if (!reloadScheduled) {
+                reloadScheduled = true;
+                setTimeout(() => window.location.reload(), 3000);
+            } else {
+                setTimeout(() => el.remove(), 5000);
+            }
+        } else {
+            el.className = 'sync-card sync-card-error';
+            el.innerHTML = '<div class="sync-card-done-row">'
+                + '<span>&#10005;</span>'
+                + '<span>\u0424\u0430\u0437\u0430 ' + phaseLabel + ' \xb7 \u043e\u0448\u0438\u0431\u043a\u0430: ' + escHtml(job.errorMessage || '') + '</span>'
+                + '</div>';
         }
     }
 
     // ── Projects ──────────────────────────────────────────────────────────────
 
     let selectedProject = null;
-    let searchDebounceTimer = null;
-    let tokenValidateTimer = null;
     let tokenIsValid = false;
+    let repoList = [];
 
     function updateAddProjectBtn() {
-        const sourceId = document.getElementById('project-source-id').value;
+        const sourceId = document.getElementById('project-source-id')?.value;
         const btn = document.getElementById('btn-add-project');
-        btn.disabled = !(sourceId && tokenIsValid && selectedProject);
+        if (btn) {
+            btn.disabled = !(sourceId && tokenIsValid && selectedProject);
+        }
     }
 
-    function scheduleTokenValidate() {
-        clearTimeout(tokenValidateTimer);
-        const token = document.getElementById('project-token').value.trim();
-        const statusEl = document.getElementById('token-validate-status');
+    function resetProjectModal() {
+        selectedProject = null;
+        tokenIsValid = false;
+        repoList = [];
         const inputEl = document.getElementById('project-token');
-        const hintEl = inputEl?.closest('.form-group')?.querySelector('.token-hint');
-        if (!token) {
-            tokenIsValid = false;
+        if (inputEl) {
+            inputEl.value = '';
+            inputEl.classList.remove('token-ok', 'token-error');
+        }
+        const statusEl = document.getElementById('token-status-line');
+        if (statusEl) {
+            statusEl.className = 'token-validate-status';
+            statusEl.innerHTML = 'Scope <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_api</code>'
+                + ' + <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_repository</code>'
+                + ' \xb7 \u0440\u043e\u043b\u044c Reporter \u0438\u043b\u0438 \u0432\u044b\u0448\u0435';
+        }
+        const checkBtnWrap = document.getElementById('token-check-btn-wrap');
+        if (checkBtnWrap) {
+            checkBtnWrap.style.display = '';
+        }
+        const checkBtn = document.getElementById('btn-check-token');
+        if (checkBtn) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = 'Проверить токен';
+        }
+        const repoListWrap = document.getElementById('repo-list-wrap');
+        if (repoListWrap) {
+            repoListWrap.classList.add('hidden');
+        }
+        const container = document.getElementById('repo-list-container');
+        if (container) {
+            container.innerHTML = '';
+        }
+        updateAddProjectBtn();
+    }
+
+    function openProjectModal() {
+        resetProjectModal();
+        openModal('modal-project');
+    }
+
+    function onTokenInputChange() {
+        tokenIsValid = false;
+        repoList = [];
+        selectedProject = null;
+        const inputEl = document.getElementById('project-token');
+        const statusEl = document.getElementById('token-status-line');
+        const checkBtnWrap = document.getElementById('token-check-btn-wrap');
+        const checkBtn = document.getElementById('btn-check-token');
+        const repoListWrap = document.getElementById('repo-list-wrap');
+        const container = document.getElementById('repo-list-container');
+        if (inputEl) {
+            inputEl.classList.remove('token-ok', 'token-error');
+        }
+        if (statusEl) {
+            statusEl.className = 'token-validate-status';
+            statusEl.innerHTML = 'Scope <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_api</code>'
+                + ' + <code style="font-family:var(--font-mono);background:var(--bg-2);padding:1px 4px;border-radius:3px;font-size:10px">read_repository</code>'
+                + ' \xb7 \u0440\u043e\u043b\u044c Reporter \u0438\u043b\u0438 \u0432\u044b\u0448\u0435';
+        }
+        if (repoListWrap) {
+            repoListWrap.classList.add('hidden');
+        }
+        if (container) {
+            container.innerHTML = '';
+        }
+        if (checkBtnWrap) {
+            checkBtnWrap.style.display = '';
+        }
+        if (checkBtn) {
+            checkBtn.disabled = false;
+        }
+        updateAddProjectBtn();
+    }
+
+    function onTokenInputBlur() {
+        const token = document.getElementById('project-token')?.value?.trim();
+        if (!tokenIsValid && token && token.length >= 10) {
+            validateTokenAndFetch();
+        }
+    }
+
+    async function validateTokenAndFetch() {
+        const sourceId = document.getElementById('project-source-id')?.value;
+        const token = document.getElementById('project-token')?.value?.trim();
+        const statusEl = document.getElementById('token-status-line');
+        const inputEl = document.getElementById('project-token');
+        const checkBtn = document.getElementById('btn-check-token');
+        if (!sourceId) {
             if (statusEl) {
-                statusEl.className = 'token-validate-status';
-                statusEl.textContent = '';
+                statusEl.className = 'token-validate-status tv-error';
+                statusEl.textContent = 'Сначала выберите GitLab Source';
             }
-            if (inputEl) {
-                inputEl.classList.remove('token-ok', 'token-error');
+            return;
+        }
+        if (!token) {
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-error';
+                statusEl.textContent = 'Введите Access Token';
             }
-            if (hintEl) {
-                hintEl.style.display = '';
-            }
-            updateAddProjectBtn();
             return;
         }
         if (statusEl) {
             statusEl.className = 'token-validate-status tv-loading';
-            statusEl.textContent = 'Проверяем токен...';
+            statusEl.textContent = '⟳ Проверяем токен…';
         }
-        tokenValidateTimer = setTimeout(() => validateToken(token, statusEl, inputEl, hintEl), 600);
-    }
-
-    async function validateToken(token, statusEl, inputEl, hintEl) {
-        const sourceId = document.getElementById('project-source-id').value;
-        if (!sourceId) {
-            if (statusEl) {
-                statusEl.className = 'token-validate-status tv-loading';
-                statusEl.textContent = 'Сначала выберите GitLab Source';
-            }
-            return;
+        if (checkBtn) {
+            checkBtn.disabled = true;
+            checkBtn.textContent = 'Проверяем…';
         }
         try {
             const result = await api('GET',
                 '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
             if (result.valid) {
                 tokenIsValid = true;
-                if (statusEl) {
-                    statusEl.className = 'token-validate-status tv-ok';
-                    statusEl.textContent = '✓ Токен действителен · используется только для чтения';
-                }
                 if (inputEl) {
                     inputEl.classList.remove('token-error');
                     inputEl.classList.add('token-ok');
                 }
-                if (hintEl) {
-                    hintEl.style.display = 'none';
+                const checkBtnWrap = document.getElementById('token-check-btn-wrap');
+                if (checkBtnWrap) {
+                    checkBtnWrap.style.display = 'none';
                 }
+                await fetchRepoList(sourceId, token);
             } else {
                 tokenIsValid = false;
                 if (statusEl) {
@@ -828,8 +944,13 @@
                     inputEl.classList.remove('token-ok');
                     inputEl.classList.add('token-error');
                 }
-                if (hintEl) {
-                    hintEl.style.display = '';
+                if (checkBtn) {
+                    checkBtn.disabled = false;
+                    checkBtn.textContent = 'Проверить токен';
+                }
+                if (inputEl) {
+                    inputEl.classList.remove('token-ok');
+                    inputEl.classList.add('token-error');
                 }
             }
         } catch (e) {
@@ -838,70 +959,80 @@
                 statusEl.className = 'token-validate-status tv-error';
                 statusEl.textContent = '✕ Не удалось проверить токен';
             }
+            if (checkBtn) {
+                checkBtn.disabled = false;
+                checkBtn.textContent = 'Проверить токен';
+            }
         }
         updateAddProjectBtn();
     }
 
-    function clearProjectSearch() {
-        const searchEl = document.getElementById('project-search');
-        if (searchEl) {
-            searchEl.value = '';
+    async function fetchRepoList(sourceId, token) {
+        const statusEl = document.getElementById('token-status-line');
+        const repoListWrap = document.getElementById('repo-list-wrap');
+        const container = document.getElementById('repo-list-container');
+        if (statusEl) {
+            statusEl.className = 'token-validate-status tv-loading';
+            statusEl.textContent = '⟳ Загружаем список репозиториев…';
         }
-        document.getElementById('project-search-results').innerHTML = '';
-        document.getElementById('project-search-results').classList.add('hidden');
-        selectedProject = null;
-        document.getElementById('project-selected').classList.add('hidden');
-        updateAddProjectBtn();
-    }
-
-    function debounceSearch(q) {
-        clearTimeout(searchDebounceTimer);
-        if (!q || q.length < 2) {
-            document.getElementById('project-search-results').classList.add('hidden');
-            return;
-        }
-        searchDebounceTimer = setTimeout(() => searchProjects(q), 400);
-    }
-
-    async function searchProjects(q) {
-        const sourceId = document.getElementById('project-source-id').value;
-        const token = document.getElementById('project-token').value.trim();
-        if (!sourceId) {
-            showError('project-error', 'Сначала выберите GitLab Source');
-            return;
-        }
-        if (!token) {
-            showError('project-error', 'Введите Project Access Token');
-            return;
-        }
-        clearModalError('project-error');
-        const resultsEl = document.getElementById('project-search-results');
-        resultsEl.innerHTML = '<div class="search-loading">Поиск...</div>';
-        resultsEl.classList.remove('hidden');
         try {
             const projects = await api('GET',
-                '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q)
-                + '&token=' + encodeURIComponent(token));
-            if (!projects.length) {
-                resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
-                return;
+                '/settings/sources/' + sourceId + '/projects/search?q=&token=' + encodeURIComponent(token));
+            repoList = projects || [];
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-ok';
+                statusEl.textContent = '✓ Токен валиден · доступ к ' + repoList.length + ' '
+                    + pluralRepos(repoList.length);
             }
-            resultsEl.innerHTML = projects.slice(0, 20).map(p => `
-            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
-                <div class="search-item-name">${escHtml(p.name)}</div>
-                <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
-            </div>`).join('');
+            renderRepoList(container);
+            if (repoListWrap) {
+                repoListWrap.classList.remove('hidden');
+            }
         } catch (e) {
-            resultsEl.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
+            repoList = [];
+            if (statusEl) {
+                statusEl.className = 'token-validate-status tv-ok';
+                statusEl.textContent = '✓ Токен валиден';
+            }
         }
+    }
+
+    function pluralRepos(n) {
+        const m10 = n % 10;
+        const m100 = n % 100;
+        if (m10 === 1 && m100 !== 11) {
+            return 'репозиторию';
+        }
+        if ((m10 === 2 || m10 === 3 || m10 === 4) && (m100 < 12 || m100 > 14)) {
+            return 'репозиториям';
+        }
+        return 'репозиториям';
+    }
+
+    function renderRepoList(container) {
+        if (!container) {
+            return;
+        }
+        if (!repoList.length) {
+            container.innerHTML = '<div class="repo-list-empty">Репозитории не найдены</div>';
+            return;
+        }
+        container.innerHTML = repoList.slice(0, 50).map(function (p, i) {
+            const active = selectedProject && selectedProject.id === p.id;
+            const border = i < repoList.length - 1 ? 'border-bottom:1px solid var(--border-1)' : '';
+            return '<button type="button" class="repo-list-item' + (active ? ' active' : '') + '" style="' + border + '"'
+                + ' onclick="selectProject(' + p.id + ', \'' + escHtml(p.name) + '\', \'' + escHtml(p.path_with_namespace) + '\')">'
+                + '<div class="repo-list-radio' + (active ? ' active' : '') + '"></div>'
+                + '<div class="repo-list-item-body">'
+                + '<div class="repo-list-item-name">' + escHtml(p.name) + '</div>'
+                + '<div class="repo-list-item-path">' + escHtml(p.path_with_namespace) + '</div>'
+                + '</div></button>';
+        }).join('');
     }
 
     function selectProject(id, name, path) {
-        selectedProject = {id, name, path};
-        document.getElementById('project-search-results').classList.add('hidden');
-        document.getElementById('project-selected').classList.remove('hidden');
-        document.getElementById('project-selected-name').textContent = name;
-        document.getElementById('project-selected-path').textContent = path;
+        selectedProject = {id: id, name: name, path: path};
+        renderRepoList(document.getElementById('repo-list-container'));
         updateAddProjectBtn();
     }
 
@@ -931,8 +1062,7 @@
                 token
             });
             closeModal('modal-project');
-            clearProjectSearch();
-            document.getElementById('project-token').value = '';
+            resetProjectModal();
             btn.disabled = false;
             btn.textContent = 'Добавить и синхронизировать';
             addProjectToSidebar(result);
@@ -1047,86 +1177,6 @@
         list.appendChild(div);
     }
 
-    // ── Phase 2 banner ────────────────────────────────────────────────────────
-
-    function initPhase2Card(jobId) {
-        const card = document.getElementById('phase2-card');
-        if (!card) {
-            return;
-        }
-        const commitsEl = document.getElementById('p2-commits');
-        const reviewsEl = document.getElementById('p2-reviews');
-        const commentsEl = document.getElementById('p2-comments');
-        const pctEl = document.getElementById('p2-pct');
-        const barEl = document.getElementById('p2-bar');
-        let lastProcessed = 0;
-        const interval = setInterval(async () => {
-            try {
-                const job = await api('GET', '/settings/sync/' + jobId);
-                if (job.processedMrs > lastProcessed) {
-                    lastProcessed = job.processedMrs;
-                }
-                const pct = job.totalMrs > 0 ? Math.round(lastProcessed / job.totalMrs * 100) : 0;
-                if (commitsEl) {
-                    commitsEl.textContent = Math.round(lastProcessed * 2.8).toLocaleString('ru');
-                }
-                if (reviewsEl) {
-                    reviewsEl.textContent = Math.round(lastProcessed * 0.6).toLocaleString('ru');
-                }
-                if (commentsEl) {
-                    commentsEl.textContent = Math.round(lastProcessed * 1.4).toLocaleString('ru');
-                }
-                if (pctEl) {
-                    pctEl.textContent = pct;
-                }
-                if (barEl) {
-                    barEl.style.width = pct + '%';
-                }
-                if (job.status === 'COMPLETED') {
-                    clearInterval(interval);
-                    if (pctEl) {
-                        pctEl.textContent = '100';
-                    }
-                    if (barEl) {
-                        barEl.style.width = '100%';
-                    }
-                    setTimeout(() => {
-                        if (card.parentNode) {
-                            card.remove();
-                        }
-                    }, 3000);
-                } else if (job.status === 'FAILED') {
-                    clearInterval(interval);
-                    if (card.parentNode) {
-                        card.remove();
-                    }
-                }
-            } catch (e) {
-                // продолжаем поллинг при сетевой ошибке
-            }
-        }, 4000);
-    }
-
-    function restoreEnrichmentBanner(jobId) {
-        const banners = document.getElementById('sync-banners');
-        if (!banners) {
-            return;
-        }
-        const id = 'sync-banner-' + jobId;
-        if (document.getElementById(id)) {
-            return;
-        }
-        const div = document.createElement('div');
-        div.id = id;
-        div.className = 'sync-banner sync-banner-running';
-        div.dataset.descSet = '1';
-        div.innerHTML = buildBannerHtml(jobId, getSyncProjectDesc('ENRICH'), 'дозагружаем детали...');
-        banners.prepend(div);
-        startBannerTimers(jobId, id, null);
-    }
-
-    // ── Init ──────────────────────────────────────────────────────────────────
-
     // ── Sparklines ───────────────────────────────────────────────────────────
 
     function drawSparkline(svgId, values, color) {
@@ -1187,13 +1237,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // ENRICH-джоб рендерим отдельно с правильным текстом; остальные — generic restoreSyncBanner
-        // (который обновится на первом поллинге через pollSyncJob → getSyncProjectDesc)
         ACTIVE_JOB_IDS
             .filter(jobId => jobId !== ENRICHMENT_JOB_ID)
-            .forEach(jobId => restoreSyncBanner(jobId));
+            .forEach(jobId => restoreSyncCard(jobId));
         if (ENRICHMENT_JOB_ID) {
-            initPhase2Card(ENRICHMENT_JOB_ID);
+            restoreEnrichCard(ENRICHMENT_JOB_ID);
         }
 
         // Init chart metric badge from active button
@@ -1599,7 +1647,9 @@
                             av = a.hoursToMerge ?? 0;
                             bv = b.hoursToMerge ?? 0;
                         }
-                        if (av === bv) { return 0; }
+                        if (av === bv) {
+                            return 0;
+                        }
                         return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
                     });
                 }

@@ -88,29 +88,40 @@ public enum InsightRule {
     private final int defaultSeverity;
     private final String description;
 
-    InsightRule(String code, InsightKind defaultKind, int defaultSeverity, String description) {
+    InsightRule(String code,
+                InsightKind defaultKind,
+                int defaultSeverity,
+                String description) {
         this.code = code;
         this.defaultKind = defaultKind;
         this.defaultSeverity = defaultSeverity;
         this.description = description;
     }
 
-    /** Unique rule code shown in the UI as a monospace badge. */
+    /**
+     * Unique rule code shown in the UI as a monospace badge.
+     */
     public String code() {
         return code;
     }
 
-    /** Default severity category; evaluator may produce a different kind if triggered conditionally. */
+    /**
+     * Default severity category; evaluator may produce a different kind if triggered conditionally.
+     */
     public InsightKind defaultKind() {
         return defaultKind;
     }
 
-    /** Default severity score 1–5; evaluator may adjust based on magnitude of the violation. */
+    /**
+     * Default severity score 1–5; evaluator may adjust based on magnitude of the violation.
+     */
     public int defaultSeverity() {
         return defaultSeverity;
     }
 
-    /** One-sentence Russian explanation of what this rule checks. */
+    /**
+     * One-sentence Russian explanation of what this rule checks.
+     */
     public String description() {
         return description;
     }

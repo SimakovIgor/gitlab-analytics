@@ -13,7 +13,8 @@ public interface TrackedUserRepository extends JpaRepository<TrackedUser, Long> 
 
     List<TrackedUser> findAllByWorkspaceIdAndEnabledTrue(Long workspaceId);
 
-    List<TrackedUser> findAllByWorkspaceIdAndIdIn(Long workspaceId, List<Long> ids);
+    List<TrackedUser> findAllByWorkspaceIdAndIdIn(Long workspaceId,
+                                                  List<Long> ids);
 
     /**
      * All tracked emails for a workspace in one query: user emails UNION alias emails.
@@ -29,7 +30,8 @@ public interface TrackedUserRepository extends JpaRepository<TrackedUser, Long> 
         JOIN tracked_user u ON u.id = a.tracked_user_id
         WHERE u.workspace_id = :workspaceId
           AND a.email IS NOT NULL AND a.email <> ''
-        """, nativeQuery = true)
+        """,
+           nativeQuery = true)
     List<String> findAllTrackedEmailsByWorkspaceId(@Param("workspaceId") Long workspaceId);
 
     /**
@@ -44,7 +46,8 @@ public interface TrackedUserRepository extends JpaRepository<TrackedUser, Long> 
         WHERE mr.tracked_project_id IN (:projectIds)
           AND tu.workspace_id = :workspaceId
           AND tu.enabled = true
-        """, nativeQuery = true)
+        """,
+           nativeQuery = true)
     List<Long> findEnabledIdsByWorkspaceIdAndProjectIds(@Param("workspaceId") Long workspaceId,
                                                         @Param("projectIds") List<Long> projectIds);
 }

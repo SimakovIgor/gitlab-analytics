@@ -13,27 +13,38 @@
             min-height: calc(100vh - 56px);
             padding: 2rem 1rem;
         }
+
         .sp-card {
             width: 100%;
             max-width: 560px;
             background: #ffffff;
             border-radius: 12px;
-            box-shadow: 0 2px 16px rgba(0,0,0,.07);
+            box-shadow: 0 2px 16px rgba(0, 0, 0, .07);
             padding: 2.5rem 2.5rem 2rem;
         }
 
         /* Running state */
         .sp-icon-running {
-            width: 52px; height: 52px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             background: #fff3ee;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 0 auto 1.25rem;
         }
-        @keyframes sp-spin { to { transform: rotate(360deg); } }
+
+        @keyframes sp-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .sp-spinner {
-            width: 26px; height: 26px;
-            border: 3px solid rgba(252,109,38,.2);
+            width: 26px;
+            height: 26px;
+            border: 3px solid rgba(252, 109, 38, .2);
             border-top-color: #FC6D26;
             border-radius: 50%;
             animation: sp-spin .8s linear infinite;
@@ -41,10 +52,13 @@
 
         /* Done state */
         .sp-icon-done {
-            width: 52px; height: 52px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             background: #FC6D26;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 0 auto 1.25rem;
             color: #fff;
             font-size: 1.4rem;
@@ -52,10 +66,13 @@
 
         /* Error state */
         .sp-icon-error {
-            width: 52px; height: 52px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             background: #fff0f0;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 0 auto 1.25rem;
             color: #e53e3e;
             font-size: 1.4rem;
@@ -68,6 +85,7 @@
             text-align: center;
             margin: 0 0 .4rem;
         }
+
         .sp-subtitle {
             font-size: .92rem;
             color: #666;
@@ -79,6 +97,7 @@
         .sp-progress-wrap {
             margin-bottom: 1rem;
         }
+
         .sp-progress-bar {
             height: 8px;
             background: #f0f0f0;
@@ -86,6 +105,7 @@
             overflow: hidden;
             margin-bottom: .6rem;
         }
+
         .sp-progress-fill {
             height: 100%;
             background: #FC6D26;
@@ -93,16 +113,25 @@
             transition: width .4s ease;
             width: 0%;
         }
+
         .sp-progress-fill-indeterminate {
             width: 40%;
             animation: sp-indeterminate 1.4s ease-in-out infinite;
             transform-origin: left;
         }
+
         @keyframes sp-indeterminate {
-            0%   { transform: translateX(-100%) scaleX(.3); }
-            50%  { transform: translateX(80%)   scaleX(.8); }
-            100% { transform: translateX(200%)  scaleX(.3); }
+            0% {
+                transform: translateX(-100%) scaleX(.3);
+            }
+            50% {
+                transform: translateX(80%) scaleX(.8);
+            }
+            100% {
+                transform: translateX(200%) scaleX(.3);
+            }
         }
+
         .sp-progress-label {
             font-size: .82rem;
             color: #888;
@@ -119,6 +148,7 @@
             color: #555;
             line-height: 2;
         }
+
         .sp-stats span {
             float: right;
             font-weight: 600;
@@ -134,6 +164,7 @@
             font-size: .88rem;
             color: #c53030;
         }
+
         .sp-error-note {
             color: #888;
             font-size: .82rem;
@@ -146,6 +177,7 @@
             justify-content: center;
             margin-top: .5rem;
         }
+
         .sp-hint {
             text-align: center;
             font-size: .8rem;
@@ -153,7 +185,9 @@
             margin-top: 1.25rem;
         }
 
-        .hidden { display: none !important; }
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="app-layout">
@@ -205,9 +239,9 @@
         </div>
 
         <!-- Done state -->
-        <div id="sp-state-done" class="hidden">
+        <div class="hidden" id="sp-state-done">
             <div class="sp-icon-done">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24" width="24">
                     <polyline points="20 6 9 17 4 12"/>
                 </svg>
             </div>
@@ -226,7 +260,7 @@
         </div>
 
         <!-- Error state -->
-        <div id="sp-state-error" class="hidden">
+        <div class="hidden" id="sp-state-error">
             <div class="sp-icon-error">✕</div>
             <h2 class="sp-title">Синхронизация не удалась</h2>
             <p class="sp-subtitle">Данные могли загрузиться частично — повтор продолжит с того места, где остановился.</p>
@@ -253,29 +287,41 @@
     let serverStartMs = null;
     let currentJobId = JOB_ID;
 
-    function $(id) { return document.getElementById(id); }
+    function $(id) {
+        return document.getElementById(id);
+    }
 
     function showState(name) {
         ['running', 'done', 'error'].forEach(s => $('sp-state-' + s).classList.toggle('hidden', s !== name));
     }
 
     function formatSec(sec) {
-        if (sec < 60) { return sec + ' с'; }
+        if (sec < 60) {
+            return sec + ' с';
+        }
         return Math.floor(sec / 60) + ' м ' + (sec % 60) + ' с';
     }
 
     function formatEta(sec) {
-        if (sec < 10) { return 'почти готово'; }
-        if (sec < 60) { return '~' + sec + ' с'; }
+        if (sec < 10) {
+            return 'почти готово';
+        }
+        if (sec < 60) {
+            return '~' + sec + ' с';
+        }
         return '~' + Math.round(sec / 60) + ' мин';
     }
 
     function startDurationTimer() {
         durationTimer = setInterval(() => {
-            if (!serverStartMs) { return; }
+            if (!serverStartMs) {
+                return;
+            }
             const sec = Math.floor((Date.now() - serverStartMs) / 1000);
             const el = $('sp-label-right');
-            if (el) { el.textContent = formatSec(sec); }
+            if (el) {
+                el.textContent = formatSec(sec);
+            }
         }, 1000);
     }
 
@@ -300,15 +346,25 @@
             const rate = job.processedMrs > 0 ? job.processedMrs / elapsedSec : 0;
             const etaSec = rate > 0 ? Math.round((job.totalMrs - job.processedMrs) / rate) : null;
 
-            if (labelLeft) { labelLeft.textContent = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`; }
-            if (statsEl) { statsEl.style.display = ''; }
-            if (mrsCount) { mrsCount.textContent = `${job.processedMrs} / ${job.totalMrs}`; }
-            if (etaEl) { etaEl.textContent = etaSec != null ? formatEta(etaSec) : '—'; }
+            if (labelLeft) {
+                labelLeft.textContent = `${job.processedMrs} / ${job.totalMrs} MR (${pct}%)`;
+            }
+            if (statsEl) {
+                statsEl.style.display = '';
+            }
+            if (mrsCount) {
+                mrsCount.textContent = `${job.processedMrs} / ${job.totalMrs}`;
+            }
+            if (etaEl) {
+                etaEl.textContent = etaSec != null ? formatEta(etaSec) : '—';
+            }
             if (elapsedEl && serverStartMs) {
                 elapsedEl.textContent = formatSec(Math.floor((Date.now() - serverStartMs) / 1000));
             }
         } else {
-            if (labelLeft) { labelLeft.textContent = 'получение списка MR...'; }
+            if (labelLeft) {
+                labelLeft.textContent = 'получение списка MR...';
+            }
         }
     }
 
@@ -340,7 +396,9 @@
     async function poll() {
         try {
             const resp = await fetch('/settings/sync/' + currentJobId);
-            if (!resp.ok) { return; }
+            if (!resp.ok) {
+                return;
+            }
             const job = await resp.json();
 
             if (job.status === 'STARTED' || job.status === 'PENDING') {
@@ -357,12 +415,17 @@
 
     async function retrySync() {
         const btn = $('sp-retry-btn');
-        if (btn) { btn.disabled = true; btn.textContent = 'Запускаем...'; }
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Запускаем...';
+        }
         try {
             const csrfMeta = document.querySelector('meta[name="_csrf"]');
             const csrfHeader = document.querySelector('meta[name="_csrf_header"]');
             const headers = {'Content-Type': 'application/json'};
-            if (csrfMeta && csrfHeader) { headers[csrfHeader.content] = csrfMeta.content; }
+            if (csrfMeta && csrfHeader) {
+                headers[csrfHeader.content] = csrfMeta.content;
+            }
 
             const resp = await fetch('/settings/sync/' + currentJobId + '/retry', {method: 'POST', headers});
             const job = await resp.json();
@@ -376,7 +439,10 @@
             }
             startPolling();
         } catch (e) {
-            if (btn) { btn.disabled = false; btn.textContent = 'Повторить'; }
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Повторить';
+            }
         }
     }
 

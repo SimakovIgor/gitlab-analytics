@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>GitLab Analytics — Синхронизация</title>
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+</head>
+<body class="app-layout">
+
+<header th:replace="~{fragments/topbar :: topbar('sync')}"></header>
+
+<div class="report-page">
+
+    <!-- ── Боковая панель ──────────────────────────────────── -->
+    <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
+
+    <main class="report-main">
+
+        <!-- Карточки синхронизации -->
+        <div id="sync-banners"></div>
+
+        <!-- ── Заголовок страницы ──────────────────────────── -->
+        <div class="sync-pg-header">
+            <div>
+                <div class="page-title">Синхронизация</div>
+                <div class="page-subtitle">
+                    Каждый день автоматически подтягиваем MR, коммиты и ревью из GitLab и делаем снапшоты по каждому сотруднику для построения динамики.
+                </div>
+            </div>
+            <div class="sync-pg-actions">
+                <button class="btn-secondary" disabled title="Будет доступно в следующей версии">
+                    ⚙ Настройки расписания
+                </button>
+                <button class="btn-primary" disabled title="Будет доступно в следующей версии">
+                    ⟳ Запустить сейчас
+                </button>
+            </div>
+        </div>
+
+        <!-- ── KPI полоса ─────────────────────────────────── -->
+        <div class="sync-kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">За 14 дней</div>
+                <div class="kpi-value num" th:text="${total14d}">0</div>
+                <div class="kpi-sub">запусков</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Успешных</div>
+                <div class="kpi-value kpi-value-ok num" th:text="${ok14d}">0</div>
+                <div class="kpi-sub"
+                     th:text="${total14d > 0 ? #numbers.formatDecimal(ok14d * 100.0 / total14d, 1, 0) + '%' : '—'}">—
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">С ошибками</div>
+                <div class="kpi-value kpi-value-bad num" th:text="${failed14d + partial14d}">0</div>
+                <div class="kpi-sub"
+                     th:text="${partial14d} + ' частичных · ' + ${failed14d} + ' упало'">—
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Средняя длительность</div>
+                <div class="kpi-value num" th:text="${avgDurLabel14d}">—</div>
+                <div class="kpi-sub">без учёта failed</div>
+            </div>
+        </div>
+
+        <!-- ── График по дням ─────────────────────────────── -->
+        <div class="chart-card" style="margin-bottom:16px">
+            <div class="sync-timeline-head">
+                <div class="chart-title">Длительность запусков · последние 14 дней</div>
+                <div class="sync-legend">
+                    <span class="sync-legend-item"><span class="sync-dot sync-dot-ok"></span>успех</span>
+                    <span class="sync-legend-item"><span class="sync-dot sync-dot-partial"></span>частично</span>
+                    <span class="sync-legend-item"><span class="sync-dot sync-dot-failed"></span>ошибка</span>
+                </div>
+            </div>
+            <div class="sync-bars-container" id="sync-chart-bars">
+                <!-- рендерится JS-ом из CHART_BARS -->
+            </div>
+        </div>
+
+        <!-- ── Таблица истории ────────────────────────────── -->
+        <div class="sync-history-card">
+            <div class="sync-history-top">
+                <div style="font-size:13px;font-weight:600;color:var(--fg-0)">История запусков</div>
+                <div style="font-size:11px;color:var(--fg-3)">Клик по строке — детали и лог</div>
+            </div>
+            <div class="sync-table-header">
+                <div>Запуск</div>
+                <div>Статус</div>
+                <div>Длит.</div>
+                <div class="sync-th-r">MR</div>
+                <div class="sync-th-r">Коммиты</div>
+                <div class="sync-th-r">Ревью</div>
+                <div>Примечание</div>
+                <div></div>
+            </div>
+            <div id="sync-history-rows"><!-- рендерится JS --></div>
+            <div class="sync-empty" id="sync-history-empty" style="display:none">
+                Синхронизаций ещё не было. Добавьте репозиторий в настройках.
+            </div>
+        </div>
+
+        <!-- ── Расписание + Репозитории ───────────────────── -->
+        <div class="sync-bottom-grid">
+            <div class="chart-card">
+                <div class="chart-title" style="margin-bottom:12px">Расписание</div>
+                <div class="sync-schedule-list">
+                    <div class="sync-sched-row">
+                        <span class="sync-sched-key">Частота</span>
+                        <span class="num sync-sched-val">1×/день в 02:00 UTC</span>
+                    </div>
+                    <div class="sync-sched-row">
+                        <span class="sync-sched-key">Окно ретенции</span>
+                        <span class="num sync-sched-val">360 дней</span>
+                    </div>
+                    <div class="sync-sched-row">
+                        <span class="sync-sched-key">Инкрементальный sync</span>
+                        <span class="num sync-sched-val sync-sched-ok">✓ вкл</span>
+                    </div>
+                    <div class="sync-sched-row">
+                        <span class="sync-sched-key">Retry при ошибке</span>
+                        <span class="num sync-sched-val">вручную</span>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <div class="chart-title">Репозитории в скоупе</div>
+                    <a class="sync-add-link" href="/settings">+ Добавить</a>
+                </div>
+                <div class="sync-repos-list">
+                    <div class="sync-repo-item"
+                         th:each="project : ${projects}">
+                        <span class="sync-dot sync-dot-ok"></span>
+                        <span class="num sync-repo-name" th:text="${project.pathWithNamespace}">—</span>
+                    </div>
+                    <div class="sync-empty" style="padding:8px 0" th:if="${projects.isEmpty()}">
+                        Нет репозиториев. <a href="/settings">Добавить</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Пояснение ──────────────────────────────────── -->
+        <div class="sync-explainer">
+            <strong>Снапшоты:</strong> после каждого успешного sync мы делаем срез метрик по каждому сотруднику
+            (MR, коммиты, ревью, медиана мержа) на эту дату. Это даёт ежедневную динамику на графиках.
+            Если запуск упал — день помечается серым на графиках, а метрики берутся из последнего успешного снапшота.
+        </div>
+
+    </main>
+
+</div><!-- /.report-page -->
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+    window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    /*]]>*/
+</script>
+<script src="/js/sidebar.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var JOBS_DATA = JSON.parse([[${jobsJson}]]);
+    var CHART_BARS = JSON.parse([[${chartBarsJson}]]);
+
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function formatDur(secs) {
+        if (!secs || secs <= 0) {
+            return '\u2014';
+        }
+        if (secs < 60) {
+            return secs + ' \u0441';
+        }
+        return Math.floor(secs / 60) + ' \u043c ' + (secs % 60) + ' \u0441';
+    }
+
+    // ── Bar chart ──────────────────────────────────────────────────────────────
+
+    (function renderChart() {
+        var container = document.getElementById('sync-chart-bars');
+        if (!container || !CHART_BARS.length) {
+            return;
+        }
+        container.innerHTML = CHART_BARS.map(function(bar) {
+            return '<div class="sync-bar-col" title="' + escHtml(bar.tooltip) + '">'
+                + '<div class="sync-bar sync-bar-' + escHtml(bar.uiStatus) + '" style="height:' + bar.heightPct + '%"></div>'
+                + '<div class="sync-bar-label">' + escHtml(bar.dateLabel) + '</div>'
+                + '</div>';
+        }).join('');
+    })();
+
+    // ── Phase breakdown ────────────────────────────────────────────────────────
+
+    var PHASE_DEFS = [
+        {name: 'Auth & project metadata', fast: true, pct: 0.05},
+        {name: 'Fetch merge requests', fast: true, pct: 0.40},
+        {name: 'Fetch commits & diffs', fast: false, pct: 0.30},
+        {name: 'Fetch reviews & comments', fast: false, pct: 0.15},
+        {name: 'Build daily snapshots', fast: false, pct: 0.08},
+        {name: 'Recompute insights', fast: false, pct: 0.02}
+    ];
+
+    function getPhaseStatus(isFast, job) {
+        if (isFast) {
+            return (job.phase === 'FAST' && job.uiStatus === 'failed') ? 'failed' : 'ok';
+        }
+        if (job.phase === 'FAST') {
+            return 'skipped';
+        }
+        return (job.uiStatus === 'failed') ? 'failed' : 'ok';
+    }
+
+    function renderPhaseBreakdown(job) {
+        var total = Math.max(1, job.durationSecs);
+        var rows = PHASE_DEFS.map(function(p) {
+            var status = getPhaseStatus(p.fast, job);
+            var icon = status === 'ok' ? '\u2713' : (status === 'failed' ? '\u2715' : '\xb7');
+            var iconColor = status === 'ok' ? 'var(--good)' : (status === 'failed' ? 'var(--bad)' : 'var(--fg-3)');
+            var durSecs = Math.round(total * p.pct);
+            var durLabel = status === 'skipped' ? '\u2014' : formatDur(durSecs);
+            var barPct = status === 'skipped' ? 0 : Math.min(100, durSecs * 100 / total);
+            var barColor = status === 'ok' ? 'var(--good)' : 'var(--bad)';
+            return '<div class="sync-phase-row">'
+                + '<div class="sync-phase-icon" style="color:' + iconColor + '">' + icon + '</div>'
+                + '<div class="sync-phase-name' + (status === 'skipped' ? ' sync-phase-skipped' : '') + '">'
+                + escHtml(p.name) + '</div>'
+                + '<div class="sync-phase-bar">'
+                + '<div class="sync-phase-bar-fill" style="width:' + barPct + '%;background:' + barColor + '"></div>'
+                + '</div>'
+                + '<div class="num sync-phase-dur">' + escHtml(durLabel) + '</div>'
+                + '</div>';
+        }).join('');
+        return '<div class="sync-phases-label">\u0424\u0430\u0437\u044b \u0437\u0430\u043f\u0443\u0441\u043a\u0430</div>'
+            + '<div class="sync-phases-list">' + rows + '</div>';
+    }
+
+    // ── History rows ───────────────────────────────────────────────────────────
+
+    var STATUS_LABELS = {
+        ok: '\u0423\u0441\u043f\u0435\u0445',
+        partial: '\u0427\u0430\u0441\u0442\u0438\u0447\u043d\u043e',
+        failed: '\u041e\u0448\u0438\u0431\u043a\u0430',
+        running: '\u0412 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u0435'
+    };
+
+    function renderJobRow(job) {
+        var note = job.errorMessage
+            || (job.uiStatus === 'partial'
+                ? '\u0424\u0430\u0437\u0430 1 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430, \u0444\u0430\u0437\u0430 2 \u0432 \u043e\u0447\u0435\u0440\u0435\u0434\u0438'
+                : '')
+            || '\u2014';
+        var mrCount = job.totalMrs > 0 ? job.totalMrs.toLocaleString('ru') : '\u2014';
+        var statusLabel = STATUS_LABELS[job.uiStatus] || job.uiStatus;
+        var noteClass = 'sync-col-note' + (job.uiStatus === 'failed' ? ' sync-note-err' : '');
+        var errorBox = job.errorMessage
+            ? '<div class="sync-error-log"><div class="sync-log-label">Log</div>' + escHtml(job.errorMessage) + '</div>'
+            : '';
+        var retryBtn = job.canRetry
+            ? '<div class="sync-detail-actions"><button class="btn-sm btn-secondary" onclick="retryJobFromSync('
+                + job.id + ')">\u21ba \u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0437\u0430\u043f\u0443\u0441\u043a</button></div>'
+            : '';
+        return '<div class="sync-run-item">'
+            + '<button class="sync-run-row" onclick="toggleRow(this)">'
+            + '<div class="num sync-col-date">' + escHtml(job.startedAt) + '</div>'
+            + '<div><span class="sync-status-badge sync-status-' + job.uiStatus + '">'
+            + escHtml(statusLabel) + '</span></div>'
+            + '<div class="num sync-col-dur">' + escHtml(job.durationLabel) + '</div>'
+            + '<div class="num sync-col-num">' + mrCount + ' <span class="sync-col-unit">MR</span></div>'
+            + '<div class="num sync-col-num">\u2014 <span class="sync-col-unit">\u043a\u043e\u043c\u043c\u0438\u0442\u043e\u0432</span></div>'
+            + '<div class="num sync-col-num">\u2014 <span class="sync-col-unit">\u0440\u0435\u0432\u044e</span></div>'
+            + '<div class="' + noteClass + '">' + escHtml(note) + '</div>'
+            + '<div class="sync-col-chevron">\u25b8</div>'
+            + '</button>'
+            + '<div class="sync-run-details hidden">'
+            + renderPhaseBreakdown(job)
+            + errorBox
+            + retryBtn
+            + '</div>'
+            + '</div>';
+    }
+
+    (function renderRows() {
+        var container = document.getElementById('sync-history-rows');
+        var emptyEl = document.getElementById('sync-history-empty');
+        if (!container) {
+            return;
+        }
+        if (!JOBS_DATA.length) {
+            if (emptyEl) {
+                emptyEl.style.display = '';
+            }
+            return;
+        }
+        container.innerHTML = JOBS_DATA.map(renderJobRow).join('');
+    })();
+
+    function toggleRow(btn) {
+        var details = btn.nextElementSibling;
+        var chevron = btn.querySelector('.sync-col-chevron');
+        var isOpen = !details.classList.contains('hidden');
+        if (isOpen) {
+            details.classList.add('hidden');
+            btn.classList.remove('sync-run-row-open');
+            if (chevron) {
+                chevron.textContent = '\u25b8';
+            }
+        } else {
+            details.classList.remove('hidden');
+            btn.classList.add('sync-run-row-open');
+            if (chevron) {
+                chevron.textContent = '\u25be';
+            }
+        }
+    }
+
+    async function retryJobFromSync(jobId) {
+        var csrfToken = document.querySelector('meta[name="_csrf"]').content;
+        var csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+        var headers = {'Content-Type': 'application/json'};
+        headers[csrfHeader] = csrfToken;
+        try {
+            var resp = await fetch('/settings/sync/' + jobId + '/retry', {method: 'POST', headers: headers});
+            if (!resp.ok) {
+                throw new Error('HTTP ' + resp.status);
+            }
+            window.location.reload();
+        } catch (e) {
+            alert('\u041e\u0448\u0438\u0431\u043a\u0430: ' + e.message);
+        }
+    }
+
+    // ── Sidebar shims (sidebar.js requires these) ──────────────────────────────
+    function sidebarSync() {}
+    function sidebarDeleteProject() {}
+    function sidebarDeleteUser() {}
+    function applyFilters() {}
+    /*]]>*/
+</script>
+
+</body>
+</html>

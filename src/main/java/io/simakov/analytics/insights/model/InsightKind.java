@@ -6,16 +6,24 @@ package io.simakov.analytics.insights.model;
  */
 public enum InsightKind {
 
-    /** Critical problem requiring immediate attention. */
+    /**
+     * Critical problem requiring immediate attention.
+     */
     BAD("bad"),
 
-    /** Warning — worth investigating soon. */
+    /**
+     * Warning — worth investigating soon.
+     */
     WARN("warn"),
 
-    /** Positive signal worth highlighting. */
+    /**
+     * Positive signal worth highlighting.
+     */
     GOOD("good"),
 
-    /** Neutral observation / informational. */
+    /**
+     * Neutral observation / informational.
+     */
     INFO("info");
 
     private final String cssValue;

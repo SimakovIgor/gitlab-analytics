@@ -13,205 +13,179 @@
 
 <header th:replace="~{fragments/topbar :: topbar('dora')}"></header>
 
-<!-- Баннеры синхронизации (полная ширина) -->
-<div class="sync-banners-global" id="sync-banners"></div>
-
 <div class="report-page">
 
     <!-- ── Боковая панель ──────────────────────────────────── -->
     <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
 
-<main class="report-main">
+    <main class="report-main">
 
-    <!-- Фаза 2: обогащение данных — показывается над всем содержимым -->
-    <div id="phase2-card" th:if="${enrichmentJobId != null}" class="phase2-banner">
-        <div class="phase2-banner-row">
-            <div class="phase2-banner-icon">
-                <span class="phase2-banner-spin"></span>
-            </div>
-            <div class="phase2-banner-body">
-                <div class="phase2-banner-title">
-                    <strong>Первичная загрузка истории репозитория.</strong>
-                    <span>Данные появляются в отчёте по мере загрузки · обычно 15–60 минут.</span>
-                </div>
-                <div class="phase2-banner-counters">
-                    <span>Коммиты: <span id="p2-commits" class="phase2-banner-val">0</span></span>
-                    <span>Ревью: <span id="p2-reviews" class="phase2-banner-val">0</span></span>
-                    <span>Коммент.: <span id="p2-comments" class="phase2-banner-val">0</span></span>
-                </div>
-            </div>
-            <div class="phase2-banner-pct num">
-                <span id="p2-pct">0</span><span class="phase2-banner-pct-sign">%</span>
-            </div>
-        </div>
-        <div class="phase2-banner-track">
-            <div class="phase2-banner-fill" id="p2-bar"></div>
-        </div>
-    </div>
+        <!-- Карточки синхронизации (Phase 1 и Phase 2) -->
+        <div id="sync-banners"></div>
 
-    <div class="page-title">DORA метрики</div>
-    <div class="page-subtitle">Индустриальные показатели эффективности инженерной команды</div>
+        <div class="page-title">DORA метрики</div>
+        <div class="page-subtitle">Индустриальные показатели эффективности инженерной команды</div>
 
-    <!-- Фильтры -->
-    <form action="/dora" class="filter-form" method="get">
-        <div class="filter-group">
-            <label class="filter-label">Период</label>
-            <div class="period-row">
-                <div class="period-buttons">
-                    <button name="days" th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="submit" value="7">
-                        7 дней
-                    </button>
-                    <button name="days" th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="submit" value="30">
-                        30 дней
-                    </button>
-                    <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="submit" value="90">
-                        90 дней
-                    </button>
-                    <button name="days" th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="submit" value="180">
-                        180 дней
-                    </button>
-                    <button name="days" th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'"
-                            type="submit" value="360">
-                        360 дней
-                    </button>
-                </div>
-                <span th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
-            </div>
-        </div>
-
-        <div th:replace="~{fragments/filters :: repoFilter(${projects}, ${selectedProjectIds})}"></div>
-
-        <!-- Сохраняем days при смене репозиториев -->
-        <input id="daysHidden" name="days" th:value="${selectedDays}" type="hidden">
-    </form>
-
-    <!-- ── Lead Time ─────────────────────────────────────────────────────────── -->
-
-    <div class="dora-section">
-        <div class="dora-section-header">
-            <div>
-                <div class="dora-metric-name">Lead Time for Changes</div>
-                <div class="dora-metric-desc">
-                    Время от открытия MR до попадания в основную ветку.
-                    Показывает скорость доставки изменений.
+        <!-- Фильтры -->
+        <form action="/dora" class="filter-form" method="get">
+            <div class="filter-group">
+                <label class="filter-label">Период</label>
+                <div class="period-row">
+                    <div class="period-buttons">
+                        <button name="days" th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="submit" value="7">
+                            7 дней
+                        </button>
+                        <button name="days" th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="submit" value="30">
+                            30 дней
+                        </button>
+                        <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="submit" value="90">
+                            90 дней
+                        </button>
+                        <button name="days" th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="submit" value="180">
+                            180 дней
+                        </button>
+                        <button name="days" th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'"
+                                type="submit" value="360">
+                            360 дней
+                        </button>
+                    </div>
+                    <span th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
                 </div>
             </div>
-            <div class="dora-badge dora-badge-elite tooltip-hint"
-                 data-tooltip="Elite: медиана Lead Time менее 1 часа. Лучший уровень по классификации DORA Research."
-                 th:if="${medianHours != null and medianHours <= 1}">Elite
-            </div>
-            <div class="dora-badge dora-badge-high tooltip-hint"
-                 data-tooltip="High: медиана Lead Time от 1 часа до 1 дня. Высокая скорость доставки изменений."
-                 th:if="${medianHours != null and medianHours > 1 and medianHours <= 24}">High
-            </div>
-            <div class="dora-badge dora-badge-medium tooltip-hint"
-                 data-tooltip="Medium: медиана Lead Time от 1 до 7 дней. Средний уровень — есть пространство для улучшения."
-                 th:if="${medianHours != null and medianHours > 24 and medianHours <= 168}">Medium
-            </div>
-            <div class="dora-badge dora-badge-low tooltip-hint"
-                 data-tooltip="Low: медиана Lead Time более 7 дней. Изменения долго доходят до основной ветки."
-                 th:if="${medianHours != null and medianHours > 168}">Low
-            </div>
-        </div>
 
-        <div class="dora-stats-row">
-            <div class="dora-stat-card">
-                <div class="dora-stat-label">
+            <div th:replace="~{fragments/filters :: repoFilter(${projects}, ${selectedProjectIds})}"></div>
+
+            <!-- Сохраняем days при смене репозиториев -->
+            <input id="daysHidden" name="days" th:value="${selectedDays}" type="hidden">
+        </form>
+
+        <!-- ── Lead Time ─────────────────────────────────────────────────────────── -->
+
+        <div class="dora-section">
+            <div class="dora-section-header">
+                <div>
+                    <div class="dora-metric-name">Lead Time for Changes</div>
+                    <div class="dora-metric-desc">
+                        Время от открытия MR до попадания в основную ветку.
+                        Показывает скорость доставки изменений.
+                    </div>
+                </div>
+                <div class="dora-badge dora-badge-elite tooltip-hint"
+                     data-tooltip="Elite: медиана Lead Time менее 1 часа. Лучший уровень по классификации DORA Research."
+                     th:if="${medianHours != null and medianHours <= 1}">Elite
+                </div>
+                <div class="dora-badge dora-badge-high tooltip-hint"
+                     data-tooltip="High: медиана Lead Time от 1 часа до 1 дня. Высокая скорость доставки изменений."
+                     th:if="${medianHours != null and medianHours > 1 and medianHours <= 24}">High
+                </div>
+                <div class="dora-badge dora-badge-medium tooltip-hint"
+                     data-tooltip="Medium: медиана Lead Time от 1 до 7 дней. Средний уровень — есть пространство для улучшения."
+                     th:if="${medianHours != null and medianHours > 24 and medianHours <= 168}">Medium
+                </div>
+                <div class="dora-badge dora-badge-low tooltip-hint"
+                     data-tooltip="Low: медиана Lead Time более 7 дней. Изменения долго доходят до основной ветки."
+                     th:if="${medianHours != null and medianHours > 168}">Low
+                </div>
+            </div>
+
+            <div class="dora-stats-row">
+                <div class="dora-stat-card">
+                    <div class="dora-stat-label">
                     <span class="tooltip-hint"
                           data-tooltip="P50 — половина MR закрывается быстрее. Устойчивее среднего, не искажается выбросами.">Медиана</span>
+                    </div>
+                    <div class="dora-stat-value"
+                         th:text="${medianHours != null ? #numbers.formatDecimal(medianHours, 1, 1) + ' ч' : '—'}">—
+                    </div>
                 </div>
-                <div class="dora-stat-value"
-                     th:text="${medianHours != null ? #numbers.formatDecimal(medianHours, 1, 1) + ' ч' : '—'}">—
-                </div>
-            </div>
-            <div class="dora-stat-card">
-                <div class="dora-stat-label">
+                <div class="dora-stat-card">
+                    <div class="dora-stat-label">
                     <span class="tooltip-hint"
                           data-tooltip="75% MR закрывается быстрее. Показывает «медленный хвост» — MR, застрявшие на ревью.">P75</span>
+                    </div>
+                    <div class="dora-stat-value"
+                         th:text="${p75Hours != null ? #numbers.formatDecimal(p75Hours, 1, 1) + ' ч' : '—'}">—
+                    </div>
                 </div>
-                <div class="dora-stat-value"
-                     th:text="${p75Hours != null ? #numbers.formatDecimal(p75Hours, 1, 1) + ' ч' : '—'}">—
-                </div>
-            </div>
-            <div class="dora-stat-card">
-                <div class="dora-stat-label">
+                <div class="dora-stat-card">
+                    <div class="dora-stat-label">
                     <span class="tooltip-hint"
                           data-tooltip="95% MR закрывается быстрее. Выявляет самые проблемные MR, требующие внимания.">P95</span>
+                    </div>
+                    <div class="dora-stat-value"
+                         th:text="${p95Hours != null ? #numbers.formatDecimal(p95Hours, 1, 1) + ' ч' : '—'}">—
+                    </div>
                 </div>
-                <div class="dora-stat-value"
-                     th:text="${p95Hours != null ? #numbers.formatDecimal(p95Hours, 1, 1) + ' ч' : '—'}">—
-                </div>
-            </div>
-            <div class="dora-stat-card">
-                <div class="dora-stat-label">
+                <div class="dora-stat-card">
+                    <div class="dora-stat-label">
                     <span class="tooltip-hint"
                           data-tooltip="Число MR, смерджённых в выбранном периоде. Основа для расчёта перцентилей Lead Time.">MR за период</span>
+                    </div>
+                    <div class="dora-stat-value" th:text="${totalMrs}">0</div>
                 </div>
-                <div class="dora-stat-value" th:text="${totalMrs}">0</div>
+            </div>
+
+            <div class="chart-card" style="margin-top:16px">
+                <div class="chart-title">Lead Time по неделям</div>
+                <div class="chart-wrap">
+                    <canvas id="leadTimeChart"></canvas>
+                </div>
             </div>
         </div>
 
-        <div class="chart-card" style="margin-top:16px">
-            <div class="chart-title">Lead Time по неделям</div>
-            <div class="chart-wrap">
-                <canvas id="leadTimeChart"></canvas>
-            </div>
-        </div>
-    </div>
+        <!-- ── Deployment Frequency (TBD) ────────────────────────────────────────── -->
 
-    <!-- ── Deployment Frequency (TBD) ────────────────────────────────────────── -->
-
-    <div class="dora-section dora-section-tbd">
-        <div class="dora-section-header">
-            <div>
-                <div class="dora-metric-name">Deployment Frequency
-                    <span class="dora-tbd-badge">Скоро</span>
-                </div>
-                <div class="dora-metric-desc">
-                    Как часто команда деплоит в продакшн.
-                    Требует подключения CI/CD пайплайнов GitLab.
+        <div class="dora-section dora-section-tbd">
+            <div class="dora-section-header">
+                <div>
+                    <div class="dora-metric-name">Deployment Frequency
+                        <span class="dora-tbd-badge">Скоро</span>
+                    </div>
+                    <div class="dora-metric-desc">
+                        Как часто команда деплоит в продакшн.
+                        Требует подключения CI/CD пайплайнов GitLab.
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- ── Change Failure Rate (TBD) ─────────────────────────────────────────── -->
+        <!-- ── Change Failure Rate (TBD) ─────────────────────────────────────────── -->
 
-    <div class="dora-section dora-section-tbd">
-        <div class="dora-section-header">
-            <div>
-                <div class="dora-metric-name">Change Failure Rate
-                    <span class="dora-tbd-badge">Скоро</span>
-                </div>
-                <div class="dora-metric-desc">
-                    Процент деплоев, приводящих к инцидентам или откатам.
-                    Требует интеграции с Jira (тикеты инцидентов).
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── MTTR (TBD) ─────────────────────────────────────────────────────────── -->
-
-    <div class="dora-section dora-section-tbd">
-        <div class="dora-section-header">
-            <div>
-                <div class="dora-metric-name">Mean Time to Restore (MTTR)
-                    <span class="dora-tbd-badge">Скоро</span>
-                </div>
-                <div class="dora-metric-desc">
-                    Среднее время восстановления после инцидента.
-                    Требует интеграции с Jira (инциденты и время резолюции).
+        <div class="dora-section dora-section-tbd">
+            <div class="dora-section-header">
+                <div>
+                    <div class="dora-metric-name">Change Failure Rate
+                        <span class="dora-tbd-badge">Скоро</span>
+                    </div>
+                    <div class="dora-metric-desc">
+                        Процент деплоев, приводящих к инцидентам или откатам.
+                        Требует интеграции с Jira (тикеты инцидентов).
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-</main>
+        <!-- ── MTTR (TBD) ─────────────────────────────────────────────────────────── -->
+
+        <div class="dora-section dora-section-tbd">
+            <div class="dora-section-header">
+                <div>
+                    <div class="dora-metric-name">Mean Time to Restore (MTTR)
+                        <span class="dora-tbd-badge">Скоро</span>
+                    </div>
+                    <div class="dora-metric-desc">
+                        Среднее время восстановления после инцидента.
+                        Требует интеграции с Jira (инциденты и время резолюции).
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
 
 </div><!-- /.report-page -->
 

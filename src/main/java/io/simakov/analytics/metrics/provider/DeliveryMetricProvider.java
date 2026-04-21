@@ -25,7 +25,8 @@ import java.util.stream.Collectors;
 class DeliveryMetricProvider implements MetricProvider {
 
     @Override
-    public void populate(MetricContext ctx, UserMetrics.UserMetricsBuilder builder) {
+    public void populate(MetricContext ctx,
+                         UserMetrics.UserMetricsBuilder builder) {
         int mrMergedCount = (int) ctx.authoredMrs().stream()
             .filter(mr -> mr.getMergedAtGitlab() != null).count();
         Set<Long> projectsTouched = ctx.authoredMrs().stream()
@@ -94,13 +95,13 @@ class DeliveryMetricProvider implements MetricProvider {
             .mapToInt(mr -> mr.getNetAdditions() != null
                 ? mr.getNetAdditions()
                 : userCommitsByMrId.getOrDefault(mr.getId(), List.of()).stream()
-                    .mapToInt(MergeRequestCommit::getAdditions).sum())
+                  .mapToInt(MergeRequestCommit::getAdditions).sum())
             .sum();
         int linesDeleted = ctx.authoredMrs().stream()
             .mapToInt(mr -> mr.getNetDeletions() != null
                 ? mr.getNetDeletions()
                 : userCommitsByMrId.getOrDefault(mr.getId(), List.of()).stream()
-                    .mapToInt(MergeRequestCommit::getDeletions).sum())
+                  .mapToInt(MergeRequestCommit::getDeletions).sum())
             .sum();
         int filesChanged = ctx.authoredMrs().stream()
             .mapToInt(MergeRequest::getFilesChangedCount).sum();
@@ -108,10 +109,12 @@ class DeliveryMetricProvider implements MetricProvider {
         // MR size in lines — net diff when available, else all commits (not just user's) without merge commits
         List<Integer> mrSizesLines = ctx.authoredMrs().stream()
             .map(mr -> mr.getNetAdditions() != null
-                ? mr.getNetAdditions() + (mr.getNetDeletions() != null ? mr.getNetDeletions() : 0)
+                ? mr.getNetAdditions() + (mr.getNetDeletions() != null
+                                          ? mr.getNetDeletions()
+                : 0)
                 : ctx.commitsByMrId().getOrDefault(mr.getId(), List.of()).stream()
-                    .filter(c -> !c.isMergeCommit())
-                    .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
+                  .filter(c -> !c.isMergeCommit())
+                  .mapToInt(c -> c.getAdditions() + c.getDeletions()).sum())
             .filter(size -> size > 0)
             .sorted()
             .toList();
@@ -125,9 +128,15 @@ class DeliveryMetricProvider implements MetricProvider {
             linesAdded,
             linesDeleted,
             filesChanged,
-            MetricsMathUtils.round2(mrSizesLines.isEmpty() ? 0 : MetricsMathUtils.mean(mrSizesLines)),
-            MetricsMathUtils.round2(mrSizesLines.isEmpty() ? 0 : MetricsMathUtils.median(mrSizesLines)),
-            MetricsMathUtils.round2(mrSizesFiles.isEmpty() ? 0 : MetricsMathUtils.mean(mrSizesFiles))
+            MetricsMathUtils.round2(mrSizesLines.isEmpty()
+                ? 0
+                : MetricsMathUtils.mean(mrSizesLines)),
+            MetricsMathUtils.round2(mrSizesLines.isEmpty()
+                ? 0
+                : MetricsMathUtils.median(mrSizesLines)),
+            MetricsMathUtils.round2(mrSizesFiles.isEmpty()
+                ? 0
+                : MetricsMathUtils.mean(mrSizesFiles))
         );
     }
 
@@ -137,5 +146,6 @@ class DeliveryMetricProvider implements MetricProvider {
                                 double avgMrSizeLines,
                                 double medianMrSizeLines,
                                 double avgMrSizeFiles) {
+
     }
 }
