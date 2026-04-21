@@ -248,7 +248,7 @@ class ReportControllerTest extends BaseIT {
             .andReturn();
 
         assertThat(result.getResponse().getContentAsString())
-            .contains("Δ — изменение к предыдущему периоду");
+            .contains("к пред.");
     }
 
     // ── Metric selector ───────────────────────────────────────────────────────
@@ -262,7 +262,7 @@ class ReportControllerTest extends BaseIT {
             .andReturn();
 
         assertThat(result.getResponse().getContentAsString())
-            .contains("metricSelect")
+            .contains("chartMetricSeg")
             .contains("mr_merged_count");
     }
 

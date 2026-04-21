@@ -23,6 +23,32 @@
 
 <main class="report-main">
 
+    <!-- Фаза 2: обогащение данных — показывается над всем содержимым -->
+    <div id="phase2-card" th:if="${enrichmentJobId != null}" class="phase2-banner">
+        <div class="phase2-banner-row">
+            <div class="phase2-banner-icon">
+                <span class="phase2-banner-spin"></span>
+            </div>
+            <div class="phase2-banner-body">
+                <div class="phase2-banner-title">
+                    <strong>Первичная загрузка истории репозитория.</strong>
+                    <span>Данные появляются в отчёте по мере загрузки · обычно 15–60 минут.</span>
+                </div>
+                <div class="phase2-banner-counters">
+                    <span>Коммиты: <span id="p2-commits" class="phase2-banner-val">0</span></span>
+                    <span>Ревью: <span id="p2-reviews" class="phase2-banner-val">0</span></span>
+                    <span>Коммент.: <span id="p2-comments" class="phase2-banner-val">0</span></span>
+                </div>
+            </div>
+            <div class="phase2-banner-pct num">
+                <span id="p2-pct">0</span><span class="phase2-banner-pct-sign">%</span>
+            </div>
+        </div>
+        <div class="phase2-banner-track">
+            <div class="phase2-banner-fill" id="p2-bar"></div>
+        </div>
+    </div>
+
     <div class="page-title">DORA метрики</div>
     <div class="page-subtitle">Индустриальные показатели эффективности инженерной команды</div>
 

@@ -69,10 +69,11 @@ Controller → Service → Repository → Model
 - **`web/controller/`** — Thymeleaf-контроллеры (`WebController`, `HistoryController`, `SettingsController`)
 - **`web/`** — `ContributorDiscoveryService`, `UserAliasService`, `ReportViewService`
 - **`web/dto/`** — `ReportPageData`, `MrSummaryDto`, `HistoryPageData`, `SettingsPageData` и др.
+- **`insights/`** — `InsightService`, `InsightEvaluator` интерфейс, 10 `@Component`-реализаций в `evaluator/`, `InsightRule` enum, `InsightProperties`, модели в `model/`
 - **`security/`** — `BearerTokenAuthFilter`
 - **`encryption/`** — интерфейс `EncryptionService` + `NoOpEncryptionService`
 
-Шаблоны: `src/main/resources/templates/` (login, report, history, settings)
+Шаблоны: `src/main/resources/templates/` (login, report, history, settings, insights, dora)
 Статика: `src/main/resources/static/css/analytics.css`
 
 ## Ключевые паттерны
@@ -121,6 +122,29 @@ Controller → Service → Repository → Model
 **MR drill-down**: `GET /report/user/{id}/mrs?period=&projectIds=` — возвращает `List<MrSummaryDto>` (JSON). Разрешает `gitlabUserId` через `TrackedUserAlias`, запрашивает `MergeRequestRepository.findMergedInPeriodByAuthors()`. Вызывается JS в report.html по клику на строку, рендерится в модальном окне.
 
 **Клик по строке отчёта**: открывает модальное окно со списком смёрженных MR пользователя за текущий период/фильтры. График при этом НЕ меняется (управляется только селектором метрики и кнопками периода).
+
+**Страница Инсайты** (`GET /insights`): паттерн Стратегия — `InsightService` собирает все бины `List<InsightEvaluator>` и запускает каждый. Контекст `InsightContext` record передаётся всем evaluator-ам и содержит: `users`, `current`/`previous` `Map<Long, UserMetrics>`, `openMrs`, `gitlabUserIdToTrackedUserId`. Результаты сортируются по `severity` по убыванию.
+
+**`InsightRule` enum** (`insights/model/InsightRule.java`) — единственный источник истины для всех 10 правил (аналог `Metric` enum). Каждое правило имеет `code()`, `defaultKind()` (BAD/WARN/INFO/GOOD), `defaultSeverity()` (1–5), `description()`. Реализованные правила:
+
+| Rule | Kind | Severity | Описание |
+|------|------|----------|----------|
+| `HIGH_MERGE_TIME` | BAD | 4 | Командная медиана TTM выше порога |
+| `MERGE_TIME_SPIKE` | BAD | 4 | Рост медианы TTM относительно прошлого периода |
+| `STUCK_MRS` | BAD | 5 | Открытые MR без движения дольше порога |
+| `REVIEW_LOAD_IMBALANCE` | WARN | 3 | Неравномерное распределение ревью (коэффициент Джини) |
+| `LARGE_MR_HABIT` | WARN | 2 | Средний размер MR превышает порог |
+| `DELIVERY_DROP` | WARN | 3 | Снижение кол-ва MR относительно прошлого периода |
+| `LOW_REVIEW_DEPTH` | INFO | 2 | Среднее кол-во комментариев на MR ниже порога |
+| `HIGH_REWORK_RATIO` | WARN | 3 | Высокая доля доработок |
+| `INACTIVE_MEMBER` | WARN | 2 | Участник без MR в текущем периоде |
+| `NO_CODE_REVIEW` | BAD | 3 | MR мержатся без ревью |
+
+**`InsightProperties`** (`@ConfigurationProperties(prefix = "app.insights.thresholds")`): все пороги вынесены в `application.yml`. Ключи: `stuck-mr-hours`, `max-median-ttm-hours`, `merge-time-spike-ratio`, `review-gini`, `large-mr-lines`, `delivery-drop-ratio`, `min-comments-per-mr`, `max-rework-ratio`, `min-mrs-for-no-review-check`.
+
+**Добавить новое правило**: создать `@Component class MyEvaluator implements InsightEvaluator`, добавить константу в `InsightRule` — `InsightService` подхватит автоматически через коллекцию.
+
+**topbar `activePage`**: принимает значения `'overview' | 'insights' | 'dora' | 'sync' | 'history' | 'settings'`.
 
 ## База данных
 

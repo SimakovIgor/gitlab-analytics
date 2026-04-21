@@ -51,7 +51,7 @@
                 </button>
             </div>
         </div>
-        <button class="sidebar-add-btn" onclick="openModal('modal-project')">
+        <button class="sidebar-add-btn" onclick="openProjectModal()">
             <span>+</span> Добавить репозиторий
         </button>
     </div>
@@ -152,7 +152,7 @@
                 </button>
             </div>
         </div>
-        <button class="sidebar-add-btn" onclick="openModal('modal-project')">
+        <button class="sidebar-add-btn" onclick="openProjectModal()">
             <span>+</span> Добавить репозиторий
         </button>
     </div>
@@ -212,14 +212,14 @@
 <div class="modal-overlay hidden" id="modal-project" onclick="handleOverlayClick(event, 'modal-project')">
     <div class="modal">
         <div class="modal-header">
-            <span>Добавить репозиторий</span>
+            <span>Подключить репозиторий</span>
             <button class="modal-close" onclick="closeModal('modal-project')">✕</button>
         </div>
         <div class="modal-body">
             <div class="modal-error hidden" id="project-error"></div>
-            <div class="form-group">
-                <label class="form-label">GitLab Source</label>
-                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
+            <div class="form-group" th:if="${sources != null and sources.size() > 1}">
+                <label class="form-label">Git-система</label>
+                <select class="form-select" id="project-source-id" onchange="onTokenInputChange()">
                     <option value="">— выберите источник —</option>
                     <option th:each="source : ${sources}"
                             th:text="${source.name}"
@@ -227,31 +227,41 @@
                     </option>
                 </select>
             </div>
+            <div th:unless="${sources != null and sources.size() > 1}">
+                <input type="hidden" id="project-source-id"
+                       th:value="${sources != null and !sources.isEmpty()} ? ${sources[0].id} : ''"/>
+            </div>
             <div class="form-group">
-                <label class="form-label">Project Access Token</label>
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+                    <label class="form-label" style="margin:0">Access Token</label>
+                    <span style="font-size:11.5px;color:var(--accent);font-family:var(--font-mono);">Где взять токен ↗</span>
+                </div>
                 <input class="form-input" id="project-token"
-                       oninput="clearProjectSearch(); scheduleTokenValidate()"
-                       placeholder="glpat-..." type="password">
-                <div class="token-validate-status" id="token-validate-status"></div>
-                <div class="form-hint token-hint">
-                    <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
+                       onblur="onTokenInputBlur()"
+                       oninput="onTokenInputChange()"
+                       placeholder="glpat-••••••••••••••••"
+                       style="font-family:var(--font-mono)"
+                       type="password">
+                <div class="token-validate-status" id="token-status-line" style="margin-top:10px;min-height:18px;line-height:1.5"></div>
+                <div id="token-check-btn-wrap" style="margin-top:14px">
+                    <button class="btn-secondary" id="btn-check-token"
+                            onclick="validateTokenAndFetch()" type="button">
+                        Проверить токен
+                    </button>
                 </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Репозиторий</label>
-                <div class="search-input-wrap">
-                    <span class="search-input-icon">🔍</span>
-                    <input autocomplete="off" class="form-input search-input-with-icon" id="project-search"
-                           oninput="debounceSearch(this.value)"
-                           placeholder="Начните вводить название..."
-                           type="search">
+            <div class="hidden" id="repo-list-wrap" style="margin-bottom:16px">
+                <label class="form-label" style="margin-bottom:10px">Выберите репозиторий</label>
+                <div class="repo-list-container" id="repo-list-container"></div>
+                <div style="font-size:11.5px;color:var(--fg-3);margin-top:8px">
+                    Остальные репозитории добавите из настроек после подключения.
                 </div>
             </div>
-            <div class="search-results hidden" id="project-search-results"></div>
-            <div class="selected-project hidden" id="project-selected">
-                <div class="selected-project-card">
-                    <span id="project-selected-name"></span>
-                    <span class="repo-path" id="project-selected-path"></span>
+            <!-- Security note -->
+            <div style="padding:12px 14px;border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--border-1);display:flex;gap:10px;align-items:flex-start;">
+                <div style="width:18px;height:18px;border-radius:50%;background:var(--accent-bg);color:var(--accent);font-style:italic;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-display)">i</div>
+                <div style="font-size:12px;color:var(--fg-2);line-height:1.55">
+                    Токен шифруется при записи. Код репозитория не читаем — только метаданные MR, коммитов, ревью и комментариев.
                 </div>
             </div>
         </div>
@@ -274,7 +284,7 @@
             <div class="form-group" th:if="${hasProjects}">
                 <label class="form-label">Найти в GitLab</label>
                 <div class="form-group-row">
-                    <select class="form-input form-input-sm" id="user-search-source">
+                    <select class="form-select form-input-sm" id="user-search-source">
                         <option th:each="source : ${sources}"
                                 th:text="${source.name}"
                                 th:value="${source.id}">Источник
@@ -282,8 +292,8 @@
                     </select>
                     <div class="search-input-wrap" style="flex:1">
                         <span class="search-input-icon">
-                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2"
-                                 viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line
+                            <svg fill="none" height="13" stroke="currentColor" stroke-width="2"
+                                 viewBox="0 0 24 24" width="13"><circle cx="11" cy="11" r="8"/><line
                                     x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
                         </span>
                         <input autocomplete="off" class="form-input search-input-with-icon" id="user-gl-search"
@@ -296,11 +306,11 @@
                 <div class="form-hint">Выберите — имя и email подтянутся автоматически</div>
             </div>
             <div class="form-group">
-                <label class="form-label">Имя <span class="form-required">*</span></label>
+                <label class="form-label">Имя <span style="color:var(--bad)">*</span></label>
                 <input class="form-input" id="user-name" placeholder="Иван Иванов" type="text">
             </div>
             <div class="form-group">
-                <label class="form-label">Email (для атрибуции коммитов) <span class="form-required">*</span></label>
+                <label class="form-label">Email <span style="color:var(--bad)">*</span></label>
                 <input class="form-input" id="user-email" placeholder="ivan@example.com" type="email">
                 <div class="form-hint">Должен совпадать с email в git-коммитах</div>
             </div>
