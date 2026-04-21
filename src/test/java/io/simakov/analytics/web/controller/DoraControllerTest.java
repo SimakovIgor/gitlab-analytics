@@ -100,7 +100,7 @@ class DoraControllerTest extends BaseIT {
     @Test
     void doraPageShowsZeroMrsWhenNoData() throws Exception {
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
-                .param("days", "30"))
+                .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -113,7 +113,7 @@ class DoraControllerTest extends BaseIT {
         saveMergedMr(2L, 8);
 
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
-                .param("days", "30"))
+                .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -126,7 +126,7 @@ class DoraControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
                 .param("projectIds", "99999")
-                .param("days", "30"))
+                .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -148,7 +148,7 @@ class DoraControllerTest extends BaseIT {
         mergeRequestRepository.save(opened);
 
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
-                .param("days", "30"))
+                .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
 

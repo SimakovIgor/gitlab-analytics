@@ -2,6 +2,7 @@ package io.simakov.analytics.web.controller;
 
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
+import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.DoraService;
@@ -34,11 +35,19 @@ public class DoraController {
     @GetMapping("/dora")
     public String dora(OAuth2AuthenticationToken authentication,
                        @RequestParam(required = false) List<Long> projectIds,
-                       @RequestParam(defaultValue = "30") int days,
+                       @RequestParam(defaultValue = "LAST_30_DAYS") String period,
                        Model model) {
         if (authentication != null) {
             model.addAttribute("currentUser", userResolver.resolve(authentication));
         }
+
+        PeriodType periodType;
+        try {
+            periodType = PeriodType.valueOf(period);
+        } catch (IllegalArgumentException e) {
+            periodType = PeriodType.LAST_30_DAYS;
+        }
+        int days = periodType.toDays();
 
         SettingsPageData sidebarData = settingsViewService.buildSettingsPage();
         List<TrackedProject> allProjects = sidebarData.projects();
@@ -61,7 +70,7 @@ public class DoraController {
         model.addAttribute("showInactive", false);
         model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
         model.addAttribute("selectedProjectIds", effectiveProjectIds);
-        model.addAttribute("selectedDays", days);
+        model.addAttribute("selectedPeriod", periodType.name());
         model.addAttribute("dateFrom", java.time.LocalDate.now().minusDays(days));
         model.addAttribute("dateTo", java.time.LocalDate.now());
         model.addAttribute("totalMrs", leadTime.get("totalMrs"));

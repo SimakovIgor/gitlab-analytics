@@ -23,45 +23,58 @@
         <!-- Карточки синхронизации (Phase 1 и Phase 2) -->
         <div id="sync-banners"></div>
 
-        <div class="page-title">DORA метрики</div>
-        <div class="page-subtitle">Индустриальные показатели эффективности инженерной команды</div>
-
-        <!-- Фильтры -->
-        <form action="/dora" class="filter-form" method="get">
-            <div class="filter-group">
-                <label class="filter-label">Период</label>
-                <div class="period-row">
-                    <div class="period-buttons">
-                        <button name="days" th:class="${selectedDays == 7} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="submit" value="7">
-                            7 дней
-                        </button>
-                        <button name="days" th:class="${selectedDays == 30} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="submit" value="30">
-                            30 дней
-                        </button>
-                        <button name="days" th:class="${selectedDays == 90} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="submit" value="90">
-                            90 дней
-                        </button>
-                        <button name="days" th:class="${selectedDays == 180} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="submit" value="180">
-                            180 дней
-                        </button>
-                        <button name="days" th:class="${selectedDays == 360} ? 'period-btn period-btn-active' : 'period-btn'"
-                                type="submit" value="360">
-                            360 дней
-                        </button>
-                    </div>
-                    <span th:replace="~{fragments/filters :: dateRange(${dateFrom}, ${dateTo})}"></span>
-                </div>
+        <!-- Заголовок + период -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">DORA метрики</h1>
+                <div class="page-subtitle">Индустриальные показатели эффективности инженерной команды</div>
             </div>
+            <div class="page-header-right">
+                <div class="period-segmented">
+                    <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">7д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">30д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">90д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">180д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">360д
+                    </button>
+                </div>
+                <span class="period-info">
+                    <span th:text="${#strings.substring(dateFrom.toString(), 0, 10)}">—</span>
+                    &nbsp;→&nbsp;
+                    <span th:text="${#strings.substring(dateTo.toString(), 0, 10)}">—</span>
+                </span>
+            </div>
+        </div>
 
-            <div th:replace="~{fragments/filters :: repoFilter(${projects}, ${selectedProjectIds})}"></div>
-
-            <!-- Сохраняем days при смене репозиториев -->
-            <input id="daysHidden" name="days" th:value="${selectedDays}" type="hidden">
-        </form>
+        <!-- Фильтр репозиториев -->
+        <div class="repo-filter-row" th:if="${allProjects != null and allProjects.size() > 1}">
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3)">Репозитории</span>
+            <div class="filter-checkboxes">
+                <th:block th:each="project : ${allProjects}">
+                    <label class="filter-checkbox-label">
+                        <input class="filter-project-check" onchange="applyFilters()"
+                               th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
+                               th:value="${project.id}" type="checkbox">
+                        <span class="filter-chip-check">✓</span>
+                        <span th:text="${project.name}">repo</span>
+                    </label>
+                </th:block>
+            </div>
+        </div>
 
         <!-- ── Lead Time ─────────────────────────────────────────────────────────── -->
 
@@ -193,15 +206,43 @@
     /*<![CDATA[*/
     window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    var PERIOD = /*[[${selectedPeriod}]]*/ 'LAST_30_DAYS';
     /*]]>*/
 </script>
 <script src="/js/sidebar.js"></script>
 <script>
-    document.querySelectorAll('.period-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            document.getElementById('daysHidden').disabled = true;
-        });
-    });
+    // Restore saved period on load (if no explicit URL param)
+    (function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('period')) {
+            try {
+                const saved = localStorage.getItem('gl_dora_period');
+                if (saved && saved !== 'LAST_30_DAYS') {
+                    window.location.replace('/dora?period=' + saved);
+                }
+            } catch (e) { /* ignore */ }
+        }
+    }());
+
+    function getProjectIds() {
+        return [...document.querySelectorAll('.filter-project-check:checked')].map(cb => cb.value);
+    }
+
+    function navigateDora(period, projectIds) {
+        try { localStorage.setItem('gl_dora_period', period); } catch (e) { /* ignore */ }
+        const params = new URLSearchParams();
+        params.set('period', period);
+        projectIds.forEach(id => params.append('projectIds', id));
+        window.location.href = '/dora?' + params.toString();
+    }
+
+    function applyFilters() {
+        navigateDora(PERIOD, getProjectIds());
+    }
+
+    function applyFiltersWithPeriod(period) {
+        navigateDora(period, getProjectIds());
+    }
 </script>
 <script th:inline="javascript">
     const chartData = JSON.parse([[${chartJson}]]);
