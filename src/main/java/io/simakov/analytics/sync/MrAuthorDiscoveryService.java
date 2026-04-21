@@ -42,12 +42,15 @@ public class MrAuthorDiscoveryService {
      * @return number of new users created
      */
     @Transactional
-    public int discoverAndSave(Long workspaceId, List<Long> projectIds) {
+    public int discoverAndSave(Long workspaceId,
+                               List<Long> projectIds) {
         List<MrAuthorProjection> authors = mergeRequestRepository.findDistinctAuthorsByProjectIds(projectIds);
         int created = 0;
         for (MrAuthorProjection author : authors) {
             Long gitlabUserId = author.getAuthorGitlabUserId();
-            String authorName = author.getAuthorName() != null ? author.getAuthorName() : "Unknown";
+            String authorName = author.getAuthorName() != null
+                ? author.getAuthorName()
+                : "Unknown";
             String username = author.getAuthorUsername();
 
             if (aliasRepository.existsByGitlabUserId(gitlabUserId)) {
@@ -94,16 +97,16 @@ public class MrAuthorDiscoveryService {
             if (email == null || email.isBlank() || gitlabUserId == null) {
                 continue;
             }
-            TrackedUserAlias existing = aliasRepository.findByGitlabUserId(gitlabUserId).orElse(null);
+            TrackedUserAlias existing = aliasRepository.findFirstByGitlabUserId(gitlabUserId).orElse(null);
             if (existing == null) {
                 continue; // user not tracked — skip
             }
             if (!aliasRepository.existsByTrackedUserIdAndEmail(existing.getTrackedUserId(), email)) {
+                // Save email-only alias: gitlabUserId stays only on the original alias row
+                // so that findFirstByGitlabUserId always returns exactly one result.
                 aliasRepository.save(TrackedUserAlias.builder()
                     .trackedUserId(existing.getTrackedUserId())
-                    .gitlabUserId(gitlabUserId)
                     .email(email)
-                    .username(existing.getUsername())
                     .build());
                 created++;
                 log.debug("Linked commit email {} to trackedUser={}", email, existing.getTrackedUserId());
