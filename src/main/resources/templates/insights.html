@@ -20,6 +20,9 @@
     <!-- ── Основная область ─────────────────────────────── -->
     <main class="report-main">
 
+        <!-- Карточки синхронизации (Phase 1 и Phase 2) -->
+        <div id="sync-banners"></div>
+
         <!-- Заголовок + период -->
         <div class="page-header">
             <div>
@@ -32,19 +35,24 @@
                 <div class="period-segmented">
                     <button onclick="applyPeriod('LAST_7_DAYS')"
                             th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">7д</button>
+                            type="button">7д
+                    </button>
                     <button onclick="applyPeriod('LAST_30_DAYS')"
                             th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">30д</button>
+                            type="button">30д
+                    </button>
                     <button onclick="applyPeriod('LAST_90_DAYS')"
                             th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">90д</button>
+                            type="button">90д
+                    </button>
                     <button onclick="applyPeriod('LAST_180_DAYS')"
                             th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">180д</button>
+                            type="button">180д
+                    </button>
                     <button onclick="applyPeriod('LAST_360_DAYS')"
                             th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
-                            type="button">360д</button>
+                            type="button">360д
+                    </button>
                 </div>
             </div>
         </div>
@@ -74,21 +82,21 @@
                         <span class="insight-meta-count" th:text="'· ' + ${algoCount} + ' активных'">· 0 активных</span>
                     </div>
                     <div class="insight-meta-desc">
-                        Детерминированные правила на метриках: пороги, дельты, распределения (Gini).
-                        Прозрачные — виден конкретный triggered rule.
+                        Детерминированные правила на метриках: пороги, дельты, распределения.
+                        Прозрачные — видно какое именно правило сработало.
                     </div>
                 </div>
             </div>
-            <div class="insight-meta-card insight-meta-card-ai">
+            <div class="insight-meta-card insight-meta-card-ai insight-meta-card-disabled">
                 <div class="insight-meta-icon insight-meta-icon-ai">✦</div>
                 <div>
                     <div class="insight-meta-title">
                         AI-рекомендации
                         <span class="insight-meta-count">· 0 сгенерировано</span>
-                        <span class="badge-soon">Soon</span>
+                        <span class="badge-soon">Скоро</span>
                     </div>
                     <div class="insight-meta-desc">
-                        LLM анализирует паттерны (burnout, риски, рост) и формулирует рекомендации текстом.
+                        LLM анализирует паттерны (риски, рост, выгорание) и формулирует рекомендации.
                         В будущем — по подписке.
                     </div>
                 </div>
@@ -100,33 +108,38 @@
             <div class="insight-filter-group" id="kind-filter">
                 <button class="insight-filter-btn insight-filter-btn-active"
                         data-kind="all"
-                        type="button"
-                        th:text="'Все · ' + ${totalCount}">Все</button>
+                        th:text="'Все · ' + ${totalCount}"
+                        type="button">Все
+                </button>
                 <button class="insight-filter-btn insight-filter-btn-bad"
                         data-kind="bad"
-                        type="button"
-                        th:text="'Проблемы · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).BAD) ?: 0}">Проблемы</button>
+                        th:text="'Проблемы · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).BAD) ?: 0}"
+                        type="button">Проблемы
+                </button>
                 <button class="insight-filter-btn insight-filter-btn-warn"
                         data-kind="warn"
-                        type="button"
-                        th:text="'Внимание · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).WARN) ?: 0}">Внимание</button>
+                        th:text="'Внимание · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).WARN) ?: 0}"
+                        type="button">Внимание
+                </button>
                 <button class="insight-filter-btn insight-filter-btn-good"
                         data-kind="good"
-                        type="button"
-                        th:text="'Улучшения · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).GOOD) ?: 0}">Улучшения</button>
+                        th:text="'Улучшения · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).GOOD) ?: 0}"
+                        type="button">Улучшения
+                </button>
                 <button class="insight-filter-btn insight-filter-btn-info"
                         data-kind="info"
-                        type="button"
-                        th:text="'Инфо · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).INFO) ?: 0}">Инфо</button>
+                        th:text="'Инфо · ' + ${kindCounts.get(T(io.simakov.analytics.insights.model.InsightKind).INFO) ?: 0}"
+                        type="button">Инфо
+                </button>
             </div>
-            <span class="insight-sort-label">severity ↓</span>
+            <span class="insight-sort-label">важность ↓</span>
         </div>
 
         <!-- Список инсайтов -->
         <div class="insight-rows" id="insight-list">
 
             <!-- Пустое состояние -->
-            <div th:if="${#lists.isEmpty(insights)}" class="insight-empty">
+            <div class="insight-empty" th:if="${#lists.isEmpty(insights)}">
                 <div class="insight-empty-icon">✓</div>
                 <div class="insight-empty-title">Всё в порядке</div>
                 <div class="insight-empty-desc">
@@ -180,8 +193,8 @@
                     </div>
 
                     <!-- Кнопка действия -->
-                    <a href="/report"
-                       class="insight-row-action"
+                    <a class="insight-row-action"
+                       href="/report"
                        th:classappend="'insight-row-action--' + ${ins.kind().cssValue()}">
                         Смотреть →
                     </a>
@@ -214,12 +227,13 @@
                     <option value="">— выберите источник —</option>
                     <option th:each="source : ${sources}"
                             th:text="${source.name}"
-                            th:value="${source.id}">Source</option>
+                            th:value="${source.id}">Source
+                    </option>
                 </select>
             </div>
             <div th:unless="${sources != null and sources.size() > 1}">
-                <input type="hidden" id="project-source-id"
-                       th:value="${sources != null and !sources.isEmpty()} ? ${sources[0].id} : ''"/>
+                <input id="project-source-id" th:value="${sources != null and !sources.isEmpty()} ? ${sources[0].id} : ''"
+                       type="hidden"/>
             </div>
             <div class="form-group">
                 <label class="form-label">Access Token</label>
@@ -233,7 +247,8 @@
                      style="margin-top:10px;min-height:18px;line-height:1.5"></div>
                 <div id="token-check-btn-wrap" style="margin-top:14px">
                     <button class="btn-secondary" id="btn-check-token"
-                            onclick="validateTokenAndFetch()" type="button">Проверить токен</button>
+                            onclick="validateTokenAndFetch()" type="button">Проверить токен
+                    </button>
                 </div>
             </div>
             <div class="hidden" id="repo-list-wrap" style="margin-bottom:16px">
@@ -244,7 +259,8 @@
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
             <button class="btn-primary" disabled id="btn-add-project"
-                    onclick="addProject()">Добавить и синхронизировать</button>
+                    onclick="addProject()">Добавить и синхронизировать
+            </button>
         </div>
     </div>
 </div>
@@ -276,6 +292,12 @@
     </div>
 </div>
 
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+    window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    /*]]>*/
+</script>
 <script th:src="@{/js/sidebar.js}"></script>
 
 <script>
@@ -287,10 +309,14 @@
 
     function applyProjectFilter() {
         const checked = Array.from(document.querySelectorAll('.filter-project-check:checked'))
-            .map(function (c) { return c.value; });
+            .map(function (c) {
+                return c.value;
+            });
         const url = new URL(window.location.href);
         url.searchParams.delete('projectIds');
-        checked.forEach(function (id) { url.searchParams.append('projectIds', id); });
+        checked.forEach(function (id) {
+            url.searchParams.append('projectIds', id);
+        });
         window.location.href = url.toString();
     }
 
