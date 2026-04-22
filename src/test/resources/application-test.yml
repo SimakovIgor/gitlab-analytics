@@ -26,8 +26,8 @@ app:
     project-key: MI
     read-timeout-seconds: 10
     max-results: 100
-    impact-start-field-id: customfield_10400
-    impact-end-field-id: customfield_10401
+    impact-start-field-id: customfield_13901
+    impact-end-field-id: customfield_13902
   snapshot:
     cron: "-"
     window-days: 30
