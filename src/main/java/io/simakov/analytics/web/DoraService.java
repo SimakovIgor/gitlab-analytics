@@ -698,7 +698,7 @@ public class DoraService {
          * SVG stroke-dasharray offset for the health ring (locale-safe, always uses dot).
          */
         public String dashOffset() {
-            return String.format(java.util.Locale.US, "%.1f", healthScore * 1.131);
+            return String.format(java.util.Locale.US, "%.1f", healthScore * 1.068);
         }
     }
 
