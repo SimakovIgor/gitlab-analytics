@@ -3690,9 +3690,8 @@ body {
 }
 
 .svc-health-title {
-    font-family: var(--font-display);
-    font-size: 20px;
-    font-weight: 400;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--fg-0);
 }
 
@@ -3705,6 +3704,7 @@ body {
 .svc-health-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .svc-th {
@@ -3714,23 +3714,29 @@ body {
     letter-spacing: 0.08em;
     color: var(--fg-3);
     padding: 10px 16px;
-    text-align: center;
-    border-bottom: 1px solid var(--border-1);
+    text-align: right;
+    border-bottom: 1px solid var(--border-2);
+    background: var(--bg-2);
 }
 
 .svc-th-service {
     text-align: left;
     padding-left: 4px;
+    width: 16%;
 }
 
 .svc-th-health {
     text-align: left;
-    width: 300px;
+    width: auto;
+}
+
+.svc-th-num {
+    width: 9%;
 }
 
 .svc-th-trend {
     text-align: center;
-    width: 60px;
+    width: 6%;
 }
 
 .svc-row {
@@ -3744,13 +3750,12 @@ body {
 .svc-td {
     padding: 18px 16px;
     vertical-align: middle;
-    text-align: center;
+    text-align: right;
 }
 
 .svc-td-service {
     text-align: left;
     padding-left: 4px;
-    min-width: 160px;
 }
 
 .svc-name {
@@ -3768,7 +3773,6 @@ body {
 
 .svc-td-health {
     text-align: left;
-    min-width: 260px;
 }
 
 .svc-health-cell {
@@ -3880,7 +3884,7 @@ body {
 }
 
 .svc-td-num {
-    text-align: center;
+    text-align: right;
     font-size: 15px;
     color: var(--fg-1);
     white-space: nowrap;
@@ -3892,6 +3896,12 @@ body {
     margin-left: 1px;
 }
 
+.svc-cfr-warn {
+    color: var(--warn);
+    font-style: italic;
+    font-weight: 600;
+}
+
 .svc-cfr-bad {
     color: var(--bad);
     font-weight: 600;
@@ -3899,7 +3909,6 @@ body {
 
 .svc-td-trend {
     text-align: center;
-    width: 60px;
 }
 
 .svc-trend-arrow {

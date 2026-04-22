@@ -268,12 +268,12 @@
                         <span class="num" th:text="${row.deploysPerWeek()}">0</span><span class="svc-unit">/нед</span>
                     </td>
                     <td class="svc-td svc-td-num">
-                        <span class="num" th:text="${row.leadTimeDays() != null ? #numbers.formatDecimal(row.leadTimeDays(), 1, 1) : '—'}">—</span>
-                        <span class="svc-unit" th:if="${row.leadTimeDays() != null}">д</span>
+                        <span class="num" th:text="${row.leadTimeHours() != null ? #numbers.formatDecimal(row.leadTimeHours(), 1, 1) : '—'}">—</span>
+                        <span class="svc-unit" th:if="${row.leadTimeHours() != null}">ч</span>
                     </td>
                     <td class="svc-td svc-td-num">
                         <span class="num svc-cfr-value"
-                              th:classappend="${row.cfrPercent() != null and row.cfrPercent() > 15 ? 'svc-cfr-bad' : ''}"
+                              th:classappend="${row.cfrPercent() != null and row.cfrPercent() > 15 ? 'svc-cfr-bad' : (row.cfrPercent() != null and row.cfrPercent() > 10 ? 'svc-cfr-warn' : '')}"
                               th:text="${row.cfrPercent() != null ? #numbers.formatDecimal(row.cfrPercent(), 1, 0) + '%' : '—'}">—</span>
                     </td>
                     <td class="svc-td svc-td-num">
