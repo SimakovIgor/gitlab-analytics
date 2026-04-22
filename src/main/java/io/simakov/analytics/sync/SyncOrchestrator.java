@@ -110,16 +110,10 @@ public class SyncOrchestrator {
         log.info("Starting sync job {} (phase=RELEASE)", jobId);
         try {
             ManualSyncRequest request = syncJobService.getPayload(jobId);
-            List<Long> projectIds = request.projectIds();
-            int total = projectIds.size();
-            syncJobService.updateProgress(jobId, 0, total);
-            int processed = 0;
-
-            for (Long projectId : projectIds) {
+            for (Long projectId : request.projectIds()) {
                 TrackedProject project = trackedProjectRepository.findById(projectId).orElse(null);
                 if (project == null) {
                     log.warn("RELEASE job {}: project {} not found, skipping", jobId, projectId);
-                    syncJobService.updateProgress(jobId, ++processed, total);
                     continue;
                 }
                 try {
@@ -127,7 +121,6 @@ public class SyncOrchestrator {
                 } catch (Exception e) {
                     log.error("RELEASE job {}: failed for project '{}': {}", jobId, project.getName(), e.getMessage(), e);
                 }
-                syncJobService.updateProgress(jobId, ++processed, total);
             }
             syncJobService.complete(jobId);
             log.info("RELEASE phase complete for job {}", jobId);

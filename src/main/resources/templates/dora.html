@@ -214,6 +214,80 @@
 
         </div>
 
+        <!-- ── Сервисы команды (Service Health Table) ─────────────────────── -->
+        <div class="svc-health-section" th:if="${serviceHealthRows != null and !serviceHealthRows.isEmpty()}">
+            <div class="svc-health-header">
+                <div class="svc-health-title">Сервисы команды</div>
+                <div class="svc-health-subtitle">Health score — композитный: Lead Time, Deploy Freq, CFR, активность.</div>
+            </div>
+            <table class="svc-health-table">
+                <thead>
+                <tr>
+                    <th class="svc-th svc-th-service">СЕРВИС</th>
+                    <th class="svc-th svc-th-health">HEALTH</th>
+                    <th class="svc-th svc-th-num">DEPLOYS</th>
+                    <th class="svc-th svc-th-num">LEAD TIME</th>
+                    <th class="svc-th svc-th-num">CFR</th>
+                    <th class="svc-th svc-th-num">INC.</th>
+                    <th class="svc-th svc-th-trend">ТРЕНД</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr class="svc-row" th:each="row : ${serviceHealthRows}">
+                    <td class="svc-td svc-td-service">
+                        <div class="svc-name" th:text="${row.projectName()}">service</div>
+                        <div class="svc-mr-count" th:text="${row.mrCount() + ' MR за период'}">0 MR за период</div>
+                    </td>
+                    <td class="svc-td svc-td-health">
+                        <div class="svc-health-cell">
+                            <div class="svc-ring-wrap">
+                                <svg class="svc-ring" viewBox="0 0 44 44">
+                                    <circle class="svc-ring-bg" cx="22" cy="22" r="18" />
+                                    <circle class="svc-ring-fg"
+                                            th:classappend="${row.healthScore() >= 75 ? 'svc-ring-good' : (row.healthScore() >= 50 ? 'svc-ring-warn' : 'svc-ring-bad')}"
+                                            cx="22" cy="22" r="18"
+                                            th:style="'stroke-dasharray:' + ${row.dashOffset()} + ' 113.1'" />
+                                </svg>
+                                <span class="svc-ring-label num" th:text="${row.healthScore()}">0</span>
+                            </div>
+                            <div class="svc-health-bar-wrap">
+                                <div class="svc-health-bar"
+                                     th:classappend="${row.healthScore() >= 75 ? 'svc-bar-good' : (row.healthScore() >= 50 ? 'svc-bar-warn' : 'svc-bar-bad')}"
+                                     th:style="'width:' + ${row.healthScore()} + '%'"></div>
+                                <div class="svc-bar-ticks">
+                                    <span class="svc-bar-tick" style="left:0">0</span>
+                                    <span class="svc-bar-tick" style="left:60%">60</span>
+                                    <span class="svc-bar-tick" style="left:80%">80</span>
+                                    <span class="svc-bar-tick" style="left:100%">100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="svc-td svc-td-num">
+                        <span class="num" th:text="${row.deploysPerWeek()}">0</span><span class="svc-unit">/нед</span>
+                    </td>
+                    <td class="svc-td svc-td-num">
+                        <span class="num" th:text="${row.leadTimeDays() != null ? #numbers.formatDecimal(row.leadTimeDays(), 1, 1) : '—'}">—</span>
+                        <span class="svc-unit" th:if="${row.leadTimeDays() != null}">д</span>
+                    </td>
+                    <td class="svc-td svc-td-num">
+                        <span class="num svc-cfr-value"
+                              th:classappend="${row.cfrPercent() != null and row.cfrPercent() > 15 ? 'svc-cfr-bad' : ''}"
+                              th:text="${row.cfrPercent() != null ? #numbers.formatDecimal(row.cfrPercent(), 1, 0) + '%' : '—'}">—</span>
+                    </td>
+                    <td class="svc-td svc-td-num">
+                        <span class="num" th:text="${row.incidents()}">0</span>
+                    </td>
+                    <td class="svc-td svc-td-trend">
+                        <span class="svc-trend-arrow"
+                              th:classappend="${row.trend() == 'up' ? 'svc-trend-up' : (row.trend() == 'down' ? 'svc-trend-down' : 'svc-trend-flat')}"
+                              th:text="${row.trend() == 'up' ? '↑' : (row.trend() == 'down' ? '↓' : '→')}">→</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- ── Lead Time chart ────────────────────────────────────────────────── -->
         <div class="chart-card">
             <div class="dora-chart-header">
@@ -268,8 +342,19 @@
         <div class="chart-card" th:if="${mttrHours != null}">
             <div class="dora-chart-header">
                 <div>
-                    <div class="chart-title">MTTR · по неделям</div>
-                    <div class="dora-chart-subtitle">Среднее время восстановления после инцидента (часы)</div>
+                    <div class="chart-title">MTTR · по инцидентам</div>
+                    <div class="dora-chart-subtitle">Каждый бар — один инцидент, высота — время восстановления (часы)</div>
+                </div>
+                <div class="dora-chart-legend">
+                    <span class="dora-legend-item">
+                        <span class="dora-legend-line" style="background:#f59e0b;width:12px;height:12px;border-radius:2px;display:inline-block"></span>Инцидент
+                    </span>
+                    <span class="dora-legend-item">
+                        <span class="dora-legend-line dora-legend-line-dashed" style="border-color:#6366f1"></span>Тренд
+                    </span>
+                    <span class="dora-legend-item">
+                        <span class="dora-legend-line dora-legend-line-dashed" style="border-color:#ef4444"></span>Порог (4ч)
+                    </span>
                 </div>
             </div>
             <div class="chart-wrap">
@@ -620,12 +705,12 @@
 
     // MTTR sparkline + trend (lower is better — same direction as lead time)
     const mttrSparkSvg = document.getElementById('mttrSparkline');
-    if (mttrSparkSvg && mttrChartData.datasets && mttrChartData.datasets[0]) {
-        drawSparkline(mttrSparkSvg, mttrChartData.datasets[0].data, '#f59e0b');
+    if (mttrSparkSvg && mttrChartData.values && mttrChartData.values.length > 0) {
+        drawSparkline(mttrSparkSvg, mttrChartData.values, '#f59e0b');
     }
     const mttrTrendEl = document.getElementById('mttrTrend');
-    if (mttrTrendEl && mttrChartData.datasets && mttrChartData.datasets[0]) {
-        renderTrendArrow(mttrTrendEl, mttrChartData.datasets[0].data);
+    if (mttrTrendEl && mttrChartData.values && mttrChartData.values.length > 0) {
+        renderTrendArrow(mttrTrendEl, mttrChartData.values);
     }
 
     // Main weekly chart
@@ -795,38 +880,90 @@
         });
     }
 </script>
-<script>
-    // MTTR line chart
+<script th:inline="javascript">
+    // MTTR bar chart — each bar is one incident, x-axis = weeks
     const mttrCanvas = document.getElementById('mttrChart');
+    const JIRA_BASE_URL = /*[[${jiraBaseUrl}]]*/ '';
     if (mttrCanvas && mttrChartData.labels && mttrChartData.labels.length > 0) {
-        new Chart(mttrCanvas, {
-            type: 'line',
+        const mttrValues = mttrChartData.values || [];
+        const mttrKeys = mttrChartData.jiraKeys || [];
+        const mttrTrend = linregTrend(mttrValues);
+        const mttrThreshold = mttrValues.map(function () { return 4; });
+
+        // Color bars: amber if under threshold, red if over
+        const mttrBarColors = mttrValues.map(function (v) {
+            return v > 4 ? 'rgba(239,68,68,0.55)' : 'rgba(245,158,11,0.55)';
+        });
+        const mttrBorderColors = mttrValues.map(function (v) {
+            return v > 4 ? '#ef4444' : '#f59e0b';
+        });
+
+        const mttrChart = new Chart(mttrCanvas, {
+            type: 'bar',
             data: {
                 labels: mttrChartData.labels,
-                datasets: [{
-                    label: 'MTTR (ч)',
-                    data: mttrChartData.datasets[0].data,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245,158,11,0.12)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    borderWidth: 2.2,
-                    pointBackgroundColor: '#f59e0b'
-                }]
+                datasets: [
+                    {
+                        label: 'Время восстановления',
+                        data: mttrValues,
+                        backgroundColor: mttrBarColors,
+                        borderColor: mttrBorderColors,
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        order: 2
+                    },
+                    {
+                        label: 'Тренд',
+                        data: mttrTrend,
+                        type: 'line',
+                        borderColor: '#6366f1',
+                        backgroundColor: 'transparent',
+                        borderDash: [6, 4],
+                        tension: 0,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        spanGaps: true,
+                        order: 1
+                    },
+                    {
+                        label: 'Порог (4ч)',
+                        data: mttrThreshold,
+                        type: 'line',
+                        borderColor: 'rgba(239,68,68,0.4)',
+                        backgroundColor: 'transparent',
+                        borderDash: [4, 3],
+                        tension: 0,
+                        pointRadius: 0,
+                        borderWidth: 1.5,
+                        order: 0
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                onClick: function (evt, elements) {
+                    if (elements.length > 0 && elements[0].datasetIndex === 0 && JIRA_BASE_URL) {
+                        var idx = elements[0].index;
+                        var key = mttrKeys[idx];
+                        if (key) {
+                            window.open(JIRA_BASE_URL + '/browse/' + key, '_blank');
+                        }
+                    }
+                },
                 plugins: {
                     legend: {display: false},
                     tooltip: {
                         callbacks: {
+                            title: function (ctx) {
+                                var idx = ctx[0].dataIndex;
+                                var key = mttrKeys[idx] || '';
+                                var week = mttrChartData.labels[idx] || '';
+                                return key + ' (' + week + ')';
+                            },
                             label: function (ctx) {
-                                if (ctx.parsed.y == null) {
-                                    return null;
-                                }
-                                return 'MTTR: ' + ctx.parsed.y + ' ч';
+                                if (ctx.datasetIndex !== 0) return null;
+                                return ctx.parsed.y + ' ч';
                             }
                         }
                     }
@@ -843,6 +980,12 @@
                     }
                 }
             }
+        });
+
+        // Pointer cursor on bar hover
+        mttrCanvas.addEventListener('mousemove', function (e) {
+            var pts = mttrChart.getElementsAtEventForMode(e, 'nearest', {intersect: true}, false);
+            mttrCanvas.style.cursor = (pts.length > 0 && pts[0].datasetIndex === 0 && JIRA_BASE_URL) ? 'pointer' : '';
         });
     }
 </script>

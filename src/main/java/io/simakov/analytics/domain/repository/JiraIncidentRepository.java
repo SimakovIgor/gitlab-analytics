@@ -89,21 +89,23 @@ public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long
                                   Instant dateFrom);
 
     /**
-     * Weekly average MTTR in hours for the chart.
+     * Individual incidents with recovery duration for the MTTR bar chart.
+     * Each row is one incident, ordered by impact start time.
      */
     @Query(value = """
         SELECT TO_CHAR(DATE_TRUNC('week', ji.impact_started_at), 'IYYY-"W"IW') AS weekLabel,
-               AVG(EXTRACT(EPOCH FROM (ji.impact_ended_at - ji.impact_started_at)) / 3600.0) AS avgHours
+               ji.jira_key AS jiraKey,
+               ji.impact_started_at AS impactStartedAt,
+               EXTRACT(EPOCH FROM (ji.impact_ended_at - ji.impact_started_at)) / 3600.0 AS durationHours
         FROM jira_incident ji
         WHERE ji.tracked_project_id IN :projectIds
           AND ji.impact_started_at IS NOT NULL
           AND ji.impact_ended_at IS NOT NULL
           AND ji.impact_ended_at > ji.impact_started_at
           AND ji.impact_started_at >= :dateFrom
-        GROUP BY DATE_TRUNC('week', ji.impact_started_at)
-        ORDER BY DATE_TRUNC('week', ji.impact_started_at)
+        ORDER BY ji.impact_started_at
         """,
            nativeQuery = true)
-    List<MttrWeekProjection> findMttrByWeek(List<Long> projectIds,
-                                            Instant dateFrom);
+    List<MttrIncidentProjection> findMttrIncidents(List<Long> projectIds,
+                                                    Instant dateFrom);
 }

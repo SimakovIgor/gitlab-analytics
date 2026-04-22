@@ -10,7 +10,7 @@ import io.simakov.analytics.domain.repository.DeployFrequencyWeekProjection;
 import io.simakov.analytics.domain.repository.IncidentWeekProjection;
 import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
-import io.simakov.analytics.domain.repository.MttrWeekProjection;
+import io.simakov.analytics.domain.repository.MttrIncidentProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeSummaryProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeWeekProjection;
 import io.simakov.analytics.domain.repository.ReleaseTagRepository;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("PMD.GodClass")
+@SuppressWarnings({"PMD.GodClass", "PMD.CyclomaticComplexity"})
 public class DoraService {
 
     private static final DateTimeFormatter DATE_FMT =
@@ -245,30 +245,22 @@ public class DoraService {
 
     private String buildMttrChartJson(List<Long> projectIds,
                                       Instant dateFrom) {
-        List<MttrWeekProjection> weekly = jiraIncidentRepository.findMttrByWeek(projectIds, dateFrom);
+        List<MttrIncidentProjection> incidents =
+            jiraIncidentRepository.findMttrIncidents(projectIds, dateFrom);
 
         List<String> labels = new ArrayList<>();
+        List<String> jiraKeys = new ArrayList<>();
         List<Double> values = new ArrayList<>();
-        for (MttrWeekProjection row : weekly) {
+        for (MttrIncidentProjection row : incidents) {
             labels.add(row.getWeekLabel());
-            values.add(row.getAvgHours() != null
-                ? round(row.getAvgHours())
-                : 0.0);
+            jiraKeys.add(row.getJiraKey());
+            values.add(round(row.getDurationHours()));
         }
 
         Map<String, Object> chart = Map.of(
             "labels", labels,
-            "datasets", List.of(
-                Map.of(
-                    "label", "MTTR (ч)",
-                    "data", values,
-                    "borderColor", "#f59e0b",
-                    "backgroundColor", "rgba(245,158,11,0.12)",
-                    "fill", true,
-                    "tension", 0.3,
-                    "pointRadius", 3
-                )
-            )
+            "jiraKeys", jiraKeys,
+            "values", values
         );
 
         try {
@@ -535,6 +527,179 @@ public class DoraService {
             return null;
         }
         return round(avgHours);
+    }
+
+    /**
+     * Builds per-project health rows for the "Сервисы команды" table.
+     * Health score (0-100) is a weighted composite of Lead Time, Deploy Freq, CFR, and activity.
+     */
+    @Transactional(readOnly = true)
+    @SuppressWarnings({"checkstyle:CyclomaticComplexity", "PMD.CognitiveComplexity"})
+    public List<ServiceHealthRow> buildServiceHealthData(List<Long> projectIds,
+                                                         int days) {
+        List<Long> resolvedIds = resolveProjectIds(projectIds);
+        List<TrackedProject> projects = trackedProjectRepository.findAllById(resolvedIds);
+        Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
+        Instant prevFrom = dateFrom.minus(days, ChronoUnit.DAYS);
+
+        List<ServiceHealthRow> rows = new ArrayList<>();
+        for (TrackedProject project : projects) {
+            List<Long> pid = List.of(project.getId());
+            rows.add(buildSingleProjectHealth(project, pid, days, dateFrom, prevFrom));
+        }
+        rows.sort(Comparator.comparingInt(ServiceHealthRow::healthScore).reversed());
+        return rows;
+    }
+
+    private ServiceHealthRow buildSingleProjectHealth(TrackedProject project,
+                                                       List<Long> pid,
+                                                       int days,
+                                                       Instant dateFrom,
+                                                       Instant prevFrom) {
+        // MR count
+        List<RealLeadTimeSummaryProjection> ltRows =
+            mergeRequestRepository.findRealLeadTimeSummary(pid, dateFrom);
+        int mrCount = ltRows.isEmpty() || ltRows.getFirst().getMrCount() == null
+            ? 0
+            : ltRows.getFirst().getMrCount().intValue();
+
+        // Lead Time median (days) — same value as DORA Lead Time for Changes card
+        Double medianDays = ltRows.isEmpty() || ltRows.getFirst().getMedianDays() == null
+            ? null
+            : round(ltRows.getFirst().getMedianDays());
+        DoraRating ltRating = DoraMetric.LEAD_TIME_FOR_CHANGES.computeRating(medianDays);
+
+        // Deploy Frequency
+        long totalDeploys = releaseTagRepository.countProdDeploysInPeriod(pid, dateFrom);
+        double deploysPerDay = days > 0 ? (double) totalDeploys / days : 0;
+        double deploysPerWeek = round(deploysPerDay * 7);
+        DoraRating dfRating = DoraMetric.DEPLOYMENT_FREQUENCY.computeRating(
+            totalDeploys == 0 ? null : deploysPerDay);
+
+        // CFR
+        long incidents = jiraIncidentRepository.countIncidentsInPeriod(pid, dateFrom);
+        Double cfrPercent = totalDeploys > 0
+            ? round(incidents * 100.0 / totalDeploys)
+            : null;
+        DoraRating cfrRating = DoraMetric.CHANGE_FAILURE_RATE.computeRating(cfrPercent);
+
+        // Health score
+        int healthScore = computeHealthScore(ltRating, dfRating, cfrRating, mrCount, days);
+
+        // Trend: compare with previous period
+        String trend = computeTrend(pid, days, healthScore, dateFrom, prevFrom);
+
+        return new ServiceHealthRow(
+            project.getId(),
+            project.getName(),
+            mrCount,
+            healthScore,
+            deploysPerWeek,
+            medianDays,
+            cfrPercent,
+            incidents,
+            trend
+        );
+    }
+
+    private static int computeHealthScore(DoraRating ltRating,
+                                           DoraRating dfRating,
+                                           DoraRating cfrRating,
+                                           int mrCount,
+                                           int days) {
+        // Each DORA rating → 0-100 sub-score
+        int ltScore = ratingToScore(ltRating);
+        int dfScore = ratingToScore(dfRating);
+        int cfrScore = ratingToScore(cfrRating);
+
+        // Activity: MR/week → score
+        double mrsPerWeek = days > 0 ? mrCount * 7.0 / days : 0;
+        int activityScore;
+        if (mrsPerWeek >= 10) {
+            activityScore = 100;
+        } else if (mrsPerWeek >= 5) {
+            activityScore = 80;
+        } else if (mrsPerWeek >= 2) {
+            activityScore = 55;
+        } else if (mrsPerWeek >= 1) {
+            activityScore = 35;
+        } else {
+            activityScore = 15;
+        }
+
+        // Weighted average: LT 30%, DF 25%, CFR 25%, Activity 20%
+        double raw = ltScore * 0.30 + dfScore * 0.25 + cfrScore * 0.25 + activityScore * 0.20;
+        return (int) Math.round(raw);
+    }
+
+    private static int ratingToScore(DoraRating rating) {
+        return switch (rating) {
+            case ELITE -> 100;
+            case HIGH -> 80;
+            case MEDIUM -> 55;
+            case LOW -> 25;
+            case NO_DATA -> 50;
+        };
+    }
+
+    private String computeTrend(List<Long> pid,
+                                 int days,
+                                 int currentScore,
+                                 Instant dateFrom,
+                                 Instant prevFrom) {
+        int prevScore = computePeriodHealthScore(pid, days, prevFrom, dateFrom);
+        int diff = currentScore - prevScore;
+        if (diff > 3) {
+            return "up";
+        }
+        if (diff < -3) {
+            return "down";
+        }
+        return "flat";
+    }
+
+    private int computePeriodHealthScore(List<Long> pid,
+                                          int days,
+                                          Instant from,
+                                          Instant to) {
+        List<RealLeadTimeSummaryProjection> ltRows =
+            mergeRequestRepository.findRealLeadTimeSummaryBetween(pid, from, to);
+        Double median = ltRows.isEmpty() ? null : ltRows.getFirst().getMedianDays();
+        DoraRating ltR = DoraMetric.LEAD_TIME_FOR_CHANGES.computeRating(
+            median != null ? round(median) : null);
+
+        long deploys = releaseTagRepository.countProdDeploysInPeriodBetween(pid, from, to);
+        double dpd = days > 0 ? (double) deploys / days : 0;
+        DoraRating dfR = DoraMetric.DEPLOYMENT_FREQUENCY.computeRating(
+            deploys == 0 ? null : dpd);
+
+        long inc = jiraIncidentRepository.countIncidentsInPeriodBetween(pid, from, to);
+        Double cfr = deploys > 0 ? round(inc * 100.0 / deploys) : null;
+        DoraRating cfrR = DoraMetric.CHANGE_FAILURE_RATE.computeRating(cfr);
+
+        int mrs = ltRows.isEmpty() || ltRows.getFirst().getMrCount() == null
+            ? 0 : ltRows.getFirst().getMrCount().intValue();
+        return computeHealthScore(ltR, dfR, cfrR, mrs, days);
+    }
+
+    public record ServiceHealthRow(
+        Long projectId,
+        String projectName,
+        int mrCount,
+        int healthScore,
+        double deploysPerWeek,
+        Double leadTimeDays,
+        Double cfrPercent,
+        long incidents,
+        String trend
+    ) {
+
+        /**
+         * SVG stroke-dasharray offset for the health ring (locale-safe, always uses dot).
+         */
+        public String dashOffset() {
+            return String.format(java.util.Locale.US, "%.1f", healthScore * 1.131);
+        }
     }
 
     public record ReleaseRowDto(

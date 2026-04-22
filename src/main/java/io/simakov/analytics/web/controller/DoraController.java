@@ -6,6 +6,7 @@ import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.dora.model.DoraMetric;
 import io.simakov.analytics.dora.model.DoraRating;
 import io.simakov.analytics.jira.JiraIncidentSyncService;
+import io.simakov.analytics.jira.JiraProperties;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
@@ -41,6 +42,7 @@ public class DoraController {
     private final SettingsService settingsService;
     private final SyncOrchestrator syncOrchestrator;
     private final JiraIncidentSyncService jiraIncidentSyncService;
+    private final JiraProperties jiraProperties;
 
     @GetMapping("/dora")
     public String dora(OAuth2AuthenticationToken authentication,
@@ -90,10 +92,17 @@ public class DoraController {
         model.addAttribute("selectedPeriod", periodType.name());
         model.addAttribute("dateFrom", java.time.LocalDate.now().minusDays(days));
         model.addAttribute("dateTo", java.time.LocalDate.now());
+        List<DoraService.ServiceHealthRow> serviceHealth =
+            doraService.buildServiceHealthData(effectiveProjectIds, days);
+        model.addAttribute("serviceHealthRows", serviceHealth);
         populateMetricAttributes(model, leadTime, deployFreq, cfr, mttr);
         model.addAttribute("releases", releases);
         model.addAttribute("doraMetrics", DoraMetric.values());
         model.addAttribute("jiraEnabled", true);
+        String jiraBase = jiraProperties.baseUrl() != null
+            ? jiraProperties.baseUrl().replaceAll("/+$", "")
+            : "";
+        model.addAttribute("jiraBaseUrl", jiraBase);
 
         return "dora";
     }
