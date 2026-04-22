@@ -8,6 +8,7 @@ import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.security.WorkspaceContext;
+import io.simakov.analytics.sync.ReleaseSyncService;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,6 +38,7 @@ public class SyncController {
 
     private final SyncJobService syncJobService;
     private final SyncOrchestrator syncOrchestrator;
+    private final ReleaseSyncService releaseSyncService;
     private final TrackedProjectRepository trackedProjectRepository;
 
     @PostMapping("/manual")
@@ -64,6 +66,16 @@ public class SyncController {
         syncOrchestrator.orchestrateAsync(job.getId(), request, SyncJobPhase.ENRICH);
 
         return SyncJobResponse.from(job);
+    }
+
+    @PostMapping("/releases")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Trigger release sync for current workspace",
+               description = "Fetches GitLab releases, resolves prod deploy timestamps, and attributes MRs to releases.")
+    public void triggerReleaseSync() {
+        Long workspaceId = WorkspaceContext.get();
+        log.info("Manual release sync triggered for workspace={}", workspaceId);
+        releaseSyncService.syncReleasesForWorkspace(workspaceId);
     }
 
     @GetMapping("/jobs/{jobId}")

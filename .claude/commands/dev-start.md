@@ -1,16 +1,16 @@
 # dev-start
 
-Запускает полное локальное окружение: PostgreSQL + Prometheus + Grafana (Docker) → Spring Boot.
+Запускает локальное окружение: PostgreSQL (Docker) → Spring Boot.
 
 ## Флаги
 
-| Флаг              | Описание                                                                |
-|-------------------|-------------------------------------------------------------------------|
-| _(без флагов)_    | PostgreSQL + Prometheus + Grafana + bootRun со статическим анализом     |
-| `--no-monitoring` | Только PostgreSQL + приложение                                          |
-| `--fast`          | Пропустить checkstyle/pmd/spotbugs (быстрее для итеративной разработки) |
-| `--jar`           | Запустить собранный jar вместо bootRun (быстрее, если jar уже есть)     |
-| `--fast --jar`    | Комбинация: собрать без проверок, запустить jar                         |
+| Флаг           | Описание                                                                |
+|----------------|-------------------------------------------------------------------------|
+| _(без флагов)_ | PostgreSQL + bootRun со статическим анализом (по умолчанию)             |
+| `--full`       | + Prometheus + Grafana + Portainer + Loki                               |
+| `--fast`       | Пропустить checkstyle/pmd/spotbugs (быстрее для итеративной разработки) |
+| `--jar`        | Запустить собранный jar вместо bootRun (быстрее, если jar уже есть)     |
+| `--fast --jar` | Комбинация: собрать без проверок, запустить jar                         |
 
 ## Выполни
 
@@ -28,6 +28,8 @@
 - **Swagger**: http://localhost:8080/swagger-ui.html
 - **Health**: http://localhost:8080/actuator/health
 - **Prometheus scrape**: http://localhost:8080/actuator/prometheus
+
+С флагом `--full` дополнительно:
 - **Prometheus UI**: http://localhost:9090
 - **Grafana**: http://localhost:3000 (admin / admin)
     - Dashboard **JVM / Spring Boot 3.x Statistics** — CPU, memory, GC, threads, HTTP, HikariCP

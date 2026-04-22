@@ -7,7 +7,10 @@ import io.simakov.analytics.gitlab.dto.GitLabCommitDto;
 import io.simakov.analytics.gitlab.dto.GitLabDiscussionDto;
 import io.simakov.analytics.gitlab.dto.GitLabMergeRequestDto;
 import io.simakov.analytics.gitlab.dto.GitLabMrDiffFileDto;
+import io.simakov.analytics.gitlab.dto.GitLabPipelineDto;
+import io.simakov.analytics.gitlab.dto.GitLabPipelineJobDto;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
+import io.simakov.analytics.gitlab.dto.GitLabReleaseDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
 import io.simakov.analytics.gitlab.dto.MrNetDiffStats;
@@ -230,6 +233,42 @@ public class GitLabApiClient {
             .bodyToMono(GitLabApprovalsDto.class)
             .retryWhen(retrySpec())
             .block(blockTimeout());
+    }
+
+    /**
+     * Fetch all GitLab releases for a project (tags with release metadata).
+     * Returns releases ordered by released_at descending (GitLab default).
+     */
+    public List<GitLabReleaseDto> getReleases(String baseUrl,
+                                              String token,
+                                              Long gitlabProjectId) {
+        String path = "/api/v4/projects/" + gitlabProjectId + "/releases";
+        return fetchAllPages(baseUrl, token, path, GitLabReleaseDto[].class, "");
+    }
+
+    /**
+     * Fetch all pipelines for a given git ref (tag or branch name).
+     * Used to find the pipeline that ran for a release tag.
+     */
+    public List<GitLabPipelineDto> getPipelinesForRef(String baseUrl,
+                                                      String token,
+                                                      Long gitlabProjectId,
+                                                      String ref) {
+        String path = "/api/v4/projects/" + gitlabProjectId + "/pipelines";
+        String encoded = URLEncoder.encode(ref, StandardCharsets.UTF_8);
+        return fetchAllPages(baseUrl, token, path, GitLabPipelineDto[].class, "&ref=" + encoded + "&order_by=id&sort=desc");
+    }
+
+    /**
+     * Fetch all jobs for a specific pipeline.
+     * Used to find prod::deploy::* jobs to detect when the release reached production.
+     */
+    public List<GitLabPipelineJobDto> getPipelineJobs(String baseUrl,
+                                                      String token,
+                                                      Long gitlabProjectId,
+                                                      Long pipelineId) {
+        String path = "/api/v4/projects/" + gitlabProjectId + "/pipelines/" + pipelineId + "/jobs";
+        return fetchAllPages(baseUrl, token, path, GitLabPipelineJobDto[].class, "");
     }
 
     // -----------------------------------------------------------------------

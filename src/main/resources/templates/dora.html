@@ -72,33 +72,13 @@
         <!-- ── 4 DORA metric cards ──────────────────────────────────────────── -->
         <div class="dora-big-grid">
 
-            <!-- Lead Time for Changes -->
+            <!-- PR Cycle Time (бывший Lead Time) -->
             <div class="dora-big-card">
                 <div class="dora-big-header">
-                    <span class="dora-big-label">Lead Time</span>
-                    <span th:if="${medianHours != null and medianHours <= 1}"
-                          class="rating-pill rating-pill-elite"
-                          data-tooltip="Elite: медиана Lead Time менее 1 часа">
-                        <span class="rating-pill-dot"></span>Elite
-                    </span>
-                    <span th:if="${medianHours != null and medianHours > 1 and medianHours <= 24}"
-                          class="rating-pill rating-pill-high tooltip-hint"
-                          data-tooltip="High: медиана Lead Time от 1 часа до 1 дня">
-                        <span class="rating-pill-dot"></span>High
-                    </span>
-                    <span th:if="${medianHours != null and medianHours > 24 and medianHours <= 168}"
-                          class="rating-pill rating-pill-medium tooltip-hint"
-                          data-tooltip="Medium: медиана Lead Time от 1 до 7 дней">
-                        <span class="rating-pill-dot"></span>Medium
-                    </span>
-                    <span th:if="${medianHours != null and medianHours > 168}"
-                          class="rating-pill rating-pill-low tooltip-hint"
-                          data-tooltip="Low: медиана Lead Time более 7 дней">
-                        <span class="rating-pill-dot"></span>Low
-                    </span>
-                    <span th:if="${medianHours == null}" class="rating-pill rating-pill-tbd">
-                        <span class="rating-pill-dot"></span>Нет данных
-                    </span>
+                    <span class="dora-big-label">PR Cycle Time</span>
+                    <span class="rating-pill"
+                          th:classappend="${prCycleTimeRating.cssClass()}"
+                          th:text="${prCycleTimeRating.label()}">—</span>
                 </div>
                 <div class="dora-big-value-row">
                     <span class="num dora-big-value"
@@ -118,44 +98,24 @@
                     <span class="dora-big-sep">·</span>
                     <span th:text="${totalMrs + ' MR'}">0 MR</span>
                 </div>
-                <div class="dora-big-desc">Медиана от открытия MR до мержа в основную ветку</div>
+                <div class="dora-big-desc">Медиана от открытия MR до мержа в dev-ветку. <span style="color:var(--warn)">Не включает ожидание релиза и деплой в прод.</span></div>
             </div>
 
-            <!-- Deployment Frequency (TBD) -->
-            <div class="dora-big-card dora-big-card-tbd">
-                <div class="dora-big-header">
-                    <span class="dora-big-label">Deploy Freq.</span>
-                    <span class="rating-pill rating-pill-tbd"><span class="rating-pill-dot"></span>Скоро</span>
+            <!-- COMING_SOON metrics rendered from DoraMetric enum -->
+            <th:block th:each="metric : ${doraMetrics}" th:if="${!metric.available}">
+                <div class="dora-big-card dora-big-card-tbd">
+                    <div class="dora-big-header">
+                        <span class="dora-big-label" th:text="${metric.label()}">—</span>
+                        <span class="rating-pill rating-pill-tbd">
+                            <span class="rating-pill-dot"></span>Скоро
+                        </span>
+                    </div>
+                    <div class="dora-big-value-row">
+                        <span class="num dora-big-value">—</span>
+                    </div>
+                    <div class="dora-big-desc" th:text="${metric.description()}">—</div>
                 </div>
-                <div class="dora-big-value-row">
-                    <span class="num dora-big-value">—</span>
-                </div>
-                <div class="dora-big-desc">Частота деплоев в продакшн. Требует подключения CI/CD пайплайнов GitLab.</div>
-            </div>
-
-            <!-- Change Failure Rate (TBD) -->
-            <div class="dora-big-card dora-big-card-tbd">
-                <div class="dora-big-header">
-                    <span class="dora-big-label">Change Failure</span>
-                    <span class="rating-pill rating-pill-tbd"><span class="rating-pill-dot"></span>Скоро</span>
-                </div>
-                <div class="dora-big-value-row">
-                    <span class="num dora-big-value">—</span>
-                </div>
-                <div class="dora-big-desc">Процент деплоев, вызвавших инциденты. Требует интеграции с Jira.</div>
-            </div>
-
-            <!-- MTTR (TBD) -->
-            <div class="dora-big-card dora-big-card-tbd">
-                <div class="dora-big-header">
-                    <span class="dora-big-label">MTTR</span>
-                    <span class="rating-pill rating-pill-tbd"><span class="rating-pill-dot"></span>Скоро</span>
-                </div>
-                <div class="dora-big-value-row">
-                    <span class="num dora-big-value">—</span>
-                </div>
-                <div class="dora-big-desc">Среднее время восстановления после инцидента. Требует интеграции с Jira.</div>
-            </div>
+            </th:block>
 
         </div>
 
@@ -163,8 +123,8 @@
         <div class="chart-card">
             <div class="dora-chart-header">
                 <div>
-                    <div class="chart-title">Lead Time · по неделям</div>
-                    <div class="dora-chart-subtitle">Медиана и P75 за выбранный период</div>
+                    <div class="chart-title">PR Cycle Time · по неделям</div>
+                    <div class="dora-chart-subtitle">Медиана и P75 времени ревью за выбранный период</div>
                 </div>
                 <div class="dora-chart-legend">
                     <span class="dora-legend-item">
@@ -178,6 +138,93 @@
             <div class="chart-wrap">
                 <canvas id="leadTimeChart"></canvas>
             </div>
+        </div>
+
+        <!-- ── Releases timeline ─────────────────────────────────────────────── -->
+        <div class="releases-section" th:if="${releases != null and !releases.isEmpty()}">
+            <div class="releases-section-header">
+                <div>
+                    <div class="releases-section-title">Релизы</div>
+                    <div class="releases-section-subtitle">Тег → деплой в прод · MR в релизе · Lead Time от создания MR до прода</div>
+                </div>
+            </div>
+            <div class="releases-list">
+                <th:block th:each="release : ${releases}">
+                    <div class="release-row" th:attr="data-id=${release.id}">
+                        <div class="release-row-main" onclick="toggleRelease(this)">
+                            <div class="release-row-left">
+                                <span class="release-tag-name" th:text="${release.tagName}">1.0.0</span>
+                                <span class="release-prod-dot release-prod-dot-ok"
+                                      th:if="${release.prodDeployedAtDisplay != null}"
+                                      data-tooltip="Деплой в прод выполнен"></span>
+                                <span class="release-prod-dot release-prod-dot-pending"
+                                      th:if="${release.prodDeployedAtDisplay == null}"
+                                      data-tooltip="Деплой в прод не обнаружен"></span>
+                            </div>
+                            <div class="release-row-meta">
+                                <span class="release-meta-item">
+                                    <span class="release-meta-label">Тег создан</span>
+                                    <span class="release-meta-value" th:text="${release.tagCreatedAtDisplay}">—</span>
+                                </span>
+                                <span class="release-meta-item" th:if="${release.prodDeployedAtDisplay != null}">
+                                    <span class="release-meta-label">Прод</span>
+                                    <span class="release-meta-value" th:text="${release.prodDeployedAtDisplay}">—</span>
+                                </span>
+                                <span class="release-meta-item" th:if="${release.prodDeployedAtDisplay == null}">
+                                    <span class="release-meta-label">Прод</span>
+                                    <span class="release-meta-value release-meta-na">не найден</span>
+                                </span>
+                                <span class="release-meta-item">
+                                    <span class="release-meta-label">MR</span>
+                                    <span class="release-meta-value" th:text="${release.mrCount}">0</span>
+                                </span>
+                                <span class="release-meta-item"
+                                      th:if="${release.medianLeadTimeDays != null}">
+                                    <span class="release-meta-label">Медиана Lead Time</span>
+                                    <span class="release-meta-value release-lt-value"
+                                          th:text="${#numbers.formatDecimal(release.medianLeadTimeDays, 1, 1) + ' д'}">—</span>
+                                </span>
+                                <span class="release-meta-item"
+                                      th:if="${release.medianLeadTimeDays == null and release.mrCount > 0}">
+                                    <span class="release-meta-label">Медиана Lead Time</span>
+                                    <span class="release-meta-value release-meta-na">нет прода</span>
+                                </span>
+                            </div>
+                            <button class="release-expand-btn" type="button"
+                                    th:if="${release.mrCount > 0}">
+                                <svg viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5"
+                                          stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <!-- MR list (collapsed by default) -->
+                        <div class="release-mr-list" style="display:none"
+                             th:if="${release.mrCount > 0}">
+                            <th:block th:each="mr : ${release.mrs}">
+                                <div class="release-mr-row">
+                                    <span class="release-mr-iid" th:text="${'!' + mr.mrIid}">!1</span>
+                                    <a class="release-mr-title"
+                                       th:href="${mr.webUrl}"
+                                       th:text="${mr.title}"
+                                       target="_blank" rel="noopener noreferrer">MR title</a>
+                                    <span class="release-mr-author" th:text="${mr.authorName}">Author</span>
+                                    <span class="release-mr-date"
+                                          th:if="${mr.mergedAtDisplay != null}"
+                                          th:text="${mr.mergedAtDisplay}">—</span>
+                                </div>
+                            </th:block>
+                        </div>
+                    </div>
+                </th:block>
+            </div>
+        </div>
+
+        <!-- No releases placeholder -->
+        <div class="releases-empty" th:if="${releases == null or releases.isEmpty()}">
+            <div class="releases-empty-icon">🏷</div>
+            <div class="releases-empty-title">Релизы не найдены</div>
+            <div class="releases-empty-desc">Синхронизация релизов запускается автоматически каждую ночь. Убедитесь, что в GitLab созданы теги/релизы для отслеживаемых репозиториев.</div>
         </div>
 
     </main>
@@ -350,6 +397,17 @@
             }
         }
     });
+</script>
+<script>
+    function toggleRelease(rowMainEl) {
+        const row = rowMainEl.closest('.release-row');
+        const list = row.querySelector('.release-mr-list');
+        const btn = row.querySelector('.release-expand-btn');
+        if (!list) { return; }
+        const isOpen = list.style.display !== 'none';
+        list.style.display = isOpen ? 'none' : 'block';
+        if (btn) { btn.classList.toggle('release-expand-btn-open', !isOpen); }
+    }
 </script>
 
 </body>

@@ -3,6 +3,7 @@ package io.simakov.analytics.web.controller;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.PeriodType;
+import io.simakov.analytics.dora.model.DoraMetric;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.DoraService;
@@ -57,6 +58,7 @@ public class DoraController {
             : allProjects.stream().map(TrackedProject::getId).toList();
 
         Map<String, Object> leadTime = doraService.buildLeadTimeData(effectiveProjectIds, days);
+        List<DoraService.ReleaseRowDto> releases = doraService.buildReleasesData(effectiveProjectIds);
 
         model.addAttribute("projects", allProjects);
         model.addAttribute("allProjects", allProjects);
@@ -77,7 +79,10 @@ public class DoraController {
         model.addAttribute("medianHours", leadTime.get("medianHours"));
         model.addAttribute("p75Hours", leadTime.get("p75Hours"));
         model.addAttribute("p95Hours", leadTime.get("p95Hours"));
+        model.addAttribute("prCycleTimeRating", leadTime.get("prCycleTimeRating"));
         model.addAttribute("chartJson", leadTime.get("chartJson"));
+        model.addAttribute("releases", releases);
+        model.addAttribute("doraMetrics", DoraMetric.values());
 
         return "dora";
     }

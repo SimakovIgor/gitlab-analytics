@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# dev-start.sh — запускает всё локальное окружение для разработки:
-#   PostgreSQL + Prometheus + Grafana + Portainer (Docker) → Spring Boot (gradle bootRun)
+# dev-start.sh — запускает локальное окружение для разработки:
+#   PostgreSQL → Spring Boot (gradle bootRun)
 #
 # Использование:
-#   ./scripts/dev-start.sh                  # полный запуск с мониторингом
-#   ./scripts/dev-start.sh --no-monitoring  # только PostgreSQL + приложение
-#   ./scripts/dev-start.sh --fast           # пропустить статический анализ (checkstyle/pmd/spotbugs)
-#   ./scripts/dev-start.sh --jar            # запустить собранный jar вместо bootRun (быстрее)
-#   ./scripts/dev-start.sh --fast --jar     # флаги можно комбинировать
+#   ./scripts/dev-start.sh              # PostgreSQL + приложение (по умолчанию)
+#   ./scripts/dev-start.sh --full       # + Prometheus + Grafana + Portainer + Loki
+#   ./scripts/dev-start.sh --fast       # пропустить статический анализ (checkstyle/pmd/spotbugs)
+#   ./scripts/dev-start.sh --jar        # запустить собранный jar вместо bootRun (быстрее)
+#   ./scripts/dev-start.sh --fast --jar # флаги можно комбинировать
 #
 # Переменные окружения (из .env.local или .env в корне, или заданные напрямую):
 #   GITHUB_CLIENT_ID     — Client ID GitHub OAuth App  [обязательно]
@@ -27,17 +27,17 @@ warn()    { echo -e "${YELLOW}[dev-start]${NC} $*"; }
 error()   { echo -e "${RED}[dev-start]${NC} $*" >&2; }
 
 # ── флаги ─────────────────────────────────────────────────────────────────────
-WITH_MONITORING=true
+WITH_MONITORING=false
 FAST=false
 USE_JAR=false
 
 for arg in "$@"; do
   case "$arg" in
-    --no-monitoring) WITH_MONITORING=false ;;
-    --fast)          FAST=true ;;
-    --jar)           USE_JAR=true ;;
+    --full)  WITH_MONITORING=true ;;
+    --fast)  FAST=true ;;
+    --jar)   USE_JAR=true ;;
     --help|-h)
-      sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+      sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
       exit 0
       ;;
     *) error "Неизвестный аргумент: $arg"; exit 1 ;;
@@ -85,9 +85,9 @@ until docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T postgres \
 done
 success "PostgreSQL готов → localhost:5432"
 
-# ── Prometheus + Grafana + Portainer ──────────────────────────────────────────
+# ── Prometheus + Grafana + Portainer (только с --full) ────────────────────────
 if [[ "$WITH_MONITORING" == true ]]; then
-  info "Запускаем Prometheus + Grafana + Portainer..."
+  info "Запускаем Prometheus + Grafana + Portainer (--full режим)..."
   MONITORING_CONTAINERS=(gitlab-analytics-prometheus gitlab-analytics-grafana gitlab-analytics-portainer gitlab-analytics-loki gitlab-analytics-promtail)
   ALL_RUNNING=true
   for c in "${MONITORING_CONTAINERS[@]}"; do
