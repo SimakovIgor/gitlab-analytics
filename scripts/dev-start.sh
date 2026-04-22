@@ -146,6 +146,11 @@ APP_ENV=(
   DB_PASSWORD="analytics"
   API_TOKEN="${API_TOKEN:-changeme-dev-only}"
 )
+# Jira (опционально)
+[[ -n "${JIRA_BASE_URL:-}" ]]  && APP_ENV+=(JIRA_BASE_URL="$JIRA_BASE_URL")
+[[ -n "${JIRA_USERNAME:-}" ]]  && APP_ENV+=(JIRA_USERNAME="$JIRA_USERNAME")
+[[ -n "${JIRA_API_TOKEN:-}" ]] && APP_ENV+=(JIRA_API_TOKEN="$JIRA_API_TOKEN")
+[[ -n "${JIRA_PROJECT_KEY:-}" ]] && APP_ENV+=(JIRA_PROJECT_KEY="$JIRA_PROJECT_KEY")
 if [[ "$WITH_MONITORING" == true ]]; then
   APP_ENV+=(SPRING_PROFILES_ACTIVE="monitoring")
 fi

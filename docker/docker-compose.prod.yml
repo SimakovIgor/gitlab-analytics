@@ -30,6 +30,10 @@ services:
       API_TOKEN: ${API_TOKEN}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      JIRA_BASE_URL: ${JIRA_BASE_URL:-}
+      JIRA_USERNAME: ${JIRA_USERNAME:-}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
+      JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-MI}
     ports:
       - "8080:8080"
     restart: unless-stopped
