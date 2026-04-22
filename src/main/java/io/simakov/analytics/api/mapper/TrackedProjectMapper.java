@@ -9,6 +9,8 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface TrackedProjectMapper {
 
+    @Mapping(target = "workspaceId",
+             ignore = true)
     @Mapping(target = "id",
              ignore = true)
     @Mapping(target = "createdAt",

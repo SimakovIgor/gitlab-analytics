@@ -30,6 +30,7 @@
 - **Prometheus scrape**: http://localhost:8080/actuator/prometheus
 
 С флагом `--full` дополнительно:
+
 - **Prometheus UI**: http://localhost:9090
 - **Grafana**: http://localhost:3000 (admin / admin)
     - Dashboard **JVM / Spring Boot 3.x Statistics** — CPU, memory, GC, threads, HTTP, HikariCP

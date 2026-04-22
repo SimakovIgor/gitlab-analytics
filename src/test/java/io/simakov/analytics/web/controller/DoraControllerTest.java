@@ -4,12 +4,14 @@ import io.simakov.analytics.BaseIT;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
+import io.simakov.analytics.domain.model.ReleaseTag;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.enums.MrState;
 import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
+import io.simakov.analytics.domain.repository.ReleaseTagRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +46,8 @@ class DoraControllerTest extends BaseIT {
     private TrackedProjectRepository trackedProjectRepository;
     @Autowired
     private MergeRequestRepository mergeRequestRepository;
+    @Autowired
+    private ReleaseTagRepository releaseTagRepository;
     private Long projectId;
 
     @BeforeEach
@@ -91,9 +95,9 @@ class DoraControllerTest extends BaseIT {
         String body = result.getResponse().getContentAsString();
         assertThat(body)
             .contains("Lead Time")
-            .contains("Deployment Frequency")
+            .contains("Deploy Frequency")
             .contains("Change Failure Rate")
-            .contains("Mean Time to Restore")
+            .contains("MTTR")
             .contains("Скоро");
     }
 
@@ -109,15 +113,16 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageShowsTotalMrCountWhenDataExists() throws Exception {
-        saveMergedMr(1L, 4);
-        saveMergedMr(2L, 8);
+        ReleaseTag tag = saveReleaseTag("v1.0.0", now.minus(1, ChronoUnit.DAYS));
+        saveMergedMrWithTag(1L, 4, tag.getId());
+        saveMergedMrWithTag(2L, 8, tag.getId());
 
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
 
-        assertThat(result.getResponse().getContentAsString()).contains(">2<");
+        assertThat(result.getResponse().getContentAsString()).contains("2 MR");
     }
 
     @Test
@@ -130,9 +135,9 @@ class DoraControllerTest extends BaseIT {
             .andExpect(status().isOk())
             .andReturn();
 
-        // With unknown project filter, totalMrs stat should be 0
+        // With unknown project filter, no release data → no-data hint is shown
         assertThat(result.getResponse().getContentAsString())
-            .contains("class=\"dora-stat-value\">0</div>");
+            .contains("sync/releases");
     }
 
     @Test
@@ -188,14 +193,31 @@ class DoraControllerTest extends BaseIT {
 
     private void saveMergedMr(Long gitlabMrId,
                               int leadHours) {
+        saveMergedMrWithTag(gitlabMrId, leadHours, null);
+    }
+
+    private void saveMergedMrWithTag(Long gitlabMrId,
+                                     int leadHours,
+                                     Long releaseTagId) {
         MergeRequest mr = new MergeRequest();
         mr.setTrackedProjectId(projectId);
         mr.setGitlabMrId(gitlabMrId);
         mr.setGitlabMrIid(gitlabMrId);
         mr.setState(MrState.MERGED);
         mr.setCreatedAtGitlab(now.minus(leadHours, ChronoUnit.HOURS));
-        mr.setMergedAtGitlab(now);
+        mr.setMergedAtGitlab(now.minus(1, ChronoUnit.HOURS));
         mr.setAuthorGitlabUserId(1L);
+        mr.setReleaseTagId(releaseTagId);
         mergeRequestRepository.save(mr);
+    }
+
+    private ReleaseTag saveReleaseTag(String tagName,
+                                      Instant prodDeployedAt) {
+        ReleaseTag tag = new ReleaseTag();
+        tag.setTrackedProjectId(projectId);
+        tag.setTagName(tagName);
+        tag.setTagCreatedAt(prodDeployedAt);
+        tag.setProdDeployedAt(prodDeployedAt);
+        return releaseTagRepository.save(tag);
     }
 }

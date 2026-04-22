@@ -9,7 +9,8 @@ import java.util.Optional;
 
 public interface ReleaseTagRepository extends JpaRepository<ReleaseTag, Long> {
 
-    Optional<ReleaseTag> findByTrackedProjectIdAndTagName(Long trackedProjectId, String tagName);
+    Optional<ReleaseTag> findByTrackedProjectIdAndTagName(Long trackedProjectId,
+                                                          String tagName);
 
     List<ReleaseTag> findAllByTrackedProjectIdOrderByTagCreatedAtDesc(Long trackedProjectId);
 

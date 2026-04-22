@@ -16,28 +16,47 @@ package io.simakov.analytics.dora.model;
  */
 public enum DoraRating {
 
-    ELITE("Elite", "rating-pill-elite"),
-    HIGH("High", "rating-pill-high"),
-    MEDIUM("Medium", "rating-pill-medium"),
-    LOW("Low", "rating-pill-low"),
-    NO_DATA("Нет данных", "rating-pill-tbd");
+    ELITE("Elite", "rating-pill-elite",
+        "< 1 часа · топ-10% команд в мире. Изменения летят в прод мгновенно, CI/CD полностью автоматизирован."),
+    HIGH("High", "rating-pill-high",
+        "< 7 дней · зрелые инженерные практики. Хороший CI/CD, изменения достигают прода за часы-дни."),
+    MEDIUM("Medium", "rating-pill-medium",
+        "7–30 дней · типичная команда. Есть потенциал: автоматизация, уменьшение размера MR, ускорение ревью."),
+    LOW("Low", "rating-pill-low",
+        "30+ дней · медленный цикл доставки. Риски копятся, деплои болезненны — стоит разобраться с причинами."),
+    NO_DATA("Нет данных", "rating-pill-tbd",
+        "Недостаточно данных. Обновите релизы на странице DORA — нужны теги с датой деплоя в прод.");
 
     private final String label;
     private final String cssClass;
+    private final String description;
 
     DoraRating(String label,
-               String cssClass) {
+               String cssClass,
+               String description) {
         this.label = label;
         this.cssClass = cssClass;
+        this.description = description;
     }
 
-    /** Short label displayed inside the rating pill. */
+    /**
+     * Short label displayed inside the rating pill.
+     */
     public String label() {
         return label;
     }
 
-    /** CSS modifier class for {@code .rating-pill} (e.g. {@code "rating-pill-elite"}). */
+    /**
+     * CSS modifier class for {@code .rating-pill} (e.g. {@code "rating-pill-elite"}).
+     */
     public String cssClass() {
         return cssClass;
+    }
+
+    /**
+     * Short description of the rating tier shown in a tooltip.
+     */
+    public String description() {
+        return description;
     }
 }

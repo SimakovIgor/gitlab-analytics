@@ -15,7 +15,8 @@ public record SyncHistoryPageData(
     String avgDurLabel14d,
     List<TrackedProject> projects,
     List<Long> activeJobIds,
-    Long enrichmentJobId
+    Long enrichmentJobId,
+    List<Long> releaseJobIds
 ) {
 
 }

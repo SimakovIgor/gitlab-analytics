@@ -16,6 +16,7 @@ import io.simakov.analytics.gitlab.dto.GitLabPipelineJobDto;
 import io.simakov.analytics.gitlab.dto.GitLabReleaseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +53,15 @@ public class ReleaseSyncService {
     private final GitSourceRepository gitSourceRepository;
     private final ReleaseTagRepository releaseTagRepository;
     private final MergeRequestRepository mergeRequestRepository;
+
+    /**
+     * Async fire-and-forget wrapper — used by the manual trigger endpoint.
+     * Runs in syncTaskExecutor; does NOT create a tracked SyncJob.
+     */
+    @Async("syncTaskExecutor")
+    public void syncReleasesForWorkspaceAsync(Long workspaceId) {
+        syncReleasesForWorkspace(workspaceId);
+    }
 
     /**
      * Sync releases for all enabled projects in the given workspace.
@@ -93,9 +103,20 @@ public class ReleaseSyncService {
             upsertReleaseTag(dto, trackedProjectId, baseUrl, token, gitlabProjectId);
         }
 
-        // Re-load all tags ordered by creation time to attribute MRs
+        // Clear all existing attributions before re-attributing.
+        // Without this, MRs merged after the newest tag keep a stale releaseTagId
+        // from a previous sync run and never get updated.
+        mergeRequestRepository.clearReleaseTagId(trackedProjectId);
+
+        // Re-load all tags and sort by effectiveWindowTime DESC.
+        // GitLab Releases can be created retroactively, so tagCreatedAt may be much later
+        // than the actual prod deployment. Sorting by effectiveWindowTime = MIN(tagCreatedAt,
+        // prodDeployedAt) puts tags in true chronological order and produces correct windows.
         List<ReleaseTag> allTags = releaseTagRepository
-            .findAllByTrackedProjectIdOrderByTagCreatedAtDesc(trackedProjectId);
+            .findAllByTrackedProjectIdOrderByTagCreatedAtDesc(trackedProjectId)
+            .stream()
+            .sorted(Comparator.comparing(this::effectiveWindowTime).reversed())
+            .toList();
 
         attributeMrsToReleases(trackedProjectId, allTags);
         log.info("Release sync complete for project='{}'", project.getName());
@@ -178,6 +199,11 @@ public class ReleaseSyncService {
      * Attribute each merged MR to the release it shipped in.
      * MR belongs to release N if mr.merged_at is between prev_tag.created_at and tag_N.created_at.
      * Tags are ordered newest first; we iterate to build windows.
+     *
+     * <p>If a tag was never deployed to prod (prod_deployed_at is null — e.g. a skipped release),
+     * its MRs are re-attributed to the nearest newer deployed tag so that Lead Time is calculated
+     * correctly. If no newer deployed tag exists yet, MRs stay on the undeployed tag and are
+     * naturally excluded from Lead Time by the SQL filter {@code rt.prod_deployed_at IS NOT NULL}.
      */
     private void attributeMrsToReleases(Long trackedProjectId,
                                         List<ReleaseTag> tagsNewestFirst) {
@@ -191,29 +217,80 @@ public class ReleaseSyncService {
         // Build windows: [prevTagCreatedAt, tagCreatedAt) for each release
         // tagsNewestFirst: index 0 = newest, index 1 = second newest, etc.
         for (int i = 0; i < tagsNewestFirst.size(); i++) {
-            ReleaseTag tag = tagsNewestFirst.get(i);
-            Instant windowEnd = tag.getTagCreatedAt();
-            Instant windowStart = (i + 1 < tagsNewestFirst.size())
-                ? tagsNewestFirst.get(i + 1).getTagCreatedAt()
-                : Instant.EPOCH;
+            attributeMrsToRelease(i, tagsNewestFirst, allMrs);
+        }
+    }
 
-            final Instant start = windowStart;
-            final Instant end = windowEnd;
+    private void attributeMrsToRelease(int index,
+                                       List<ReleaseTag> tagsNewestFirst,
+                                       List<MergeRequest> allMrs) {
+        ReleaseTag tag = tagsNewestFirst.get(index);
+        Instant windowEnd = effectiveWindowTime(tag);
+        Instant windowStart = (index + 1 < tagsNewestFirst.size())
+            ? effectiveWindowTime(tagsNewestFirst.get(index + 1))
+            : Instant.EPOCH;
 
-            List<MergeRequest> mrsInRelease = allMrs.stream()
-                .filter(mr -> mr.getMergedAtGitlab() != null)
-                .filter(mr -> !mr.getMergedAtGitlab().isBefore(start)
-                    && mr.getMergedAtGitlab().isBefore(end))
-                .toList();
+        // If this tag was never deployed, find the nearest newer deployed tag.
+        // MRs in a skipped release actually shipped in that later deployment.
+        boolean isRedirected = tag.getProdDeployedAt() == null;
+        ReleaseTag effectiveTag = isRedirected
+            ? findNearestNewerDeployedTag(tagsNewestFirst, index)
+            : tag;
+        if (effectiveTag == null) {
+            // No deployed tag ahead yet — keep natural attribution so the release
+            // table still shows these MRs, but Lead Time won't count them (no prod_deployed_at).
+            effectiveTag = tag;
+            isRedirected = false;
+        }
 
-            for (MergeRequest mr : mrsInRelease) {
-                mr.setReleaseTagId(tag.getId());
-            }
-            if (!mrsInRelease.isEmpty()) {
-                mergeRequestRepository.saveAll(mrsInRelease);
+        List<MergeRequest> mrsInRelease = allMrs.stream()
+            .filter(mr -> mr.getMergedAtGitlab() != null)
+            .filter(mr -> !mr.getMergedAtGitlab().isBefore(windowStart)
+                && mr.getMergedAtGitlab().isBefore(windowEnd))
+            .toList();
+
+        for (MergeRequest mr : mrsInRelease) {
+            mr.setReleaseTagId(effectiveTag.getId());
+        }
+        if (!mrsInRelease.isEmpty()) {
+            mergeRequestRepository.saveAll(mrsInRelease);
+            if (isRedirected) {
+                log.debug("Tag '{}' (skipped, no prod deploy) → re-attributed {} MR(s) to '{}' (window {} → {})",
+                    tag.getTagName(), mrsInRelease.size(), effectiveTag.getTagName(), windowStart, windowEnd);
+            } else {
                 log.debug("Tag '{}': attributed {} MR(s) (window {} → {})",
-                    tag.getTagName(), mrsInRelease.size(), start, end);
+                    tag.getTagName(), mrsInRelease.size(), windowStart, windowEnd);
             }
         }
+    }
+
+    /**
+     * Effective window boundary for a tag.
+     * Normally this is {@code tag.tagCreatedAt}. But when a GitLab Release is created
+     * retroactively (prod was deployed before the release entry was registered in GitLab),
+     * {@code prodDeployedAt < tagCreatedAt}. In that case we use {@code prodDeployedAt}
+     * as the boundary so that MRs merged after the actual deployment are not pulled into
+     * this release and do not get a negative Lead Time.
+     */
+    private Instant effectiveWindowTime(ReleaseTag tag) {
+        if (tag.getProdDeployedAt() != null && tag.getProdDeployedAt().isBefore(tag.getTagCreatedAt())) {
+            return tag.getProdDeployedAt();
+        }
+        return tag.getTagCreatedAt();
+    }
+
+    /**
+     * Finds the nearest newer (higher in the timeline) deployed tag for a skipped release.
+     * In a newest-first list, "newer" means a lower index.
+     * Returns null if no deployed tag exists ahead of the given index.
+     */
+    private ReleaseTag findNearestNewerDeployedTag(List<ReleaseTag> tagsNewestFirst,
+                                                   int fromIndex) {
+        for (int j = fromIndex - 1; j >= 0; j--) {
+            if (tagsNewestFirst.get(j).getProdDeployedAt() != null) {
+                return tagsNewestFirst.get(j);
+            }
+        }
+        return null;
     }
 }

@@ -92,7 +92,8 @@
                     <div th:class="'insight-card insight-card-' + ${ins.kind()}">
                         <div class="insight-card-header">
                             <div class="insight-icon"
-                                 th:text="${ins.kind() == 'bad'} ? '!' : (${ins.kind() == 'warn'} ? '▲' : (${ins.kind() == 'good'} ? '↑' : 'i'))">!</div>
+                                 th:text="${ins.kind() == 'bad'} ? '!' : (${ins.kind() == 'warn'} ? '▲' : (${ins.kind() == 'good'} ? '↑' : 'i'))">!
+                            </div>
                             <span class="insight-kind-label"
                                   th:text="${ins.kind() == 'bad'} ? 'Требует внимания' : (${ins.kind() == 'warn'} ? 'Наблюдать' : (${ins.kind() == 'good'} ? 'Улучшение' : 'Инфо'))">Требует внимания</span>
                         </div>
@@ -102,9 +103,10 @@
                             <div class="insight-avatars">
                                 <th:block th:each="name,iter : ${ins.affectedUserNames()}">
                                     <div class="insight-avatar"
-                                         th:style="'background:oklch(0.62 0.14 ' + ${(iter.index * 60 + 200) % 360} + ')'"
                                          th:attr="data-name=${name}"
-                                         th:text="${#strings.substring(name, 0, 1).toUpperCase()}">A</div>
+                                         th:style="'background:oklch(0.62 0.14 ' + ${(iter.index * 60 + 200) % 360} + ')'"
+                                         th:text="${#strings.substring(name, 0, 1).toUpperCase()}">A
+                                    </div>
                                 </th:block>
                             </div>
                             <a class="insight-action-link" href="/insights">Подробнее →</a>
@@ -353,6 +355,7 @@
 
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     const ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    const RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
     const SELECTED_PERIOD = /*[[${selectedPeriod}]]*/ 'LAST_30_DAYS';
     const SELECTED_METRIC = /*[[${selectedMetric}]]*/ 'mr_merged_count';
     const SHOW_INACTIVE = /*[[${showInactive}]]*/ false;
@@ -410,7 +413,8 @@
         try {
             localStorage.setItem('gl_period', period);
             localStorage.setItem('gl_projectIds', JSON.stringify(projectIds));
-        } catch (e) { /* ignore */ }
+        } catch (e) { /* ignore */
+        }
     }
 
     function navigateReport(period, projectIds, showInactive, metric) {
@@ -522,14 +526,14 @@
 
     // ── Unified sync cards ────────────────────────────────────────────────────
 
-    function buildSyncCardHtml(jobId, repoName, phaseNum, phaseDesc) {
+    function buildSyncCardHtml(jobId, repoName, badgeLabel, phaseDesc) {
         return '<div class="sync-card-row">'
             + '<div class="sync-card-icon-box"><span class="sync-spinner"></span></div>'
             + '<div class="sync-card-body">'
             + '<div class="sync-card-title">'
             + '<strong class="num">' + escHtml(repoName) + '</strong>'
             + '<span class="sync-card-phase-desc">\xb7 ' + escHtml(phaseDesc) + '</span>'
-            + '<span class="sync-phase-badge" id="sync-phase-label-' + jobId + '">\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2</span>'
+            + '<span class="sync-phase-badge" id="sync-phase-label-' + jobId + '">' + escHtml(badgeLabel) + '</span>'
             + '</div>'
             + '<div class="sync-card-meter-row">'
             + '<div class="sync-card-counters hidden" id="sync-counters-' + jobId + '">'
@@ -566,7 +570,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.innerHTML = buildSyncCardHtml(
-            jobId, projectName, 1,
+            jobId, projectName, '\u0424\u0430\u0437\u0430 1 \u0438\u0437 3',
             isRetry ? '\u043f\u043e\u0432\u0442\u043e\u0440\u043d\u0430\u044f \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0430 merge requests' : '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests'
         );
         container.prepend(div);
@@ -586,7 +590,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 1, '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', '\u0424\u0430\u0437\u0430 1 \u0438\u0437 3', '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -604,12 +608,47 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 2,
+        div.innerHTML = buildSyncCardHtml(jobId, '...', '\u0424\u0430\u0437\u0430 2 \u0438\u0437 3',
             '\u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u043e\u044f\u0432\u043b\u044f\u044e\u0442\u0441\u044f \u0432 \u043e\u0442\u0447\u0451\u0442\u0435 \u043f\u043e \u043c\u0435\u0440\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438');
         const counters = div.querySelector('.sync-card-counters');
         if (counters) {
             counters.classList.remove('hidden');
         }
+        container.prepend(div);
+        startCardTimers(jobId, id, null);
+    }
+
+    window.showReleaseBanner = function (jobId, projectName) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.innerHTML = buildSyncCardHtml(jobId, projectName, '\u0424\u0430\u0437\u0430 3 \u0438\u0437 3', '\u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0438\u0440\u0443\u0435\u043c \u0440\u0435\u043b\u0438\u0437\u044b');
+        container.prepend(div);
+        startCardTimers(jobId, id, Date.now());
+    };
+
+    function restoreReleaseCard(jobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.dataset.needsRepoName = '1';
+        div.innerHTML = buildSyncCardHtml(jobId, '...', '\u0424\u0430\u0437\u0430 3 \u0438\u0437 3', '\u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0438\u0440\u0443\u0435\u043c \u0440\u0435\u043b\u0438\u0437\u044b');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -667,15 +706,19 @@
                     if (nameEl && job.projectName) {
                         nameEl.textContent = job.projectName;
                     }
-                    const phaseNum = job.phase === 'ENRICH' ? 2 : 1;
+                    const phaseLabel = job.phase === 'RELEASE' ? '\u0424\u0430\u0437\u0430 3 \u0438\u0437 3'
+                        : (job.phase === 'ENRICH' ? '\u0424\u0430\u0437\u0430 2 \u0438\u0437 3' : '\u0424\u0430\u0437\u0430 1 \u0438\u0437 3');
                     const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
                     if (phaseLabelEl) {
-                        phaseLabelEl.textContent = '\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2';
+                        phaseLabelEl.textContent = phaseLabel;
                     }
                     const descEl = cardEl.querySelector('.sync-card-phase-desc');
                     if (descEl) {
-                        descEl.textContent = '\xb7 ' + (job.phase === 'ENRICH'
-                            ? '\u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u043e\u044f\u0432\u043b\u044f\u044e\u0442\u0441\u044f \u0432 \u043e\u0442\u0447\u0451\u0442\u0435 \u043f\u043e \u043c\u0435\u0440\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438' : '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+                        descEl.textContent = '\xb7 ' + (job.phase === 'RELEASE'
+                            ? '\u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0438\u0440\u0443\u0435\u043c \u0440\u0435\u043b\u0438\u0437\u044b'
+                            : (job.phase === 'ENRICH'
+                                ? '\u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u043e\u044f\u0432\u043b\u044f\u044e\u0442\u0441\u044f \u0432 \u043e\u0442\u0447\u0451\u0442\u0435 \u043f\u043e \u043c\u0435\u0440\u0435 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438'
+                                : '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests'));
                     }
                     if (job.phase === 'ENRICH') {
                         document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
@@ -735,12 +778,15 @@
             return;
         }
         const isOk = job.status === 'COMPLETED';
-        const phaseLabel = job.phase === 'ENRICH' ? '2 \u0438\u0437 2' : '1 \u0438\u0437 2';
+        const phaseLabel = job.phase === 'RELEASE' ? '3 \u0438\u0437 3'
+            : (job.phase === 'ENRICH' ? '2 \u0438\u0437 3' : '1 \u0438\u0437 3');
         if (isOk) {
             el.className = 'sync-card sync-card-done';
-            const detail = job.phase === 'ENRICH'
-                ? '\u0434\u0430\u043d\u043d\u044b\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b'
-                : (job.totalMrs > 0 ? job.totalMrs + ' MR' : '\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e');
+            const detail = job.phase === 'RELEASE'
+                ? '\u0440\u0435\u043b\u0438\u0437\u044b \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b'
+                : (job.phase === 'ENRICH'
+                    ? '\u0434\u0430\u043d\u043d\u044b\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b'
+                    : (job.totalMrs > 0 ? job.totalMrs + ' MR' : '\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e'));
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span class="sync-card-done-icon">&#10003;</span>'
                 + '<span>\u0424\u0430\u0437\u0430 ' + phaseLabel + ' \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430 &middot; ' + escHtml(detail) + '</span>'
@@ -1213,15 +1259,18 @@
                     navigateReport(period, savedIds, showInactive, null);
                     return;
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) { /* ignore */
+            }
         }
 
+        const releaseIdSet = new Set(RELEASE_JOB_IDS);
         ACTIVE_JOB_IDS
-            .filter(jobId => jobId !== ENRICHMENT_JOB_ID)
+            .filter(jobId => jobId !== ENRICHMENT_JOB_ID && !releaseIdSet.has(jobId))
             .forEach(jobId => restoreSyncCard(jobId));
         if (ENRICHMENT_JOB_ID) {
             restoreEnrichCard(ENRICHMENT_JOB_ID);
         }
+        RELEASE_JOB_IDS.forEach(jobId => restoreReleaseCard(jobId));
 
         // Init chart metric badge from active button
         const activeMetricBtn = document.querySelector('.chart-seg-btn-active');

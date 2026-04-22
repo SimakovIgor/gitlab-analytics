@@ -14,34 +14,35 @@ package io.simakov.analytics.dora.model;
  * <hr>
  * <h2>Методология расчёта метрик</h2>
  *
- * <h3>1. PR CYCLE TIME — прокси для Lead Time for Changes</h3>
+ * <h3>1. LEAD TIME FOR CHANGES — реальный Lead Time</h3>
  * <pre>
  *   Статус: AVAILABLE
- *   Источник: таблица merge_request (merged_at_gitlab, created_at_gitlab)
+ *   Источник: JOIN merge_request + release_tag (prod_deployed_at)
  *   Формула: PERCENTILE_CONT(0.5) WITHIN GROUP (
- *              ORDER BY EXTRACT(EPOCH FROM (merged_at_gitlab - created_at_gitlab)) / 3600
+ *              ORDER BY EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400
  *            )
- *            — по неделям для графика, суммарно для карточки
- *   Единица: часы
+ *            — по неделям (группировка по дате prod_deployed_at) для графика,
+ *              суммарно для карточки
+ *   Единица: дни (дробные)
  *
  *   Что измеряет:
- *     Медиана времени от открытия MR до мержа в dev-ветку.
- *     Отражает только цикл код-ревью.
+ *     Медиана времени от создания MR до деплоя релиза в продакшн.
+ *     Учитывает: время ревью + ожидание фриза + регрессию на стейдже + деплой в прод.
+ *     Это максимально близкое к DORA Lead Time for Changes значение
+ *     без доступа к данным первого коммита фичи.
  *
- *   ⚠ Это НЕ полный DORA Lead Time for Changes.
- *     Настоящий Lead Time = первый коммит → деплой в прод.
- *     Метрика намеренно не включает:
- *       • ожидание релизного фриза и создания тега
- *       • регрессионное окно на стейдже (обычно 1–2 дня)
- *       • деплой в продакшн
- *     Реальный end-to-end Lead Time (mr.created_at → prod_deployed_at)
- *     отображается в секции «Релизы» на той же странице.
+ *   Ограничения:
+ *     • Считается только по MR, у которых release_tag_id IS NOT NULL
+ *       и release_tag.prod_deployed_at IS NOT NULL.
+ *     • Новые MR (до первого синка релизов) и MR без prod deploy не попадают в выборку.
+ *     • prod_deployed_at определяется по времени завершения первого успешного
+ *       prod::deploy::* джоба в пайплайне тега.
  *
- *   Пороги DORA (меньше = лучше):
- *     Elite  ≤ 4 ч    (меньше полурабочего дня)
- *     High   4–24 ч   (в рамках одного рабочего дня)
- *     Medium 24–72 ч  (1–3 рабочих дня)
- *     Low    &gt; 72 ч
+ *   Пороги DORA (официальные, State of DevOps 2023, меньше = лучше):
+ *     Elite  &lt; 1 ч    (&lt; 1/24 дня ≈ 0.042 д)
+ *     High   &lt; 7 д    (&lt; одной недели)
+ *     Medium &lt; 30 д   (&lt; одного месяца)
+ *     Low    ≥ 30 д
  * </pre>
  *
  * <h3>2. DEPLOYMENT FREQUENCY — частота деплоев</h3>
@@ -93,15 +94,15 @@ public enum DoraMetric {
 
     // ── Available ─────────────────────────────────────────────────────────────
 
-    PR_CYCLE_TIME(
-        "pr_cycle_time",
-        "PR Cycle Time",
-        "Медиана от открытия MR до мержа в dev-ветку. "
-            + "Прокси для Lead Time — не включает ожидание релиза и деплой в прод.",
-        Unit.HOURS,
+    LEAD_TIME_FOR_CHANGES(
+        "lead_time_for_changes",
+        "Lead Time for Changes",
+        "Медиана от создания MR до деплоя в прод. "
+            + "Считается только по MR, попавшим в релиз с известной датой prod_deployed_at.",
+        Unit.DAYS,
         Status.AVAILABLE,
         Direction.LOWER_IS_BETTER,
-        4.0, 24.0, 72.0
+        1.0 / 24, 7.0, 30.0
     ),
 
     // ── Скоро ────────────────────────────────────────────────────────────────
@@ -183,6 +184,18 @@ public enum DoraMetric {
     }
 
     /**
+     * Finds a metric by its key; returns {@code null} if not found.
+     */
+    public static DoraMetric forKey(String key) {
+        for (DoraMetric m : values()) {
+            if (m.key.equals(key)) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Вычисляет DORA-рейтинг для измеренного значения.
      * Возвращает {@link DoraRating#NO_DATA} если метрика ещё не реализована или значение null.
      */
@@ -221,62 +234,71 @@ public enum DoraMetric {
         return DoraRating.LOW;
     }
 
-    /** Finds a metric by its key; returns {@code null} if not found. */
-    public static DoraMetric forKey(String key) {
-        for (DoraMetric m : values()) {
-            if (m.key.equals(key)) {
-                return m;
-            }
-        }
-        return null;
-    }
-
-    /** Unique string identifier (e.g. {@code "pr_cycle_time"}). */
+    /**
+     * Unique string identifier (e.g. {@code "pr_cycle_time"}).
+     */
     public String key() {
         return key;
     }
 
-    /** Short English label for the metric card (e.g. {@code "PR Cycle Time"}). */
+    /**
+     * Short English label for the metric card (e.g. {@code "PR Cycle Time"}).
+     */
     public String label() {
         return label;
     }
 
-    /** One-sentence Russian description of the data source and calculation. */
+    /**
+     * One-sentence Russian description of the data source and calculation.
+     */
     public String description() {
         return description;
     }
 
-    /** Physical unit of the metric value. */
+    /**
+     * Physical unit of the metric value.
+     */
     public Unit unit() {
         return unit;
     }
 
-    /** Whether the metric is currently implemented or only planned. */
+    /**
+     * Whether the metric is currently implemented or only planned.
+     */
     public Status status() {
         return status;
     }
 
-    /** True if this metric has real data and can show a rating. */
+    /**
+     * True if this metric has real data and can show a rating.
+     */
     public boolean isAvailable() {
         return status == Status.AVAILABLE;
     }
 
     // ── Nested types ──────────────────────────────────────────────────────────
 
-    /** Physical unit of a DORA metric value. */
+    /**
+     * Физическая единица значения DORA-метрики.
+     */
     public enum Unit {
         HOURS,
+        DAYS,
         DEPLOYS_PER_DAY,
         PERCENT
     }
 
-    /** Implementation status of a DORA metric. */
+    /**
+     * Implementation status of a DORA metric.
+     */
     public enum Status {
         AVAILABLE,
         COMING_SOON
     }
 
-    /** Rating direction: whether a lower or higher value is better. */
+    /**
+     * Rating direction: whether a lower or higher value is better.
+     */
     public enum Direction {
         LOWER_IS_BETTER,
         HIGHER_IS_BETTER

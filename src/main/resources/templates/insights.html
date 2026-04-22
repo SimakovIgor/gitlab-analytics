@@ -201,7 +201,8 @@
                             <th:block th:each="uid : ${ins.affectedUserIds()}">
                                 <span class="insight-row-who-avatar"
                                       th:if="${users.containsKey(uid)}">
-                                    <span class="avatar avatar-xs"
+                                    <span class="user-avatar avatar-xs"
+                                          th:style="'background: oklch(0.62 0.14 ' + ${(uid * 43) % 360} + ')'"
                                           th:text="${#strings.substring(users.get(uid), 0, 1)}"></span>
                                     <span class="insight-row-who-name"
                                           th:text="${users.get(uid)}"></span>
@@ -314,6 +315,7 @@
     /*<![CDATA[*/
     window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
     /*]]>*/
 </script>
 <script th:src="@{/js/sidebar.js}"></script>
@@ -323,12 +325,15 @@
         try {
             localStorage.setItem('gl_period', period);
             localStorage.setItem('gl_projectIds', JSON.stringify(projectIds));
-        } catch (e) { /* ignore */ }
+        } catch (e) { /* ignore */
+        }
     }
 
     function applyPeriod(period) {
         const checked = Array.from(document.querySelectorAll('.filter-project-check:checked'))
-            .map(function (c) { return c.value; });
+            .map(function (c) {
+                return c.value;
+            });
         saveFilters(period, checked);
         const url = new URL(window.location.href);
         url.searchParams.set('period', period);
@@ -337,12 +342,16 @@
 
     function applyProjectFilter() {
         const checked = Array.from(document.querySelectorAll('.filter-project-check:checked'))
-            .map(function (c) { return c.value; });
+            .map(function (c) {
+                return c.value;
+            });
         const urlParams = new URLSearchParams(window.location.search);
         saveFilters(urlParams.get('period') || 'LAST_30_DAYS', checked);
         const url = new URL(window.location.href);
         url.searchParams.delete('projectIds');
-        checked.forEach(function (id) { url.searchParams.append('projectIds', id); });
+        checked.forEach(function (id) {
+            url.searchParams.append('projectIds', id);
+        });
         window.location.href = url.toString();
     }
 
@@ -356,10 +365,13 @@
                 if (savedPeriod && savedPeriod !== 'LAST_30_DAYS' || savedIds.length > 0) {
                     const url = new URL(window.location.href);
                     url.searchParams.set('period', savedPeriod || 'LAST_30_DAYS');
-                    savedIds.forEach(function (id) { url.searchParams.append('projectIds', id); });
+                    savedIds.forEach(function (id) {
+                        url.searchParams.append('projectIds', id);
+                    });
                     window.location.replace(url.toString());
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) { /* ignore */
+            }
         }
     }());
 

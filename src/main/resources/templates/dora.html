@@ -72,33 +72,40 @@
         <!-- ── 4 DORA metric cards ──────────────────────────────────────────── -->
         <div class="dora-big-grid">
 
-            <!-- PR Cycle Time (бывший Lead Time) -->
+            <!-- Lead Time for Changes (реальный: created_at → prod_deployed_at) -->
             <div class="dora-big-card">
                 <div class="dora-big-header">
-                    <span class="dora-big-label">PR Cycle Time</span>
-                    <span class="rating-pill"
-                          th:classappend="${prCycleTimeRating.cssClass()}"
-                          th:text="${prCycleTimeRating.label()}">—</span>
+                    <span class="dora-big-label">Lead Time for Changes</span>
+                    <span class="rating-pill rating-pill-hoverable"
+                          th:classappend="${leadTimeRating.cssClass()}"
+                          th:text="${leadTimeRating.label()}"
+                          th:attr="data-tooltip=${leadTimeRating.description()}">—</span>
                 </div>
                 <div class="dora-big-value-row">
                     <span class="num dora-big-value"
-                          th:text="${medianHours != null ? #numbers.formatDecimal(medianHours, 1, 1) : '—'}">—</span>
-                    <span class="dora-big-unit" th:if="${medianHours != null}">ч</span>
+                          th:text="${medianDays != null ? #numbers.formatDecimal(medianDays, 1, 1) : '—'}">—</span>
+                    <span class="dora-big-unit" th:if="${medianDays != null}">д</span>
                     <span class="dora-big-trend" id="leadTimeTrend"></span>
                 </div>
-                <svg id="leadTimeSparkline" class="dora-sparkline" aria-hidden="true"></svg>
-                <div class="dora-big-secondary" th:if="${p75Hours != null}">
-                    <span class="tooltip-hint" data-tooltip="75% MR завершается быстрее">P75
-                        <span th:text="${#numbers.formatDecimal(p75Hours, 1, 1) + ' ч'}">—</span>
+                <svg aria-hidden="true" class="dora-sparkline" id="leadTimeSparkline"></svg>
+                <div class="dora-big-secondary" th:if="${p75Days != null}">
+                    <span class="tooltip-hint" data-tooltip="75% MR попадает в прод быстрее">P75
+                        <span th:text="${#numbers.formatDecimal(p75Days, 1, 1) + ' д'}">—</span>
                     </span>
                     <span class="dora-big-sep">·</span>
-                    <span class="tooltip-hint" data-tooltip="95% MR завершается быстрее">P95
-                        <span th:text="${p95Hours != null ? #numbers.formatDecimal(p95Hours, 1, 1) + ' ч' : '—'}">—</span>
+                    <span class="tooltip-hint" data-tooltip="95% MR попадает в прод быстрее">P95
+                        <span th:text="${p95Days != null ? #numbers.formatDecimal(p95Days, 1, 1) + ' д' : '—'}">—</span>
                     </span>
                     <span class="dora-big-sep">·</span>
                     <span th:text="${totalMrs + ' MR'}">0 MR</span>
                 </div>
-                <div class="dora-big-desc">Медиана от открытия MR до мержа в dev-ветку. <span style="color:var(--warn)">Не включает ожидание релиза и деплой в прод.</span></div>
+                <div class="dora-big-secondary" th:if="${medianDays == null and totalMrs == 0}">
+                    <span style="font-size:12px;color:var(--fg-3)">Нет данных — обновите релизы в секции ниже</span>
+                </div>
+                <div class="dora-big-desc">
+                    Медиана от создания MR до деплоя в прод.
+                    Считается по MR, попавшим в релиз с известной датой деплоя.
+                </div>
             </div>
 
             <!-- COMING_SOON metrics rendered from DoraMetric enum -->
@@ -123,8 +130,8 @@
         <div class="chart-card">
             <div class="dora-chart-header">
                 <div>
-                    <div class="chart-title">PR Cycle Time · по неделям</div>
-                    <div class="dora-chart-subtitle">Медиана и P75 времени ревью за выбранный период</div>
+                    <div class="chart-title">Lead Time for Changes · по неделям деплоя</div>
+                    <div class="dora-chart-subtitle">Медиана и P75 от создания MR до деплоя в прод</div>
                 </div>
                 <div class="dora-chart-legend">
                     <span class="dora-legend-item">
@@ -132,6 +139,9 @@
                     </span>
                     <span class="dora-legend-item">
                         <span class="dora-legend-line dora-legend-line-dashed"></span>P75
+                    </span>
+                    <span class="dora-legend-item">
+                        <span class="dora-legend-line dora-legend-line-trend"></span>Тренд
                     </span>
                 </div>
             </div>
@@ -147,19 +157,39 @@
                     <div class="releases-section-title">Релизы</div>
                     <div class="releases-section-subtitle">Тег → деплой в прод · MR в релизе · Lead Time от создания MR до прода</div>
                 </div>
+                <div class="releases-sync-controls">
+                    <select class="releases-project-select" id="releaseSyncProjectSelect"
+                            th:if="${allProjects != null and allProjects.size() > 1}">
+                        <option value="">Все репозитории</option>
+                        <option th:each="project : ${allProjects}"
+                                th:text="${project.name}"
+                                th:value="${project.id}">repo
+                        </option>
+                    </select>
+                    <button class="btn-release-sync" id="syncReleasesBtn" onclick="triggerReleaseSyncSelected()"
+                            title="Загрузить данные о деплоях из GitLab CI/CD"
+                            type="button">⟳ Обновить данные
+                    </button>
+                </div>
             </div>
             <div class="releases-list">
                 <th:block th:each="release : ${releases}">
                     <div class="release-row" th:attr="data-id=${release.id}">
                         <div class="release-row-main" onclick="toggleRelease(this)">
                             <div class="release-row-left">
-                                <span class="release-tag-name" th:text="${release.tagName}">1.0.0</span>
+                                <span class="release-tag-name release-tag-hoverable"
+                                      th:text="${release.tagName}"
+                                      th:attr="data-tag=${release.tagName},
+                                               data-project=${release.projectName},
+                                               data-created=${release.tagCreatedAtDisplay},
+                                               data-prod=${release.prodDeployedAtDisplay ?: ''},
+                                               data-mr=${release.mrCount},
+                                               data-lt=${release.medianLeadTimeDays != null ? #numbers.formatDecimal(release.medianLeadTimeDays, 1, 1) : ''}">1.0.0</span>
+                                <span class="release-project-name" th:text="${release.projectName}">service</span>
                                 <span class="release-prod-dot release-prod-dot-ok"
-                                      th:if="${release.prodDeployedAtDisplay != null}"
-                                      data-tooltip="Деплой в прод выполнен"></span>
+                                      th:if="${release.prodDeployedAtDisplay != null}"></span>
                                 <span class="release-prod-dot release-prod-dot-pending"
-                                      th:if="${release.prodDeployedAtDisplay == null}"
-                                      data-tooltip="Деплой в прод не обнаружен"></span>
+                                      th:if="${release.prodDeployedAtDisplay == null}"></span>
                             </div>
                             <div class="release-row-meta">
                                 <span class="release-meta-item">
@@ -190,11 +220,11 @@
                                     <span class="release-meta-value release-meta-na">нет прода</span>
                                 </span>
                             </div>
-                            <button class="release-expand-btn" type="button"
-                                    th:if="${release.mrCount > 0}">
-                                <svg viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5"
-                                          stroke-linecap="round" stroke-linejoin="round"/>
+                            <button class="release-expand-btn" th:if="${release.mrCount > 0}"
+                                    type="button">
+                                <svg fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-linecap="round"
+                                          stroke-linejoin="round" stroke-width="1.5"/>
                                 </svg>
                             </button>
                         </div>
@@ -205,9 +235,9 @@
                                 <div class="release-mr-row">
                                     <span class="release-mr-iid" th:text="${'!' + mr.mrIid}">!1</span>
                                     <a class="release-mr-title"
-                                       th:href="${mr.webUrl}"
-                                       th:text="${mr.title}"
-                                       target="_blank" rel="noopener noreferrer">MR title</a>
+                                       rel="noopener noreferrer"
+                                       target="_blank"
+                                       th:href="${mr.webUrl}" th:text="${mr.title}">MR title</a>
                                     <span class="release-mr-author" th:text="${mr.authorName}">Author</span>
                                     <span class="release-mr-date"
                                           th:if="${mr.mergedAtDisplay != null}"
@@ -224,7 +254,10 @@
         <div class="releases-empty" th:if="${releases == null or releases.isEmpty()}">
             <div class="releases-empty-icon">🏷</div>
             <div class="releases-empty-title">Релизы не найдены</div>
-            <div class="releases-empty-desc">Синхронизация релизов запускается автоматически каждую ночь. Убедитесь, что в GitLab созданы теги/релизы для отслеживаемых репозиториев.</div>
+            <div class="releases-empty-desc">Убедитесь, что в GitLab созданы теги/релизы. Синк релизов запускается автоматически после каждого обогащения.</div>
+            <button class="btn-release-sync" id="syncReleasesBtnEmpty" onclick="triggerReleaseSyncSelected()" style="margin-top:12px" type="button">
+                Запустить синк релизов
+            </button>
         </div>
 
     </main>
@@ -235,6 +268,7 @@
     /*<![CDATA[*/
     window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
     var PERIOD = /*[[${selectedPeriod}]]*/ 'LAST_30_DAYS';
     /*]]>*/
 </script>
@@ -248,7 +282,8 @@
                 if (saved && saved !== 'LAST_30_DAYS') {
                     window.location.replace('/dora?period=' + saved);
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) { /* ignore */
+            }
         }
     }());
 
@@ -257,7 +292,10 @@
     }
 
     function navigateDora(period, projectIds) {
-        try { localStorage.setItem('gl_dora_period', period); } catch (e) { /* ignore */ }
+        try {
+            localStorage.setItem('gl_dora_period', period);
+        } catch (e) { /* ignore */
+        }
         const params = new URLSearchParams();
         params.set('period', period);
         projectIds.forEach(id => params.append('projectIds', id));
@@ -305,15 +343,24 @@
     // ── Trend arrow ──────────────────────────────────────────────────────────
     function renderTrendArrow(el, data) {
         if (!data || data.length < 4) return;
-        const valid = data.filter(function (v) { return v != null && !isNaN(v); });
+        const valid = data.filter(function (v) {
+            return v != null && !isNaN(v);
+        });
         if (valid.length < 4) return;
         const half = Math.floor(valid.length / 2);
-        const firstAvg = valid.slice(0, half).reduce(function (a, b) { return a + b; }, 0) / half;
-        const lastAvg = valid.slice(-half).reduce(function (a, b) { return a + b; }, 0) / half;
+        const firstAvg = valid.slice(0, half).reduce(function (a, b) {
+            return a + b;
+        }, 0) / half;
+        const lastAvg = valid.slice(-half).reduce(function (a, b) {
+            return a + b;
+        }, 0) / half;
         const pct = (lastAvg - firstAvg) / (firstAvg || 1);
         let dir = 'flat';
-        if (pct > 0.05) { dir = 'up'; }
-        else if (pct < -0.05) { dir = 'down'; }
+        if (pct > 0.05) {
+            dir = 'up';
+        } else if (pct < -0.05) {
+            dir = 'down';
+        }
         // lead time: down = good (green), up = bad (red)
         const color = dir === 'down' ? 'var(--good)' : dir === 'up' ? 'var(--bad)' : 'var(--fg-3)';
         const rot = dir === 'up' ? 0 : dir === 'down' ? 180 : 90;
@@ -342,6 +389,26 @@
         renderTrendArrow(trendEl, chartData.datasets[0].data);
     }
 
+    // Linear regression trendline
+    function linregTrend(data) {
+        const pts = data.map(function (v, i) { return {x: i, y: v}; })
+            .filter(function (p) { return p.y != null && !isNaN(p.y); });
+        if (pts.length < 2) { return data.map(function () { return null; }); }
+        const n = pts.length;
+        const sumX = pts.reduce(function (s, p) { return s + p.x; }, 0);
+        const sumY = pts.reduce(function (s, p) { return s + p.y; }, 0);
+        const sumXY = pts.reduce(function (s, p) { return s + p.x * p.y; }, 0);
+        const sumXX = pts.reduce(function (s, p) { return s + p.x * p.x; }, 0);
+        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+        return data.map(function (v, i) {
+            return v != null && !isNaN(v) ? Math.max(0, Math.round((slope * i + intercept) * 10) / 10) : null;
+        });
+    }
+
+    const medianData = chartData.datasets[0] ? chartData.datasets[0].data : [];
+    const trendData = linregTrend(medianData);
+
     // Main weekly chart
     new Chart(document.getElementById('leadTimeChart'), {
         type: 'line',
@@ -349,8 +416,8 @@
             labels: chartData.labels,
             datasets: [
                 {
-                    label: 'Медиана (ч)',
-                    data: chartData.datasets[0] ? chartData.datasets[0].data : [],
+                    label: 'Медиана (дн)',
+                    data: medianData,
                     borderColor: accentColor,
                     backgroundColor: accentBg,
                     fill: true,
@@ -360,7 +427,7 @@
                     pointBackgroundColor: accentColor
                 },
                 {
-                    label: 'P75 (ч)',
+                    label: 'P75 (дн)',
                     data: chartData.datasets[1] ? chartData.datasets[1].data : [],
                     borderColor: fg3Color,
                     backgroundColor: 'transparent',
@@ -368,6 +435,17 @@
                     tension: 0.3,
                     pointRadius: 2,
                     borderWidth: 1.5
+                },
+                {
+                    label: 'Тренд',
+                    data: trendData,
+                    borderColor: 'oklch(0.55 0.22 28 / 0.55)',
+                    backgroundColor: 'transparent',
+                    borderDash: [6, 4],
+                    tension: 0,
+                    pointRadius: 0,
+                    borderWidth: 1.5,
+                    spanGaps: true
                 }
             ]
         },
@@ -379,7 +457,8 @@
                 tooltip: {
                     callbacks: {
                         label: function (ctx) {
-                            return ctx.dataset.label + ': ' + ctx.parsed.y + ' ч';
+                            if (ctx.parsed.y == null) { return null; }
+                            return ctx.dataset.label + ': ' + ctx.parsed.y + ' дн';
                         }
                     }
                 }
@@ -390,7 +469,7 @@
                     grid: {color: 'rgba(0,0,0,0.04)'}
                 },
                 y: {
-                    title: {display: true, text: 'Часы'},
+                    title: {display: true, text: 'Дни'},
                     beginAtZero: true,
                     grid: {color: 'rgba(0,0,0,0.04)'}
                 }
@@ -399,14 +478,131 @@
     });
 </script>
 <script>
+    function doReleaseSync(url, projectName, btns) {
+        btns.forEach(function (btn) {
+            btn.disabled = true;
+            btn.textContent = '⟳ запускаем...';
+        });
+        window.api('POST', url)
+            .then(function (jobIds) {
+                btns.forEach(function (btn) {
+                    btn.textContent = '✓ запущен';
+                });
+                if (Array.isArray(jobIds)) {
+                    jobIds.forEach(function (jobId) {
+                        window.showReleaseBanner(jobId, projectName);
+                    });
+                }
+            })
+            .catch(function () {
+                btns.forEach(function (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '⟳ релизы';
+                });
+            });
+    }
+
+    function triggerReleaseSyncSelected() {
+        const select = document.getElementById('releaseSyncProjectSelect');
+        const btns = [...document.querySelectorAll('.btn-release-sync')];
+        const projectId = select ? select.value : '';
+        if (projectId) {
+            const projectName = select.options[select.selectedIndex].text;
+            doReleaseSync('/dora/sync/releases?projectId=' + projectId, projectName, btns);
+        } else {
+            doReleaseSync('/dora/sync/releases', 'все репозитории', btns);
+        }
+    }
+
+    // ── Release tag tooltip ───────────────────────────────────────────────────
+    (function () {
+        const tip = document.createElement('div');
+        tip.className = 'release-tag-tooltip';
+        tip.style.display = 'none';
+        document.body.appendChild(tip);
+
+        let hideTimer = null;
+
+        function showTip(el, e) {
+            clearTimeout(hideTimer);
+            const tag = el.dataset.tag || '';
+            const project = el.dataset.project || '';
+            const created = el.dataset.created || '—';
+            const prod = el.dataset.prod || '';
+            const mr = el.dataset.mr || '0';
+            const lt = el.dataset.lt || '';
+
+            const prodHtml = prod
+                ? '<span class="rtt-status rtt-status-ok">&#10003; Деплой в прод</span>'
+                : '<span class="rtt-status rtt-status-pending">&#8212; Прод не найден</span>';
+
+            const ltHtml = lt
+                ? '<div class="rtt-row"><span class="rtt-label">Lead Time медиана</span><span class="rtt-value rtt-accent">' + lt + ' д</span></div>'
+                : '';
+
+            tip.innerHTML = '<div class="rtt-header">'
+                + '<span class="rtt-tag">' + escHtml(tag) + '</span>'
+                + '<span class="rtt-project">' + escHtml(project) + '</span>'
+                + '</div>'
+                + '<div class="rtt-divider"></div>'
+                + '<div class="rtt-body">'
+                + prodHtml
+                + '<div class="rtt-row"><span class="rtt-label">Тег создан</span><span class="rtt-value">' + escHtml(created) + '</span></div>'
+                + (prod ? '<div class="rtt-row"><span class="rtt-label">Деплой в прод</span><span class="rtt-value">' + escHtml(prod) + '</span></div>' : '')
+                + '<div class="rtt-row"><span class="rtt-label">MR в релизе</span><span class="rtt-value">' + escHtml(mr) + '</span></div>'
+                + ltHtml
+                + '</div>';
+
+            tip.style.display = 'block';
+            positionTip(e);
+        }
+
+        function positionTip(e) {
+            const margin = 12;
+            const tw = tip.offsetWidth;
+            const th = tip.offsetHeight;
+            let x = e.clientX + margin + window.scrollX;
+            let y = e.clientY + margin + window.scrollY;
+            if (x + tw > window.innerWidth + window.scrollX - 8) {
+                x = e.clientX - tw - margin + window.scrollX;
+            }
+            if (y + th > window.innerHeight + window.scrollY - 8) {
+                y = e.clientY - th - margin + window.scrollY;
+            }
+            tip.style.left = x + 'px';
+            tip.style.top = y + 'px';
+        }
+
+        function hideTip() {
+            hideTimer = setTimeout(function () { tip.style.display = 'none'; }, 80);
+        }
+
+        document.addEventListener('mouseover', function (e) {
+            const el = e.target.closest('.release-tag-hoverable');
+            if (el) { showTip(el, e); }
+        });
+        document.addEventListener('mousemove', function (e) {
+            if (tip.style.display !== 'none' && e.target.closest('.release-tag-hoverable')) {
+                positionTip(e);
+            }
+        });
+        document.addEventListener('mouseout', function (e) {
+            if (e.target.closest('.release-tag-hoverable')) { hideTip(); }
+        });
+    }());
+
     function toggleRelease(rowMainEl) {
         const row = rowMainEl.closest('.release-row');
         const list = row.querySelector('.release-mr-list');
         const btn = row.querySelector('.release-expand-btn');
-        if (!list) { return; }
+        if (!list) {
+            return;
+        }
         const isOpen = list.style.display !== 'none';
         list.style.display = isOpen ? 'none' : 'block';
-        if (btn) { btn.classList.toggle('release-expand-btn-open', !isOpen); }
+        if (btn) {
+            btn.classList.toggle('release-expand-btn-open', !isOpen);
+        }
     }
 </script>
 

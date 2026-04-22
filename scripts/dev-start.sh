@@ -146,6 +146,9 @@ APP_ENV=(
   DB_PASSWORD="analytics"
   API_TOKEN="${API_TOKEN:-changeme-dev-only}"
 )
+if [[ "$WITH_MONITORING" == true ]]; then
+  APP_ENV+=(SPRING_PROFILES_ACTIVE="monitoring")
+fi
 
 if [[ "$USE_JAR" == true ]]; then
   JAR=$(ls "$ROOT_DIR"/build/libs/*.jar 2>/dev/null | grep -v plain | head -1)

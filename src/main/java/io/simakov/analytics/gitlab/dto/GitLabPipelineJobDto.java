@@ -16,4 +16,5 @@ public record GitLabPipelineJobDto(
     @JsonProperty("status") String status,
     @JsonProperty("finished_at") Instant finishedAt
 ) {
+
 }

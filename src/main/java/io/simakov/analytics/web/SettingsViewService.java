@@ -79,9 +79,20 @@ public class SettingsViewService {
         if (job.getStatus() == SyncStatus.FAILED) {
             return "failed";
         }
-        // FAST phase done = Phase 1 completed successfully (Phase 2 follows automatically).
-        // Not a partial failure — show as green "phase1", not orange "partial".
-        return job.getPhase() == SyncJobPhase.FAST ? "phase1" : "ok";
+        // Completed jobs: distinguish which phase finished last.
+        // FAST = Phase 1 of 3 done (ENRICH follows automatically).
+        // ENRICH = Phase 2 of 3 done (RELEASE may follow if triggered).
+        // RELEASE = Phase 3 of 3 done (full sync).
+        if (job.getPhase() == SyncJobPhase.FAST) {
+            return "phase1";
+        }
+        if (job.getPhase() == SyncJobPhase.ENRICH) {
+            return "phase2";
+        }
+        if (job.getPhase() == SyncJobPhase.RELEASE) {
+            return "phase3";
+        }
+        return "ok";
     }
 
     private static long durSecs(SyncJob job) {
@@ -189,22 +200,29 @@ public class SettingsViewService {
             .findFirst()
             .orElse(null);
 
+        List<Long> releaseJobIds = rawJobs.stream()
+            .filter(j -> j.getStatus() == SyncStatus.STARTED && j.getPhase() == SyncJobPhase.RELEASE)
+            .map(SyncJob::getId)
+            .toList();
+
         return new SyncHistoryPageData(
             jobs, chartBars,
             (long) kpi.get("total14d"), (long) kpi.get("ok14d"),
             (long) kpi.get("partial14d"), (long) kpi.get("failed14d"),
             (String) kpi.get("avgDurLabel14d"),
-            projects, activeJobIds, enrichmentJobId
+            projects, activeJobIds, enrichmentJobId, releaseJobIds
         );
     }
 
     private Map<String, Object> buildJobRow(SyncJob job,
-                                             long maxNonFailedId,
-                                             Map<Long, String> projectNames) {
+                                            long maxNonFailedId,
+                                            Map<Long, String> projectNames) {
         Map<String, Object> row = new HashMap<>();
         row.put("id", job.getId());
         row.put("uiStatus", toUiStatus(job));
-        row.put("phase", job.getPhase() != null ? job.getPhase().name() : "ENRICH");
+        row.put("phase", job.getPhase() != null
+            ? job.getPhase().name()
+            : "ENRICH");
         row.put("startedAt", JOB_TIME_FMT.format(job.getStartedAt()));
         long secs = durSecs(job);
         row.put("durationSecs", secs);
@@ -216,13 +234,15 @@ public class SettingsViewService {
         return row;
     }
 
-    private String resolveProjectName(SyncJob job, Map<Long, String> projectNames) {
+    private String resolveProjectName(SyncJob job,
+                                      Map<Long, String> projectNames) {
         String payload = job.getPayloadJson();
         if (payload == null || payload.isBlank()) {
             return null;
         }
         try {
-            Map<String, Object> map = objectMapper.readValue(payload, new TypeReference<>() { });
+            Map<String, Object> map = objectMapper.readValue(payload, new TypeReference<>() {
+            });
             @SuppressWarnings("unchecked")
             List<Integer> ids = (List<Integer>) map.get("projectIds");
             if (ids == null || ids.isEmpty()) {
@@ -232,7 +252,9 @@ public class SettingsViewService {
                 .map(id -> projectNames.get((long) id))
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining(", "));
-            return names.isBlank() ? null : names;
+            return names.isBlank()
+                ? null
+                : names;
         } catch (Exception e) {
             log.warn("Failed to resolve project name for job {}: {}", job.getId(), e.getMessage());
             return null;
@@ -270,10 +292,15 @@ public class SettingsViewService {
         List<SyncJob> jobs14d = rawJobs.stream()
             .filter(j -> j.getStartedAt().isAfter(cutoff))
             .toList();
-        long ok = jobs14d.stream().filter(j -> "ok".equals(toUiStatus(j))).count();
-        // "phase1" = FAST phase completed — Phase 1 of 2 succeeded, Phase 2 follows automatically.
-        // These are NOT errors; tracked separately to distinguish from truly failed jobs.
-        long partial = jobs14d.stream().filter(j -> "phase1".equals(toUiStatus(j))).count();
+        // All completed phases (phase1/2/3) count as successful — none are failures.
+        // phase1 = FAST done (ENRICH follows automatically), phase2 = ENRICH done, phase3 = RELEASE done.
+        long ok = jobs14d.stream()
+            .filter(j -> {
+                String s = toUiStatus(j);
+                return "ok".equals(s) || "phase1".equals(s) || "phase2".equals(s) || "phase3".equals(s);
+            })
+            .count();
+        long partial = 0L;
         long failed = jobs14d.stream().filter(j -> "failed".equals(toUiStatus(j))).count();
         OptionalDouble avgDur = jobs14d.stream()
             .filter(j -> j.getFinishedAt() != null && !"failed".equals(toUiStatus(j)))
@@ -284,7 +311,9 @@ public class SettingsViewService {
         kpi.put("ok14d", ok);
         kpi.put("partial14d", partial);
         kpi.put("failed14d", failed);
-        kpi.put("avgDurLabel14d", avgDur.isPresent() ? formatDurSecs((long) avgDur.getAsDouble()) : "—");
+        kpi.put("avgDurLabel14d", avgDur.isPresent()
+            ? formatDurSecs((long) avgDur.getAsDouble())
+            : "—");
         return kpi;
     }
 }

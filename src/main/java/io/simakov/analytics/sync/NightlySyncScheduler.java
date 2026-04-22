@@ -25,7 +25,6 @@ public class NightlySyncScheduler {
     private final TrackedProjectRepository trackedProjectRepository;
     private final SyncJobService syncJobService;
     private final SyncOrchestrator syncOrchestrator;
-    private final ReleaseSyncService releaseSyncService;
     private final AppProperties appProperties;
 
     @Scheduled(cron = "${app.sync.cron:0 0 3 * * *}")
@@ -45,12 +44,8 @@ public class NightlySyncScheduler {
             } catch (Exception e) {
                 log.error("Nightly sync failed for workspace={}: {}", workspace.getId(), e.getMessage(), e);
             }
-
-            try {
-                releaseSyncService.syncReleasesForWorkspace(workspace.getId());
-            } catch (Exception e) {
-                log.error("Release sync failed for workspace={}: {}", workspace.getId(), e.getMessage(), e);
-            }
+            // RELEASE phase chains automatically from each ENRICH job when it completes.
+            // Workspace-level idempotency in SyncOrchestrator prevents duplicate RELEASE jobs.
         }
     }
 

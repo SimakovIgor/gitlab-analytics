@@ -77,7 +77,9 @@ public class WorkspaceContextFilter extends OncePerRequestFilter {
      * Returns a redirect path if the request cannot proceed, or {@code null} if it can.
      * Side effects: sets {@link WorkspaceContext} or invalidates a stale session.
      */
-    private String resolveRedirect(HttpSession session, Long workspaceId, String uri) {
+    private String resolveRedirect(HttpSession session,
+                                   Long workspaceId,
+                                   String uri) {
         if (workspaceId != null) {
             if (workspaceRepository.existsById(workspaceId)) {
                 WorkspaceContext.set(workspaceId);

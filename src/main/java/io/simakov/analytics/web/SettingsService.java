@@ -38,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -268,7 +269,8 @@ public class SettingsService {
             return null;
         }
         try {
-            Map<String, Object> map = objectMapper.readValue(payload, new TypeReference<>() { });
+            Map<String, Object> map = objectMapper.readValue(payload, new TypeReference<>() {
+            });
             @SuppressWarnings("unchecked")
             List<Integer> ids = (List<Integer>) map.get("projectIds");
             if (ids == null || ids.isEmpty()) {
@@ -294,13 +296,53 @@ public class SettingsService {
         if (!workspaceId.equals(job.getWorkspaceId())) {
             throw new ResourceNotFoundException("SyncJob", jobId);
         }
-        ManualSyncRequest request = syncJobService.getPayload(jobId);
         SyncJobPhase phase = job.getPhase() != null
             ? job.getPhase()
             : SyncJobPhase.ENRICH;
+        ManualSyncRequest request = syncJobService.getPayload(jobId);
+        if (phase == SyncJobPhase.RELEASE) {
+            SyncJob newJob = syncJobService.createReleaseJob(workspaceId, request);
+            syncOrchestrator.orchestrateReleaseAsync(newJob.getId());
+            return SyncJobResponse.from(newJob);
+        }
         SyncJob newJob = syncJobService.create(workspaceId, request, phase);
         syncOrchestrator.orchestrateAsync(newJob.getId(), request, phase);
         return SyncJobResponse.from(newJob);
+    }
+
+    /**
+     * Creates per-project RELEASE jobs for the given project IDs (or all enabled projects
+     * if the list is empty). Skips projects that already have an active RELEASE job.
+     *
+     * @return IDs of the newly created RELEASE jobs
+     */
+    public List<Long> startReleaseSyncForProjects(List<Long> projectIds) {
+        Long workspaceId = WorkspaceContext.get();
+        List<TrackedProject> targets;
+        if (projectIds.isEmpty()) {
+            targets = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId);
+        } else {
+            targets = trackedProjectRepository.findAllByWorkspaceIdAndEnabledTrue(workspaceId)
+                .stream()
+                .filter(p -> projectIds.contains(p.getId()))
+                .toList();
+        }
+        List<Long> jobIds = new ArrayList<>();
+        Instant now = DateTimeUtils.now();
+        for (TrackedProject project : targets) {
+            List<Long> ids = List.of(project.getId());
+            if (syncJobService.findActiveReleaseJobForProjects(workspaceId, ids).isPresent()) {
+                continue;
+            }
+            ManualSyncRequest request = new ManualSyncRequest(
+                ids, now.minus(BACKFILL_DAYS, ChronoUnit.DAYS), now,
+                false, false, false, false
+            );
+            SyncJob job = syncJobService.createReleaseJob(workspaceId, request);
+            syncOrchestrator.orchestrateReleaseAsync(job.getId());
+            jobIds.add(job.getId());
+        }
+        return jobIds;
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────

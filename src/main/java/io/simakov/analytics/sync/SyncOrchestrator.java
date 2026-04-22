@@ -4,6 +4,7 @@ import io.simakov.analytics.api.dto.request.ManualSyncRequest;
 import io.simakov.analytics.api.exception.GitLabApiException;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.MergeRequest;
+import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
@@ -46,6 +47,7 @@ public class SyncOrchestrator {
     private final SyncJobService syncJobService;
     private final MrAuthorDiscoveryService authorDiscoveryService;
     private final SnapshotService snapshotService;
+    private final ReleaseSyncService releaseSyncService;
     private final List<SyncStep> syncSteps;
 
     @Qualifier("mrProcessingExecutor")
@@ -74,10 +76,62 @@ public class SyncOrchestrator {
                 int linked = authorDiscoveryService.syncCommitEmails(request.projectIds());
                 log.info("ENRICH phase complete for job {}: linked {} commit email(s), triggering snapshot backfill", jobId, linked);
                 snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
+                chainReleasePhase(jobId, request);
             }
         } catch (Exception e) {
             log.error("Sync job {} failed with error: {}", jobId, e.getMessage(), e);
             syncJobService.fail(jobId, e.getMessage());
+        }
+    }
+
+    /**
+     * Runs the RELEASE phase for specific projects as a tracked SyncJob.
+     * Reads projectIds from the job's payload, syncs releases per project.
+     */
+    @Async("syncTaskExecutor")
+    public void orchestrateReleaseAsync(Long jobId) {
+        log.info("Starting sync job {} (phase=RELEASE)", jobId);
+        try {
+            ManualSyncRequest request = syncJobService.getPayload(jobId);
+            for (Long projectId : request.projectIds()) {
+                TrackedProject project = trackedProjectRepository.findById(projectId).orElse(null);
+                if (project == null) {
+                    log.warn("RELEASE job {}: project {} not found, skipping", jobId, projectId);
+                    continue;
+                }
+                try {
+                    releaseSyncService.syncReleasesForProject(project);
+                } catch (Exception e) {
+                    log.error("RELEASE job {}: failed for project '{}': {}", jobId, project.getName(), e.getMessage(), e);
+                }
+            }
+            syncJobService.complete(jobId);
+            log.info("RELEASE phase complete for job {}", jobId);
+        } catch (Exception e) {
+            log.error("Sync job {} (RELEASE) failed: {}", jobId, e.getMessage(), e);
+            syncJobService.fail(jobId, e.getMessage());
+        }
+    }
+
+    /**
+     * After ENRICH phase: start RELEASE phase as an independent tracked job per project set.
+     * Per-project idempotency: skips if a RELEASE job for the same projects is already running.
+     */
+    private void chainReleasePhase(Long enrichJobId,
+                                   ManualSyncRequest enrichRequest) {
+        try {
+            Long workspaceId = syncJobService.findById(enrichJobId).getWorkspaceId();
+            if (syncJobService.findActiveReleaseJobForProjects(workspaceId, enrichRequest.projectIds()).isPresent()) {
+                log.info("RELEASE phase already running for projects {}, skipping chain from job {}",
+                    enrichRequest.projectIds(), enrichJobId);
+                return;
+            }
+            SyncJob releaseJob = syncJobService.createReleaseJob(workspaceId, enrichRequest);
+            log.info("Auto-starting RELEASE phase as job {} for projects {} after ENRICH job {}",
+                releaseJob.getId(), enrichRequest.projectIds(), enrichJobId);
+            orchestrateReleaseAsync(releaseJob.getId());
+        } catch (Exception e) {
+            log.error("Failed to start RELEASE phase after job {}: {}", enrichJobId, e.getMessage(), e);
         }
     }
 

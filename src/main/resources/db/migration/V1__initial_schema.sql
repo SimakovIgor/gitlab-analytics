@@ -105,6 +105,23 @@ CREATE INDEX IF NOT EXISTS idx_alias_gitlab_user_id ON tracked_user_alias (gitla
 CREATE INDEX IF NOT EXISTS idx_alias_username ON tracked_user_alias (username) WHERE username IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_alias_email ON tracked_user_alias (email) WHERE email IS NOT NULL;
 
+-- ── Release tags (GitLab releases / tags) ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS release_tag
+(
+    id                 BIGSERIAL PRIMARY KEY,
+    tracked_project_id BIGINT       NOT NULL REFERENCES tracked_project (id) ON DELETE CASCADE,
+    tag_name           VARCHAR(255) NOT NULL,
+    tag_created_at     TIMESTAMPTZ  NOT NULL,
+    released_at        TIMESTAMPTZ,
+    pipeline_id        BIGINT,
+    stage_deployed_at  TIMESTAMPTZ,
+    prod_deployed_at   TIMESTAMPTZ,
+    synced_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_release_tag_project_tag UNIQUE (tracked_project_id, tag_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_release_tag_created ON release_tag (tracked_project_id, tag_created_at);
+
 -- ── Merge requests ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS merge_request
 (
@@ -132,6 +149,7 @@ CREATE TABLE IF NOT EXISTS merge_request
     first_commit_at          TIMESTAMPTZ,
     last_commit_at           TIMESTAMPTZ,
     updated_at_gitlab        TIMESTAMPTZ,
+    release_tag_id           BIGINT      REFERENCES release_tag (id) ON DELETE SET NULL,
     synced_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_merge_request UNIQUE (tracked_project_id, gitlab_mr_id),
     CONSTRAINT fk_merge_request_project
@@ -142,6 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_mr_author ON merge_request (author_gitlab_user_id
 CREATE INDEX IF NOT EXISTS idx_mr_created ON merge_request (created_at_gitlab);
 CREATE INDEX IF NOT EXISTS idx_mr_merged ON merge_request (merged_at_gitlab) WHERE merged_at_gitlab IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_mr_state ON merge_request (state);
+CREATE INDEX IF NOT EXISTS idx_merge_request_release_tag ON merge_request (release_tag_id) WHERE release_tag_id IS NOT NULL;
 
 -- ── Commits within an MR ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS merge_request_commit

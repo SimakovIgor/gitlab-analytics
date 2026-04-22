@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,7 +76,7 @@ public class SyncController {
     public void triggerReleaseSync() {
         Long workspaceId = WorkspaceContext.get();
         log.info("Manual release sync triggered for workspace={}", workspaceId);
-        releaseSyncService.syncReleasesForWorkspace(workspaceId);
+        releaseSyncService.syncReleasesForWorkspaceAsync(workspaceId);
     }
 
     @GetMapping("/jobs/{jobId}")
@@ -86,5 +87,16 @@ public class SyncController {
             throw new ResourceNotFoundException("SyncJob", jobId);
         }
         return SyncJobResponse.from(job);
+    }
+
+    @GetMapping("/jobs/latest-release")
+    @Operation(summary = "Get the latest RELEASE job for the workspace",
+               description = "Returns the running or most recently completed release sync job. "
+                   + "Used by the onboarding page to show Phase 3 progress. Returns 404 if no release job exists yet.")
+    public ResponseEntity<SyncJobResponse> getLatestReleaseJob() {
+        Long workspaceId = WorkspaceContext.get();
+        return syncJobService.findLatestReleaseJob(workspaceId)
+            .map(job -> ResponseEntity.ok(SyncJobResponse.from(job)))
+            .orElse(ResponseEntity.notFound().build());
     }
 }

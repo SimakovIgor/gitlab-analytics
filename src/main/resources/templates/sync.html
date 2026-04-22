@@ -58,7 +58,7 @@
                 <div class="kpi-label">С ошибками</div>
                 <div class="kpi-value kpi-value-bad num" th:text="${failed14d}">0</div>
                 <div class="kpi-sub"
-                     th:text="${partial14d} + ' фаза·1 · ' + ${failed14d} + ' упало'">—
+                     th:text="${failed14d > 0} ? ${failed14d} + ' ошибок' : 'без ошибок'">—
                 </div>
             </div>
             <div class="kpi-card">
@@ -94,8 +94,6 @@
                 <div>Статус</div>
                 <div>Длит.</div>
                 <div class="sync-th-r">MR</div>
-                <div class="sync-th-r">Коммиты</div>
-                <div class="sync-th-r">Ревью</div>
                 <div>Примечание</div>
                 <div></div>
             </div>
@@ -161,6 +159,7 @@
     /*<![CDATA[*/
     window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
     /*]]>*/
 </script>
 <script src="/js/sidebar.js"></script>
@@ -192,7 +191,7 @@
         if (!container || !CHART_BARS.length) {
             return;
         }
-        container.innerHTML = CHART_BARS.map(function(bar) {
+        container.innerHTML = CHART_BARS.map(function (bar) {
             return '<div class="sync-bar-col" title="' + escHtml(bar.tooltip) + '">'
                 + '<div class="sync-bar sync-bar-' + escHtml(bar.uiStatus) + '" style="height:' + bar.heightPct + '%"></div>'
                 + '<div class="sync-bar-label">' + escHtml(bar.dateLabel) + '</div>'
@@ -202,7 +201,8 @@
 
     // ── Phase breakdown ────────────────────────────────────────────────────────
 
-    var PHASE_DEFS = [
+    // Phases for FAST (phase1) and ENRICH (phase2) jobs
+    var ENRICH_PHASE_DEFS = [
         {name: 'Auth & project metadata', fast: true, pct: 0.05},
         {name: 'Fetch merge requests', fast: true, pct: 0.40},
         {name: 'Fetch commits & diffs', fast: false, pct: 0.30},
@@ -211,37 +211,54 @@
         {name: 'Recompute insights', fast: false, pct: 0.02}
     ];
 
-    function getPhaseStatus(isFast, job) {
-        if (isFast) {
-            return job.uiStatus === 'failed' ? 'failed' : 'ok';
-        }
-        // Phase 1 (FAST) job: enrichment steps were not run yet
-        if (job.uiStatus === 'phase1') {
-            return 'skipped';
-        }
-        return job.uiStatus === 'failed' ? 'failed' : 'ok';
+    // Phases for RELEASE (phase3) jobs
+    var RELEASE_PHASE_DEFS = [
+        {name: 'Load release tags from GitLab', pct: 0.25},
+        {name: 'Match MRs to releases', pct: 0.45},
+        {name: 'Calculate Lead Time metrics', pct: 0.20},
+        {name: 'Update DORA snapshots', pct: 0.10}
+    ];
+
+    function renderPhaseRow(name, status, durSecs, total) {
+        var icon = status === 'ok' ? '\u2713' : (status === 'failed' ? '\u2715' : '\xb7');
+        var iconColor = status === 'ok' ? 'var(--good)' : (status === 'failed' ? 'var(--bad)' : 'var(--fg-3)');
+        var durLabel = status === 'skipped' ? '\u2014' : formatDur(durSecs);
+        var barPct = status === 'skipped' ? 0 : Math.min(100, durSecs * 100 / Math.max(1, total));
+        var barColor = status === 'ok' ? 'var(--good)' : 'var(--bad)';
+        return '<div class="sync-phase-row">'
+            + '<div class="sync-phase-icon" style="color:' + iconColor + '">' + icon + '</div>'
+            + '<div class="sync-phase-name' + (status === 'skipped' ? ' sync-phase-skipped' : '') + '">'
+            + escHtml(name) + '</div>'
+            + '<div class="sync-phase-bar">'
+            + '<div class="sync-phase-bar-fill" style="width:' + barPct + '%;background:' + barColor + '"></div>'
+            + '</div>'
+            + '<div class="num sync-phase-dur">' + escHtml(durLabel) + '</div>'
+            + '</div>';
     }
 
     function renderPhaseBreakdown(job) {
         var total = Math.max(1, job.durationSecs);
-        var rows = PHASE_DEFS.map(function(p) {
-            var status = getPhaseStatus(p.fast, job);
-            var icon = status === 'ok' ? '\u2713' : (status === 'failed' ? '\u2715' : '\xb7');
-            var iconColor = status === 'ok' ? 'var(--good)' : (status === 'failed' ? 'var(--bad)' : 'var(--fg-3)');
-            var durSecs = Math.round(total * p.pct);
-            var durLabel = status === 'skipped' ? '\u2014' : formatDur(durSecs);
-            var barPct = status === 'skipped' ? 0 : Math.min(100, durSecs * 100 / total);
-            var barColor = status === 'ok' ? 'var(--good)' : 'var(--bad)';
-            return '<div class="sync-phase-row">'
-                + '<div class="sync-phase-icon" style="color:' + iconColor + '">' + icon + '</div>'
-                + '<div class="sync-phase-name' + (status === 'skipped' ? ' sync-phase-skipped' : '') + '">'
-                + escHtml(p.name) + '</div>'
-                + '<div class="sync-phase-bar">'
-                + '<div class="sync-phase-bar-fill" style="width:' + barPct + '%;background:' + barColor + '"></div>'
-                + '</div>'
-                + '<div class="num sync-phase-dur">' + escHtml(durLabel) + '</div>'
-                + '</div>';
-        }).join('');
+        var rows;
+        if (job.uiStatus === 'phase3' || job.phase === 'RELEASE') {
+            // RELEASE job: show release-specific steps
+            rows = RELEASE_PHASE_DEFS.map(function (p) {
+                var status = job.uiStatus === 'failed' ? 'failed' : 'ok';
+                return renderPhaseRow(p.name, status, Math.round(total * p.pct), total);
+            }).join('');
+        } else {
+            // FAST or ENRICH job: show standard enrichment steps
+            rows = ENRICH_PHASE_DEFS.map(function (p) {
+                var status;
+                if (p.fast) {
+                    status = job.uiStatus === 'failed' ? 'failed' : 'ok';
+                } else if (job.uiStatus === 'phase1') {
+                    status = 'skipped';
+                } else {
+                    status = job.uiStatus === 'failed' ? 'failed' : 'ok';
+                }
+                return renderPhaseRow(p.name, status, Math.round(total * p.pct), total);
+            }).join('');
+        }
         return '<div class="sync-phases-label">\u0424\u0430\u0437\u044b \u0437\u0430\u043f\u0443\u0441\u043a\u0430</div>'
             + '<div class="sync-phases-list">' + rows + '</div>';
     }
@@ -250,7 +267,9 @@
 
     var STATUS_LABELS = {
         ok: '\u0423\u0441\u043f\u0435\u0445',
-        phase1: '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2',
+        phase1: '\u0424\u0430\u0437\u0430 1 \u0438\u0437 3',
+        phase2: '\u0424\u0430\u0437\u0430 2 \u0438\u0437 3',
+        phase3: '\u0424\u0430\u0437\u0430 3 \u0438\u0437 3',
         failed: '\u041e\u0448\u0438\u0431\u043a\u0430',
         running: '\u0412 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u0435'
     };
@@ -266,7 +285,7 @@
             : '';
         var retryBtn = job.canRetry
             ? '<div class="sync-detail-actions"><button class="btn-sm btn-secondary" onclick="retryJobFromSync('
-                + job.id + ')">\u21ba \u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0437\u0430\u043f\u0443\u0441\u043a</button></div>'
+            + job.id + ')">\u21ba \u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0437\u0430\u043f\u0443\u0441\u043a</button></div>'
             : '';
         return '<div class="sync-run-item">'
             + '<button class="sync-run-row" onclick="toggleRow(this)">'
@@ -275,8 +294,6 @@
             + escHtml(statusLabel) + '</span></div>'
             + '<div class="num sync-col-dur">' + escHtml(job.durationLabel) + '</div>'
             + '<div class="num sync-col-num">' + mrCount + ' <span class="sync-col-unit">MR</span></div>'
-            + '<div class="num sync-col-num">\u2014 <span class="sync-col-unit">\u043a\u043e\u043c\u043c\u0438\u0442\u043e\u0432</span></div>'
-            + '<div class="num sync-col-num">\u2014 <span class="sync-col-unit">\u0440\u0435\u0432\u044e</span></div>'
             + '<div class="' + noteClass + '">' + escHtml(note) + '</div>'
             + '<div class="sync-col-chevron">\u25b8</div>'
             + '</button>'
@@ -339,10 +356,18 @@
     }
 
     // ── Sidebar shims (sidebar.js requires these) ──────────────────────────────
-    function sidebarSync() {}
-    function sidebarDeleteProject() {}
-    function sidebarDeleteUser() {}
-    function applyFilters() {}
+    function sidebarSync() {
+    }
+
+    function sidebarDeleteProject() {
+    }
+
+    function sidebarDeleteUser() {
+    }
+
+    function applyFilters() {
+    }
+
     /*]]>*/
 </script>
 

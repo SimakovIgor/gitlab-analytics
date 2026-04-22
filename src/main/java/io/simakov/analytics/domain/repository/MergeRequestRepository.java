@@ -2,8 +2,10 @@ package io.simakov.analytics.domain.repository;
 
 import io.simakov.analytics.domain.model.MergeRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -156,4 +158,65 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                """)
     List<LeadTimeSummaryProjection> findLeadTimeSummary(@Param("projectIds") List<Long> projectIds,
                                                         @Param("dateFrom") Instant dateFrom);
+
+    // ── Реальный Lead Time for Changes (mr.created_at → release_tag.prod_deployed_at) ──
+
+    /**
+     * Реальный Lead Time for Changes — еженедельная разбивка по дате деплоя в прод.
+     * Учитывает только MR, для которых известна дата prod_deployed_at.
+     * Период задаётся по дате деплоя (dateFrom ≤ rt.prod_deployed_at).
+     */
+    @Query(nativeQuery = true,
+           value = """
+               SELECT
+                 DATE_TRUNC('week', rt.prod_deployed_at)::date AS period,
+                 COUNT(mr.id)                                   AS mr_count,
+                 PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS median_days,
+                 PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS p75_days,
+                 PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS p95_days
+               FROM merge_request mr
+               JOIN release_tag rt ON rt.id = mr.release_tag_id
+               WHERE mr.tracked_project_id IN (:projectIds)
+                 AND rt.prod_deployed_at IS NOT NULL
+                 AND rt.prod_deployed_at >= :dateFrom
+               GROUP BY DATE_TRUNC('week', rt.prod_deployed_at)
+               ORDER BY period
+               """)
+    List<RealLeadTimeWeekProjection> findRealLeadTimeByWeek(@Param("projectIds") List<Long> projectIds,
+                                                            @Param("dateFrom") Instant dateFrom);
+
+    /**
+     * Реальный Lead Time for Changes — суммарная строка за период.
+     * Учитывает только MR, для которых известна дата prod_deployed_at.
+     */
+    @Query(nativeQuery = true,
+           value = """
+               SELECT
+                 COUNT(mr.id)                                   AS mr_count,
+                 PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS median_days,
+                 PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS p75_days,
+                 PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS p95_days
+               FROM merge_request mr
+               JOIN release_tag rt ON rt.id = mr.release_tag_id
+               WHERE mr.tracked_project_id IN (:projectIds)
+                 AND rt.prod_deployed_at IS NOT NULL
+                 AND rt.prod_deployed_at >= :dateFrom
+               """)
+    List<RealLeadTimeSummaryProjection> findRealLeadTimeSummary(@Param("projectIds") List<Long> projectIds,
+                                                                @Param("dateFrom") Instant dateFrom);
+
+    /**
+     * Сбрасывает release_tag_id у всех MR проекта перед переатрибуцией.
+     * Вызывается из ReleaseSyncService перед полным переприсвоением.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE MergeRequest mr SET mr.releaseTagId = null WHERE mr.trackedProjectId = :projectId")
+    void clearReleaseTagId(@Param("projectId") Long projectId);
 }

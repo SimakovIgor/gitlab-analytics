@@ -13,4 +13,5 @@ public record GitLabPipelineDto(
     @JsonProperty("status") String status,
     @JsonProperty("sha") String sha
 ) {
+
 }

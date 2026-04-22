@@ -70,6 +70,7 @@ public class WebController {
         model.addAttribute("hasProjects", data.hasProjects());
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("enrichmentJobId", data.enrichmentJobId());
+        model.addAttribute("releaseJobIds", data.releaseJobIds());
         model.addAttribute("usersWithAliases", data.usersWithAliases());
         model.addAttribute("allProjects", data.allProjects());
         model.addAttribute("selectedProjectIds", data.selectedProjectIds());
@@ -117,6 +118,7 @@ public class WebController {
         SyncHistoryPageData data = settingsViewService.buildSyncHistoryPage();
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("enrichmentJobId", data.enrichmentJobId());
+        model.addAttribute("releaseJobIds", data.releaseJobIds());
         model.addAttribute("total14d", data.total14d());
         model.addAttribute("ok14d", data.ok14d());
         model.addAttribute("partial14d", data.partial14d());

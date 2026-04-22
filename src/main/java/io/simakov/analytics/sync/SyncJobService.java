@@ -131,9 +131,66 @@ public class SyncJobService {
             .findFirst();
     }
 
+    @Transactional
+    public SyncJob createReleaseJob(Long workspaceId,
+                                    ManualSyncRequest request) {
+        SyncJob job = SyncJob.builder()
+            .workspaceId(workspaceId)
+            .status(SyncStatus.STARTED)
+            .phase(SyncJobPhase.RELEASE)
+            .payloadJson(toJson(request))
+            .build();
+        return syncJobRepository.save(job);
+    }
+
+    /**
+     * Returns an active RELEASE job whose projectIds overlap with the given set.
+     * Used to prevent starting a duplicate RELEASE for the same project.
+     */
+    public Optional<SyncJob> findActiveReleaseJobForProjects(Long workspaceId,
+                                                             Collection<Long> projectIds) {
+        Set<Long> requested = Set.copyOf(projectIds);
+        List<SyncJob> active = syncJobRepository
+            .findByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED);
+        return active.stream()
+            .filter(job -> job.getPhase() == SyncJobPhase.RELEASE)
+            .filter(job -> {
+                if (job.getPayloadJson() == null) {
+                    return false;
+                }
+                try {
+                    ManualSyncRequest payload = objectMapper.readValue(job.getPayloadJson(), ManualSyncRequest.class);
+                    return payload.projectIds().stream().anyMatch(requested::contains);
+                } catch (JsonProcessingException e) {
+                    return false;
+                }
+            })
+            .findFirst();
+    }
+
+    public List<Long> findActiveReleaseJobIds(Long workspaceId) {
+        return syncJobRepository
+            .findByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED)
+            .stream()
+            .filter(j -> j.getPhase() == SyncJobPhase.RELEASE)
+            .map(SyncJob::getId)
+            .toList();
+    }
+
     public Optional<SyncJob> findActiveEnrichmentJob(Long workspaceId) {
         return syncJobRepository.findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(
             workspaceId, SyncStatus.STARTED, SyncJobPhase.ENRICH);
+    }
+
+    /**
+     * Returns the most recent RELEASE job for the workspace — STARTED first, then COMPLETED.
+     * Used by the onboarding page to show Phase 3 progress after Phase 2 finishes.
+     */
+    public Optional<SyncJob> findLatestReleaseJob(Long workspaceId) {
+        return syncJobRepository
+            .findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED, SyncJobPhase.RELEASE)
+            .or(() -> syncJobRepository
+                .findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(workspaceId, SyncStatus.COMPLETED, SyncJobPhase.RELEASE));
     }
 
     public SyncJob findById(Long jobId) {

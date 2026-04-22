@@ -74,6 +74,7 @@ public class InsightsController {
         Long enrichmentJobId = syncJobService.findActiveEnrichmentJob(workspaceId)
             .map(SyncJob::getId).orElse(null);
         model.addAttribute("enrichmentJobId", enrichmentJobId);
+        model.addAttribute("releaseJobIds", syncJobService.findActiveReleaseJobIds(workspaceId));
 
         // Page-specific attributes
         model.addAttribute("insights", insights);

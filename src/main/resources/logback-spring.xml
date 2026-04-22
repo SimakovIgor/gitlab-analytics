@@ -3,7 +3,8 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-    <springProfile name="!test">
+    <!-- Loki включён только в профиле "monitoring" (запуск с флагом full) -->
+    <springProfile name="monitoring">
         <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
             <http>
                 <url>http://localhost:3100/loki/api/v1/push</url>
@@ -17,14 +18,13 @@
                 </message>
             </format>
         </appender>
-
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="LOKI"/>
         </root>
     </springProfile>
 
-    <springProfile name="test">
+    <springProfile name="!monitoring">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>

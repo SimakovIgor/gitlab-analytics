@@ -42,24 +42,34 @@ public class ReleaseTag {
             length = 255)
     private String tagName;
 
-    /** When the tag / release was created in GitLab. */
+    /**
+     * When the tag / release was created in GitLab.
+     */
     @Column(name = "tag_created_at",
             nullable = false)
     private Instant tagCreatedAt;
 
-    /** released_at from GitLab Releases API (may differ from tag creation). */
+    /**
+     * released_at from GitLab Releases API (may differ from tag creation).
+     */
     @Column(name = "released_at")
     private Instant releasedAt;
 
-    /** Pipeline ID associated with this tag (from releases API or tag pipeline). */
+    /**
+     * Pipeline ID associated with this tag (from releases API or tag pipeline).
+     */
     @Column(name = "pipeline_id")
     private Long pipelineId;
 
-    /** Earliest finished_at of a successful stage deploy job for this release. */
+    /**
+     * Earliest finished_at of a successful stage deploy job for this release.
+     */
     @Column(name = "stage_deployed_at")
     private Instant stageDeployedAt;
 
-    /** Earliest finished_at of a successful prod::deploy::* job for this release. */
+    /**
+     * Earliest finished_at of a successful prod::deploy::* job for this release.
+     */
     @Column(name = "prod_deployed_at")
     private Instant prodDeployedAt;
 

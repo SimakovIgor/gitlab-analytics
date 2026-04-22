@@ -98,12 +98,14 @@ public class ReportViewService {
 
         List<UserWithAliases> usersWithAliases = buildUsersWithAliases(allUsers);
 
+        List<Long> releaseJobIds = syncJobService.findActiveReleaseJobIds(workspaceId);
+
         if (onboardingMode) {
             return new ReportPageData(
                 sources, hasSources, hasProjects, hasUsers, true, hasSyncCompleted,
                 activeJobIds, lastFailedSyncJobId, enrichmentJobId, usersWithAliases, allProjects,
                 List.of(), period, showInactive,
-                null, null, List.of(), Map.of(), null, List.of()
+                null, null, List.of(), Map.of(), null, List.of(), releaseJobIds
             );
         }
 
@@ -150,7 +152,7 @@ public class ReportViewService {
             sources, hasSources, hasProjects, hasUsers, false, hasSyncCompleted,
             activeJobIds, lastFailedSyncJobId, enrichmentJobId, usersWithAliases, allProjects,
             selectedProjectIds, period, showInactive,
-            dateFrom, dateTo, metrics, deltas, summary, topInsights
+            dateFrom, dateTo, metrics, deltas, summary, topInsights, releaseJobIds
         );
     }
 

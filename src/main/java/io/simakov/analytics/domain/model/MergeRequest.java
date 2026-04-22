@@ -123,7 +123,9 @@ public class MergeRequest {
     @Column(name = "updated_at_gitlab")
     private Instant updatedAtGitlab;
 
-    /** The release this MR shipped in (set by ReleaseSyncStep based on merged_at window). */
+    /**
+     * The release this MR shipped in (set by ReleaseSyncStep based on merged_at window).
+     */
     @Column(name = "release_tag_id")
     private Long releaseTagId;
 

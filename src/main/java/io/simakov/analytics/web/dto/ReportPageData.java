@@ -28,7 +28,8 @@ public record ReportPageData(
     List<UserMetrics> metrics,
     Map<Long, Map<String, Number>> deltas,
     ReportSummary summary,
-    List<InsightSummaryDto> topInsights
+    List<InsightSummaryDto> topInsights,
+    List<Long> releaseJobIds
 ) {
 
 }

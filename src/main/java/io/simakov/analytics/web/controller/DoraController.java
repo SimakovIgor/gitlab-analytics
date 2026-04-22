@@ -8,6 +8,7 @@ import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.DoraService;
 import io.simakov.analytics.web.OAuth2UserResolver;
+import io.simakov.analytics.web.SettingsService;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
@@ -16,7 +17,9 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.List;
 import java.util.Map;
@@ -32,6 +35,7 @@ public class DoraController {
     private final SettingsViewService settingsViewService;
     private final WorkspaceService workspaceService;
     private final SyncJobService syncJobService;
+    private final SettingsService settingsService;
 
     @GetMapping("/dora")
     public String dora(OAuth2AuthenticationToken authentication,
@@ -65,25 +69,36 @@ public class DoraController {
         model.addAttribute("sources", sidebarData.sources());
         model.addAttribute("usersWithAliases", sidebarData.usersWithAliases());
         model.addAttribute("activeJobIds", sidebarData.activeJobIds());
-        Long enrichmentJobId = syncJobService.findActiveEnrichmentJob(WorkspaceContext.get())
+        Long workspaceId = WorkspaceContext.get();
+        Long enrichmentJobId = syncJobService.findActiveEnrichmentJob(workspaceId)
             .map(SyncJob::getId).orElse(null);
         model.addAttribute("enrichmentJobId", enrichmentJobId);
+        model.addAttribute("releaseJobIds", syncJobService.findActiveReleaseJobIds(workspaceId));
         model.addAttribute("hasProjects", sidebarData.hasProjects());
         model.addAttribute("showInactive", false);
-        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
+        model.addAttribute("workspaceName", workspaceService.findWorkspaceName(workspaceId));
         model.addAttribute("selectedProjectIds", effectiveProjectIds);
         model.addAttribute("selectedPeriod", periodType.name());
         model.addAttribute("dateFrom", java.time.LocalDate.now().minusDays(days));
         model.addAttribute("dateTo", java.time.LocalDate.now());
         model.addAttribute("totalMrs", leadTime.get("totalMrs"));
-        model.addAttribute("medianHours", leadTime.get("medianHours"));
-        model.addAttribute("p75Hours", leadTime.get("p75Hours"));
-        model.addAttribute("p95Hours", leadTime.get("p95Hours"));
-        model.addAttribute("prCycleTimeRating", leadTime.get("prCycleTimeRating"));
+        model.addAttribute("medianDays", leadTime.get("medianDays"));
+        model.addAttribute("p75Days", leadTime.get("p75Days"));
+        model.addAttribute("p95Days", leadTime.get("p95Days"));
+        model.addAttribute("leadTimeRating", leadTime.get("leadTimeRating"));
         model.addAttribute("chartJson", leadTime.get("chartJson"));
         model.addAttribute("releases", releases);
         model.addAttribute("doraMetrics", DoraMetric.values());
 
         return "dora";
+    }
+
+    @PostMapping("/dora/sync/releases")
+    @ResponseBody
+    public List<Long> triggerReleaseSync(@RequestParam(required = false) Long projectId) {
+        List<Long> ids = projectId != null
+            ? List.of(projectId)
+            : List.of();
+        return settingsService.startReleaseSyncForProjects(ids);
     }
 }

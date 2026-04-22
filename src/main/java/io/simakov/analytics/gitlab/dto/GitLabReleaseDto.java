@@ -21,5 +21,6 @@ public record GitLabReleaseDto(
         @JsonProperty("id") String id,
         @JsonProperty("created_at") Instant createdAt
     ) {
+
     }
 }
