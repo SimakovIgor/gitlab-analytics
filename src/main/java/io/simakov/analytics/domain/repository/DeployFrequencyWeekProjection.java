@@ -6,9 +6,13 @@ package io.simakov.analytics.domain.repository;
  */
 public interface DeployFrequencyWeekProjection {
 
-    /** ISO week label, e.g. "2026-W16". */
+    /**
+     * ISO week label, e.g. "2026-W16".
+     */
     String getWeekLabel();
 
-    /** Number of prod deployments in this week. */
+    /**
+     * Number of prod deployments in this week.
+     */
     Long getDeployCount();
 }

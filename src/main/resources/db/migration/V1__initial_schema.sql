@@ -290,14 +290,14 @@ CREATE INDEX IF NOT EXISTS idx_metric_snapshot_snapshot_date ON metric_snapshot 
 CREATE TABLE IF NOT EXISTS jira_incident
 (
     id                 BIGSERIAL PRIMARY KEY,
-    workspace_id       BIGINT       NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
-    tracked_project_id BIGINT       NOT NULL REFERENCES tracked_project (id) ON DELETE CASCADE,
-    jira_key           VARCHAR(64)  NOT NULL,
+    workspace_id       BIGINT      NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+    tracked_project_id BIGINT      NOT NULL REFERENCES tracked_project (id) ON DELETE CASCADE,
+    jira_key           VARCHAR(64) NOT NULL,
     summary            VARCHAR(1024),
-    created_at         TIMESTAMPTZ  NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL,
     resolved_at        TIMESTAMPTZ,
     component_name     VARCHAR(255),
-    synced_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    synced_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_jira_incident_key_project UNIQUE (jira_key, tracked_project_id)
 );
 

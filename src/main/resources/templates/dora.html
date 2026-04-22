@@ -77,9 +77,9 @@
                 <div class="dora-big-header">
                     <span class="dora-big-label">Lead Time for Changes</span>
                     <span class="rating-pill rating-pill-hoverable"
+                          th:attr="data-tooltip=${leadTimeRatingDesc}"
                           th:classappend="${leadTimeRating.cssClass()}"
-                          th:text="${leadTimeRating.label()}"
-                          th:attr="data-tooltip=${leadTimeRatingDesc}">—</span>
+                          th:text="${leadTimeRating.label()}">—</span>
                 </div>
                 <div class="dora-big-value-row">
                     <span class="num dora-big-value"
@@ -113,9 +113,9 @@
                 <div class="dora-big-header">
                     <span class="dora-big-label">Deploy Frequency</span>
                     <span class="rating-pill rating-pill-hoverable"
+                          th:attr="data-tooltip=${deployFreqRatingDesc}"
                           th:classappend="${deployFreqRating.cssClass()}"
-                          th:text="${deployFreqRating.label()}"
-                          th:attr="data-tooltip=${deployFreqRatingDesc}">—</span>
+                          th:text="${deployFreqRating.label()}">—</span>
                 </div>
                 <div class="dora-big-value-row">
                     <span class="num dora-big-value"
@@ -143,9 +143,10 @@
                 <div class="dora-big-header">
                     <span class="dora-big-label">Change Failure Rate</span>
                     <span class="rating-pill rating-pill-hoverable"
+                          th:attr="data-tooltip=${cfrRatingDesc}"
                           th:classappend="${cfrRating.cssClass()}"
-                          th:text="${cfrRating.label()}"
-                          th:attr="data-tooltip=${cfrRatingDesc}">—</span>
+                          th:if="${cfrRating != null}"
+                          th:text="${cfrRating.label()}">—</span>
                 </div>
                 <div class="dora-big-value-row">
                     <span class="num dora-big-value"
@@ -277,13 +278,13 @@
                         <div class="release-row-main" onclick="toggleRelease(this)">
                             <div class="release-row-left">
                                 <span class="release-tag-name release-tag-hoverable"
-                                      th:text="${release.tagName}"
                                       th:attr="data-tag=${release.tagName},
                                                data-project=${release.projectName},
                                                data-created=${release.tagCreatedAtDisplay},
                                                data-prod=${release.prodDeployedAtDisplay ?: ''},
                                                data-mr=${release.mrCount},
-                                               data-lt=${release.medianLeadTimeDays != null ? #numbers.formatDecimal(release.medianLeadTimeDays, 1, 1) : ''}">1.0.0</span>
+                                               data-lt=${release.medianLeadTimeDays != null ? #numbers.formatDecimal(release.medianLeadTimeDays, 1, 1) : ''}"
+                                      th:text="${release.tagName}">1.0.0</span>
                                 <span class="release-project-name" th:text="${release.projectName}">service</span>
                                 <span class="release-prod-dot release-prod-dot-ok"
                                       th:if="${release.prodDeployedAtDisplay != null}"></span>
@@ -492,14 +493,30 @@
 
     // Linear regression trendline
     function linregTrend(data) {
-        const pts = data.map(function (v, i) { return {x: i, y: v}; })
-            .filter(function (p) { return p.y != null && !isNaN(p.y); });
-        if (pts.length < 2) { return data.map(function () { return null; }); }
+        const pts = data.map(function (v, i) {
+            return {x: i, y: v};
+        })
+            .filter(function (p) {
+                return p.y != null && !isNaN(p.y);
+            });
+        if (pts.length < 2) {
+            return data.map(function () {
+                return null;
+            });
+        }
         const n = pts.length;
-        const sumX = pts.reduce(function (s, p) { return s + p.x; }, 0);
-        const sumY = pts.reduce(function (s, p) { return s + p.y; }, 0);
-        const sumXY = pts.reduce(function (s, p) { return s + p.x * p.y; }, 0);
-        const sumXX = pts.reduce(function (s, p) { return s + p.x * p.x; }, 0);
+        const sumX = pts.reduce(function (s, p) {
+            return s + p.x;
+        }, 0);
+        const sumY = pts.reduce(function (s, p) {
+            return s + p.y;
+        }, 0);
+        const sumXY = pts.reduce(function (s, p) {
+            return s + p.x * p.y;
+        }, 0);
+        const sumXX = pts.reduce(function (s, p) {
+            return s + p.x * p.x;
+        }, 0);
         const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
         const intercept = (sumY - slope * sumX) / n;
         return data.map(function (v, i) {
@@ -521,13 +538,20 @@
         // deploy frequency: up = good (green), down = bad (red) — opposite of lead time
         renderTrendArrowDF(dfTrendEl, dfData);
     }
+
     function renderTrendArrowDF(el, data) {
         if (!data || data.length < 4) return;
-        var valid = data.filter(function (v) { return v != null && !isNaN(v); });
+        var valid = data.filter(function (v) {
+            return v != null && !isNaN(v);
+        });
         if (valid.length < 4) return;
         var half = Math.floor(valid.length / 2);
-        var firstAvg = valid.slice(0, half).reduce(function (a, b) { return a + b; }, 0) / half;
-        var lastAvg = valid.slice(-half).reduce(function (a, b) { return a + b; }, 0) / half;
+        var firstAvg = valid.slice(0, half).reduce(function (a, b) {
+            return a + b;
+        }, 0) / half;
+        var lastAvg = valid.slice(-half).reduce(function (a, b) {
+            return a + b;
+        }, 0) / half;
         var pct = (lastAvg - firstAvg) / (firstAvg || 1);
         var dir = 'flat';
         if (pct > 0.05) dir = 'up';
@@ -599,7 +623,9 @@
                 tooltip: {
                     callbacks: {
                         label: function (ctx) {
-                            if (ctx.parsed.y == null) { return null; }
+                            if (ctx.parsed.y == null) {
+                                return null;
+                            }
                             return ctx.dataset.label + ': ' + ctx.parsed.y + ' дн';
                         }
                     }
@@ -693,7 +719,9 @@
                     tooltip: {
                         callbacks: {
                             label: function (ctx) {
-                                if (ctx.parsed.y == null) { return null; }
+                                if (ctx.parsed.y == null) {
+                                    return null;
+                                }
                                 return 'CFR: ' + ctx.parsed.y + '%';
                             }
                         }
@@ -758,7 +786,9 @@
         window.api('POST', '/dora/sync/incidents?days=360')
             .then(function (result) {
                 btn.textContent = '✓ загружено (' + (result.persisted || 0) + ')';
-                setTimeout(function () { window.location.reload(); }, 1500);
+                setTimeout(function () {
+                    window.location.reload();
+                }, 1500);
             })
             .catch(function () {
                 btn.disabled = false;
@@ -826,12 +856,16 @@
         }
 
         function hideTip() {
-            hideTimer = setTimeout(function () { tip.style.display = 'none'; }, 80);
+            hideTimer = setTimeout(function () {
+                tip.style.display = 'none';
+            }, 80);
         }
 
         document.addEventListener('mouseover', function (e) {
             const el = e.target.closest('.release-tag-hoverable');
-            if (el) { showTip(el, e); }
+            if (el) {
+                showTip(el, e);
+            }
         });
         document.addEventListener('mousemove', function (e) {
             if (tip.style.display !== 'none' && e.target.closest('.release-tag-hoverable')) {
@@ -839,7 +873,9 @@
             }
         });
         document.addEventListener('mouseout', function (e) {
-            if (e.target.closest('.release-tag-hoverable')) { hideTip(); }
+            if (e.target.closest('.release-tag-hoverable')) {
+                hideTip();
+            }
         });
     }());
 

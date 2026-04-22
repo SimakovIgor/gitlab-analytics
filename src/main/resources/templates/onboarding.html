@@ -1444,7 +1444,7 @@
                 const resp = await fetch('/api/v1/sync/jobs/latest-release', {
                     headers: {
                         [document.querySelector('meta[name="_csrf_header"]').content]:
-                            document.querySelector('meta[name="_csrf"]').content
+                        document.querySelector('meta[name="_csrf"]').content
                     }
                 });
                 if (resp.status === 404) {
@@ -1463,7 +1463,8 @@
                 } else if (job.status === 'FAILED') {
                     clearInterval(phase3PollInterval);
                 }
-            } catch (e) { /* ignore network errors */ }
+            } catch (e) { /* ignore network errors */
+            }
         }, 3000);
     }
 
@@ -1472,7 +1473,9 @@
         const icon = document.getElementById('ob-phase3-icon');
         const title = document.getElementById('ob-phase3-title');
         const desc = document.getElementById('ob-phase3-desc');
-        if (!card) { return; }
+        if (!card) {
+            return;
+        }
         card.className = 'ob-phase-card ob-phase-card-running';
         if (icon) {
             icon.innerHTML = '<svg class="ob-sync-spinner" width="22" height="22" viewBox="0 0 22 22">'
@@ -1480,8 +1483,12 @@
                 + '<path d="M19 11 A 8 8 0 0 0 11 3" fill="none" stroke="var(--accent)" stroke-linecap="round" stroke-width="2"/>'
                 + '</svg>';
         }
-        if (title) { title.textContent = 'Фаза 3 · загружаем релизы'; }
-        if (desc) { desc.textContent = 'Синхронизируем теги и деплои из GitLab CI/CD...'; }
+        if (title) {
+            title.textContent = 'Фаза 3 · загружаем релизы';
+        }
+        if (desc) {
+            desc.textContent = 'Синхронизируем теги и деплои из GitLab CI/CD...';
+        }
     }
 
     function setPhase3Done() {
@@ -1489,7 +1496,9 @@
         const icon = document.getElementById('ob-phase3-icon');
         const title = document.getElementById('ob-phase3-title');
         const desc = document.getElementById('ob-phase3-desc');
-        if (!card) { return; }
+        if (!card) {
+            return;
+        }
         card.className = 'ob-phase-card ob-phase-card-good';
         if (icon) {
             icon.innerHTML = '<div class="ob-phase-check">'
@@ -1497,8 +1506,12 @@
                 + '<path d="M4 10.5 L8 14.5 L16 6" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>'
                 + '</svg></div>';
         }
-        if (title) { title.textContent = 'Фаза 3 · DORA-метрики готовы'; }
-        if (desc) { desc.textContent = 'Релизы загружены — данные DORA уже доступны на странице Сервисы & DORA.'; }
+        if (title) {
+            title.textContent = 'Фаза 3 · DORA-метрики готовы';
+        }
+        if (desc) {
+            desc.textContent = 'Релизы загружены — данные DORA уже доступны на странице Сервисы & DORA.';
+        }
     }
 
     function startPhase2Counters() {

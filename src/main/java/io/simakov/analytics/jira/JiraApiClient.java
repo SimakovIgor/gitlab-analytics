@@ -3,7 +3,6 @@ package io.simakov.analytics.jira;
 import io.simakov.analytics.jira.dto.JiraIssueDto;
 import io.simakov.analytics.jira.dto.JiraSearchResponseDto;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -21,7 +20,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Slf4j
 @Component
-@ConditionalOnExpression("!T(org.springframework.util.StringUtils).isEmpty('${app.jira.base-url:}')")
 public class JiraApiClient {
 
     private static final DateTimeFormatter JIRA_DATE_FMT =

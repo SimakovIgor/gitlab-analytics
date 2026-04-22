@@ -31,7 +31,8 @@ public interface ReleaseTagRepository extends JpaRepository<ReleaseTag, Long> {
           AND r.prodDeployedAt IS NOT NULL
           AND r.prodDeployedAt >= :dateFrom
         """)
-    long countProdDeploysInPeriod(List<Long> projectIds, Instant dateFrom);
+    long countProdDeploysInPeriod(List<Long> projectIds,
+                                  Instant dateFrom);
 
     /**
      * Prod deploy count within a bounded interval [dateFrom, dateTo).
@@ -44,7 +45,9 @@ public interface ReleaseTagRepository extends JpaRepository<ReleaseTag, Long> {
           AND r.prodDeployedAt >= :dateFrom
           AND r.prodDeployedAt < :dateTo
         """)
-    long countProdDeploysInPeriodBetween(List<Long> projectIds, Instant dateFrom, Instant dateTo);
+    long countProdDeploysInPeriodBetween(List<Long> projectIds,
+                                         Instant dateFrom,
+                                         Instant dateTo);
 
     /**
      * Weekly prod deployment counts for the deploy frequency chart.
@@ -58,7 +61,8 @@ public interface ReleaseTagRepository extends JpaRepository<ReleaseTag, Long> {
           AND rt.prod_deployed_at >= :dateFrom
         GROUP BY DATE_TRUNC('week', rt.prod_deployed_at)
         ORDER BY DATE_TRUNC('week', rt.prod_deployed_at)
-        """, nativeQuery = true)
+        """,
+           nativeQuery = true)
     List<DeployFrequencyWeekProjection> countProdDeploysByWeek(List<Long> projectIds,
                                                                Instant dateFrom);
 }

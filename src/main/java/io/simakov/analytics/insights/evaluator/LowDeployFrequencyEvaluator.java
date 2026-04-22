@@ -19,6 +19,17 @@ public class LowDeployFrequencyEvaluator implements InsightEvaluator {
 
     private final InsightProperties props;
 
+    private static String formatFrequency(double deploysPerDay) {
+        if (deploysPerDay >= 1.0) {
+            return String.format("%.1f/день", deploysPerDay);
+        }
+        double perWeek = deploysPerDay * 7;
+        if (perWeek >= 1.0) {
+            return String.format("%.1f/неделю", perWeek);
+        }
+        return String.format("%.1f/месяц", deploysPerDay * 30);
+    }
+
     @Override
     public List<TeamInsight> evaluate(InsightContext ctx) {
         Double deploysPerDay = ctx.deploysPerDay();
@@ -43,16 +54,5 @@ public class LowDeployFrequencyEvaluator implements InsightEvaluator {
         );
 
         return List.of(TeamInsight.of(InsightRule.LOW_DEPLOY_FREQUENCY, title, body, List.of()));
-    }
-
-    private static String formatFrequency(double deploysPerDay) {
-        if (deploysPerDay >= 1.0) {
-            return String.format("%.1f/день", deploysPerDay);
-        }
-        double perWeek = deploysPerDay * 7;
-        if (perWeek >= 1.0) {
-            return String.format("%.1f/неделю", perWeek);
-        }
-        return String.format("%.1f/месяц", deploysPerDay * 30);
     }
 }

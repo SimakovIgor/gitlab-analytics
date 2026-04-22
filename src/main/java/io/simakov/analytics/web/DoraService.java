@@ -108,15 +108,19 @@ public class DoraService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> buildDeployFrequencyData(List<Long> projectIds,
-                                                         int days) {
+                                                        int days) {
         List<Long> resolvedIds = resolveProjectIds(projectIds);
         Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
 
         long totalDeploys = releaseTagRepository.countProdDeploysInPeriod(resolvedIds, dateFrom);
-        double deploysPerDay = days > 0 ? (double) totalDeploys / days : 0.0;
+        double deploysPerDay = days > 0
+            ? (double) totalDeploys / days
+            : 0.0;
 
         DoraRating rating = DoraMetric.DEPLOYMENT_FREQUENCY.computeRating(
-            totalDeploys == 0 ? null : deploysPerDay);
+            totalDeploys == 0
+                ? null
+                : deploysPerDay);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalDeploys", totalDeploys);
@@ -134,7 +138,7 @@ public class DoraService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> buildChangeFailureRateData(List<Long> projectIds,
-                                                           int days) {
+                                                          int days) {
         List<Long> resolvedIds = resolveProjectIds(projectIds);
         Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
 
@@ -156,7 +160,8 @@ public class DoraService {
         return result;
     }
 
-    private String buildCfrChartJson(List<Long> projectIds, Instant dateFrom) {
+    private String buildCfrChartJson(List<Long> projectIds,
+                                     Instant dateFrom) {
         List<DeployFrequencyWeekProjection> deployWeeks =
             releaseTagRepository.countProdDeploysByWeek(projectIds, dateFrom);
         List<IncidentWeekProjection> incidentWeeks =
@@ -176,7 +181,9 @@ public class DoraService {
         for (String week : deploysByWeek.keySet()) {
             long deploys = deploysByWeek.getOrDefault(week, 0L);
             long incidents = incidentsByWeek.getOrDefault(week, 0L);
-            cfrByWeek.put(week, deploys > 0 ? round(incidents * 100.0 / deploys) : 0.0);
+            cfrByWeek.put(week, deploys > 0
+                ? round(incidents * 100.0 / deploys)
+                : 0.0);
         }
         // Add weeks that have incidents but no deploys (CFR would be infinite, show 0)
         for (String week : incidentsByWeek.keySet()) {
@@ -230,7 +237,7 @@ public class DoraService {
     }
 
     private String buildDeployFrequencyChartJson(List<Long> projectIds,
-                                                  Instant dateFrom) {
+                                                 Instant dateFrom) {
         List<DeployFrequencyWeekProjection> weekly =
             releaseTagRepository.countProdDeploysByWeek(projectIds, dateFrom);
 

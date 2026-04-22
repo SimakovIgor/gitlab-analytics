@@ -199,6 +199,15 @@ public class SyncJobService {
             workspaceId, SyncStatus.STARTED, SyncJobPhase.JIRA_INCIDENTS);
     }
 
+    public List<Long> findActiveJiraJobIds(Long workspaceId) {
+        return syncJobRepository
+            .findByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED)
+            .stream()
+            .filter(j -> j.getPhase() == SyncJobPhase.JIRA_INCIDENTS)
+            .map(SyncJob::getId)
+            .toList();
+    }
+
     /**
      * Returns the most recent RELEASE job for the workspace — STARTED first, then COMPLETED.
      * Used by the onboarding page to show Phase 3 progress after Phase 2 finishes.

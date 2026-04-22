@@ -189,7 +189,9 @@ class JiraIncidentRepositoryTest extends BaseIT {
 
     // ── helpers ───────────────────────────────────────────────────────────
 
-    private JiraIncident saveIncident(String jiraKey, Long trackedProjectId, Instant createdAt) {
+    private JiraIncident saveIncident(String jiraKey,
+                                      Long trackedProjectId,
+                                      Instant createdAt) {
         return jiraIncidentRepository.save(JiraIncident.builder()
             .workspaceId(testWorkspaceId)
             .trackedProjectId(trackedProjectId)

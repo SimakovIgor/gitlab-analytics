@@ -70,7 +70,8 @@ Controller → Service → Repository → Model
 - **`web/`** — `ContributorDiscoveryService`, `UserAliasService`, `ReportViewService`
 - **`web/dto/`** — `ReportPageData`, `MrSummaryDto`, `HistoryPageData`, `SettingsPageData` и др.
 - **`insights/`** — `InsightService`, `InsightEvaluator` интерфейс, 12 `@Component`-реализаций в `evaluator/`, `InsightRule` enum, `InsightProperties`, модели в `model/`
-- **`jira/`** — `JiraApiClient` (WebClient, Basic auth), `JiraIncidentSyncService`, `JiraProperties`, DTO в `dto/`; условная активация через `@ConditionalOnExpression` (бины не создаются если `app.jira.base-url` пуст)
+- **`jira/`** — `JiraApiClient` (WebClient, Basic auth), `JiraIncidentSyncService`, `JiraProperties`, DTO в `dto/`; условная активация через `@ConditionalOnExpression` (бины не создаются если
+  `app.jira.base-url` пуст)
 - **`dora/model/`** — `DoraMetric` enum (источник истины для 4 DORA-метрик: статус AVAILABLE/COMING_SOON), `DoraRating` enum (ELITE/HIGH/MEDIUM/LOW/NO_DATA)
 - **`security/`** — `BearerTokenAuthFilter`
 - **`encryption/`** — интерфейс `EncryptionService` + `NoOpEncryptionService`
@@ -152,21 +153,21 @@ evaluator-ам и содержит: `users`, `current`/`previous` `Map<Long, Use
 **`InsightRule` enum** (`insights/model/InsightRule.java`) — единственный источник истины для всех 13 правил (аналог `Metric` enum). Каждое правило имеет `code()`, `defaultKind()` (
 BAD/WARN/INFO/GOOD), `defaultSeverity()` (1–5), `description()`. Реализованные правила:
 
-| Rule                    | Kind | Severity | Описание                                              |
-|-------------------------|------|----------|-------------------------------------------------------|
-| `HIGH_MERGE_TIME`       | BAD  | 4        | Командная медиана TTM выше порога                     |
-| `MERGE_TIME_SPIKE`      | BAD  | 4        | Рост медианы TTM относительно прошлого периода        |
-| `STUCK_MRS`             | BAD  | 5        | Открытые MR без движения дольше порога                |
-| `REVIEW_LOAD_IMBALANCE` | WARN | 3        | Неравномерное распределение ревью (коэффициент Джини) |
-| `LARGE_MR_HABIT`        | WARN | 2        | Средний размер MR превышает порог                     |
-| `DELIVERY_DROP`         | WARN | 3        | Снижение кол-ва MR относительно прошлого периода      |
-| `LOW_REVIEW_DEPTH`      | INFO | 2        | Среднее кол-во комментариев на MR ниже порога         |
-| `HIGH_REWORK_RATIO`     | WARN | 3        | Высокая доля доработок                                |
-| `LOW_ACTIVITY`          | WARN | 2        | Участник со слабой активностью (< 30% медианы команды)|
-| `NO_CODE_REVIEW`        | BAD  | 3        | MR мержатся без ревью                                 |
-| `SLOW_LEAD_TIME`        | BAD  | 4        | DORA Lead Time for Changes превышает целевой порог    |
-| `LOW_DEPLOY_FREQUENCY`  | WARN | 3        | DORA Deploy Frequency ниже целевого порога            |
-| `LEAD_TIME_REGRESSION`  | BAD  | 4        | DORA Lead Time вырос относительно прошлого периода    |
+| Rule                    | Kind | Severity | Описание                                               |
+|-------------------------|------|----------|--------------------------------------------------------|
+| `HIGH_MERGE_TIME`       | BAD  | 4        | Командная медиана TTM выше порога                      |
+| `MERGE_TIME_SPIKE`      | BAD  | 4        | Рост медианы TTM относительно прошлого периода         |
+| `STUCK_MRS`             | BAD  | 5        | Открытые MR без движения дольше порога                 |
+| `REVIEW_LOAD_IMBALANCE` | WARN | 3        | Неравномерное распределение ревью (коэффициент Джини)  |
+| `LARGE_MR_HABIT`        | WARN | 2        | Средний размер MR превышает порог                      |
+| `DELIVERY_DROP`         | WARN | 3        | Снижение кол-ва MR относительно прошлого периода       |
+| `LOW_REVIEW_DEPTH`      | INFO | 2        | Среднее кол-во комментариев на MR ниже порога          |
+| `HIGH_REWORK_RATIO`     | WARN | 3        | Высокая доля доработок                                 |
+| `LOW_ACTIVITY`          | WARN | 2        | Участник со слабой активностью (< 30% медианы команды) |
+| `NO_CODE_REVIEW`        | BAD  | 3        | MR мержатся без ревью                                  |
+| `SLOW_LEAD_TIME`        | BAD  | 4        | DORA Lead Time for Changes превышает целевой порог     |
+| `LOW_DEPLOY_FREQUENCY`  | WARN | 3        | DORA Deploy Frequency ниже целевого порога             |
+| `LEAD_TIME_REGRESSION`  | BAD  | 4        | DORA Lead Time вырос относительно прошлого периода     |
 
 **`InsightProperties`** (`@ConfigurationProperties(prefix = "app.insights.thresholds")`): все пороги вынесены в `application.yml`. Ключи: `stuck-mr-hours`, `max-median-ttm-hours`,
 `merge-time-spike-ratio`, `review-gini`, `large-mr-lines`, `delivery-drop-ratio`, `min-comments-per-mr`, `max-rework-ratio`, `min-mrs-for-no-review-check`, `max-lead-time-days`,

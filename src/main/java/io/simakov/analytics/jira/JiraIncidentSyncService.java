@@ -8,7 +8,6 @@ import io.simakov.analytics.jira.dto.JiraIssueDto;
 import io.simakov.analytics.security.WorkspaceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,12 +28,21 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnExpression("!T(org.springframework.util.StringUtils).isEmpty('${app.jira.base-url:}')")
 public class JiraIncidentSyncService {
 
     private final JiraApiClient jiraApiClient;
     private final JiraIncidentRepository jiraIncidentRepository;
     private final TrackedProjectRepository trackedProjectRepository;
+
+    private static String truncate(String value,
+                                   int maxLen) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= maxLen
+            ? value
+            : value.substring(0, maxLen);
+    }
 
     /**
      * Fetches incidents from Jira created within the last {@code days} days
@@ -55,7 +63,8 @@ public class JiraIncidentSyncService {
      * @return number of incident-project links persisted
      */
     @Transactional
-    public int syncIncidentsForWorkspace(Long workspaceId, int days) {
+    public int syncIncidentsForWorkspace(Long workspaceId,
+                                         int days) {
         Instant since = Instant.now().minus(days, ChronoUnit.DAYS);
 
         Map<String, TrackedProject> projectByNameLower = buildProjectIndex(workspaceId);
@@ -128,12 +137,5 @@ public class JiraIncidentSyncService {
             : null);
         entity.setComponentName(truncate(component.name(), 255));
         jiraIncidentRepository.save(entity);
-    }
-
-    private static String truncate(String value, int maxLen) {
-        if (value == null) {
-            return null;
-        }
-        return value.length() <= maxLen ? value : value.substring(0, maxLen);
     }
 }

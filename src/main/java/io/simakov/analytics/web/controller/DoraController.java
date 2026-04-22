@@ -16,7 +16,6 @@ import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -40,12 +39,8 @@ public class DoraController {
     private final WorkspaceService workspaceService;
     private final SyncJobService syncJobService;
     private final SettingsService settingsService;
-
-    @Autowired(required = false)
-    private JiraIncidentSyncService jiraIncidentSyncService;
-
-    @Autowired
-    private SyncOrchestrator syncOrchestrator;
+    private final SyncOrchestrator syncOrchestrator;
+    private final JiraIncidentSyncService jiraIncidentSyncService;
 
     @GetMapping("/dora")
     public String dora(OAuth2AuthenticationToken authentication,
@@ -114,14 +109,16 @@ public class DoraController {
         model.addAttribute("cfrTotalIncidents", cfr.get("totalIncidents"));
         model.addAttribute("cfrTotalDeploys", cfr.get("totalDeploys"));
         model.addAttribute("cfrPercent", cfr.get("cfrPercent"));
-        DoraRating cfrRating = (DoraRating) cfr.get("cfrRating");
+        DoraRating cfrRating = cfr.get("cfrRating") instanceof DoraRating r
+            ? r
+            : DoraRating.NO_DATA;
         model.addAttribute("cfrRating", cfrRating);
         model.addAttribute("cfrRatingDesc",
             DoraMetric.CHANGE_FAILURE_RATE.ratingDescription(cfrRating));
         model.addAttribute("cfrChartJson", cfr.get("chartJson"));
         model.addAttribute("releases", releases);
         model.addAttribute("doraMetrics", DoraMetric.values());
-        model.addAttribute("jiraEnabled", jiraIncidentSyncService != null);
+        model.addAttribute("jiraEnabled", true);
 
         return "dora";
     }
@@ -139,10 +136,6 @@ public class DoraController {
     @ResponseBody
     public Map<String, Object> triggerIncidentSync(
         @RequestParam(defaultValue = "360") int days) {
-        if (jiraIncidentSyncService == null) {
-            return Map.of("status", "disabled",
-                "message", "Jira integration is not configured (app.jira.base-url is empty)");
-        }
         Long workspaceId = WorkspaceContext.get();
         if (syncJobService.findActiveJiraIncidentJob(workspaceId).isPresent()) {
             return Map.of("status", "already_running",

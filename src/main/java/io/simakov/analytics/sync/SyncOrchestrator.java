@@ -20,7 +20,6 @@ import io.simakov.analytics.sync.step.SyncContext;
 import io.simakov.analytics.sync.step.SyncStep;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -50,13 +49,11 @@ public class SyncOrchestrator {
     private final MrAuthorDiscoveryService authorDiscoveryService;
     private final SnapshotService snapshotService;
     private final ReleaseSyncService releaseSyncService;
+    private final JiraIncidentSyncService jiraIncidentSyncService;
     private final List<SyncStep> syncSteps;
 
     @Qualifier("mrProcessingExecutor")
     private final Executor mrProcessingExecutor;
-
-    @Autowired(required = false)
-    private JiraIncidentSyncService jiraIncidentSyncService;
 
     @Async("syncTaskExecutor")
     public void orchestrateAsync(Long jobId,
@@ -125,7 +122,8 @@ public class SyncOrchestrator {
      * Fetches Jira incidents and links them to tracked projects by component name.
      */
     @Async("syncTaskExecutor")
-    public void orchestrateJiraIncidentsAsync(Long jobId, int days) {
+    public void orchestrateJiraIncidentsAsync(Long jobId,
+                                              int days) {
         log.info("Starting sync job {} (phase=JIRA_INCIDENTS, days={})", jobId, days);
         try {
             Long workspaceId = syncJobService.findById(jobId).getWorkspaceId();
@@ -139,15 +137,11 @@ public class SyncOrchestrator {
     }
 
     /**
-     * After RELEASE phase: start JIRA_INCIDENTS phase if Jira is configured.
+     * After RELEASE phase: start JIRA_INCIDENTS phase.
      * Workspace-level idempotency: only one JIRA_INCIDENTS job at a time.
      */
-    @SuppressWarnings("checkstyle:ReturnCount")
     private void chainJiraIncidentPhase(Long releaseJobId,
                                         ManualSyncRequest request) {
-        if (jiraIncidentSyncService == null) {
-            return;
-        }
         try {
             Long workspaceId = syncJobService.findById(releaseJobId).getWorkspaceId();
             if (syncJobService.findActiveJiraIncidentJob(workspaceId).isPresent()) {

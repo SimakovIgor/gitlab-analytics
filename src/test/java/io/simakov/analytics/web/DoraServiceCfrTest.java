@@ -190,7 +190,8 @@ class DoraServiceCfrTest extends BaseIT {
 
     // ── helpers ───────────────────────────────────────────────────────────
 
-    private void saveProdDeploy(String tagName, Instant prodDeployedAt) {
+    private void saveProdDeploy(String tagName,
+                                Instant prodDeployedAt) {
         releaseTagRepository.save(ReleaseTag.builder()
             .trackedProjectId(projectId)
             .tagName(tagName)
@@ -199,7 +200,8 @@ class DoraServiceCfrTest extends BaseIT {
             .build());
     }
 
-    private void saveIncident(String jiraKey, Instant createdAt) {
+    private void saveIncident(String jiraKey,
+                              Instant createdAt) {
         jiraIncidentRepository.save(JiraIncident.builder()
             .workspaceId(testWorkspaceId)
             .trackedProjectId(projectId)

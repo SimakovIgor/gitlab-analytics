@@ -10,7 +10,8 @@ import java.util.Optional;
 
 public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long> {
 
-    Optional<JiraIncident> findByJiraKeyAndTrackedProjectId(String jiraKey, Long trackedProjectId);
+    Optional<JiraIncident> findByJiraKeyAndTrackedProjectId(String jiraKey,
+                                                            Long trackedProjectId);
 
     /**
      * Count incidents for the given projects created within the period.
@@ -20,7 +21,8 @@ public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long
         WHERE ji.trackedProjectId IN :projectIds
           AND ji.createdAt >= :dateFrom
         """)
-    long countIncidentsInPeriod(List<Long> projectIds, Instant dateFrom);
+    long countIncidentsInPeriod(List<Long> projectIds,
+                                Instant dateFrom);
 
     /**
      * Count incidents within a bounded interval [dateFrom, dateTo).
@@ -31,7 +33,9 @@ public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long
           AND ji.createdAt >= :dateFrom
           AND ji.createdAt < :dateTo
         """)
-    long countIncidentsInPeriodBetween(List<Long> projectIds, Instant dateFrom, Instant dateTo);
+    long countIncidentsInPeriodBetween(List<Long> projectIds,
+                                       Instant dateFrom,
+                                       Instant dateTo);
 
     /**
      * Weekly incident counts for the CFR chart.
@@ -44,8 +48,10 @@ public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long
           AND ji.created_at >= :dateFrom
         GROUP BY DATE_TRUNC('week', ji.created_at)
         ORDER BY DATE_TRUNC('week', ji.created_at)
-        """, nativeQuery = true)
-    List<IncidentWeekProjection> countIncidentsByWeek(List<Long> projectIds, Instant dateFrom);
+        """,
+           nativeQuery = true)
+    List<IncidentWeekProjection> countIncidentsByWeek(List<Long> projectIds,
+                                                      Instant dateFrom);
 
     List<JiraIncident> findAllByWorkspaceId(Long workspaceId);
 }

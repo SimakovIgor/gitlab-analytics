@@ -62,13 +62,17 @@ public class LowActivityEvaluator implements InsightEvaluator {
         String title = String.format(
             "%d %s со слабой активностью за период",
             low.size(),
-            low.size() == 1 ? "участник" : "участника"
+            low.size() == 1
+                ? "участник"
+                : "участника"
         );
         String body = String.format(
             "%s%s. Количество влитых MR ниже 30%% от медианы команды (%.0f MR)."
                 + " Возможные причины: переключение на другие задачи, блокировки, онбординг.",
             names,
-            low.size() > 5 ? " и другие" : "",
+            low.size() > 5
+                ? " и другие"
+                : "",
             median
         );
 

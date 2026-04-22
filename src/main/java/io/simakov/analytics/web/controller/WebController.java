@@ -3,6 +3,7 @@ package io.simakov.analytics.web.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.security.WorkspaceContext;
+import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.MetricTrendService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.ReportViewService;
@@ -34,6 +35,7 @@ public class WebController {
     private final SettingsViewService settingsViewService;
     private final OAuth2UserResolver userResolver;
     private final WorkspaceService workspaceService;
+    private final SyncJobService syncJobService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/")
@@ -119,6 +121,7 @@ public class WebController {
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("enrichmentJobId", data.enrichmentJobId());
         model.addAttribute("releaseJobIds", data.releaseJobIds());
+        model.addAttribute("jiraJobIds", syncJobService.findActiveJiraJobIds(WorkspaceContext.get()));
         model.addAttribute("total14d", data.total14d());
         model.addAttribute("ok14d", data.ok14d());
         model.addAttribute("partial14d", data.partial14d());

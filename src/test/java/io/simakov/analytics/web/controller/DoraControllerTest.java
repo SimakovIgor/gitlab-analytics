@@ -256,8 +256,7 @@ class DoraControllerTest extends BaseIT {
     }
 
     @Test
-    void doraPageSyncIncidentsEndpointReturnsDisabledWithoutJira() throws Exception {
-        // In test profile Jira is not configured, so endpoint should return "disabled"
+    void doraPageSyncIncidentsEndpointTriggersSync() throws Exception {
         MvcResult result = mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .post("/dora/sync/incidents")
@@ -268,7 +267,7 @@ class DoraControllerTest extends BaseIT {
             .andReturn();
 
         String body = result.getResponse().getContentAsString();
-        assertThat(body).contains("disabled");
+        assertThat(body).contains("ok");
     }
 
     private void saveMergedMr(Long gitlabMrId,
@@ -301,7 +300,8 @@ class DoraControllerTest extends BaseIT {
         return releaseTagRepository.save(tag);
     }
 
-    private void saveIncident(String jiraKey, Instant createdAt) {
+    private void saveIncident(String jiraKey,
+                              Instant createdAt) {
         jiraIncidentRepository.save(JiraIncident.builder()
             .workspaceId(testWorkspaceId)
             .trackedProjectId(projectId)

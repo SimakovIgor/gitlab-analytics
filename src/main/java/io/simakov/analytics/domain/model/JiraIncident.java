@@ -32,28 +32,36 @@ public class JiraIncident {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "workspace_id", nullable = false)
+    @Column(name = "workspace_id",
+            nullable = false)
     private Long workspaceId;
 
-    @Column(name = "tracked_project_id", nullable = false)
+    @Column(name = "tracked_project_id",
+            nullable = false)
     private Long trackedProjectId;
 
-    @Column(name = "jira_key", nullable = false, length = 64)
+    @Column(name = "jira_key",
+            nullable = false,
+            length = 64)
     private String jiraKey;
 
-    @Column(name = "summary", length = 1024)
+    @Column(name = "summary",
+            length = 1024)
     private String summary;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at",
+            nullable = false)
     private Instant createdAt;
 
     @Column(name = "resolved_at")
     private Instant resolvedAt;
 
-    @Column(name = "component_name", length = 255)
+    @Column(name = "component_name",
+            length = 255)
     private String componentName;
 
     @UpdateTimestamp
-    @Column(name = "synced_at", nullable = false)
+    @Column(name = "synced_at",
+            nullable = false)
     private Instant syncedAt;
 }

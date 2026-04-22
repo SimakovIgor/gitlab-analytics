@@ -160,6 +160,7 @@
     window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
     window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
+    window.JIRA_JOB_IDS = /*[[${jiraJobIds}]]*/ [];
     /*]]>*/
 </script>
 <script src="/js/sidebar.js"></script>
@@ -288,10 +289,16 @@
         running: '\u0412 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u0435'
     };
 
+    function isJiraJob(job) {
+        return job.uiStatus === 'phase4' || job.phase === 'JIRA_INCIDENTS';
+    }
+
     function renderJobRow(job) {
         // Note column: error message for failed, project name otherwise
         var note = job.errorMessage || job.projectName || '\u2014';
-        var mrCount = job.totalMrs > 0 ? job.totalMrs.toLocaleString('ru') : '\u2014';
+        var jira = isJiraJob(job);
+        var mrCount = jira ? '' : (job.totalMrs > 0 ? job.totalMrs.toLocaleString('ru') : '\u2014');
+        var mrUnit = jira ? '' : ' <span class="sync-col-unit">MR</span>';
         var statusLabel = STATUS_LABELS[job.uiStatus] || job.uiStatus;
         var noteClass = 'sync-col-note' + (job.uiStatus === 'failed' ? ' sync-note-err' : '');
         var errorBox = job.errorMessage
@@ -301,13 +308,27 @@
             ? '<div class="sync-detail-actions"><button class="btn-sm btn-secondary" onclick="retryJobFromSync('
             + job.id + ')">\u21ba \u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0437\u0430\u043f\u0443\u0441\u043a</button></div>'
             : '';
+        if (jira) {
+            return '<div class="sync-run-item">'
+                + '<div class="sync-run-row sync-run-row-static">'
+                + '<div class="num sync-col-date">' + escHtml(job.startedAt) + '</div>'
+                + '<div><span class="sync-status-badge sync-status-' + job.uiStatus + '">'
+                + escHtml(statusLabel) + '</span></div>'
+                + '<div class="num sync-col-dur">' + escHtml(job.durationLabel) + '</div>'
+                + '<div class="num sync-col-num"></div>'
+                + '<div class="' + noteClass + '">Jira \u2014 \u0438\u043d\u0446\u0438\u0434\u0435\u043d\u0442\u044b</div>'
+                + '<div class="sync-col-chevron"></div>'
+                + '</div>'
+                + (errorBox ? '<div class="sync-run-details">' + errorBox + retryBtn + '</div>' : '')
+                + '</div>';
+        }
         return '<div class="sync-run-item">'
             + '<button class="sync-run-row" onclick="toggleRow(this)">'
             + '<div class="num sync-col-date">' + escHtml(job.startedAt) + '</div>'
             + '<div><span class="sync-status-badge sync-status-' + job.uiStatus + '">'
             + escHtml(statusLabel) + '</span></div>'
             + '<div class="num sync-col-dur">' + escHtml(job.durationLabel) + '</div>'
-            + '<div class="num sync-col-num">' + mrCount + ' <span class="sync-col-unit">MR</span></div>'
+            + '<div class="num sync-col-num">' + mrCount + mrUnit + '</div>'
             + '<div class="' + noteClass + '">' + escHtml(note) + '</div>'
             + '<div class="sync-col-chevron">\u25b8</div>'
             + '</button>'
