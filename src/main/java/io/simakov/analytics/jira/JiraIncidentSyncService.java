@@ -131,6 +131,10 @@ public class JiraIncidentSyncService {
                 .build());
 
         entity.setSummary(truncate(issue.fields().summary(), 1024));
+        if (issue.fields().created() == null) {
+            log.warn("Jira issue {} has no created date — skipping", issue.key());
+            return;
+        }
         entity.setCreatedAt(issue.fields().created().toInstant());
         entity.setResolvedAt(issue.fields().resolutiondate() != null
             ? issue.fields().resolutiondate().toInstant()

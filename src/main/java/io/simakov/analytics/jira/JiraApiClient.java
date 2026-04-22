@@ -26,6 +26,8 @@ public class JiraApiClient {
 
     private static final DateTimeFormatter JIRA_DATE_FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
+    private static final DateTimeFormatter JIRA_DATETIME_FMT =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     private static final int PAGE_SIZE = 100;
 
     private final WebClient webClient;
@@ -61,7 +63,7 @@ public class JiraApiClient {
             return null;
         }
         try {
-            return OffsetDateTime.parse(text);
+            return OffsetDateTime.parse(text, JIRA_DATETIME_FMT);
         } catch (DateTimeParseException e) {
             log.debug("Failed to parse datetime field '{}' value '{}': {}", field, text, e.getMessage());
             return null;
