@@ -102,6 +102,13 @@ public enum InsightRule {
         InsightKind.BAD,
         4,
         "DORA Lead Time for Changes значительно вырос по сравнению с предыдущим периодом."
+    ),
+
+    SLOW_RECOVERY(
+        "SLOW_RECOVERY",
+        InsightKind.BAD,
+        4,
+        "DORA MTTR (Mean Time To Recovery) превышает целевой порог — инциденты устраняются слишком долго."
     );
 
     private final String code;

@@ -60,6 +60,12 @@ public class JiraIncident {
             length = 255)
     private String componentName;
 
+    @Column(name = "impact_started_at")
+    private Instant impactStartedAt;
+
+    @Column(name = "impact_ended_at")
+    private Instant impactEndedAt;
+
     @UpdateTimestamp
     @Column(name = "synced_at",
             nullable = false)

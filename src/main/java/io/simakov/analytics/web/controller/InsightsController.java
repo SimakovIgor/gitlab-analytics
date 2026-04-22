@@ -75,6 +75,7 @@ public class InsightsController {
             .map(SyncJob::getId).orElse(null);
         model.addAttribute("enrichmentJobId", enrichmentJobId);
         model.addAttribute("releaseJobIds", syncJobService.findActiveReleaseJobIds(workspaceId));
+        model.addAttribute("jiraJobIds", syncJobService.findActiveJiraJobIds(workspaceId));
 
         // Page-specific attributes
         model.addAttribute("insights", insights);

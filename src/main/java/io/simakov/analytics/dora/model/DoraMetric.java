@@ -137,9 +137,9 @@ public enum DoraMetric {
     MTTR(
         "mttr",
         "MTTR",
-        "Среднее время восстановления после инцидента. Требует интеграции с Jira или GitLab Issues.",
+        "Среднее время восстановления после инцидента. Считается по Jira-инцидентам (Start of Impact → End of Impact).",
         Unit.HOURS,
-        Status.COMING_SOON,
+        Status.AVAILABLE,
         Direction.LOWER_IS_BETTER,
         1.0, 24.0, 168.0
     );

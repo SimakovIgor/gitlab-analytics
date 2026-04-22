@@ -14,6 +14,7 @@ import io.simakov.analytics.insights.evaluator.MergeTimeSpikeEvaluator;
 import io.simakov.analytics.insights.evaluator.NoCodeReviewEvaluator;
 import io.simakov.analytics.insights.evaluator.ReviewLoadImbalanceEvaluator;
 import io.simakov.analytics.insights.evaluator.SlowLeadTimeEvaluator;
+import io.simakov.analytics.insights.evaluator.SlowRecoveryEvaluator;
 import io.simakov.analytics.insights.evaluator.StuckMrsEvaluator;
 import io.simakov.analytics.insights.model.InsightContext;
 import io.simakov.analytics.insights.model.InsightKind;
@@ -71,13 +72,13 @@ class InsightEvaluatorTest {
     private static InsightContext ctx(Map<Long, UserMetrics> current,
                                       Map<Long, UserMetrics> previous) {
         return new InsightContext(List.of(), current, previous, List.of(), Map.of(),
-            null, null, null, null);
+            null, null, null, null, null);
     }
 
     private static InsightContext ctxWithOpenMrs(Map<Long, UserMetrics> current,
                                                  List<MergeRequest> openMrs) {
         return new InsightContext(List.of(), current, Map.of(), openMrs, Map.of(),
-            null, null, null, null);
+            null, null, null, null, null);
     }
 
     private static InsightContext ctxWithDora(Double leadTimeDays,
@@ -85,7 +86,12 @@ class InsightEvaluatorTest {
                                               Double deploysPerDay,
                                               Double prevDeploysPerDay) {
         return new InsightContext(List.of(), Map.of(), Map.of(), List.of(), Map.of(),
-            leadTimeDays, prevLeadTimeDays, deploysPerDay, prevDeploysPerDay);
+            leadTimeDays, prevLeadTimeDays, deploysPerDay, prevDeploysPerDay, null);
+    }
+
+    private static InsightContext ctxWithMttr(Double mttrHours) {
+        return new InsightContext(List.of(), Map.of(), Map.of(), List.of(), Map.of(),
+            null, null, null, null, mttrHours);
     }
 
     @BeforeEach
@@ -491,6 +497,31 @@ class InsightEvaluatorTest {
     void leadTimeRegression_doesNotFireWhenPreviousIsZero() {
         InsightContext ctx = ctxWithDora(10.0, 0.0, null, null);
         assertThat(new LeadTimeRegressionEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    // ── SLOW_RECOVERY ──────────────────────────────────────────────────
+
+    @Test
+    void slowRecovery_firesWhenMttrExceedsThreshold() {
+        // default threshold = 4.0 hours
+        InsightContext ctx = ctxWithMttr(8.0);
+        List<TeamInsight> results = new SlowRecoveryEvaluator(props).evaluate(ctx);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).rule()).isEqualTo(InsightRule.SLOW_RECOVERY);
+        assertThat(results.get(0).kind()).isEqualTo(InsightKind.BAD);
+    }
+
+    @Test
+    void slowRecovery_doesNotFireWhenBelowThreshold() {
+        InsightContext ctx = ctxWithMttr(2.0);
+        assertThat(new SlowRecoveryEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    @Test
+    void slowRecovery_doesNotFireWhenNoData() {
+        InsightContext ctx = ctxWithMttr(null);
+        assertThat(new SlowRecoveryEvaluator(props).evaluate(ctx)).isEmpty();
     }
 
     // ── TeamInsight factory ────────────────────────────────────────────────

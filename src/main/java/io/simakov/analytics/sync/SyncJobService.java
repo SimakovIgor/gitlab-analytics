@@ -74,6 +74,14 @@ public class SyncJobService {
         syncJobRepository.save(job);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void linkToNext(Long currentJobId,
+                           Long nextJobId) {
+        SyncJob job = findOrThrow(currentJobId);
+        job.setNextJobId(nextJobId);
+        syncJobRepository.save(job);
+    }
+
     @Transactional
     public int failStaleJobs(Instant startedBefore,
                              String reason) {

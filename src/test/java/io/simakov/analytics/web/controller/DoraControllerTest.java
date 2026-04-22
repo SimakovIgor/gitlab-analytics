@@ -101,8 +101,7 @@ class DoraControllerTest extends BaseIT {
             .contains("Lead Time")
             .contains("Deploy Frequency")
             .contains("Change Failure Rate")
-            .contains("MTTR")
-            .contains("Скоро"); // MTTR is still COMING_SOON
+            .contains("MTTR");
     }
 
     @Test

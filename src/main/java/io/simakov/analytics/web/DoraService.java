@@ -10,6 +10,7 @@ import io.simakov.analytics.domain.repository.DeployFrequencyWeekProjection;
 import io.simakov.analytics.domain.repository.IncidentWeekProjection;
 import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
+import io.simakov.analytics.domain.repository.MttrWeekProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeSummaryProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeWeekProjection;
 import io.simakov.analytics.domain.repository.ReleaseTagRepository;
@@ -212,6 +213,68 @@ public class DoraService {
             return objectMapper.writeValueAsString(chart);
         } catch (JsonProcessingException e) {
             log.warn("Ошибка сериализации данных CFR графика", e);
+            return "{}";
+        }
+    }
+
+    /**
+     * MTTR (Mean Time To Recovery): average hours from impact start to impact end.
+     * Ключи: mttrHours, totalIncidents, mttrRating, chartJson.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> buildMttrData(List<Long> projectIds,
+                                             int days) {
+        List<Long> resolvedIds = resolveProjectIds(projectIds);
+        Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
+
+        Double avgHours = jiraIncidentRepository.findAvgMttrHours(resolvedIds, dateFrom);
+        long totalIncidents = jiraIncidentRepository.countIncidentsWithImpact(resolvedIds, dateFrom);
+
+        Double mttrHours = avgHours != null
+            ? round(avgHours)
+            : null;
+        DoraRating rating = DoraMetric.MTTR.computeRating(mttrHours);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("mttrHours", mttrHours);
+        result.put("totalIncidents", totalIncidents);
+        result.put("mttrRating", rating);
+        result.put("chartJson", buildMttrChartJson(resolvedIds, dateFrom));
+        return result;
+    }
+
+    private String buildMttrChartJson(List<Long> projectIds,
+                                      Instant dateFrom) {
+        List<MttrWeekProjection> weekly = jiraIncidentRepository.findMttrByWeek(projectIds, dateFrom);
+
+        List<String> labels = new ArrayList<>();
+        List<Double> values = new ArrayList<>();
+        for (MttrWeekProjection row : weekly) {
+            labels.add(row.getWeekLabel());
+            values.add(row.getAvgHours() != null
+                ? round(row.getAvgHours())
+                : 0.0);
+        }
+
+        Map<String, Object> chart = Map.of(
+            "labels", labels,
+            "datasets", List.of(
+                Map.of(
+                    "label", "MTTR (ч)",
+                    "data", values,
+                    "borderColor", "#f59e0b",
+                    "backgroundColor", "rgba(245,158,11,0.12)",
+                    "fill", true,
+                    "tension", 0.3,
+                    "pointRadius", 3
+                )
+            )
+        );
+
+        try {
+            return objectMapper.writeValueAsString(chart);
+        } catch (JsonProcessingException e) {
+            log.warn("Ошибка сериализации данных MTTR графика", e);
             return "{}";
         }
     }
@@ -457,6 +520,21 @@ public class DoraService {
             return null;
         }
         return round((double) total / days);
+    }
+
+    /**
+     * Returns average MTTR (hours) for incidents with valid impact times in [dateFrom, dateTo).
+     * Returns null if no data available.
+     */
+    @Transactional(readOnly = true)
+    public Double computeMttrHours(List<Long> projectIds,
+                                    Instant dateFrom) {
+        List<Long> resolvedIds = resolveProjectIds(projectIds);
+        Double avgHours = jiraIncidentRepository.findAvgMttrHours(resolvedIds, dateFrom);
+        if (avgHours == null) {
+            return null;
+        }
+        return round(avgHours);
     }
 
     public record ReleaseRowDto(

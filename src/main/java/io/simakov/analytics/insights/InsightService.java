@@ -85,10 +85,11 @@ public class InsightService {
         Double prevLeadTimeMedianDays = doraService.computeLeadTimeMedianDays(projectIds, prevDateFrom, dateFrom);
         Double deploysPerDay = doraService.computeDeploysPerDay(projectIds, dateFrom, dateTo, days);
         Double prevDeploysPerDay = doraService.computeDeploysPerDay(projectIds, prevDateFrom, dateFrom, days);
+        Double mttrHours = doraService.computeMttrHours(projectIds, dateFrom);
 
         InsightContext ctx = new InsightContext(
             users, current, previous, openMrs, gitlabUserIdToTrackedUserId,
-            leadTimeMedianDays, prevLeadTimeMedianDays, deploysPerDay, prevDeploysPerDay
+            leadTimeMedianDays, prevLeadTimeMedianDays, deploysPerDay, prevDeploysPerDay, mttrHours
         );
 
         return evaluators.stream()

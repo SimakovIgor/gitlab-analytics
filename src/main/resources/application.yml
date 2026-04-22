@@ -97,6 +97,10 @@ app:
     read-timeout-seconds: 30
     # Максимальное количество инцидентов за один синк
     max-results: 5000
+    # ID кастомного поля Jira "Start of Impact" (для расчёта MTTR)
+    impact-start-field-id: ${JIRA_IMPACT_START_FIELD:customfield_10400}
+    # ID кастомного поля Jira "End of Impact" (для расчёта MTTR)
+    impact-end-field-id: ${JIRA_IMPACT_END_FIELD:customfield_10401}
 
   insights:
     thresholds:

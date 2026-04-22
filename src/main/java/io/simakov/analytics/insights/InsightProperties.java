@@ -79,6 +79,13 @@ public class InsightProperties {
      */
     private double leadTimeRegressionRatio = 1.5;
 
+    /**
+     * DORA MTTR threshold (hours).
+     * Triggers SLOW_RECOVERY when average recovery time exceeds this value.
+     * Default 4.0 — инциденты должны устраняться быстро.
+     */
+    private double maxMttrHours = 4.0;
+
     public int getStuckMrHours() {
         return stuckMrHours;
     }
@@ -173,5 +180,13 @@ public class InsightProperties {
 
     public void setLeadTimeRegressionRatio(double leadTimeRegressionRatio) {
         this.leadTimeRegressionRatio = leadTimeRegressionRatio;
+    }
+
+    public double getMaxMttrHours() {
+        return maxMttrHours;
+    }
+
+    public void setMaxMttrHours(double maxMttrHours) {
+        this.maxMttrHours = maxMttrHours;
     }
 }

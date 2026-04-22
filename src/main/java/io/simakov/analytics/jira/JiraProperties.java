@@ -11,7 +11,9 @@ public record JiraProperties(
     String apiToken,
     String projectKey,
     int readTimeoutSeconds,
-    int maxResults
+    int maxResults,
+    String impactStartFieldId,
+    String impactEndFieldId
 ) {
 
 }

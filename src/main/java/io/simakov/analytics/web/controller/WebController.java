@@ -73,6 +73,7 @@ public class WebController {
         model.addAttribute("activeJobIds", data.activeJobIds());
         model.addAttribute("enrichmentJobId", data.enrichmentJobId());
         model.addAttribute("releaseJobIds", data.releaseJobIds());
+        model.addAttribute("jiraJobIds", syncJobService.findActiveJiraJobIds(WorkspaceContext.get()));
         model.addAttribute("usersWithAliases", data.usersWithAliases());
         model.addAttribute("allProjects", data.allProjects());
         model.addAttribute("selectedProjectIds", data.selectedProjectIds());

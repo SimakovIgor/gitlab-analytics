@@ -85,4 +85,7 @@ public class SyncJob {
     @Column(name = "processed_mrs",
             nullable = false)
     private int processedMrs;
+
+    @Column(name = "next_job_id")
+    private Long nextJobId;
 }

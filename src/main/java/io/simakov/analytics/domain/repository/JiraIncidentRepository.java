@@ -54,4 +54,56 @@ public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long
                                                       Instant dateFrom);
 
     List<JiraIncident> findAllByWorkspaceId(Long workspaceId);
+
+    /**
+     * Average recovery time (hours) for incidents with valid impact start/end in period.
+     * Only includes incidents where impact_ended_at > impact_started_at.
+     */
+    @Query(value = """
+        SELECT AVG(EXTRACT(EPOCH FROM (ji.impact_ended_at - ji.impact_started_at)) / 3600.0) AS avgHours
+        FROM jira_incident ji
+        WHERE ji.tracked_project_id IN :projectIds
+          AND ji.impact_started_at IS NOT NULL
+          AND ji.impact_ended_at IS NOT NULL
+          AND ji.impact_ended_at > ji.impact_started_at
+          AND ji.impact_started_at >= :dateFrom
+        """,
+           nativeQuery = true)
+    Double findAvgMttrHours(List<Long> projectIds,
+                            Instant dateFrom);
+
+    /**
+     * Count of incidents with valid impact times in period.
+     */
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM jira_incident ji
+        WHERE ji.tracked_project_id IN :projectIds
+          AND ji.impact_started_at IS NOT NULL
+          AND ji.impact_ended_at IS NOT NULL
+          AND ji.impact_ended_at > ji.impact_started_at
+          AND ji.impact_started_at >= :dateFrom
+        """,
+           nativeQuery = true)
+    long countIncidentsWithImpact(List<Long> projectIds,
+                                  Instant dateFrom);
+
+    /**
+     * Weekly average MTTR in hours for the chart.
+     */
+    @Query(value = """
+        SELECT TO_CHAR(DATE_TRUNC('week', ji.impact_started_at), 'IYYY-"W"IW') AS weekLabel,
+               AVG(EXTRACT(EPOCH FROM (ji.impact_ended_at - ji.impact_started_at)) / 3600.0) AS avgHours
+        FROM jira_incident ji
+        WHERE ji.tracked_project_id IN :projectIds
+          AND ji.impact_started_at IS NOT NULL
+          AND ji.impact_ended_at IS NOT NULL
+          AND ji.impact_ended_at > ji.impact_started_at
+          AND ji.impact_started_at >= :dateFrom
+        GROUP BY DATE_TRUNC('week', ji.impact_started_at)
+        ORDER BY DATE_TRUNC('week', ji.impact_started_at)
+        """,
+           nativeQuery = true)
+    List<MttrWeekProjection> findMttrByWeek(List<Long> projectIds,
+                                            Instant dateFrom);
 }

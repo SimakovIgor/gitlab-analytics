@@ -69,6 +69,7 @@ public class DoraController {
         Map<String, Object> leadTime = doraService.buildLeadTimeData(effectiveProjectIds, days);
         Map<String, Object> deployFreq = doraService.buildDeployFrequencyData(effectiveProjectIds, days);
         Map<String, Object> cfr = doraService.buildChangeFailureRateData(effectiveProjectIds, days);
+        Map<String, Object> mttr = doraService.buildMttrData(effectiveProjectIds, days);
         List<DoraService.ReleaseRowDto> releases = doraService.buildReleasesData(effectiveProjectIds);
 
         model.addAttribute("projects", allProjects);
@@ -81,6 +82,7 @@ public class DoraController {
             .map(SyncJob::getId).orElse(null);
         model.addAttribute("enrichmentJobId", enrichmentJobId);
         model.addAttribute("releaseJobIds", syncJobService.findActiveReleaseJobIds(workspaceId));
+        model.addAttribute("jiraJobIds", syncJobService.findActiveJiraJobIds(workspaceId));
         model.addAttribute("hasProjects", sidebarData.hasProjects());
         model.addAttribute("showInactive", false);
         model.addAttribute("workspaceName", workspaceService.findWorkspaceName(workspaceId));
@@ -88,6 +90,19 @@ public class DoraController {
         model.addAttribute("selectedPeriod", periodType.name());
         model.addAttribute("dateFrom", java.time.LocalDate.now().minusDays(days));
         model.addAttribute("dateTo", java.time.LocalDate.now());
+        populateMetricAttributes(model, leadTime, deployFreq, cfr, mttr);
+        model.addAttribute("releases", releases);
+        model.addAttribute("doraMetrics", DoraMetric.values());
+        model.addAttribute("jiraEnabled", true);
+
+        return "dora";
+    }
+
+    private void populateMetricAttributes(Model model,
+                                          Map<String, Object> leadTime,
+                                          Map<String, Object> deployFreq,
+                                          Map<String, Object> cfr,
+                                          Map<String, Object> mttr) {
         model.addAttribute("totalMrs", leadTime.get("totalMrs"));
         model.addAttribute("medianDays", leadTime.get("medianDays"));
         model.addAttribute("p75Days", leadTime.get("p75Days"));
@@ -116,11 +131,15 @@ public class DoraController {
         model.addAttribute("cfrRatingDesc",
             DoraMetric.CHANGE_FAILURE_RATE.ratingDescription(cfrRating));
         model.addAttribute("cfrChartJson", cfr.get("chartJson"));
-        model.addAttribute("releases", releases);
-        model.addAttribute("doraMetrics", DoraMetric.values());
-        model.addAttribute("jiraEnabled", true);
-
-        return "dora";
+        model.addAttribute("mttrHours", mttr.get("mttrHours"));
+        model.addAttribute("mttrTotalIncidents", mttr.get("totalIncidents"));
+        DoraRating mttrRating = mttr.get("mttrRating") instanceof DoraRating r
+            ? r
+            : DoraRating.NO_DATA;
+        model.addAttribute("mttrRating", mttrRating);
+        model.addAttribute("mttrRatingDesc",
+            DoraMetric.MTTR.ratingDescription(mttrRating));
+        model.addAttribute("mttrChartJson", mttr.get("chartJson"));
     }
 
     @PostMapping("/dora/sync/releases")

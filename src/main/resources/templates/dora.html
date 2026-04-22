@@ -168,6 +168,34 @@
                 </div>
             </div>
 
+            <!-- MTTR (Mean Time To Recovery) -->
+            <div class="dora-big-card">
+                <div class="dora-big-header">
+                    <span class="dora-big-label">MTTR</span>
+                    <span class="rating-pill rating-pill-hoverable"
+                          th:attr="data-tooltip=${mttrRatingDesc}"
+                          th:classappend="${mttrRating.cssClass()}"
+                          th:if="${mttrRating != null}"
+                          th:text="${mttrRating.label()}">—</span>
+                </div>
+                <div class="dora-big-value-row">
+                    <span class="num dora-big-value"
+                          th:text="${mttrHours != null ? #numbers.formatDecimal(mttrHours, 1, 1) : '—'}">—</span>
+                    <span class="dora-big-unit" th:if="${mttrHours != null}">ч</span>
+                    <span class="dora-big-trend" id="mttrTrend"></span>
+                </div>
+                <svg aria-hidden="true" class="dora-sparkline" id="mttrSparkline"></svg>
+                <div class="dora-big-secondary" th:if="${mttrHours != null}">
+                    <span th:text="${mttrTotalIncidents + ' инцидентов с данными импакта'}">0 инцидентов</span>
+                </div>
+                <div class="dora-big-secondary" th:if="${mttrHours == null}">
+                    <span style="font-size:12px;color:var(--fg-3)">Нет данных — нужны инциденты с Start/End of Impact</span>
+                </div>
+                <div class="dora-big-desc">
+                    Среднее время восстановления. Считается по Jira (Start of Impact → End of Impact).
+                </div>
+            </div>
+
             <!-- COMING_SOON metrics rendered from DoraMetric enum -->
             <th:block th:each="metric : ${doraMetrics}" th:if="${!metric.available}">
                 <div class="dora-big-card dora-big-card-tbd">
@@ -236,13 +264,26 @@
             </div>
         </div>
 
+        <!-- ── MTTR chart ─────────────────────────────────────────────────── -->
+        <div class="chart-card" th:if="${mttrHours != null}">
+            <div class="dora-chart-header">
+                <div>
+                    <div class="chart-title">MTTR · по неделям</div>
+                    <div class="dora-chart-subtitle">Среднее время восстановления после инцидента (часы)</div>
+                </div>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="mttrChart"></canvas>
+            </div>
+        </div>
+
         <!-- ── Jira incident sync ──────────────────────────────────────────── -->
         <div class="chart-card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between"
              th:if="${jiraEnabled}">
             <div>
                 <div style="font-size:13px;font-weight:600;color:var(--fg-0)">Инциденты из Jira</div>
                 <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
-                    Синк инцидентов для расчёта Change Failure Rate
+                    Синк инцидентов для расчёта Change Failure Rate и MTTR
                 </div>
             </div>
             <button class="btn-release-sync" id="syncIncidentsBtn" onclick="triggerIncidentSync()" type="button">
@@ -369,6 +410,7 @@
     window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
     window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
+    window.JIRA_JOB_IDS = /*[[${jiraJobIds}]]*/ [];
     var PERIOD = /*[[${selectedPeriod}]]*/ 'LAST_30_DAYS';
     /*]]>*/
 </script>
@@ -474,6 +516,7 @@
     const chartData = JSON.parse([[${chartJson}]]);
     const deployFreqChartData = JSON.parse([[${deployFreqChartJson}]]);
     const cfrChartData = JSON.parse([[${cfrChartJson}]]);
+    const mttrChartData = JSON.parse([[${mttrChartJson}]]);
     const style = getComputedStyle(document.documentElement);
     const accentColor = style.getPropertyValue('--accent').trim() || '#6366f1';
     const fg3Color = style.getPropertyValue('--fg-3').trim() || '#8a8573';
@@ -573,6 +616,16 @@
     const cfrTrendEl = document.getElementById('cfrTrend');
     if (cfrTrendEl && cfrChartData.datasets && cfrChartData.datasets[0]) {
         renderTrendArrow(cfrTrendEl, cfrChartData.datasets[0].data);
+    }
+
+    // MTTR sparkline + trend (lower is better — same direction as lead time)
+    const mttrSparkSvg = document.getElementById('mttrSparkline');
+    if (mttrSparkSvg && mttrChartData.datasets && mttrChartData.datasets[0]) {
+        drawSparkline(mttrSparkSvg, mttrChartData.datasets[0].data, '#f59e0b');
+    }
+    const mttrTrendEl = document.getElementById('mttrTrend');
+    if (mttrTrendEl && mttrChartData.datasets && mttrChartData.datasets[0]) {
+        renderTrendArrow(mttrTrendEl, mttrChartData.datasets[0].data);
     }
 
     // Main weekly chart
@@ -734,6 +787,57 @@
                     },
                     y: {
                         title: {display: true, text: '%'},
+                        beginAtZero: true,
+                        grid: {color: 'rgba(0,0,0,0.04)'}
+                    }
+                }
+            }
+        });
+    }
+</script>
+<script>
+    // MTTR line chart
+    const mttrCanvas = document.getElementById('mttrChart');
+    if (mttrCanvas && mttrChartData.labels && mttrChartData.labels.length > 0) {
+        new Chart(mttrCanvas, {
+            type: 'line',
+            data: {
+                labels: mttrChartData.labels,
+                datasets: [{
+                    label: 'MTTR (ч)',
+                    data: mttrChartData.datasets[0].data,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245,158,11,0.12)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    borderWidth: 2.2,
+                    pointBackgroundColor: '#f59e0b'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {display: false},
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                if (ctx.parsed.y == null) {
+                                    return null;
+                                }
+                                return 'MTTR: ' + ctx.parsed.y + ' ч';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {maxTicksLimit: 12, maxRotation: 0},
+                        grid: {color: 'rgba(0,0,0,0.04)'}
+                    },
+                    y: {
+                        title: {display: true, text: 'Часы'},
                         beginAtZero: true,
                         grid: {color: 'rgba(0,0,0,0.04)'}
                     }

@@ -16,9 +16,20 @@ public record JiraIssueDto(
         String summary,
         OffsetDateTime created,
         OffsetDateTime resolutiondate,
-        List<Component> components
+        List<Component> components,
+        OffsetDateTime impactStartedAt,
+        OffsetDateTime impactEndedAt
     ) {
 
+        /**
+         * Constructor for backward-compatible deserialization — impact fields default to null.
+         */
+        public Fields(String summary,
+                      OffsetDateTime created,
+                      OffsetDateTime resolutiondate,
+                      List<Component> components) {
+            this(summary, created, resolutiondate, components, null, null);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

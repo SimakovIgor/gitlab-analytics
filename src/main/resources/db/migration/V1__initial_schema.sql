@@ -252,12 +252,14 @@ CREATE TABLE IF NOT EXISTS sync_job
     payload_json  JSONB,
     error_message TEXT,
     total_mrs     INT         NOT NULL DEFAULT 0,
-    processed_mrs INT         NOT NULL DEFAULT 0
+    processed_mrs INT         NOT NULL DEFAULT 0,
+    next_job_id   BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_sync_job_status ON sync_job (status);
 CREATE INDEX IF NOT EXISTS idx_sync_job_workspace ON sync_job (workspace_id);
 CREATE INDEX IF NOT EXISTS idx_sync_job_phase ON sync_job (phase) WHERE phase IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sync_job_next_job_id ON sync_job (next_job_id) WHERE next_job_id IS NOT NULL;
 
 -- ── Cached metric snapshots ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS metric_snapshot
@@ -297,6 +299,8 @@ CREATE TABLE IF NOT EXISTS jira_incident
     created_at         TIMESTAMPTZ NOT NULL,
     resolved_at        TIMESTAMPTZ,
     component_name     VARCHAR(255),
+    impact_started_at  TIMESTAMPTZ,
+    impact_ended_at    TIMESTAMPTZ,
     synced_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_jira_incident_key_project UNIQUE (jira_key, tracked_project_id)
 );
@@ -305,3 +309,6 @@ CREATE INDEX IF NOT EXISTS idx_jira_incident_project_created
     ON jira_incident (tracked_project_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_jira_incident_workspace
     ON jira_incident (workspace_id);
+CREATE INDEX IF NOT EXISTS idx_jira_incident_impact
+    ON jira_incident (tracked_project_id, impact_started_at)
+    WHERE impact_started_at IS NOT NULL AND impact_ended_at IS NOT NULL;

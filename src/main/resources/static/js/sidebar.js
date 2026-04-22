@@ -171,7 +171,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.innerHTML = buildSyncCardHtml(
-            jobId, projectName, 'Фаза 1 из 3',
+            jobId, projectName, 'Фаза 1 из 4',
             isRetry ? 'повторная загрузка merge requests' : 'загружаем merge requests'
         );
 
@@ -192,7 +192,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 1 из 3', 'загружаем merge requests');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 1 из 4', 'загружаем merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -210,7 +210,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 2 из 3', 'данные появляются в отчёте по мере загрузки');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 2 из 4', 'данные появляются в отчёте по мере загрузки');
         const counters = div.querySelector('.sync-card-counters');
         if (counters) {
             counters.classList.remove('hidden');
@@ -232,7 +232,24 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 3 из 3', 'синхронизируем релизы');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 3 из 4', 'синхронизируем релизы');
+        container.prepend(div);
+        startCardTimers(jobId, id, null);
+    }
+
+    function restoreJiraCard(jobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + jobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.innerHTML = buildSyncCardHtml(jobId, 'Jira', 'Фаза 4 из 4', 'синхронизируем инциденты из Jira');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -249,7 +266,7 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-card sync-card-running';
-        div.innerHTML = buildSyncCardHtml(jobId, projectName, 'Фаза 3 из 3', 'синхронизируем релизы');
+        div.innerHTML = buildSyncCardHtml(jobId, projectName, 'Фаза 3 из 4', 'синхронизируем релизы');
         container.prepend(div);
         startCardTimers(jobId, id, Date.now());
     };
@@ -310,19 +327,22 @@
                     if (nameEl && job.projectName) {
                         nameEl.textContent = job.projectName;
                     }
-                    const phaseLabel = job.phase === 'RELEASE' ? 'Фаза 3 из 3'
-                        : (job.phase === 'ENRICH' ? 'Фаза 2 из 3' : 'Фаза 1 из 3');
+                    const phaseLabel = job.phase === 'JIRA_INCIDENTS' ? 'Фаза 4 из 4'
+                        : (job.phase === 'RELEASE' ? 'Фаза 3 из 4'
+                            : (job.phase === 'ENRICH' ? 'Фаза 2 из 4' : 'Фаза 1 из 4'));
                     const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
                     if (phaseLabelEl) {
                         phaseLabelEl.textContent = phaseLabel;
                     }
                     const descEl = cardEl.querySelector('.sync-card-phase-desc');
                     if (descEl) {
-                        descEl.textContent = job.phase === 'RELEASE'
-                            ? '· синхронизируем релизы'
-                            : (job.phase === 'ENRICH'
-                                ? '· данные появляются в отчёте по мере загрузки'
-                                : '· загружаем merge requests');
+                        descEl.textContent = job.phase === 'JIRA_INCIDENTS'
+                            ? '· синхронизируем инциденты из Jira'
+                            : (job.phase === 'RELEASE'
+                                ? '· синхронизируем релизы'
+                                : (job.phase === 'ENRICH'
+                                    ? '· данные появляются в отчёте по мере загрузки'
+                                    : '· загружаем merge requests'));
                     }
                     if (job.phase === 'ENRICH') {
                         document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
@@ -375,26 +395,69 @@
         }, 3000);
     }
 
+    function phaseLabel(phase) {
+        if (phase === 'JIRA_INCIDENTS') {
+            return '4 из 4';
+        }
+        if (phase === 'RELEASE') {
+            return '3 из 4';
+        }
+        if (phase === 'ENRICH') {
+            return '2 из 4';
+        }
+        return '1 из 4';
+    }
+
+    function phaseDetail(job) {
+        if (job.phase === 'JIRA_INCIDENTS') {
+            return 'инциденты загружены';
+        }
+        if (job.phase === 'RELEASE') {
+            return 'релизы загружены';
+        }
+        if (job.phase === 'ENRICH') {
+            return 'данные загружены';
+        }
+        return job.totalMrs > 0 ? job.totalMrs + ' MR' : 'завершено';
+    }
+
+    function restoreNextPhaseCard(nextJobId) {
+        const container = document.getElementById('sync-banners');
+        if (!container) {
+            return;
+        }
+        const id = 'sync-card-' + nextJobId;
+        if (document.getElementById(id)) {
+            return;
+        }
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = 'sync-card sync-card-running';
+        div.dataset.needsRepoName = '1';
+        div.innerHTML = buildSyncCardHtml(nextJobId, '...', '...', 'запускаем следующую фазу');
+        container.prepend(div);
+        startCardTimers(nextJobId, id, null);
+    }
+
     function updateSyncCard(cardId, job) {
         const el = document.getElementById(cardId);
         if (!el) {
             return;
         }
         const isOk = job.status === 'COMPLETED';
-        const phaseLabel = job.phase === 'RELEASE' ? '3 из 3'
-            : (job.phase === 'ENRICH' ? '2 из 3' : '1 из 3');
         if (isOk) {
             el.className = 'sync-card sync-card-done';
-            const detail = job.phase === 'RELEASE'
-                ? 'релизы загружены'
-                : (job.phase === 'ENRICH'
-                    ? 'данные загружены'
-                    : (job.totalMrs > 0 ? job.totalMrs + ' MR' : 'завершено'));
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span class="sync-card-done-icon">&#10003;</span>'
-                + '<span>Фаза ' + phaseLabel + ' завершена &middot; ' + escHtml(detail) + '</span>'
+                + '<span>Фаза ' + phaseLabel(job.phase) + ' завершена &middot; '
+                + escHtml(phaseDetail(job)) + '</span>'
                 + '</div>';
-            if (!reloadScheduled) {
+            if (job.nextJobId) {
+                // Chain: start tracking the next phase instead of reloading
+                restoreNextPhaseCard(job.nextJobId);
+                setTimeout(() => el.remove(), 5000);
+            } else if (!reloadScheduled) {
+                // Final phase — reload to show fresh data
                 reloadScheduled = true;
                 setTimeout(() => window.location.reload(), 3000);
             } else {
@@ -404,7 +467,8 @@
             el.className = 'sync-card sync-card-error';
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span>&#10005;</span>'
-                + '<span>Фаза ' + phaseLabel + ' · ошибка: ' + escHtml(job.errorMessage || '') + '</span>'
+                + '<span>Фаза ' + phaseLabel(job.phase) + ' · ошибка: '
+                + escHtml(job.errorMessage || '') + '</span>'
                 + '</div>';
         }
     }
@@ -818,14 +882,17 @@
         const activeJobIds = window.ACTIVE_JOB_IDS || [];
         const enrichmentJobId = window.ENRICHMENT_JOB_ID || null;
         const releaseJobIds = window.RELEASE_JOB_IDS || [];
+        const jiraJobIds = window.JIRA_JOB_IDS || [];
         const releaseIdSet = new Set(releaseJobIds);
+        const jiraIdSet = new Set(jiraJobIds);
         activeJobIds
-            .filter(jobId => jobId !== enrichmentJobId && !releaseIdSet.has(jobId))
+            .filter(jobId => jobId !== enrichmentJobId && !releaseIdSet.has(jobId) && !jiraIdSet.has(jobId))
             .forEach(jobId => restoreSyncCard(jobId));
         if (enrichmentJobId) {
             restoreEnrichCard(enrichmentJobId);
         }
         releaseJobIds.forEach(jobId => restoreReleaseCard(jobId));
+        jiraJobIds.forEach(jobId => restoreJiraCard(jobId));
     });
 
 })();

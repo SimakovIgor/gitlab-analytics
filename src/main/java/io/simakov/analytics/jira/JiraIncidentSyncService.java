@@ -136,6 +136,12 @@ public class JiraIncidentSyncService {
             ? issue.fields().resolutiondate().toInstant()
             : null);
         entity.setComponentName(truncate(component.name(), 255));
+        entity.setImpactStartedAt(issue.fields().impactStartedAt() != null
+            ? issue.fields().impactStartedAt().toInstant()
+            : null);
+        entity.setImpactEndedAt(issue.fields().impactEndedAt() != null
+            ? issue.fields().impactEndedAt().toInstant()
+            : null);
         jiraIncidentRepository.save(entity);
     }
 }

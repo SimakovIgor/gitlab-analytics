@@ -21,6 +21,7 @@ import java.util.Map;
  * @param prevLeadTimeMedianDays      DORA Lead Time for Changes median (days) for the previous period; null if no data
  * @param deploysPerDay               DORA Deploy Frequency (deploys/day) for the current period; null if no data
  * @param prevDeploysPerDay           DORA Deploy Frequency (deploys/day) for the previous period; null if no data
+ * @param mttrHours                   DORA MTTR (hours) for the current period; null if no data
  */
 public record InsightContext(
     List<TrackedUser> users,
@@ -31,7 +32,8 @@ public record InsightContext(
     Double leadTimeMedianDays,
     Double prevLeadTimeMedianDays,
     Double deploysPerDay,
-    Double prevDeploysPerDay
+    Double prevDeploysPerDay,
+    Double mttrHours
 ) {
 
 }

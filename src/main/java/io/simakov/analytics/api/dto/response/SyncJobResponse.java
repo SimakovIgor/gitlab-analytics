@@ -17,19 +17,22 @@ public record SyncJobResponse(
     String errorMessage,
     int totalMrs,
     int processedMrs,
-    String projectName
+    String projectName,
+    Long nextJobId
 ) {
 
     public static SyncJobResponse from(SyncJob job) {
         return new SyncJobResponse(job.getId(), job.getStatus(), job.getPhase(),
             job.getStartedAt(), job.getFinishedAt(), job.getDateFrom(), job.getDateTo(),
-            job.getErrorMessage(), job.getTotalMrs(), job.getProcessedMrs(), null);
+            job.getErrorMessage(), job.getTotalMrs(), job.getProcessedMrs(), null,
+            job.getNextJobId());
     }
 
     public static SyncJobResponse from(SyncJob job,
                                        String projectName) {
         return new SyncJobResponse(job.getId(), job.getStatus(), job.getPhase(),
             job.getStartedAt(), job.getFinishedAt(), job.getDateFrom(), job.getDateTo(),
-            job.getErrorMessage(), job.getTotalMrs(), job.getProcessedMrs(), projectName);
+            job.getErrorMessage(), job.getTotalMrs(), job.getProcessedMrs(), projectName,
+            job.getNextJobId());
     }
 }

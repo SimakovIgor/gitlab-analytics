@@ -59,6 +59,16 @@ public class SyncOrchestrator {
     public void orchestrateAsync(Long jobId,
                                  ManualSyncRequest request,
                                  SyncJobPhase phase) {
+        doOrchestrate(jobId, request, phase);
+    }
+
+    /**
+     * Core sync logic — always runs synchronously in the caller's thread.
+     * Chain methods call this directly; {@link #orchestrateAsync} delegates here via @Async.
+     */
+    private void doOrchestrate(Long jobId,
+                               ManualSyncRequest request,
+                               SyncJobPhase phase) {
         log.info("Starting sync job {} (phase={}) for projects {} from {} to {}",
             jobId, phase, request.projectIds(), request.dateFrom(), request.dateTo());
         try {
@@ -89,17 +99,27 @@ public class SyncOrchestrator {
     /**
      * Runs the RELEASE phase for specific projects as a tracked SyncJob.
      * Reads projectIds from the job's payload, syncs releases per project.
-     * After completion, auto-chains to JIRA_INCIDENTS phase if Jira is configured.
+     * After completion, auto-chains to JIRA_INCIDENTS phase.
      */
     @Async("syncTaskExecutor")
     public void orchestrateReleaseAsync(Long jobId) {
+        doOrchestrateRelease(jobId);
+    }
+
+    private void doOrchestrateRelease(Long jobId) {
         log.info("Starting sync job {} (phase=RELEASE)", jobId);
         try {
             ManualSyncRequest request = syncJobService.getPayload(jobId);
-            for (Long projectId : request.projectIds()) {
+            List<Long> projectIds = request.projectIds();
+            int total = projectIds.size();
+            syncJobService.updateProgress(jobId, 0, total);
+            int processed = 0;
+
+            for (Long projectId : projectIds) {
                 TrackedProject project = trackedProjectRepository.findById(projectId).orElse(null);
                 if (project == null) {
                     log.warn("RELEASE job {}: project {} not found, skipping", jobId, projectId);
+                    syncJobService.updateProgress(jobId, ++processed, total);
                     continue;
                 }
                 try {
@@ -107,6 +127,7 @@ public class SyncOrchestrator {
                 } catch (Exception e) {
                     log.error("RELEASE job {}: failed for project '{}': {}", jobId, project.getName(), e.getMessage(), e);
                 }
+                syncJobService.updateProgress(jobId, ++processed, total);
             }
             syncJobService.complete(jobId);
             log.info("RELEASE phase complete for job {}", jobId);
@@ -124,6 +145,11 @@ public class SyncOrchestrator {
     @Async("syncTaskExecutor")
     public void orchestrateJiraIncidentsAsync(Long jobId,
                                               int days) {
+        doOrchestrateJiraIncidents(jobId, days);
+    }
+
+    private void doOrchestrateJiraIncidents(Long jobId,
+                                            int days) {
         log.info("Starting sync job {} (phase=JIRA_INCIDENTS, days={})", jobId, days);
         try {
             Long workspaceId = syncJobService.findById(jobId).getWorkspaceId();
@@ -150,8 +176,9 @@ public class SyncOrchestrator {
                 return;
             }
             SyncJob jiraJob = syncJobService.createJiraIncidentJob(workspaceId, request);
+            syncJobService.linkToNext(releaseJobId, jiraJob.getId());
             log.info("Auto-starting JIRA_INCIDENTS phase as job {} after RELEASE job {}", jiraJob.getId(), releaseJobId);
-            orchestrateJiraIncidentsAsync(jiraJob.getId(), BACKFILL_DAYS);
+            doOrchestrateJiraIncidents(jiraJob.getId(), BACKFILL_DAYS);
         } catch (Exception e) {
             log.error("Failed to start JIRA_INCIDENTS phase after job {}: {}", releaseJobId, e.getMessage(), e);
         }
@@ -171,9 +198,10 @@ public class SyncOrchestrator {
                 return;
             }
             SyncJob releaseJob = syncJobService.createReleaseJob(workspaceId, enrichRequest);
+            syncJobService.linkToNext(enrichJobId, releaseJob.getId());
             log.info("Auto-starting RELEASE phase as job {} for projects {} after ENRICH job {}",
                 releaseJob.getId(), enrichRequest.projectIds(), enrichJobId);
-            orchestrateReleaseAsync(releaseJob.getId());
+            doOrchestrateRelease(releaseJob.getId());
         } catch (Exception e) {
             log.error("Failed to start RELEASE phase after job {}: {}", enrichJobId, e.getMessage(), e);
         }
@@ -195,8 +223,9 @@ public class SyncOrchestrator {
                 true, true, true, true
             );
             var enrichJob = syncJobService.create(workspaceId, enrichRequest, SyncJobPhase.ENRICH);
+            syncJobService.linkToNext(fastJobId, enrichJob.getId());
             log.info("Auto-starting ENRICH phase as job {}", enrichJob.getId());
-            orchestrateAsync(enrichJob.getId(), enrichRequest, SyncJobPhase.ENRICH);
+            doOrchestrate(enrichJob.getId(), enrichRequest, SyncJobPhase.ENRICH);
         } catch (Exception e) {
             log.error("Failed to start ENRICH phase after job {}: {}", fastJobId, e.getMessage(), e);
         }
