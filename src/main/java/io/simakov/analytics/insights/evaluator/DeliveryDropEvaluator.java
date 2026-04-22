@@ -42,7 +42,7 @@ public class DeliveryDropEvaluator implements InsightEvaluator {
         int dropPct = (int) Math.round((1.0 - ratio) * 100);
 
         String title = String.format(
-            "Доставка упала на %d%% — %d MR против %d в прошлом периоде",
+            "Объём влитых MR упал на %d%% — %d против %d в прошлом периоде",
             dropPct, currTotal, prevTotal
         );
         String body = String.format(

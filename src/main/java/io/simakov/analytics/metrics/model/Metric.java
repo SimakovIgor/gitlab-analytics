@@ -105,8 +105,8 @@ public enum Metric {
         "Среднее время от открытия MR до мержа (в часах). Чем меньше — тем быстрее проходит ревью.",
         Category.FLOW, true, true),
 
-    MEDIAN_TIME_TO_MERGE_MINUTES("median_time_to_merge_minutes", "Медиана TTM",
-        "Медиана времени от открытия MR до мержа (в часах).",
+    MEDIAN_TIME_TO_MERGE_MINUTES("median_time_to_merge_minutes", "Медиана Time to Merge",
+        "Медиана времени от создания MR до мержа в dev (в часах).",
         Category.FLOW, true, true),
 
     REWORK_MR_COUNT("rework_mr_count", "MR с доработкой",

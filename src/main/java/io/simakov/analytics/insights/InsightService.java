@@ -15,6 +15,7 @@ import io.simakov.analytics.insights.model.TeamInsight;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.util.DateTimeUtils;
+import io.simakov.analytics.web.DoraService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ public class InsightService {
     private final TrackedProjectRepository trackedProjectRepository;
     private final TrackedUserAliasRepository aliasRepository;
     private final MergeRequestRepository mergeRequestRepository;
+    private final DoraService doraService;
 
     /**
      * Evaluates all insight rules for the given workspace and period.
@@ -78,7 +80,16 @@ public class InsightService {
 
         Map<Long, Long> gitlabUserIdToTrackedUserId = buildGitlabUserIdMap(userIds);
 
-        InsightContext ctx = new InsightContext(users, current, previous, openMrs, gitlabUserIdToTrackedUserId);
+        // DORA metrics for current and previous periods
+        Double leadTimeMedianDays = doraService.computeLeadTimeMedianDays(projectIds, dateFrom, dateTo);
+        Double prevLeadTimeMedianDays = doraService.computeLeadTimeMedianDays(projectIds, prevDateFrom, dateFrom);
+        Double deploysPerDay = doraService.computeDeploysPerDay(projectIds, dateFrom, dateTo, days);
+        Double prevDeploysPerDay = doraService.computeDeploysPerDay(projectIds, prevDateFrom, dateFrom, days);
+
+        InsightContext ctx = new InsightContext(
+            users, current, previous, openMrs, gitlabUserIdToTrackedUserId,
+            leadTimeMedianDays, prevLeadTimeMedianDays, deploysPerDay, prevDeploysPerDay
+        );
 
         return evaluators.stream()
             .flatMap(e -> e.evaluate(ctx).stream())

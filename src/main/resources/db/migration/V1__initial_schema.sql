@@ -284,3 +284,24 @@ CREATE TABLE IF NOT EXISTS metric_snapshot
 CREATE INDEX IF NOT EXISTS idx_metric_snapshot_user ON metric_snapshot (tracked_user_id) WHERE tracked_user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_metric_snapshot_project ON metric_snapshot (tracked_project_id) WHERE tracked_project_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_metric_snapshot_snapshot_date ON metric_snapshot (snapshot_date);
+
+-- ── Jira incidents (DORA Change Failure Rate) ───────────────────────────────
+-- One Jira issue may produce multiple rows when it references multiple components/projects.
+CREATE TABLE IF NOT EXISTS jira_incident
+(
+    id                 BIGSERIAL PRIMARY KEY,
+    workspace_id       BIGINT       NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+    tracked_project_id BIGINT       NOT NULL REFERENCES tracked_project (id) ON DELETE CASCADE,
+    jira_key           VARCHAR(64)  NOT NULL,
+    summary            VARCHAR(1024),
+    created_at         TIMESTAMPTZ  NOT NULL,
+    resolved_at        TIMESTAMPTZ,
+    component_name     VARCHAR(255),
+    synced_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_jira_incident_key_project UNIQUE (jira_key, tracked_project_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_jira_incident_project_created
+    ON jira_incident (tracked_project_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_jira_incident_workspace
+    ON jira_incident (workspace_id);

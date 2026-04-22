@@ -17,13 +17,21 @@ import java.util.Map;
  * @param openMrs                     MRs currently in OPENED state for the selected projects
  * @param gitlabUserIdToTrackedUserId mapping from GitLab user ID to TrackedUser ID,
  *                                    built from tracked_user_alias; used to resolve MR authors
+ * @param leadTimeMedianDays          DORA Lead Time for Changes median (days) for the current period; null if no data
+ * @param prevLeadTimeMedianDays      DORA Lead Time for Changes median (days) for the previous period; null if no data
+ * @param deploysPerDay               DORA Deploy Frequency (deploys/day) for the current period; null if no data
+ * @param prevDeploysPerDay           DORA Deploy Frequency (deploys/day) for the previous period; null if no data
  */
 public record InsightContext(
     List<TrackedUser> users,
     Map<Long, UserMetrics> current,
     Map<Long, UserMetrics> previous,
     List<MergeRequest> openMrs,
-    Map<Long, Long> gitlabUserIdToTrackedUserId
+    Map<Long, Long> gitlabUserIdToTrackedUserId,
+    Double leadTimeMedianDays,
+    Double prevLeadTimeMedianDays,
+    Double deploysPerDay,
+    Double prevDeploysPerDay
 ) {
 
 }

@@ -17,14 +17,14 @@ public enum InsightRule {
         "HIGH_MERGE_TIME",
         InsightKind.BAD,
         4,
-        "Командная медиана времени до мержа превышает целевое значение."
+        "Командная медиана Time to Merge (от создания MR до мержа в dev) превышает целевое значение."
     ),
 
     MERGE_TIME_SPIKE(
         "MERGE_TIME_SPIKE",
         InsightKind.BAD,
         4,
-        "Медиана TTM значительно выросла по сравнению с предыдущим периодом."
+        "Медиана Time to Merge значительно выросла по сравнению с предыдущим периодом."
     ),
 
     STUCK_MRS(
@@ -52,7 +52,7 @@ public enum InsightRule {
         "DELIVERY_DROP",
         InsightKind.WARN,
         3,
-        "Командный объём смерджённых MR значительно упал по сравнению с прошлым периодом."
+        "Объём влитых MR значительно упал по сравнению с прошлым периодом."
     ),
 
     LOW_REVIEW_DEPTH(
@@ -69,11 +69,11 @@ public enum InsightRule {
         "Высокая доля MR, в которых автор вносил правки после открытия ревью-треда."
     ),
 
-    INACTIVE_MEMBER(
-        "INACTIVE_MEMBER",
+    LOW_ACTIVITY(
+        "LOW_ACTIVITY",
         InsightKind.WARN,
         2,
-        "Участник команды без активности (MR, коммиты, ревью) за выбранный период."
+        "Участник с активностью значительно ниже медианы команды (влитых MR < 30% от медианы)."
     ),
 
     NO_CODE_REVIEW(
@@ -81,6 +81,27 @@ public enum InsightRule {
         InsightKind.BAD,
         3,
         "Активный разработчик мержит MR, но не ревьюит чужие — нарушает баланс команды."
+    ),
+
+    SLOW_LEAD_TIME(
+        "SLOW_LEAD_TIME",
+        InsightKind.BAD,
+        4,
+        "DORA Lead Time for Changes (от создания MR до деплоя в прод) превышает целевой порог."
+    ),
+
+    LOW_DEPLOY_FREQUENCY(
+        "LOW_DEPLOY_FREQUENCY",
+        InsightKind.WARN,
+        3,
+        "DORA Deploy Frequency ниже целевого порога — деплои в прод происходят слишком редко."
+    ),
+
+    LEAD_TIME_REGRESSION(
+        "LEAD_TIME_REGRESSION",
+        InsightKind.BAD,
+        4,
+        "DORA Lead Time for Changes значительно вырос по сравнению с предыдущим периодом."
     );
 
     private final String code;

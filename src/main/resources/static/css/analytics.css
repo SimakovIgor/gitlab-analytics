@@ -5420,8 +5420,14 @@ body {
     color: var(--good);
 }
 
-/* phase3 = RELEASE phase completed: all 3 phases done. */
+/* phase3 = RELEASE phase completed: Phase 3 of 4 succeeded, Jira phase may follow. */
 .sync-status-phase3 {
+    background: var(--good-bg);
+    color: var(--good);
+}
+
+/* phase4 = JIRA_INCIDENTS phase completed: all 4 phases done. */
+.sync-status-phase4 {
     background: var(--good-bg);
     color: var(--good);
 }

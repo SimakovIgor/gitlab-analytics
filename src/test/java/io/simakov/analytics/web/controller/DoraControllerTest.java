@@ -3,6 +3,7 @@ package io.simakov.analytics.web.controller;
 import io.simakov.analytics.BaseIT;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.GitSource;
+import io.simakov.analytics.domain.model.JiraIncident;
 import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.ReleaseTag;
 import io.simakov.analytics.domain.model.TrackedProject;
@@ -10,6 +11,7 @@ import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.enums.MrState;
 import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
+import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.ReleaseTagRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
@@ -48,6 +50,8 @@ class DoraControllerTest extends BaseIT {
     private MergeRequestRepository mergeRequestRepository;
     @Autowired
     private ReleaseTagRepository releaseTagRepository;
+    @Autowired
+    private JiraIncidentRepository jiraIncidentRepository;
     private Long projectId;
 
     @BeforeEach
@@ -87,7 +91,7 @@ class DoraControllerTest extends BaseIT {
     }
 
     @Test
-    void doraPageRendersLeadTimeSectionAndTbdSections() throws Exception {
+    void doraPageRendersAllMetricSections() throws Exception {
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
@@ -98,7 +102,7 @@ class DoraControllerTest extends BaseIT {
             .contains("Deploy Frequency")
             .contains("Change Failure Rate")
             .contains("MTTR")
-            .contains("Скоро");
+            .contains("Скоро"); // MTTR is still COMING_SOON
     }
 
     @Test
@@ -191,6 +195,82 @@ class DoraControllerTest extends BaseIT {
             .doesNotContain("secret-repo");
     }
 
+    // ── Change Failure Rate ──────────────────────────────────────────────
+
+    @Test
+    void doraPageRendersCfrCardAsAvailable() throws Exception {
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        // CFR card should NOT be in the "Скоро" TBD section
+        // It should render the real card with incident/deploy data
+        assertThat(body).contains("Change Failure Rate");
+        assertThat(body).contains("cfrSparkline");
+    }
+
+    @Test
+    void doraPageShowsCfrNoDataWhenNoDeploysOrIncidents() throws Exception {
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+                .param("period", "LAST_30_DAYS"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("Нет данных");
+    }
+
+    @Test
+    void doraPageShowsCfrPercentWhenDataExists() throws Exception {
+        // 4 deploys, 1 incident → 25%
+        for (int i = 1; i <= 4; i++) {
+            saveReleaseTag("v" + i, now.minus(i, ChronoUnit.DAYS));
+        }
+        saveIncident("MI-1", now.minus(2, ChronoUnit.DAYS));
+
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+                .param("period", "LAST_30_DAYS"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("25.0");
+        assertThat(body).contains("1 инцидентов");
+        assertThat(body).contains("4 деплоев");
+    }
+
+    @Test
+    void doraPageRendersCfrChart() throws Exception {
+        saveReleaseTag("v1", now.minus(5, ChronoUnit.DAYS));
+        saveIncident("MI-1", now.minus(5, ChronoUnit.DAYS));
+
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+                .param("period", "LAST_30_DAYS"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("cfrChart");
+        assertThat(body).contains("Change Failure Rate · по неделям");
+    }
+
+    @Test
+    void doraPageSyncIncidentsEndpointReturnsDisabledWithoutJira() throws Exception {
+        // In test profile Jira is not configured, so endpoint should return "disabled"
+        MvcResult result = mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .post("/dora/sync/incidents")
+                    .session(webSession)
+                    .with(oauth2Login())
+                    .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("disabled");
+    }
+
     private void saveMergedMr(Long gitlabMrId,
                               int leadHours) {
         saveMergedMrWithTag(gitlabMrId, leadHours, null);
@@ -219,5 +299,16 @@ class DoraControllerTest extends BaseIT {
         tag.setTagCreatedAt(prodDeployedAt);
         tag.setProdDeployedAt(prodDeployedAt);
         return releaseTagRepository.save(tag);
+    }
+
+    private void saveIncident(String jiraKey, Instant createdAt) {
+        jiraIncidentRepository.save(JiraIncident.builder()
+            .workspaceId(testWorkspaceId)
+            .trackedProjectId(projectId)
+            .jiraKey(jiraKey)
+            .summary("Incident " + jiraKey)
+            .createdAt(createdAt)
+            .componentName("repo")
+            .build());
     }
 }

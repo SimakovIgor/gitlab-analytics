@@ -79,7 +79,7 @@
                     <span class="rating-pill rating-pill-hoverable"
                           th:classappend="${leadTimeRating.cssClass()}"
                           th:text="${leadTimeRating.label()}"
-                          th:attr="data-tooltip=${leadTimeRating.description()}">—</span>
+                          th:attr="data-tooltip=${leadTimeRatingDesc}">—</span>
                 </div>
                 <div class="dora-big-value-row">
                     <span class="num dora-big-value"
@@ -115,7 +115,7 @@
                     <span class="rating-pill rating-pill-hoverable"
                           th:classappend="${deployFreqRating.cssClass()}"
                           th:text="${deployFreqRating.label()}"
-                          th:attr="data-tooltip=${deployFreqRating.description()}">—</span>
+                          th:attr="data-tooltip=${deployFreqRatingDesc}">—</span>
                 </div>
                 <div class="dora-big-value-row">
                     <span class="num dora-big-value"
@@ -135,6 +135,35 @@
                 </div>
                 <div class="dora-big-desc">
                     Частота деплоев в прод. Считается по релизам с известной датой prod deploy.
+                </div>
+            </div>
+
+            <!-- Change Failure Rate (incidents / deployments) -->
+            <div class="dora-big-card">
+                <div class="dora-big-header">
+                    <span class="dora-big-label">Change Failure Rate</span>
+                    <span class="rating-pill rating-pill-hoverable"
+                          th:classappend="${cfrRating.cssClass()}"
+                          th:text="${cfrRating.label()}"
+                          th:attr="data-tooltip=${cfrRatingDesc}">—</span>
+                </div>
+                <div class="dora-big-value-row">
+                    <span class="num dora-big-value"
+                          th:text="${cfrPercent != null ? #numbers.formatDecimal(cfrPercent, 1, 1) : '—'}">—</span>
+                    <span class="dora-big-unit" th:if="${cfrPercent != null}">%</span>
+                    <span class="dora-big-trend" id="cfrTrend"></span>
+                </div>
+                <svg aria-hidden="true" class="dora-sparkline" id="cfrSparkline"></svg>
+                <div class="dora-big-secondary" th:if="${cfrPercent != null}">
+                    <span th:text="${cfrTotalIncidents + ' инцидентов'}">0 инцидентов</span>
+                    <span class="dora-big-sep">·</span>
+                    <span th:text="${cfrTotalDeploys + ' деплоев'}">0 деплоев</span>
+                </div>
+                <div class="dora-big-secondary" th:if="${cfrPercent == null}">
+                    <span style="font-size:12px;color:var(--fg-3)">Нет данных — нужны деплои и синк инцидентов из Jira</span>
+                </div>
+                <div class="dora-big-desc">
+                    Процент деплоев, вызвавших инциденты. Считается по Jira (компонент = сервис).
                 </div>
             </div>
 
@@ -191,6 +220,33 @@
             <div class="chart-wrap">
                 <canvas id="deployFreqChart"></canvas>
             </div>
+        </div>
+
+        <!-- ── Change Failure Rate chart ──────────────────────────────────── -->
+        <div class="chart-card" th:if="${cfrPercent != null}">
+            <div class="dora-chart-header">
+                <div>
+                    <div class="chart-title">Change Failure Rate · по неделям</div>
+                    <div class="dora-chart-subtitle">Процент деплоев, вызвавших инциденты (инциденты / деплои × 100)</div>
+                </div>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="cfrChart"></canvas>
+            </div>
+        </div>
+
+        <!-- ── Jira incident sync ──────────────────────────────────────────── -->
+        <div class="chart-card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between"
+             th:if="${jiraEnabled}">
+            <div>
+                <div style="font-size:13px;font-weight:600;color:var(--fg-0)">Инциденты из Jira</div>
+                <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
+                    Синк инцидентов для расчёта Change Failure Rate
+                </div>
+            </div>
+            <button class="btn-release-sync" id="syncIncidentsBtn" onclick="triggerIncidentSync()" type="button">
+                ⟳ Обновить инциденты
+            </button>
         </div>
 
         <!-- ── Releases timeline ─────────────────────────────────────────────── -->
@@ -416,6 +472,7 @@
 <script th:inline="javascript">
     const chartData = JSON.parse([[${chartJson}]]);
     const deployFreqChartData = JSON.parse([[${deployFreqChartJson}]]);
+    const cfrChartData = JSON.parse([[${cfrChartJson}]]);
     const style = getComputedStyle(document.documentElement);
     const accentColor = style.getPropertyValue('--accent').trim() || '#6366f1';
     const fg3Color = style.getPropertyValue('--fg-3').trim() || '#8a8573';
@@ -482,6 +539,16 @@
             + ' style="transform:rotate(' + rot + 'deg)">'
             + '<path d="M6 2 L6 10 M2.5 5.5 L6 2 L9.5 5.5" fill="none" stroke="' + color + '"'
             + ' stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+    }
+
+    // CFR sparkline + trend (lower is better — same direction as lead time)
+    const cfrSparkSvg = document.getElementById('cfrSparkline');
+    if (cfrSparkSvg && cfrChartData.datasets && cfrChartData.datasets[0]) {
+        drawSparkline(cfrSparkSvg, cfrChartData.datasets[0].data, '#ef4444');
+    }
+    const cfrTrendEl = document.getElementById('cfrTrend');
+    if (cfrTrendEl && cfrChartData.datasets && cfrChartData.datasets[0]) {
+        renderTrendArrow(cfrTrendEl, cfrChartData.datasets[0].data);
     }
 
     // Main weekly chart
@@ -598,6 +665,55 @@
         });
     }
 </script>
+<script th:inline="javascript">
+    // Change Failure Rate line chart
+    const cfrCanvas = document.getElementById('cfrChart');
+    if (cfrCanvas && cfrChartData.labels && cfrChartData.labels.length > 0) {
+        new Chart(cfrCanvas, {
+            type: 'line',
+            data: {
+                labels: cfrChartData.labels,
+                datasets: [{
+                    label: 'CFR (%)',
+                    data: cfrChartData.datasets[0].data,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239,68,68,0.12)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    borderWidth: 2.2,
+                    pointBackgroundColor: '#ef4444'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {display: false},
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                if (ctx.parsed.y == null) { return null; }
+                                return 'CFR: ' + ctx.parsed.y + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {maxTicksLimit: 12, maxRotation: 0},
+                        grid: {color: 'rgba(0,0,0,0.04)'}
+                    },
+                    y: {
+                        title: {display: true, text: '%'},
+                        beginAtZero: true,
+                        grid: {color: 'rgba(0,0,0,0.04)'}
+                    }
+                }
+            }
+        });
+    }
+</script>
 <script>
     function doReleaseSync(url, projectName, btns) {
         btns.forEach(function (btn) {
@@ -633,6 +749,21 @@
         } else {
             doReleaseSync('/dora/sync/releases', 'все репозитории', btns);
         }
+    }
+
+    function triggerIncidentSync() {
+        var btn = document.getElementById('syncIncidentsBtn');
+        btn.disabled = true;
+        btn.textContent = '⟳ загружаем...';
+        window.api('POST', '/dora/sync/incidents?days=360')
+            .then(function (result) {
+                btn.textContent = '✓ загружено (' + (result.persisted || 0) + ')';
+                setTimeout(function () { window.location.reload(); }, 1500);
+            })
+            .catch(function () {
+                btn.disabled = false;
+                btn.textContent = '⟳ Обновить инциденты';
+            });
     }
 
     // ── Release tag tooltip ───────────────────────────────────────────────────

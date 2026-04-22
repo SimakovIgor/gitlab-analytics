@@ -19,6 +19,13 @@ app:
     connect-timeout-seconds: 5
     read-timeout-seconds: 10
     max-retries: 1
+  jira:
+    base-url: ""
+    username: ""
+    api-token: ""
+    project-key: MI
+    read-timeout-seconds: 10
+    max-results: 100
   snapshot:
     cron: "-"
     window-days: 30

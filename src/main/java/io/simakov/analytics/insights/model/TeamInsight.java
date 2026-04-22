@@ -8,7 +8,7 @@ import java.util.List;
  * @param rule            the rule that triggered this insight
  * @param kind            severity category (may differ from rule default for magnitude-based rules)
  * @param severity        1–5 score used for sorting (may differ from rule default)
- * @param title           formatted Russian title with concrete values (e.g. "Медиана TTM выросла в 3.2 раза")
+ * @param title           formatted Russian title with concrete values (e.g. "Медиана Time to Merge выросла в 3.2 раза")
  * @param body            1–2 sentence Russian explanation with context
  * @param affectedUserIds IDs of {@link io.simakov.analytics.domain.model.TrackedUser} entities involved
  */

@@ -15,12 +15,13 @@ public class InsightProperties {
     private int stuckMrHours = 24;
 
     /**
-     * Team median TTM above this value (hours) triggers HIGH_MERGE_TIME.
+     * Team median Time to Merge (MR created → merged into dev) above this value (hours)
+     * triggers HIGH_MERGE_TIME.
      */
     private double maxMedianTtmHours = 24.0;
 
     /**
-     * Ratio of current-period median TTM to previous-period median TTM above which
+     * Ratio of current-period to previous-period median Time to Merge above which
      * MERGE_TIME_SPIKE fires (e.g. 2.0 means "grew more than 2×").
      */
     private double mergeTimeSpikeRatio = 2.0;
@@ -57,6 +58,26 @@ public class InsightProperties {
      * Prevents false positives for low-activity users.
      */
     private int minMrsForNoReviewCheck = 5;
+
+    /**
+     * DORA Lead Time for Changes threshold (days).
+     * Triggers SLOW_LEAD_TIME when median exceeds this value.
+     * Default 7.0 = DORA "High" boundary (above = Medium/Low).
+     */
+    private double maxLeadTimeDays = 7.0;
+
+    /**
+     * DORA Deploy Frequency threshold (deploys per day).
+     * Triggers LOW_DEPLOY_FREQUENCY when frequency is below this value.
+     * Default 1/7 ≈ 0.143 = at least once per week (DORA "High" boundary).
+     */
+    private double minDeploysPerDay = 1.0 / 7;
+
+    /**
+     * Ratio of current-period to previous-period DORA Lead Time above which
+     * LEAD_TIME_REGRESSION fires (e.g. 1.5 means "grew by more than 50%").
+     */
+    private double leadTimeRegressionRatio = 1.5;
 
     public int getStuckMrHours() {
         return stuckMrHours;
@@ -128,5 +149,29 @@ public class InsightProperties {
 
     public void setMinMrsForNoReviewCheck(int minMrsForNoReviewCheck) {
         this.minMrsForNoReviewCheck = minMrsForNoReviewCheck;
+    }
+
+    public double getMaxLeadTimeDays() {
+        return maxLeadTimeDays;
+    }
+
+    public void setMaxLeadTimeDays(double maxLeadTimeDays) {
+        this.maxLeadTimeDays = maxLeadTimeDays;
+    }
+
+    public double getMinDeploysPerDay() {
+        return minDeploysPerDay;
+    }
+
+    public void setMinDeploysPerDay(double minDeploysPerDay) {
+        this.minDeploysPerDay = minDeploysPerDay;
+    }
+
+    public double getLeadTimeRegressionRatio() {
+        return leadTimeRegressionRatio;
+    }
+
+    public void setLeadTimeRegressionRatio(double leadTimeRegressionRatio) {
+        this.leadTimeRegressionRatio = leadTimeRegressionRatio;
     }
 }

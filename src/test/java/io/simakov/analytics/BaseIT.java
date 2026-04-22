@@ -100,6 +100,7 @@ public abstract class BaseIT {
         jdbcTemplate.execute("TRUNCATE TABLE merge_request_discussion CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE merge_request_commit CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE merge_request CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE jira_incident CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE release_tag CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE sync_job CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE metric_snapshot CASCADE");

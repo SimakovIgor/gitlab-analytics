@@ -126,9 +126,10 @@ public enum DoraMetric {
     CHANGE_FAILURE_RATE(
         "change_failure_rate",
         "Change Failure Rate",
-        "Процент деплоев, вызвавших инциденты. Требует интеграции с Jira или GitLab Issues.",
+        "Процент деплоев, вызвавших инциденты. Считается по Jira-инцидентам проекта МИ, "
+            + "привязанным к сервисам через поле Components.",
         Unit.PERCENT,
-        Status.COMING_SOON,
+        Status.AVAILABLE,
         Direction.LOWER_IS_BETTER,
         5.0, 10.0, 15.0
     ),
@@ -280,6 +281,62 @@ public enum DoraMetric {
      */
     public boolean isAvailable() {
         return status == Status.AVAILABLE;
+    }
+
+    /**
+     * Returns a tooltip description specific to both this metric and the given rating tier.
+     */
+    @SuppressWarnings("checkstyle:CyclomaticComplexity")
+    public String ratingDescription(DoraRating rating) {
+        if (rating == DoraRating.NO_DATA) {
+            return "Недостаточно данных для расчёта рейтинга.";
+        }
+        return switch (this) {
+            case LEAD_TIME_FOR_CHANGES -> leadTimeDescription(rating);
+            case DEPLOYMENT_FREQUENCY -> deployFreqDescription(rating);
+            case CHANGE_FAILURE_RATE -> cfrDescription(rating);
+            case MTTR -> mttrDescription(rating);
+        };
+    }
+
+    private static String leadTimeDescription(DoraRating rating) {
+        return switch (rating) {
+            case ELITE -> "< 1 часа · топ-команды. Изменения попадают в прод практически мгновенно.";
+            case HIGH -> "< 7 дней · зрелые практики. CI/CD отлажен, изменения доходят до прода за часы-дни.";
+            case MEDIUM -> "7–30 дней · типичный уровень. Есть потенциал: автоматизация, уменьшение MR, ускорение ревью.";
+            case LOW -> "30+ дней · медленный цикл. Риски копятся, деплои болезненны — стоит разобраться с причинами.";
+            default -> "";
+        };
+    }
+
+    private static String deployFreqDescription(DoraRating rating) {
+        return switch (rating) {
+            case ELITE -> "≥ 1/день · непрерывная доставка. Команда деплоит в прод несколько раз в день.";
+            case HIGH -> "≥ 1/неделю · регулярные деплои. Релизный процесс отлажен.";
+            case MEDIUM -> "≥ 1/месяц · редкие деплои. Стоит автоматизировать CI/CD и уменьшить размер релизов.";
+            case LOW -> "< 1/месяц · деплои реже раза в месяц. Большие батчи, высокий риск при каждом релизе.";
+            default -> "";
+        };
+    }
+
+    private static String cfrDescription(DoraRating rating) {
+        return switch (rating) {
+            case ELITE -> "< 5% · практически все деплои проходят без инцидентов.";
+            case HIGH -> "5–10% · редкие сбои. Хорошее покрытие тестами и процесс валидации.";
+            case MEDIUM -> "10–15% · заметная доля проблемных деплоев. Стоит усилить тестирование.";
+            case LOW -> "> 15% · высокая доля сбойных деплоев. Необходим пересмотр процесса релиза.";
+            default -> "";
+        };
+    }
+
+    private static String mttrDescription(DoraRating rating) {
+        return switch (rating) {
+            case ELITE -> "< 1 часа · мгновенное восстановление. Отличная готовность к инцидентам.";
+            case HIGH -> "< 24 часов · восстановление в тот же день. Зрелый процесс реагирования.";
+            case MEDIUM -> "< 7 дней · восстановление в течение недели. Есть потенциал ускорить реакцию.";
+            case LOW -> "7+ дней · медленное восстановление. Необходимо выстроить процесс инцидент-менеджмента.";
+            default -> "";
+        };
     }
 
     // ── Nested types ──────────────────────────────────────────────────────────

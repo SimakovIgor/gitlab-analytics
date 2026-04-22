@@ -80,19 +80,13 @@ public class SettingsViewService {
             return "failed";
         }
         // Completed jobs: distinguish which phase finished last.
-        // FAST = Phase 1 of 3 done (ENRICH follows automatically).
-        // ENRICH = Phase 2 of 3 done (RELEASE may follow if triggered).
-        // RELEASE = Phase 3 of 3 done (full sync).
-        if (job.getPhase() == SyncJobPhase.FAST) {
-            return "phase1";
-        }
-        if (job.getPhase() == SyncJobPhase.ENRICH) {
-            return "phase2";
-        }
-        if (job.getPhase() == SyncJobPhase.RELEASE) {
-            return "phase3";
-        }
-        return "ok";
+        return switch (job.getPhase()) {
+            case FAST -> "phase1";
+            case ENRICH -> "phase2";
+            case RELEASE -> "phase3";
+            case JIRA_INCIDENTS -> "phase4";
+            case null -> "ok";
+        };
     }
 
     private static long durSecs(SyncJob job) {
@@ -295,10 +289,7 @@ public class SettingsViewService {
         // All completed phases (phase1/2/3) count as successful — none are failures.
         // phase1 = FAST done (ENRICH follows automatically), phase2 = ENRICH done, phase3 = RELEASE done.
         long ok = jobs14d.stream()
-            .filter(j -> {
-                String s = toUiStatus(j);
-                return "ok".equals(s) || "phase1".equals(s) || "phase2".equals(s) || "phase3".equals(s);
-            })
+            .filter(j -> !"failed".equals(toUiStatus(j)) && !"running".equals(toUiStatus(j)))
             .count();
         long partial = 0L;
         long failed = jobs14d.stream().filter(j -> "failed".equals(toUiStatus(j))).count();

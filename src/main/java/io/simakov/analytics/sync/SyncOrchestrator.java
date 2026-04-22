@@ -14,11 +14,13 @@ import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabMergeRequestDto;
 import io.simakov.analytics.gitlab.mapper.GitLabMapper;
+import io.simakov.analytics.jira.JiraIncidentSyncService;
 import io.simakov.analytics.snapshot.SnapshotService;
 import io.simakov.analytics.sync.step.SyncContext;
 import io.simakov.analytics.sync.step.SyncStep;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -52,6 +54,9 @@ public class SyncOrchestrator {
 
     @Qualifier("mrProcessingExecutor")
     private final Executor mrProcessingExecutor;
+
+    @Autowired(required = false)
+    private JiraIncidentSyncService jiraIncidentSyncService;
 
     @Async("syncTaskExecutor")
     public void orchestrateAsync(Long jobId,
@@ -87,6 +92,7 @@ public class SyncOrchestrator {
     /**
      * Runs the RELEASE phase for specific projects as a tracked SyncJob.
      * Reads projectIds from the job's payload, syncs releases per project.
+     * After completion, auto-chains to JIRA_INCIDENTS phase if Jira is configured.
      */
     @Async("syncTaskExecutor")
     public void orchestrateReleaseAsync(Long jobId) {
@@ -107,9 +113,53 @@ public class SyncOrchestrator {
             }
             syncJobService.complete(jobId);
             log.info("RELEASE phase complete for job {}", jobId);
+            chainJiraIncidentPhase(jobId, request);
         } catch (Exception e) {
             log.error("Sync job {} (RELEASE) failed: {}", jobId, e.getMessage(), e);
             syncJobService.fail(jobId, e.getMessage());
+        }
+    }
+
+    /**
+     * Runs the JIRA_INCIDENTS phase as a tracked SyncJob.
+     * Fetches Jira incidents and links them to tracked projects by component name.
+     */
+    @Async("syncTaskExecutor")
+    public void orchestrateJiraIncidentsAsync(Long jobId, int days) {
+        log.info("Starting sync job {} (phase=JIRA_INCIDENTS, days={})", jobId, days);
+        try {
+            Long workspaceId = syncJobService.findById(jobId).getWorkspaceId();
+            int persisted = jiraIncidentSyncService.syncIncidentsForWorkspace(workspaceId, days);
+            syncJobService.complete(jobId);
+            log.info("JIRA_INCIDENTS phase complete for job {}: {} links persisted", jobId, persisted);
+        } catch (Exception e) {
+            log.error("Sync job {} (JIRA_INCIDENTS) failed: {}", jobId, e.getMessage(), e);
+            syncJobService.fail(jobId, e.getMessage());
+        }
+    }
+
+    /**
+     * After RELEASE phase: start JIRA_INCIDENTS phase if Jira is configured.
+     * Workspace-level idempotency: only one JIRA_INCIDENTS job at a time.
+     */
+    @SuppressWarnings("checkstyle:ReturnCount")
+    private void chainJiraIncidentPhase(Long releaseJobId,
+                                        ManualSyncRequest request) {
+        if (jiraIncidentSyncService == null) {
+            return;
+        }
+        try {
+            Long workspaceId = syncJobService.findById(releaseJobId).getWorkspaceId();
+            if (syncJobService.findActiveJiraIncidentJob(workspaceId).isPresent()) {
+                log.info("JIRA_INCIDENTS phase already running for workspace {}, skipping chain from job {}",
+                    workspaceId, releaseJobId);
+                return;
+            }
+            SyncJob jiraJob = syncJobService.createJiraIncidentJob(workspaceId, request);
+            log.info("Auto-starting JIRA_INCIDENTS phase as job {} after RELEASE job {}", jiraJob.getId(), releaseJobId);
+            orchestrateJiraIncidentsAsync(jiraJob.getId(), BACKFILL_DAYS);
+        } catch (Exception e) {
+            log.error("Failed to start JIRA_INCIDENTS phase after job {}: {}", releaseJobId, e.getMessage(), e);
         }
     }
 

@@ -143,6 +143,18 @@ public class SyncJobService {
         return syncJobRepository.save(job);
     }
 
+    @Transactional
+    public SyncJob createJiraIncidentJob(Long workspaceId,
+                                         ManualSyncRequest request) {
+        SyncJob job = SyncJob.builder()
+            .workspaceId(workspaceId)
+            .status(SyncStatus.STARTED)
+            .phase(SyncJobPhase.JIRA_INCIDENTS)
+            .payloadJson(toJson(request))
+            .build();
+        return syncJobRepository.save(job);
+    }
+
     /**
      * Returns an active RELEASE job whose projectIds overlap with the given set.
      * Used to prevent starting a duplicate RELEASE for the same project.
@@ -180,6 +192,11 @@ public class SyncJobService {
     public Optional<SyncJob> findActiveEnrichmentJob(Long workspaceId) {
         return syncJobRepository.findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(
             workspaceId, SyncStatus.STARTED, SyncJobPhase.ENRICH);
+    }
+
+    public Optional<SyncJob> findActiveJiraIncidentJob(Long workspaceId) {
+        return syncJobRepository.findTopByWorkspaceIdAndStatusAndPhaseOrderByStartedAtDesc(
+            workspaceId, SyncStatus.STARTED, SyncJobPhase.JIRA_INCIDENTS);
     }
 
     /**

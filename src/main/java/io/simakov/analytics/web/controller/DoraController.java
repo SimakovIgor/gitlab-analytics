@@ -4,8 +4,11 @@ import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.dora.model.DoraMetric;
+import io.simakov.analytics.dora.model.DoraRating;
+import io.simakov.analytics.jira.JiraIncidentSyncService;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
+import io.simakov.analytics.sync.SyncOrchestrator;
 import io.simakov.analytics.web.DoraService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsService;
@@ -13,6 +16,7 @@ import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -36,6 +40,12 @@ public class DoraController {
     private final WorkspaceService workspaceService;
     private final SyncJobService syncJobService;
     private final SettingsService settingsService;
+
+    @Autowired(required = false)
+    private JiraIncidentSyncService jiraIncidentSyncService;
+
+    @Autowired
+    private SyncOrchestrator syncOrchestrator;
 
     @GetMapping("/dora")
     public String dora(OAuth2AuthenticationToken authentication,
@@ -63,6 +73,7 @@ public class DoraController {
 
         Map<String, Object> leadTime = doraService.buildLeadTimeData(effectiveProjectIds, days);
         Map<String, Object> deployFreq = doraService.buildDeployFrequencyData(effectiveProjectIds, days);
+        Map<String, Object> cfr = doraService.buildChangeFailureRateData(effectiveProjectIds, days);
         List<DoraService.ReleaseRowDto> releases = doraService.buildReleasesData(effectiveProjectIds);
 
         model.addAttribute("projects", allProjects);
@@ -86,16 +97,31 @@ public class DoraController {
         model.addAttribute("medianDays", leadTime.get("medianDays"));
         model.addAttribute("p75Days", leadTime.get("p75Days"));
         model.addAttribute("p95Days", leadTime.get("p95Days"));
-        model.addAttribute("leadTimeRating", leadTime.get("leadTimeRating"));
+        DoraRating ltRating = (DoraRating) leadTime.get("leadTimeRating");
+        model.addAttribute("leadTimeRating", ltRating);
+        model.addAttribute("leadTimeRatingDesc",
+            DoraMetric.LEAD_TIME_FOR_CHANGES.ratingDescription(ltRating));
         model.addAttribute("chartJson", leadTime.get("chartJson"));
         model.addAttribute("totalDeploys", deployFreq.get("totalDeploys"));
         model.addAttribute("deploysPerDay", deployFreq.get("deploysPerDay"));
         model.addAttribute("deployDisplayValue", deployFreq.get("displayValue"));
         model.addAttribute("deployDisplayUnit", deployFreq.get("displayUnit"));
-        model.addAttribute("deployFreqRating", deployFreq.get("deployFreqRating"));
+        DoraRating dfRating = (DoraRating) deployFreq.get("deployFreqRating");
+        model.addAttribute("deployFreqRating", dfRating);
+        model.addAttribute("deployFreqRatingDesc",
+            DoraMetric.DEPLOYMENT_FREQUENCY.ratingDescription(dfRating));
         model.addAttribute("deployFreqChartJson", deployFreq.get("chartJson"));
+        model.addAttribute("cfrTotalIncidents", cfr.get("totalIncidents"));
+        model.addAttribute("cfrTotalDeploys", cfr.get("totalDeploys"));
+        model.addAttribute("cfrPercent", cfr.get("cfrPercent"));
+        DoraRating cfrRating = (DoraRating) cfr.get("cfrRating");
+        model.addAttribute("cfrRating", cfrRating);
+        model.addAttribute("cfrRatingDesc",
+            DoraMetric.CHANGE_FAILURE_RATE.ratingDescription(cfrRating));
+        model.addAttribute("cfrChartJson", cfr.get("chartJson"));
         model.addAttribute("releases", releases);
         model.addAttribute("doraMetrics", DoraMetric.values());
+        model.addAttribute("jiraEnabled", jiraIncidentSyncService != null);
 
         return "dora";
     }
@@ -107,5 +133,23 @@ public class DoraController {
             ? List.of(projectId)
             : List.of();
         return settingsService.startReleaseSyncForProjects(ids);
+    }
+
+    @PostMapping("/dora/sync/incidents")
+    @ResponseBody
+    public Map<String, Object> triggerIncidentSync(
+        @RequestParam(defaultValue = "360") int days) {
+        if (jiraIncidentSyncService == null) {
+            return Map.of("status", "disabled",
+                "message", "Jira integration is not configured (app.jira.base-url is empty)");
+        }
+        Long workspaceId = WorkspaceContext.get();
+        if (syncJobService.findActiveJiraIncidentJob(workspaceId).isPresent()) {
+            return Map.of("status", "already_running",
+                "message", "Jira incident sync is already running");
+        }
+        SyncJob job = syncJobService.createJiraIncidentJob(workspaceId, null);
+        syncOrchestrator.orchestrateJiraIncidentsAsync(job.getId(), days);
+        return Map.of("status", "ok", "jobId", job.getId());
     }
 }

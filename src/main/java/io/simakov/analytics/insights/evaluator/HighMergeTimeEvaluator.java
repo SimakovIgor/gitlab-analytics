@@ -52,9 +52,10 @@ public class HighMergeTimeEvaluator implements InsightEvaluator {
             .map(UserMetrics::getTrackedUserId)
             .toList();
 
-        String title = String.format("Медиана TTM команды — %.1f ч (цель: %.0f ч)", avgMedianHours, targetHours);
+        String title = String.format("Медиана Time to Merge команды — %.1f ч (цель: %.0f ч)", avgMedianHours, targetHours);
         String body = String.format(
-            "Среднее медианное время от открытия MR до мержа составляет %.1f ч, что превышает целевой показатель %.0f ч."
+            "Среднее медианное время от создания MR до мержа в dev составляет %.1f ч,"
+                + " что превышает целевой показатель %.0f ч."
                 + " Проверьте узкие места: ожидание ревью, блокировки CI/CD.",
             avgMedianHours, targetHours
         );

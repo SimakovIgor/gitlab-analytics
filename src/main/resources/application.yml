@@ -84,6 +84,20 @@ app:
     # 2 дня — чтобы не пропустить MR, смерджённые около полуночи.
     window-days: 2
 
+  jira:
+    # URL Jira-инстанса (Cloud или Server). Пусто = интеграция отключена.
+    base-url: ${JIRA_BASE_URL:}
+    # Email (Cloud) или username (Server) для Basic-аутентификации
+    username: ${JIRA_USERNAME:}
+    # API-токен (Cloud) или пароль (Server)
+    api-token: ${JIRA_API_TOKEN:}
+    # Ключ Jira-проекта с инцидентами
+    project-key: ${JIRA_PROJECT_KEY:MI}
+    # Таймаут HTTP-запросов к Jira (секунды)
+    read-timeout-seconds: 30
+    # Максимальное количество инцидентов за один синк
+    max-results: 5000
+
   insights:
     thresholds:
       # Часов с момента создания MR, после которых он считается зависшим (STUCK_MRS)
@@ -104,6 +118,12 @@ app:
       max-rework-ratio: 0.35
       # Минимальный порог смерджённых MR для проверки отсутствия ревью → NO_CODE_REVIEW
       min-mrs-for-no-review-check: 5
+      # DORA Lead Time for Changes (дней) выше этого → SLOW_LEAD_TIME (7 = граница High/Medium)
+      max-lead-time-days: 7.0
+      # DORA Deploy Frequency (деплоев/день) ниже этого → LOW_DEPLOY_FREQUENCY (1/7 ≈ раз в неделю)
+      min-deploys-per-day: 0.143
+      # Рост DORA Lead Time относительно прошлого периода → LEAD_TIME_REGRESSION (1.5 = вырос на 50%+)
+      lead-time-regression-ratio: 1.5
 
 management:
   endpoints:

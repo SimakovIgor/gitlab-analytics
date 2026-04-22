@@ -5,12 +5,15 @@ import io.simakov.analytics.domain.model.enums.MrState;
 import io.simakov.analytics.insights.evaluator.DeliveryDropEvaluator;
 import io.simakov.analytics.insights.evaluator.HighMergeTimeEvaluator;
 import io.simakov.analytics.insights.evaluator.HighReworkRatioEvaluator;
-import io.simakov.analytics.insights.evaluator.InactiveMemberEvaluator;
 import io.simakov.analytics.insights.evaluator.LargeMrHabitEvaluator;
+import io.simakov.analytics.insights.evaluator.LeadTimeRegressionEvaluator;
+import io.simakov.analytics.insights.evaluator.LowActivityEvaluator;
+import io.simakov.analytics.insights.evaluator.LowDeployFrequencyEvaluator;
 import io.simakov.analytics.insights.evaluator.LowReviewDepthEvaluator;
 import io.simakov.analytics.insights.evaluator.MergeTimeSpikeEvaluator;
 import io.simakov.analytics.insights.evaluator.NoCodeReviewEvaluator;
 import io.simakov.analytics.insights.evaluator.ReviewLoadImbalanceEvaluator;
+import io.simakov.analytics.insights.evaluator.SlowLeadTimeEvaluator;
 import io.simakov.analytics.insights.evaluator.StuckMrsEvaluator;
 import io.simakov.analytics.insights.model.InsightContext;
 import io.simakov.analytics.insights.model.InsightKind;
@@ -67,12 +70,22 @@ class InsightEvaluatorTest {
 
     private static InsightContext ctx(Map<Long, UserMetrics> current,
                                       Map<Long, UserMetrics> previous) {
-        return new InsightContext(List.of(), current, previous, List.of(), Map.of());
+        return new InsightContext(List.of(), current, previous, List.of(), Map.of(),
+            null, null, null, null);
     }
 
     private static InsightContext ctxWithOpenMrs(Map<Long, UserMetrics> current,
                                                  List<MergeRequest> openMrs) {
-        return new InsightContext(List.of(), current, Map.of(), openMrs, Map.of());
+        return new InsightContext(List.of(), current, Map.of(), openMrs, Map.of(),
+            null, null, null, null);
+    }
+
+    private static InsightContext ctxWithDora(Double leadTimeDays,
+                                              Double prevLeadTimeDays,
+                                              Double deploysPerDay,
+                                              Double prevDeploysPerDay) {
+        return new InsightContext(List.of(), Map.of(), Map.of(), List.of(), Map.of(),
+            leadTimeDays, prevLeadTimeDays, deploysPerDay, prevDeploysPerDay);
     }
 
     @BeforeEach
@@ -332,29 +345,30 @@ class InsightEvaluatorTest {
         assertThat(new HighReworkRatioEvaluator(props).evaluate(ctx)).isEmpty();
     }
 
-    // ── INACTIVE_MEMBER ───────────────────────────────────────────────────
+    // ── LOW_ACTIVITY ─────────────────────────────────────────────────────
 
     @Test
-    void inactiveMember_firesForUsersWithNoActivity() {
-        UserMetrics inactive = UserMetrics.builder()
-            .trackedUserId(1L).displayName("Absent Dev")
-            .mrMergedCount(0).mrsReviewedCount(0)
-            .commitsInMrCount(0).activeDaysCount(0)
-            .approvalsGivenCount(0)
-            .build();
-
-        InsightContext ctx = ctx(Map.of(1L, inactive), Map.of());
-        List<TeamInsight> results = new InactiveMemberEvaluator(props).evaluate(ctx);
+    void lowActivity_firesForUserBelowThirtyPercentOfMedian() {
+        // Median of [1, 20, 25] = 20. Threshold = 20 * 0.3 = 6. User with 1 MR < 6.
+        InsightContext ctx = ctx(Map.of(
+            1L, activeUser(1L, 1, 0),
+            2L, activeUser(2L, 20, 3),
+            3L, activeUser(3L, 25, 5)
+        ), Map.of());
+        List<TeamInsight> results = new LowActivityEvaluator(props).evaluate(ctx);
 
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).rule()).isEqualTo(InsightRule.INACTIVE_MEMBER);
+        assertThat(results.get(0).rule()).isEqualTo(InsightRule.LOW_ACTIVITY);
         assertThat(results.get(0).affectedUserIds()).contains(1L);
     }
 
     @Test
-    void inactiveMember_doesNotFireForActiveUsers() {
-        InsightContext ctx = ctx(Map.of(1L, activeUser(1L, 5, 3)), Map.of());
-        assertThat(new InactiveMemberEvaluator(props).evaluate(ctx)).isEmpty();
+    void lowActivity_doesNotFireWhenAllAboveThreshold() {
+        InsightContext ctx = ctx(Map.of(
+            1L, activeUser(1L, 10, 3),
+            2L, activeUser(2L, 15, 3)
+        ), Map.of());
+        assertThat(new LowActivityEvaluator(props).evaluate(ctx)).isEmpty();
     }
 
     // ── NO_CODE_REVIEW ────────────────────────────────────────────────────
@@ -395,6 +409,88 @@ class InsightEvaluatorTest {
     void noCodeReview_doesNotFireWhenUserReviews() {
         InsightContext ctx = ctx(Map.of(1L, activeUser(1L, 10, 5)), Map.of());
         assertThat(new NoCodeReviewEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    // ── SLOW_LEAD_TIME ────────────────────────────────────────────────────
+
+    @Test
+    void slowLeadTime_firesWhenMedianExceedsThreshold() {
+        // default threshold = 7.0 days
+        InsightContext ctx = ctxWithDora(10.0, null, null, null);
+        List<TeamInsight> results = new SlowLeadTimeEvaluator(props).evaluate(ctx);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).rule()).isEqualTo(InsightRule.SLOW_LEAD_TIME);
+        assertThat(results.get(0).kind()).isEqualTo(InsightKind.BAD);
+    }
+
+    @Test
+    void slowLeadTime_doesNotFireWhenBelowThreshold() {
+        InsightContext ctx = ctxWithDora(5.0, null, null, null);
+        assertThat(new SlowLeadTimeEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    @Test
+    void slowLeadTime_doesNotFireWhenNoData() {
+        InsightContext ctx = ctxWithDora(null, null, null, null);
+        assertThat(new SlowLeadTimeEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    // ── LOW_DEPLOY_FREQUENCY ────────────────────────────────────────────
+
+    @Test
+    void lowDeployFrequency_firesWhenBelowThreshold() {
+        // default threshold = 1/7 ≈ 0.143 deploys/day
+        InsightContext ctx = ctxWithDora(null, null, 0.05, null);
+        List<TeamInsight> results = new LowDeployFrequencyEvaluator(props).evaluate(ctx);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).rule()).isEqualTo(InsightRule.LOW_DEPLOY_FREQUENCY);
+        assertThat(results.get(0).kind()).isEqualTo(InsightKind.WARN);
+    }
+
+    @Test
+    void lowDeployFrequency_doesNotFireWhenAboveThreshold() {
+        InsightContext ctx = ctxWithDora(null, null, 1.0, null);
+        assertThat(new LowDeployFrequencyEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    @Test
+    void lowDeployFrequency_doesNotFireWhenNoData() {
+        InsightContext ctx = ctxWithDora(null, null, null, null);
+        assertThat(new LowDeployFrequencyEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    // ── LEAD_TIME_REGRESSION ────────────────────────────────────────────
+
+    @Test
+    void leadTimeRegression_firesWhenRatioExceedsThreshold() {
+        // default threshold = 1.5, ratio = 12/5 = 2.4
+        InsightContext ctx = ctxWithDora(12.0, 5.0, null, null);
+        List<TeamInsight> results = new LeadTimeRegressionEvaluator(props).evaluate(ctx);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).rule()).isEqualTo(InsightRule.LEAD_TIME_REGRESSION);
+        assertThat(results.get(0).kind()).isEqualTo(InsightKind.BAD);
+    }
+
+    @Test
+    void leadTimeRegression_doesNotFireWhenRatioBelowThreshold() {
+        // ratio = 6/5 = 1.2 < 1.5
+        InsightContext ctx = ctxWithDora(6.0, 5.0, null, null);
+        assertThat(new LeadTimeRegressionEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    @Test
+    void leadTimeRegression_doesNotFireWhenNoPreviousData() {
+        InsightContext ctx = ctxWithDora(10.0, null, null, null);
+        assertThat(new LeadTimeRegressionEvaluator(props).evaluate(ctx)).isEmpty();
+    }
+
+    @Test
+    void leadTimeRegression_doesNotFireWhenPreviousIsZero() {
+        InsightContext ctx = ctxWithDora(10.0, 0.0, null, null);
+        assertThat(new LeadTimeRegressionEvaluator(props).evaluate(ctx)).isEmpty();
     }
 
     // ── TeamInsight factory ────────────────────────────────────────────────

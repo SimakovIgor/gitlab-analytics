@@ -34,6 +34,19 @@ public interface ReleaseTagRepository extends JpaRepository<ReleaseTag, Long> {
     long countProdDeploysInPeriod(List<Long> projectIds, Instant dateFrom);
 
     /**
+     * Prod deploy count within a bounded interval [dateFrom, dateTo).
+     * Used by DORA insights for previous-period comparison.
+     */
+    @Query("""
+        SELECT COUNT(r) FROM ReleaseTag r
+        WHERE r.trackedProjectId IN :projectIds
+          AND r.prodDeployedAt IS NOT NULL
+          AND r.prodDeployedAt >= :dateFrom
+          AND r.prodDeployedAt < :dateTo
+        """)
+    long countProdDeploysInPeriodBetween(List<Long> projectIds, Instant dateFrom, Instant dateTo);
+
+    /**
      * Weekly prod deployment counts for the deploy frequency chart.
      */
     @Query(value = """

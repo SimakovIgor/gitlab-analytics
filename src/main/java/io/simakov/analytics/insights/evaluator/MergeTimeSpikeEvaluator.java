@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Fires when the team's average median TTM grew by more than {@code mergeTimeSpikeRatio}×
- * compared to the previous period.
+ * Fires when the team's average median time-to-merge (MR created → merged into dev)
+ * grew by more than {@code mergeTimeSpikeRatio}× compared to the previous period.
  */
 @Component
 @RequiredArgsConstructor
@@ -46,10 +46,10 @@ public class MergeTimeSpikeEvaluator implements InsightEvaluator {
             .map(UserMetrics::getTrackedUserId)
             .toList();
 
-        String title = String.format("Медиана TTM выросла в %.1f раза", ratioRounded);
+        String title = String.format("Медиана Time to Merge выросла в %.1f раза", ratioRounded);
         String body = String.format(
-            "Среднее медианное время до мержа: %.1f ч в текущем периоде против %.1f ч в предыдущем."
-                + " Возможные причины: накопившаяся очередь ревью, блокировки по внешним зависимостям.",
+            "Среднее медианное время от создания MR до мержа в dev: %.1f ч в текущем периоде против %.1f ч"
+                + " в предыдущем. Возможные причины: накопившаяся очередь ревью, блокировки по внешним зависимостям.",
             currHours, prevHours
         );
 

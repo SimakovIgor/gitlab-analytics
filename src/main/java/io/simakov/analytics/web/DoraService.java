@@ -7,6 +7,8 @@ import io.simakov.analytics.domain.model.ReleaseTag;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.MrState;
 import io.simakov.analytics.domain.repository.DeployFrequencyWeekProjection;
+import io.simakov.analytics.domain.repository.IncidentWeekProjection;
+import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.RealLeadTimeSummaryProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeWeekProjection;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("PMD.GodClass")
 public class DoraService {
 
     private static final DateTimeFormatter DATE_FMT =
@@ -45,6 +48,7 @@ public class DoraService {
     private final MergeRequestRepository mergeRequestRepository;
     private final ReleaseTagRepository releaseTagRepository;
     private final TrackedProjectRepository trackedProjectRepository;
+    private final JiraIncidentRepository jiraIncidentRepository;
     private final ObjectMapper objectMapper;
 
     private static double round(Number value) {
@@ -122,6 +126,87 @@ public class DoraService {
         result.put("deployFreqRating", rating);
         result.put("chartJson", buildDeployFrequencyChartJson(resolvedIds, dateFrom));
         return result;
+    }
+
+    /**
+     * Change Failure Rate: incidents / deployments * 100 over the given period.
+     * Ключи: totalIncidents, totalDeploys, cfrPercent, cfrRating, chartJson.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> buildChangeFailureRateData(List<Long> projectIds,
+                                                           int days) {
+        List<Long> resolvedIds = resolveProjectIds(projectIds);
+        Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
+
+        long totalIncidents = jiraIncidentRepository.countIncidentsInPeriod(resolvedIds, dateFrom);
+        long totalDeploys = releaseTagRepository.countProdDeploysInPeriod(resolvedIds, dateFrom);
+
+        Double cfrPercent = totalDeploys > 0
+            ? round(totalIncidents * 100.0 / totalDeploys)
+            : null;
+
+        DoraRating rating = DoraMetric.CHANGE_FAILURE_RATE.computeRating(cfrPercent);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalIncidents", totalIncidents);
+        result.put("totalDeploys", totalDeploys);
+        result.put("cfrPercent", cfrPercent);
+        result.put("cfrRating", rating);
+        result.put("chartJson", buildCfrChartJson(resolvedIds, dateFrom));
+        return result;
+    }
+
+    private String buildCfrChartJson(List<Long> projectIds, Instant dateFrom) {
+        List<DeployFrequencyWeekProjection> deployWeeks =
+            releaseTagRepository.countProdDeploysByWeek(projectIds, dateFrom);
+        List<IncidentWeekProjection> incidentWeeks =
+            jiraIncidentRepository.countIncidentsByWeek(projectIds, dateFrom);
+
+        Map<String, Long> deploysByWeek = new LinkedHashMap<>();
+        for (DeployFrequencyWeekProjection row : deployWeeks) {
+            deploysByWeek.put(row.getWeekLabel(), row.getDeployCount());
+        }
+        Map<String, Long> incidentsByWeek = new LinkedHashMap<>();
+        for (IncidentWeekProjection row : incidentWeeks) {
+            incidentsByWeek.put(row.getWeekLabel(), row.getIncidentCount());
+        }
+
+        // Merge all week labels in order
+        Map<String, Double> cfrByWeek = new LinkedHashMap<>();
+        for (String week : deploysByWeek.keySet()) {
+            long deploys = deploysByWeek.getOrDefault(week, 0L);
+            long incidents = incidentsByWeek.getOrDefault(week, 0L);
+            cfrByWeek.put(week, deploys > 0 ? round(incidents * 100.0 / deploys) : 0.0);
+        }
+        // Add weeks that have incidents but no deploys (CFR would be infinite, show 0)
+        for (String week : incidentsByWeek.keySet()) {
+            cfrByWeek.putIfAbsent(week, 0.0);
+        }
+
+        List<String> labels = new ArrayList<>(cfrByWeek.keySet());
+        List<Double> values = new ArrayList<>(cfrByWeek.values());
+
+        Map<String, Object> chart = Map.of(
+            "labels", labels,
+            "datasets", List.of(
+                Map.of(
+                    "label", "CFR (%)",
+                    "data", values,
+                    "borderColor", "#ef4444",
+                    "backgroundColor", "rgba(239,68,68,0.12)",
+                    "fill", true,
+                    "tension", 0.3,
+                    "pointRadius", 3
+                )
+            )
+        );
+
+        try {
+            return objectMapper.writeValueAsString(chart);
+        } catch (JsonProcessingException e) {
+            log.warn("Ошибка сериализации данных CFR графика", e);
+            return "{}";
+        }
     }
 
     private String formatDeployFrequency(double deploysPerDay) {
@@ -331,6 +416,40 @@ public class DoraService {
             log.warn("Ошибка сериализации данных DORA-графика", e);
             return "{}";
         }
+    }
+
+    /**
+     * Returns DORA Lead Time median (days) for MRs deployed in [dateFrom, dateTo).
+     * Returns null if no data available.
+     */
+    @Transactional(readOnly = true)
+    public Double computeLeadTimeMedianDays(List<Long> projectIds,
+                                            Instant dateFrom,
+                                            Instant dateTo) {
+        List<Long> resolvedIds = resolveProjectIds(projectIds);
+        List<RealLeadTimeSummaryProjection> rows =
+            mergeRequestRepository.findRealLeadTimeSummaryBetween(resolvedIds, dateFrom, dateTo);
+        if (rows.isEmpty() || rows.getFirst().getMedianDays() == null) {
+            return null;
+        }
+        return round(rows.getFirst().getMedianDays());
+    }
+
+    /**
+     * Returns DORA Deploy Frequency (deploys/day) for the period [dateFrom, dateTo).
+     * Returns null if no deploys found.
+     */
+    @Transactional(readOnly = true)
+    public Double computeDeploysPerDay(List<Long> projectIds,
+                                       Instant dateFrom,
+                                       Instant dateTo,
+                                       int days) {
+        List<Long> resolvedIds = resolveProjectIds(projectIds);
+        long total = releaseTagRepository.countProdDeploysInPeriodBetween(resolvedIds, dateFrom, dateTo);
+        if (total == 0) {
+            return null;
+        }
+        return round((double) total / days);
     }
 
     public record ReleaseRowDto(

@@ -212,6 +212,32 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
                                                                 @Param("dateFrom") Instant dateFrom);
 
     /**
+     * Реальный Lead Time for Changes — суммарная строка за конкретный интервал [dateFrom, dateTo).
+     * Используется для расчёта DORA-инсайтов по предыдущему периоду.
+     */
+    @Query(nativeQuery = true,
+           value = """
+               SELECT
+                 COUNT(mr.id)                                   AS mr_count,
+                 PERCENTILE_CONT(0.5)  WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS median_days,
+                 PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS p75_days,
+                 PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY
+                   EXTRACT(EPOCH FROM (rt.prod_deployed_at - mr.created_at_gitlab)) / 86400) AS p95_days
+               FROM merge_request mr
+               JOIN release_tag rt ON rt.id = mr.release_tag_id
+               WHERE mr.tracked_project_id IN (:projectIds)
+                 AND rt.prod_deployed_at IS NOT NULL
+                 AND rt.prod_deployed_at >= :dateFrom
+                 AND rt.prod_deployed_at < :dateTo
+               """)
+    List<RealLeadTimeSummaryProjection> findRealLeadTimeSummaryBetween(
+        @Param("projectIds") List<Long> projectIds,
+        @Param("dateFrom") Instant dateFrom,
+        @Param("dateTo") Instant dateTo);
+
+    /**
      * Сбрасывает release_tag_id у всех MR проекта перед переатрибуцией.
      * Вызывается из ReleaseSyncService перед полным переприсвоением.
      */
