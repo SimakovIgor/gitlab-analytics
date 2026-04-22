@@ -218,13 +218,14 @@
         <div class="svc-health-section" th:if="${serviceHealthRows != null and !serviceHealthRows.isEmpty()}">
             <div class="svc-health-header">
                 <div class="svc-health-title">Сервисы команды</div>
-                <div class="svc-health-subtitle">Health score — взвешенное среднее: Lead Time 30% + Deploy Freq 25% + CFR 25% + активность (MR/нед) 20%. Каждый компонент оценивается по DORA-рейтингу: Elite=100, High=80, Medium=55, Low=25.</div>
+                <div class="svc-health-subtitle">Health score — композитный: Lead Time, Deploy Freq, CFR, активность.</div>
             </div>
             <table class="svc-health-table">
                 <thead>
                 <tr>
                     <th class="svc-th svc-th-service">СЕРВИС</th>
-                    <th class="svc-th svc-th-health">HEALTH</th>
+                    <th class="svc-th svc-th-health tooltip-hint"
+                        data-tooltip="Взвешенное среднее: Lead Time 30% + Deploy Freq 25% + CFR 25% + активность (MR/нед) 20%. Каждый компонент по DORA-рейтингу: Elite=100, High=80, Medium=55, Low=25.">HEALTH</th>
                     <th class="svc-th svc-th-num">DEPLOYS</th>
                     <th class="svc-th svc-th-num">LEAD TIME</th>
                     <th class="svc-th svc-th-num">CFR</th>
