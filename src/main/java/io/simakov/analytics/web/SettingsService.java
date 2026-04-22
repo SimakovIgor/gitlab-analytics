@@ -17,6 +17,7 @@ import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
+import io.simakov.analytics.domain.repository.ReleaseTagRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.domain.repository.UserMrCountProjection;
@@ -55,6 +56,7 @@ public class SettingsService {
     private final TrackedProjectRepository trackedProjectRepository;
     private final TrackedUserRepository trackedUserRepository;
     private final MergeRequestRepository mergeRequestRepository;
+    private final ReleaseTagRepository releaseTagRepository;
     private final EncryptionService encryptionService;
     private final GitLabApiClient gitLabApiClient;
     private final TrackedProjectMapper trackedProjectMapper;
@@ -133,6 +135,9 @@ public class SettingsService {
         trackedProjectRepository.findById(id)
             .filter(p -> workspaceId.equals(p.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("TrackedProject", id));
+        mergeRequestRepository.clearReleaseTagId(id);
+        releaseTagRepository.deleteAll(
+            releaseTagRepository.findAllByTrackedProjectIdOrderByTagCreatedAtDesc(id));
         trackedProjectRepository.deleteById(id);
     }
 

@@ -108,6 +108,36 @@
                 </div>
             </div>
 
+            <!-- Deploy Frequency (prod deploys per period) -->
+            <div class="dora-big-card">
+                <div class="dora-big-header">
+                    <span class="dora-big-label">Deploy Frequency</span>
+                    <span class="rating-pill rating-pill-hoverable"
+                          th:classappend="${deployFreqRating.cssClass()}"
+                          th:text="${deployFreqRating.label()}"
+                          th:attr="data-tooltip=${deployFreqRating.description()}">—</span>
+                </div>
+                <div class="dora-big-value-row">
+                    <span class="num dora-big-value"
+                          th:text="${totalDeploys > 0 ? deployDisplayValue : '—'}">—</span>
+                    <span class="dora-big-unit" th:if="${totalDeploys > 0}"
+                          th:text="${deployDisplayUnit}">/ день</span>
+                    <span class="dora-big-trend" id="deployFreqTrend"></span>
+                </div>
+                <svg aria-hidden="true" class="dora-sparkline" id="deployFreqSparkline"></svg>
+                <div class="dora-big-secondary" th:if="${totalDeploys > 0}">
+                    <span th:text="${totalDeploys + ' деплоев за период'}">0 деплоев</span>
+                    <span class="dora-big-sep">·</span>
+                    <span th:text="${deploysPerDay + ' / день'}">0 / день</span>
+                </div>
+                <div class="dora-big-secondary" th:if="${totalDeploys == 0}">
+                    <span style="font-size:12px;color:var(--fg-3)">Нет данных — обновите релизы в секции ниже</span>
+                </div>
+                <div class="dora-big-desc">
+                    Частота деплоев в прод. Считается по релизам с известной датой prod deploy.
+                </div>
+            </div>
+
             <!-- COMING_SOON metrics rendered from DoraMetric enum -->
             <th:block th:each="metric : ${doraMetrics}" th:if="${!metric.available}">
                 <div class="dora-big-card dora-big-card-tbd">
@@ -147,6 +177,19 @@
             </div>
             <div class="chart-wrap">
                 <canvas id="leadTimeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- ── Deploy Frequency chart ─────────────────────────────────────────── -->
+        <div class="chart-card" th:if="${totalDeploys > 0}">
+            <div class="dora-chart-header">
+                <div>
+                    <div class="chart-title">Deploy Frequency · по неделям</div>
+                    <div class="dora-chart-subtitle">Количество деплоев в прод за каждую неделю</div>
+                </div>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="deployFreqChart"></canvas>
             </div>
         </div>
 
@@ -372,6 +415,7 @@
 </script>
 <script th:inline="javascript">
     const chartData = JSON.parse([[${chartJson}]]);
+    const deployFreqChartData = JSON.parse([[${deployFreqChartJson}]]);
     const style = getComputedStyle(document.documentElement);
     const accentColor = style.getPropertyValue('--accent').trim() || '#6366f1';
     const fg3Color = style.getPropertyValue('--fg-3').trim() || '#8a8573';
@@ -408,6 +452,37 @@
 
     const medianData = chartData.datasets[0] ? chartData.datasets[0].data : [];
     const trendData = linregTrend(medianData);
+
+    // Deploy Frequency sparkline + trend
+    const dfSparkSvg = document.getElementById('deployFreqSparkline');
+    if (dfSparkSvg && deployFreqChartData.datasets && deployFreqChartData.datasets[0]) {
+        drawSparkline(dfSparkSvg, deployFreqChartData.datasets[0].data, '#6366f1');
+    }
+    const dfTrendEl = document.getElementById('deployFreqTrend');
+    if (dfTrendEl && deployFreqChartData.datasets && deployFreqChartData.datasets[0]) {
+        const dfData = deployFreqChartData.datasets[0].data;
+        // deploy frequency: up = good (green), down = bad (red) — opposite of lead time
+        renderTrendArrowDF(dfTrendEl, dfData);
+    }
+    function renderTrendArrowDF(el, data) {
+        if (!data || data.length < 4) return;
+        var valid = data.filter(function (v) { return v != null && !isNaN(v); });
+        if (valid.length < 4) return;
+        var half = Math.floor(valid.length / 2);
+        var firstAvg = valid.slice(0, half).reduce(function (a, b) { return a + b; }, 0) / half;
+        var lastAvg = valid.slice(-half).reduce(function (a, b) { return a + b; }, 0) / half;
+        var pct = (lastAvg - firstAvg) / (firstAvg || 1);
+        var dir = 'flat';
+        if (pct > 0.05) dir = 'up';
+        else if (pct < -0.05) dir = 'down';
+        // deploy freq: up = good, down = bad
+        var color = dir === 'up' ? 'var(--good)' : dir === 'down' ? 'var(--bad)' : 'var(--fg-3)';
+        var rot = dir === 'up' ? 0 : dir === 'down' ? 180 : 90;
+        el.innerHTML = '<svg width="16" height="16" viewBox="0 0 12 12"'
+            + ' style="transform:rotate(' + rot + 'deg)">'
+            + '<path d="M6 2 L6 10 M2.5 5.5 L6 2 L9.5 5.5" fill="none" stroke="' + color + '"'
+            + ' stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+    }
 
     // Main weekly chart
     new Chart(document.getElementById('leadTimeChart'), {
@@ -476,6 +551,52 @@
             }
         }
     });
+</script>
+<script th:inline="javascript">
+    // Deploy Frequency bar chart
+    const dfCanvas = document.getElementById('deployFreqChart');
+    if (dfCanvas && deployFreqChartData.labels && deployFreqChartData.labels.length > 0) {
+        new Chart(dfCanvas, {
+            type: 'bar',
+            data: {
+                labels: deployFreqChartData.labels,
+                datasets: [{
+                    label: 'Деплои',
+                    data: deployFreqChartData.datasets[0].data,
+                    backgroundColor: accentBg.replace('0.08', '0.45'),
+                    borderColor: accentColor,
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {display: false},
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                return ctx.parsed.y + ' деплоев';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {maxTicksLimit: 12, maxRotation: 0},
+                        grid: {color: 'rgba(0,0,0,0.04)'}
+                    },
+                    y: {
+                        title: {display: true, text: 'Деплои'},
+                        beginAtZero: true,
+                        ticks: {stepSize: 1},
+                        grid: {color: 'rgba(0,0,0,0.04)'}
+                    }
+                }
+            }
+        });
+    }
 </script>
 <script>
     function doReleaseSync(url, projectName, btns) {

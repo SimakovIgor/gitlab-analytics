@@ -58,6 +58,7 @@ DROP TABLE IF EXISTS
   merge_request_discussion,
   merge_request_commit,
   merge_request,
+  release_tag,
   tracked_user_alias,
   metric_snapshot,
   sync_job,

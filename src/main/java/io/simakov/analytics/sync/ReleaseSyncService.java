@@ -24,6 +24,8 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Syncs GitLab releases (tags) for all tracked projects and attributes MRs to releases.
@@ -101,6 +103,23 @@ public class ReleaseSyncService {
         // Upsert each release tag
         for (GitLabReleaseDto dto : releases) {
             upsertReleaseTag(dto, trackedProjectId, baseUrl, token, gitlabProjectId);
+        }
+
+        // Remove stale tags that no longer exist in GitLab (e.g. left over from a
+        // previously tracked project that had the same tracked_project_id).
+        Set<String> apiTagNames = releases.stream()
+            .map(GitLabReleaseDto::tagName)
+            .collect(Collectors.toSet());
+        List<ReleaseTag> stale = releaseTagRepository
+            .findAllByTrackedProjectIdOrderByTagCreatedAtDesc(trackedProjectId)
+            .stream()
+            .filter(t -> !apiTagNames.contains(t.getTagName()))
+            .toList();
+        if (!stale.isEmpty()) {
+            log.info("Removing {} stale release tag(s) for project='{}': {}",
+                stale.size(), project.getName(),
+                stale.stream().map(ReleaseTag::getTagName).toList());
+            releaseTagRepository.deleteAll(stale);
         }
 
         // Clear all existing attributions before re-attributing.

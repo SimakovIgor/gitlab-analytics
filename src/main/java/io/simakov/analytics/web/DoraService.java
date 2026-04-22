@@ -6,6 +6,7 @@ import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.ReleaseTag;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.MrState;
+import io.simakov.analytics.domain.repository.DeployFrequencyWeekProjection;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.RealLeadTimeSummaryProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeWeekProjection;
@@ -25,6 +26,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,13 +99,96 @@ public class DoraService {
     }
 
     /**
+     * Deployment Frequency: prod deploys per day over the given period.
+     * Ключи: totalDeploys, deploysPerDay, displayValue, displayUnit, deployFreqRating, chartJson.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> buildDeployFrequencyData(List<Long> projectIds,
+                                                         int days) {
+        List<Long> resolvedIds = resolveProjectIds(projectIds);
+        Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
+
+        long totalDeploys = releaseTagRepository.countProdDeploysInPeriod(resolvedIds, dateFrom);
+        double deploysPerDay = days > 0 ? (double) totalDeploys / days : 0.0;
+
+        DoraRating rating = DoraMetric.DEPLOYMENT_FREQUENCY.computeRating(
+            totalDeploys == 0 ? null : deploysPerDay);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalDeploys", totalDeploys);
+        result.put("deploysPerDay", round(deploysPerDay));
+        result.put("displayValue", formatDeployFrequency(deploysPerDay));
+        result.put("displayUnit", formatDeployFrequencyUnit(deploysPerDay));
+        result.put("deployFreqRating", rating);
+        result.put("chartJson", buildDeployFrequencyChartJson(resolvedIds, dateFrom));
+        return result;
+    }
+
+    private String formatDeployFrequency(double deploysPerDay) {
+        if (deploysPerDay >= 1.0) {
+            return String.valueOf(round(deploysPerDay));
+        }
+        if (deploysPerDay >= 1.0 / 7) {
+            return String.valueOf(round(deploysPerDay * 7));
+        }
+        return String.valueOf(round(deploysPerDay * 30));
+    }
+
+    private String formatDeployFrequencyUnit(double deploysPerDay) {
+        if (deploysPerDay >= 1.0) {
+            return "/ день";
+        }
+        if (deploysPerDay >= 1.0 / 7) {
+            return "/ неделю";
+        }
+        return "/ месяц";
+    }
+
+    private String buildDeployFrequencyChartJson(List<Long> projectIds,
+                                                  Instant dateFrom) {
+        List<DeployFrequencyWeekProjection> weekly =
+            releaseTagRepository.countProdDeploysByWeek(projectIds, dateFrom);
+
+        List<String> labels = new ArrayList<>();
+        List<Long> counts = new ArrayList<>();
+        for (DeployFrequencyWeekProjection row : weekly) {
+            labels.add(row.getWeekLabel());
+            counts.add(row.getDeployCount());
+        }
+
+        Map<String, Object> chart = Map.of(
+            "labels", labels,
+            "datasets", List.of(
+                Map.of(
+                    "label", "Деплои",
+                    "data", counts,
+                    "backgroundColor", "rgba(99,102,241,0.5)",
+                    "borderColor", "#6366f1",
+                    "borderWidth", 1,
+                    "borderRadius", 4
+                )
+            )
+        );
+
+        try {
+            return objectMapper.writeValueAsString(chart);
+        } catch (JsonProcessingException e) {
+            log.warn("Ошибка сериализации данных Deploy Frequency графика", e);
+            return "{}";
+        }
+    }
+
+    /**
      * Returns releases with MR count and real Lead Time (mr.created_at → prod_deployed_at).
      * Only includes releases that have been attributed to at least one MR, or have a prod deploy timestamp.
      */
     @Transactional(readOnly = true)
     public List<ReleaseRowDto> buildReleasesData(List<Long> projectIds) {
         List<Long> resolvedIds = resolveProjectIds(projectIds);
-        List<ReleaseTag> tags = releaseTagRepository.findAllByProjectIdsOrderByCreatedAtDesc(resolvedIds);
+        List<ReleaseTag> tags = releaseTagRepository.findAllByProjectIdsOrderByCreatedAtDesc(resolvedIds)
+            .stream()
+            .sorted(Comparator.comparing(this::effectiveWindowTime).reversed())
+            .toList();
 
         if (tags.isEmpty()) {
             return List.of();
@@ -130,7 +215,7 @@ public class DoraService {
                 tag.getId(),
                 tag.getTagName(),
                 projectNameById.getOrDefault(tag.getTrackedProjectId(), "—"),
-                DATE_FMT.format(tag.getTagCreatedAt()),
+                DATE_FMT.format(effectiveWindowTime(tag)),
                 tag.getProdDeployedAt() != null
                     ? DATETIME_FMT.format(tag.getProdDeployedAt())
                     : null,
@@ -183,6 +268,17 @@ public class DoraService {
                     ? "merged " + DATE_FMT.format(mr.getMergedAtGitlab())
                     : null))
             .toList();
+    }
+
+    /**
+     * Effective chronological boundary for a release tag.
+     * Uses min(tagCreatedAt, prodDeployedAt) to handle retroactively created releases.
+     */
+    private Instant effectiveWindowTime(ReleaseTag tag) {
+        if (tag.getProdDeployedAt() != null && tag.getProdDeployedAt().isBefore(tag.getTagCreatedAt())) {
+            return tag.getProdDeployedAt();
+        }
+        return tag.getTagCreatedAt();
     }
 
     private List<Long> resolveProjectIds(List<Long> requested) {

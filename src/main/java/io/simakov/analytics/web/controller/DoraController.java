@@ -62,6 +62,7 @@ public class DoraController {
             : allProjects.stream().map(TrackedProject::getId).toList();
 
         Map<String, Object> leadTime = doraService.buildLeadTimeData(effectiveProjectIds, days);
+        Map<String, Object> deployFreq = doraService.buildDeployFrequencyData(effectiveProjectIds, days);
         List<DoraService.ReleaseRowDto> releases = doraService.buildReleasesData(effectiveProjectIds);
 
         model.addAttribute("projects", allProjects);
@@ -87,6 +88,12 @@ public class DoraController {
         model.addAttribute("p95Days", leadTime.get("p95Days"));
         model.addAttribute("leadTimeRating", leadTime.get("leadTimeRating"));
         model.addAttribute("chartJson", leadTime.get("chartJson"));
+        model.addAttribute("totalDeploys", deployFreq.get("totalDeploys"));
+        model.addAttribute("deploysPerDay", deployFreq.get("deploysPerDay"));
+        model.addAttribute("deployDisplayValue", deployFreq.get("displayValue"));
+        model.addAttribute("deployDisplayUnit", deployFreq.get("displayUnit"));
+        model.addAttribute("deployFreqRating", deployFreq.get("deployFreqRating"));
+        model.addAttribute("deployFreqChartJson", deployFreq.get("chartJson"));
         model.addAttribute("releases", releases);
         model.addAttribute("doraMetrics", DoraMetric.values());
 

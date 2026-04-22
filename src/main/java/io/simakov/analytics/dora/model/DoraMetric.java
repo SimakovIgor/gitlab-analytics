@@ -47,11 +47,16 @@ package io.simakov.analytics.dora.model;
  *
  * <h3>2. DEPLOYMENT FREQUENCY — частота деплоев</h3>
  * <pre>
- *   Статус: COMING_SOON
- *   Источник: GitLab Deployments API (GET /projects/:id/deployments)
- *              или release_tag.prod_deployed_at (из ReleaseSyncService)
- *   Формула: COUNT(успешных деплоев в прод) / кол-во дней периода
+ *   Статус: AVAILABLE
+ *   Источник: release_tag.prod_deployed_at (из ReleaseSyncService)
+ *   Формула: COUNT(release_tag WHERE prod_deployed_at IS NOT NULL
+ *                  AND prod_deployed_at &gt;= dateFrom) / days_in_period
  *   Единица: деплоев/день
+ *
+ *   Что измеряет:
+ *     Частота успешных деплоев в прод. Деплой = release tag, для которого
+ *     найден успешный prod::deploy::* джоб в пайплайне тега.
+ *     Теги без prod deploy (не нажали кнопку) не считаются.
  *
  *   Пороги DORA (больше = лучше):
  *     Elite  ≥ 1/день  (по требованию, непрерывный деплой)
@@ -110,9 +115,10 @@ public enum DoraMetric {
     DEPLOYMENT_FREQUENCY(
         "deployment_frequency",
         "Deploy Frequency",
-        "Частота деплоев в prod-окружение за период. Требует подключения GitLab Deployments API.",
+        "Частота деплоев в prod за период. "
+            + "Считается по release_tag с известной датой prod_deployed_at.",
         Unit.DEPLOYS_PER_DAY,
-        Status.COMING_SOON,
+        Status.AVAILABLE,
         Direction.HIGHER_IS_BETTER,
         1.0, 1.0 / 7, 1.0 / 30
     ),
