@@ -228,8 +228,8 @@
     ];
 
     function renderPhaseRow(name, status, durSecs, total) {
-        var icon = status === 'ok' ? '\u2713' : (status === 'failed' ? '\u2715' : '\xb7');
-        var iconColor = status === 'ok' ? 'var(--good)' : (status === 'failed' ? 'var(--bad)' : 'var(--fg-3)');
+        var icon = status === 'ok' ? '\u2713' : (status === 'failed' ? '\u2715' : (status === 'partial' ? '\u26A0' : '\xb7'));
+        var iconColor = status === 'ok' ? 'var(--good)' : (status === 'failed' ? 'var(--bad)' : (status === 'partial' ? 'var(--warn)' : 'var(--fg-3)'));
         var durLabel = status === 'skipped' ? '\u2014' : formatDur(durSecs);
         var barPct = status === 'skipped' ? 0 : Math.min(100, durSecs * 100 / Math.max(1, total));
         var barColor = status === 'ok' ? 'var(--good)' : 'var(--bad)';
@@ -286,6 +286,7 @@
         phase3: '\u0424\u0430\u0437\u0430 3 \u0438\u0437 4',
         phase4: '\u0424\u0430\u0437\u0430 4 \u0438\u0437 4',
         failed: '\u041e\u0448\u0438\u0431\u043a\u0430',
+        partial: '\u0427\u0430\u0441\u0442\u0438\u0447\u043d\u043e',
         running: '\u0412 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u0435'
     };
 
@@ -300,7 +301,7 @@
         var mrCount = jira ? '' : (job.totalMrs > 0 ? job.totalMrs.toLocaleString('ru') : '\u2014');
         var mrUnit = jira ? '' : ' <span class="sync-col-unit">MR</span>';
         var statusLabel = STATUS_LABELS[job.uiStatus] || job.uiStatus;
-        var noteClass = 'sync-col-note' + (job.uiStatus === 'failed' ? ' sync-note-err' : '');
+        var noteClass = 'sync-col-note' + (job.uiStatus === 'failed' || job.uiStatus === 'partial' ? ' sync-note-err' : '');
         var errorBox = job.errorMessage
             ? '<div class="sync-error-log"><div class="sync-log-label">Log</div>' + escHtml(job.errorMessage) + '</div>'
             : '';

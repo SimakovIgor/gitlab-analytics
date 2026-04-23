@@ -83,7 +83,8 @@ public class ReportViewService {
             .findByWorkspaceIdAndStatusOrderByStartedAtDesc(workspaceId, SyncStatus.STARTED)
             .stream().map(SyncJob::getId).toList();
 
-        boolean hasSyncCompleted = syncJobRepository.existsByWorkspaceIdAndStatus(workspaceId, SyncStatus.COMPLETED);
+        boolean hasSyncCompleted = syncJobRepository.existsByWorkspaceIdAndStatus(workspaceId, SyncStatus.COMPLETED)
+            || syncJobRepository.existsByWorkspaceIdAndStatus(workspaceId, SyncStatus.COMPLETED_WITH_ERRORS);
 
         Long lastFailedSyncJobId = activeJobIds.isEmpty() && !hasSyncCompleted
             ? syncJobRepository

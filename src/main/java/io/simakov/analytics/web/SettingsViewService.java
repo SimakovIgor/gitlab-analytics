@@ -79,6 +79,9 @@ public class SettingsViewService {
         if (job.getStatus() == SyncStatus.FAILED) {
             return "failed";
         }
+        if (job.getStatus() == SyncStatus.COMPLETED_WITH_ERRORS) {
+            return "partial";
+        }
         // Completed jobs: distinguish which phase finished last.
         return switch (job.getPhase()) {
             case FAST -> "phase1";

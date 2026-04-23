@@ -150,7 +150,7 @@ class SyncControllerTest extends BaseIT {
     }
 
     @Test
-    void syncJobCompletesEvenWhenOneProjectFails() throws InterruptedException {
+    void syncJobCompletedWithErrorsWhenOneProjectFails() throws InterruptedException {
         TrackedProject project1 = createTrackedProjectWithGitlabId(1L);
         TrackedProject project2 = createTrackedProjectWithGitlabId(2L);
 
@@ -175,14 +175,68 @@ class SyncControllerTest extends BaseIT {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         Long jobId = response.getBody().jobId();
 
-        SyncStatus finalStatus = SyncStatus.STARTED;
-        for (int i = 0; i < 100 && finalStatus == SyncStatus.STARTED; i++) {
-            Thread.sleep(100);
-            SyncJob job = syncJobRepository.findById(jobId).orElseThrow();
-            finalStatus = job.getStatus();
-        }
+        SyncJob job = awaitJobFinished(jobId);
 
-        assertThat(finalStatus).isEqualTo(SyncStatus.COMPLETED);
+        assertThat(job.getStatus()).isEqualTo(SyncStatus.COMPLETED_WITH_ERRORS);
+        assertThat(job.getErrorMessage()).contains("GitLab API error for project 1");
+    }
+
+    @Test
+    void syncJobFailsWhenAllProjectsFail() throws InterruptedException {
+        TrackedProject project1 = createTrackedProjectWithGitlabId(1L);
+
+        when(gitLabApiClient.getMergeRequests(anyString(), anyString(), eq(1L), any(Instant.class), any(Instant.class)))
+            .thenThrow(new RuntimeException("Token revoked"));
+
+        ManualSyncRequest request = new ManualSyncRequest(
+            List.of(project1.getId()),
+            Instant.now().minus(30, ChronoUnit.DAYS),
+            Instant.now(),
+            false, false, false, false
+        );
+
+        ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
+            "http://localhost:" + port + "/api/v1/sync/manual",
+            HttpMethod.POST,
+            new HttpEntity<>(request, authHeaders()),
+            SyncJobResponse.class
+        );
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        Long jobId = response.getBody().jobId();
+
+        SyncJob job = awaitJobFinished(jobId);
+
+        assertThat(job.getStatus()).isEqualTo(SyncStatus.FAILED);
+        assertThat(job.getErrorMessage()).contains("Token revoked");
+    }
+
+    @Test
+    void syncJobCompletesWhenAllProjectsSucceed() throws InterruptedException {
+        TrackedProject project1 = createTrackedProjectWithGitlabId(1L);
+
+        when(gitLabApiClient.getMergeRequests(anyString(), anyString(), eq(1L), any(Instant.class), any(Instant.class)))
+            .thenReturn(List.of());
+
+        ManualSyncRequest request = new ManualSyncRequest(
+            List.of(project1.getId()),
+            Instant.now().minus(30, ChronoUnit.DAYS),
+            Instant.now(),
+            false, false, false, false
+        );
+
+        ResponseEntity<SyncJobResponse> response = restTemplate.exchange(
+            "http://localhost:" + port + "/api/v1/sync/manual",
+            HttpMethod.POST,
+            new HttpEntity<>(request, authHeaders()),
+            SyncJobResponse.class
+        );
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        Long jobId = response.getBody().jobId();
+
+        SyncJob job = awaitJobFinished(jobId);
+
+        assertThat(job.getStatus()).isEqualTo(SyncStatus.COMPLETED);
+        assertThat(job.getErrorMessage()).isNull();
     }
 
     // ── Idempotency: duplicate sync protection ────────────────────────────────
@@ -299,6 +353,17 @@ class SyncControllerTest extends BaseIT {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Cannot serialize payload", e);
         }
+    }
+
+    private SyncJob awaitJobFinished(Long jobId) throws InterruptedException {
+        for (int i = 0; i < 100; i++) {
+            Thread.sleep(100);
+            SyncJob job = syncJobRepository.findById(jobId).orElseThrow();
+            if (job.getStatus() != SyncStatus.STARTED) {
+                return job;
+            }
+        }
+        throw new AssertionError("Job " + jobId + " did not finish in time");
     }
 
     private TrackedProject createTrackedProjectWithGitlabId(Long gitlabProjectId) {

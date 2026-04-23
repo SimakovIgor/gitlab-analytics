@@ -54,6 +54,17 @@ public class SyncJobService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void completeWithErrors(Long jobId,
+                                   String errorMessage) {
+        SyncJob job = findOrThrow(jobId);
+        job.setStatus(SyncStatus.COMPLETED_WITH_ERRORS);
+        job.setFinishedAt(Instant.now());
+        job.setErrorMessage(errorMessage);
+        syncJobRepository.save(job);
+        log.warn("Sync job {} completed with errors: {}", jobId, errorMessage);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void fail(Long jobId,
                      String errorMessage) {
         SyncJob job = findOrThrow(jobId);

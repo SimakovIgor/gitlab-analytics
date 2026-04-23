@@ -72,14 +72,16 @@ public class SyncOrchestrator {
         log.info("Starting sync job {} (phase={}) for projects {} from {} to {}",
             jobId, phase, request.projectIds(), request.dateFrom(), request.dateTo());
         try {
+            List<String> errors = new ArrayList<>();
             for (Long projectId : request.projectIds()) {
                 try {
                     syncProject(jobId, projectId, request);
                 } catch (Exception e) {
                     log.error("Sync job {} failed for project {}: {}", jobId, projectId, e.getMessage(), e);
+                    errors.add("project " + projectId + ": " + e.getMessage());
                 }
             }
-            syncJobService.complete(jobId);
+            finishJob(jobId, errors, request.projectIds().size());
 
             if (phase == SyncJobPhase.FAST) {
                 chainEnrichmentPhase(jobId, request);
@@ -110,19 +112,23 @@ public class SyncOrchestrator {
         log.info("Starting sync job {} (phase=RELEASE)", jobId);
         try {
             ManualSyncRequest request = syncJobService.getPayload(jobId);
+            List<String> errors = new ArrayList<>();
+            int totalProjects = 0;
             for (Long projectId : request.projectIds()) {
                 TrackedProject project = trackedProjectRepository.findById(projectId).orElse(null);
                 if (project == null) {
                     log.warn("RELEASE job {}: project {} not found, skipping", jobId, projectId);
                     continue;
                 }
+                totalProjects++;
                 try {
                     releaseSyncService.syncReleasesForProject(project);
                 } catch (Exception e) {
                     log.error("RELEASE job {}: failed for project '{}': {}", jobId, project.getName(), e.getMessage(), e);
+                    errors.add(project.getName() + ": " + e.getMessage());
                 }
             }
-            syncJobService.complete(jobId);
+            finishJob(jobId, errors, totalProjects);
             log.info("RELEASE phase complete for job {}", jobId);
             chainJiraIncidentPhase(jobId, request);
         } catch (Exception e) {
@@ -221,6 +227,18 @@ public class SyncOrchestrator {
             doOrchestrate(enrichJob.getId(), enrichRequest, SyncJobPhase.ENRICH);
         } catch (Exception e) {
             log.error("Failed to start ENRICH phase after job {}: {}", fastJobId, e.getMessage(), e);
+        }
+    }
+
+    private void finishJob(Long jobId,
+                           List<String> errors,
+                           int totalProjects) {
+        if (errors.isEmpty()) {
+            syncJobService.complete(jobId);
+        } else if (errors.size() >= totalProjects) {
+            syncJobService.fail(jobId, String.join("; ", errors));
+        } else {
+            syncJobService.completeWithErrors(jobId, String.join("; ", errors));
         }
     }
 
