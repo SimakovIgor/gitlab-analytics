@@ -2,6 +2,7 @@ package io.simakov.analytics.web.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.MetricTrendService;
@@ -84,6 +85,11 @@ public class WebController {
         model.addAttribute("metrics", data.metrics());
         model.addAttribute("deltas", data.deltas());
         model.addAttribute("summary", data.summary());
+        double avgMrsReport = data.metrics().stream()
+            .filter(m -> !m.isInactive())
+            .mapToInt(UserMetrics::getMrMergedCount)
+            .average().orElse(0);
+        model.addAttribute("avgMrs", avgMrsReport);
         model.addAttribute("topInsights", data.topInsights());
 
         MetricChartData historyData = metricTrendService.buildChartData(metric, period, projectIds, showInactive);

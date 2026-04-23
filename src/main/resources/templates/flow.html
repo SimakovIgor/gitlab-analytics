@@ -191,7 +191,7 @@
                         <div style="display:grid;grid-template-columns:140px 1fr 48px;align-items:center;gap:10px">
                             <div style="display:flex;align-items:center;gap:8px;min-width:0">
                                 <div style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0"
-                                     th:style="'background:oklch(0.62 0.14 ' + ${(rb.userId() * 60 + 200) % 360} + ')'"
+                                     th:style="'background:oklch(0.62 0.14 ' + ${(rb.userId() * 43) % 360} + ')'"
                                      th:text="${#strings.substring(rb.displayName(), 0, 1).toUpperCase()}">A</div>
                                 <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
                                       th:text="${rb.displayName()}">Name</span>
@@ -410,6 +410,7 @@
         }
 
         var names = MATRIX_DATA.devNames;
+        var devIds = MATRIX_DATA.devIds || [];
         var m = MATRIX_DATA.matrix;
         var size = names.length;
         var cell = 34;
@@ -440,7 +441,7 @@
         for (var r = 0; r < size; r++) {
             var rowH = document.createElement('div');
             rowH.className = 'matrix-header-row';
-            rowH.innerHTML = '<div style="width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;background:oklch(0.62 0.14 ' + ((r * 60 + 200) % 360) + ')">' + names[r].charAt(0).toUpperCase() + '</div><span>' + names[r] + '</span>';
+            rowH.innerHTML = '<div style="width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;background:oklch(0.62 0.14 ' + ((devIds[r] * 43) % 360) + ')">' + names[r].charAt(0).toUpperCase() + '</div><span>' + names[r] + '</span>';
             table.appendChild(rowH);
 
             for (var c = 0; c < size; c++) {
@@ -468,7 +469,22 @@
     })();
 
     // ── Filters ──
+    (function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('period')) {
+            try {
+                var saved = localStorage.getItem('gl_period');
+                if (saved && saved !== 'LAST_30_DAYS') {
+                    var p = new URLSearchParams(window.location.search);
+                    p.set('period', saved);
+                    window.location.replace('/flow?' + p.toString());
+                }
+            } catch (e) { /* ignore */ }
+        }
+    })();
+
     function applyFiltersWithPeriod(period) {
+        try { localStorage.setItem('gl_period', period); } catch (e) { /* ignore */ }
         var params = new URLSearchParams();
         params.set('period', period);
         document.querySelectorAll('.filter-project-check:checked').forEach(function(cb) {

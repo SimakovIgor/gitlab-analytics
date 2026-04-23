@@ -534,7 +534,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         if (!urlParams.has('period')) {
             try {
-                const saved = localStorage.getItem('gl_dora_period');
+                const saved = localStorage.getItem('gl_period');
                 if (saved && saved !== 'LAST_30_DAYS') {
                     window.location.replace('/dora?period=' + saved);
                 }
@@ -549,7 +549,7 @@
 
     function navigateDora(period, projectIds) {
         try {
-            localStorage.setItem('gl_dora_period', period);
+            localStorage.setItem('gl_period', period);
         } catch (e) { /* ignore */
         }
         const params = new URLSearchParams();

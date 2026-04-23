@@ -170,16 +170,17 @@ public class ReportViewService {
 
     private InsightSummaryDto toInsightSummary(TeamInsight insight,
                                                Map<Long, String> userNameById) {
-        List<String> names = insight.affectedUserIds().stream()
-            .map(userNameById::get)
-            .filter(Objects::nonNull)
+        List<Long> ids = insight.affectedUserIds().stream()
+            .filter(userNameById::containsKey)
             .limit(3)
             .toList();
+        List<String> names = ids.stream().map(userNameById::get).toList();
         return new InsightSummaryDto(
             insight.kind().name().toLowerCase(Locale.ROOT),
             insight.title(),
             insight.body(),
-            names
+            names,
+            ids
         );
     }
 

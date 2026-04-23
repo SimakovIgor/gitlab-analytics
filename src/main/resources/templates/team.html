@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Команда — GitLab Analytics</title>
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+</head>
+<body class="app-layout">
+
+<header th:replace="~{fragments/topbar :: topbar('team')}"></header>
+
+<div class="report-page">
+
+    <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
+
+    <main class="report-main">
+
+        <div id="sync-banners"></div>
+
+        <!-- Header + period -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Команда</h1>
+                <div class="page-subtitle">
+                    Разработчики, их состояние и drill-down до конкретных MR.
+                </div>
+            </div>
+            <div class="page-header-right">
+                <div class="period-segmented">
+                    <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">7д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">30д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">90д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">180д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">360д
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Repo filter -->
+        <div class="repo-filter-row" th:if="${allProjects != null and allProjects.size() > 1}">
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3)">Репозитории</span>
+            <div class="filter-checkboxes">
+                <th:block th:each="project : ${allProjects}">
+                    <label class="filter-checkbox-label">
+                        <input class="filter-project-check" onchange="applyFilters()"
+                               th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
+                               th:value="${project.id}" type="checkbox">
+                        <span class="filter-chip-check">&#10003;</span>
+                        <span th:text="${project.name}">repo</span>
+                    </label>
+                </th:block>
+            </div>
+        </div>
+
+        <!-- Filter tabs + hint -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+            <div class="period-segmented">
+                <button class="period-seg-btn period-seg-btn-active" id="filter-all" onclick="filterCards('all')" type="button">
+                    Все · <span th:text="${totalCount}">0</span>
+                </button>
+                <button class="period-seg-btn" id="filter-issues" onclick="filterCards('issues')" type="button">
+                    С проблемами · <span th:text="${issueCount}">0</span>
+                </button>
+                <button class="period-seg-btn" id="filter-stars" onclick="filterCards('stars')" type="button">
+                    Звёзды · <span th:text="${starCount}">0</span>
+                </button>
+            </div>
+            <div style="flex:1"></div>
+            <span style="font-size:11px;color:var(--fg-3)">Клик по карточке — профиль</span>
+        </div>
+
+        <!-- Empty state -->
+        <div class="chart-card" style="text-align:center;padding:40px;color:var(--fg-3)"
+             th:if="${cards.isEmpty()}">
+            Нет активных разработчиков за выбранный период.
+        </div>
+
+        <!-- Card grid -->
+        <div id="team-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"
+             th:unless="${cards.isEmpty()}">
+
+            <th:block th:each="card : ${cards}">
+                <a class="team-card" th:href="@{/profile/{id}(id=${card.trackedUserId})}"
+                   th:attr="data-median-hours=${card.medianTimeToMergeMinutes != null ? card.medianTimeToMergeMinutes / 60.0 : 0},data-mrs=${card.mrMergedCount},data-avg-mrs=${avgMrs},data-user-id=${card.trackedUserId}"
+                   th:with="medianH=${card.medianTimeToMergeMinutes != null ? card.medianTimeToMergeMinutes / 60.0 : 0},isStuck=${medianH > 24},isSlow=${medianH > 12 and medianH <= 24},isStar=${card.mrMergedCount >= avgMrs * 1.5 and medianH <= 12}">
+
+                    <!-- Header: avatar + name + badge -->
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <div class="team-avatar"
+                             th:style="'background:oklch(0.62 0.14 ' + ${(card.trackedUserId * 43) % 360} + ')'"
+                             th:text="${#strings.substring(card.displayName, 0, 1).toUpperCase()}">A</div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-0)"
+                                 th:text="${card.displayName}">Name</div>
+                            <div data-tip="Дней с хотя бы одним смёрженным MR за период"
+                                 style="font-size:11px;color:var(--fg-3);cursor:default">
+                                <span th:text="${card.activeDaysCount}">0</span> активных дней
+                            </div>
+                        </div>
+                        <span class="team-badge team-badge-bad" th:if="${isStuck}"
+                              data-tip="Медиана времени до мержа &gt; 24ч — MR надолго зависают">stuck</span>
+                        <span class="team-badge team-badge-warn" th:if="${isSlow}"
+                              data-tip="Медиана времени до мержа 12–24ч — замедленное слияние">slow</span>
+                        <span class="team-badge team-badge-good" th:if="${isStar}"
+                              data-tip="MR ≥ 1.5× среднего по команде и медиана ≤ 12ч">&#9733; top</span>
+                    </div>
+
+                    <!-- Sparkline -->
+                    <svg class="team-sparkline" th:id="'spark-' + ${card.trackedUserId}"
+                         height="36" preserveAspectRatio="none" width="100%"></svg>
+
+                    <!-- 4 mini metrics -->
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+                        <div data-tip="Смёрженных MR за период" style="cursor:default">
+                            <div class="num" style="font-size:14px;font-weight:600;color:var(--fg-0)"
+                                 th:text="${card.mrMergedCount}">0</div>
+                            <div class="team-metric-label">MR</div>
+                        </div>
+                        <div data-tip="Чужих MR проверено за период" style="cursor:default">
+                            <div class="num" style="font-size:14px;font-weight:600;color:var(--fg-0)"
+                                 th:text="${card.mrsReviewedCount}">0</div>
+                            <div class="team-metric-label">Ревью</div>
+                        </div>
+                        <div data-tip="Комментариев оставлено при ревью" style="cursor:default">
+                            <div class="num" style="font-size:14px;font-weight:600;color:var(--fg-0)"
+                                 th:text="${card.reviewCommentsWrittenCount}">0</div>
+                            <div class="team-metric-label">Комм.</div>
+                        </div>
+                        <div data-tip="Медиана времени от открытия MR до мержа" style="cursor:default">
+                            <div class="num" style="font-size:14px;font-weight:600"
+                                 th:style="${medianH > 24 ? 'color:var(--bad)' : (medianH > 12 ? 'color:var(--warn)' : 'color:var(--fg-0)')}"
+                                 th:text="${card.medianTimeToMergeMinutes != null ? #numbers.formatDecimal(medianH, 1, 1) + 'ч' : '—'}">0ч</div>
+                            <div class="team-metric-label">Медиана</div>
+                        </div>
+                    </div>
+
+                </a>
+            </th:block>
+
+        </div>
+
+    </main>
+</div>
+
+<style>
+    .team-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: var(--bg-1);
+        border: 1px solid var(--border-1);
+        border-radius: var(--r-lg, 10px);
+        padding: 16px;
+        cursor: pointer;
+        transition: border-color 0.15s;
+        text-decoration: none;
+        color: inherit;
+    }
+    .team-card:hover {
+        border-color: var(--accent);
+    }
+    .team-sparkline {
+        display: block;
+        width: 100%;
+    }
+    .team-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .team-badge {
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+    .team-badge-bad {
+        background: var(--bad-bg);
+        color: var(--bad);
+    }
+    .team-badge-warn {
+        background: var(--warn-bg);
+        color: var(--warn);
+    }
+    .team-badge-good {
+        background: var(--good-bg);
+        color: var(--good);
+    }
+    .team-metric-label {
+        font-size: 9px;
+        color: var(--fg-3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+</style>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+    window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
+    window.JIRA_JOB_IDS = /*[[${jiraJobIds}]]*/ [];
+    var SPARKLINES = JSON.parse([[${sparklinesJson}]]);
+    /*]]>*/
+</script>
+<script src="/js/sidebar.js"></script>
+<script>
+    /*<![CDATA[*/
+    // ── Sparklines ──
+    (function() {
+        var cards = document.querySelectorAll('.team-card');
+        cards.forEach(function(card) {
+            var userId = card.getAttribute('data-user-id');
+            var data = SPARKLINES[userId];
+            var svg = card.querySelector('.team-sparkline');
+            if (!svg || !data || !data.length) return;
+
+            var medianH = parseFloat(card.getAttribute('data-median-hours')) || 0;
+            var color = medianH > 24 ? 'var(--bad)' : medianH > 12 ? 'var(--warn)' : 'var(--accent)';
+            var maxV = Math.max.apply(null, data);
+            if (maxV === 0) return;
+
+            var w = svg.getBoundingClientRect().width || 280;
+            var h = 36;
+            var padY = 3;
+            var step = w / (data.length - 1 || 1);
+
+            var points = data.map(function(v, i) {
+                var x = i * step;
+                var y = h - padY - (v / maxV) * (h - padY * 2);
+                return x.toFixed(1) + ',' + y.toFixed(1);
+            });
+
+            // Area fill
+            var area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            var areaPoints = '0,' + h + ' ' + points.join(' ') + ' ' + (w).toFixed(1) + ',' + h;
+            area.setAttribute('points', areaPoints);
+            area.setAttribute('fill', color);
+            area.setAttribute('opacity', '0.08');
+            svg.appendChild(area);
+
+            // Line
+            var line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            line.setAttribute('points', points.join(' '));
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', '1.5');
+            line.setAttribute('stroke-linejoin', 'round');
+            svg.appendChild(line);
+        });
+    })();
+
+    (function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('period')) {
+            try {
+                var saved = localStorage.getItem('gl_period');
+                if (saved && saved !== 'LAST_30_DAYS') {
+                    var p = new URLSearchParams(window.location.search);
+                    p.set('period', saved);
+                    window.location.replace('/team?' + p.toString());
+                }
+            } catch (e) { /* ignore */ }
+        }
+    })();
+
+    function applyFiltersWithPeriod(period) {
+        try { localStorage.setItem('gl_period', period); } catch (e) { /* ignore */ }
+        var params = new URLSearchParams();
+        params.set('period', period);
+        document.querySelectorAll('.filter-project-check:checked').forEach(function(cb) {
+            params.append('projectIds', cb.value);
+        });
+        window.location.href = '/team?' + params.toString();
+    }
+
+    function applyFilters() {
+        var params = new URLSearchParams(window.location.search);
+        params.delete('projectIds');
+        document.querySelectorAll('.filter-project-check:checked').forEach(function(cb) {
+            params.append('projectIds', cb.value);
+        });
+        window.location.href = '/team?' + params.toString();
+    }
+
+    function filterCards(type) {
+        var cards = document.querySelectorAll('.team-card');
+        var buttons = document.querySelectorAll('.period-segmented .period-seg-btn');
+
+        document.getElementById('filter-all').className = 'period-seg-btn';
+        document.getElementById('filter-issues').className = 'period-seg-btn';
+        document.getElementById('filter-stars').className = 'period-seg-btn';
+        document.getElementById('filter-' + type).className = 'period-seg-btn period-seg-btn-active';
+
+        cards.forEach(function(card) {
+            var medianH = parseFloat(card.getAttribute('data-median-hours')) || 0;
+            var mrs = parseInt(card.getAttribute('data-mrs')) || 0;
+            var avgMrs = parseFloat(card.getAttribute('data-avg-mrs')) || 0;
+            var show = true;
+
+            if (type === 'issues') {
+                show = medianH > 12;
+            } else if (type === 'stars') {
+                show = mrs >= avgMrs * 1.5 && medianH <= 12;
+            }
+            card.style.display = show ? '' : 'none';
+        });
+    }
+    /*]]>*/
+</script>
+
+<style>
+    #team-tip {
+        position: fixed;
+        background: var(--bg-inv, #1e1e2e);
+        color: var(--fg-inv, #cdd6f4);
+        font-size: 11px;
+        line-height: 1.4;
+        white-space: nowrap;
+        padding: 5px 9px;
+        border-radius: 6px;
+        pointer-events: none;
+        display: none;
+        z-index: 9999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+</style>
+<div id="team-tip"></div>
+<script>
+    /*<![CDATA[*/
+    (function() {
+        var tip = document.getElementById('team-tip');
+        document.addEventListener('mouseover', function(e) {
+            var el = e.target.closest('[data-tip]');
+            if (!el) { tip.style.display = 'none'; return; }
+            tip.textContent = el.getAttribute('data-tip');
+            tip.style.display = 'block';
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (tip.style.display === 'none') { return; }
+            var x = e.clientX + 14;
+            var y = e.clientY - 32;
+            if (x + tip.offsetWidth > window.innerWidth - 8) {
+                x = e.clientX - tip.offsetWidth - 10;
+            }
+            tip.style.left = x + 'px';
+            tip.style.top  = y + 'px';
+        });
+        document.addEventListener('mouseout', function(e) {
+            if (!e.target.closest('[data-tip]')) { return; }
+            if (!e.relatedTarget || !e.relatedTarget.closest('[data-tip]')) {
+                tip.style.display = 'none';
+            }
+        });
+    })();
+    /*]]>*/
+</script>
+</body>
+</html>

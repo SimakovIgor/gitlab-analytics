@@ -306,6 +306,7 @@ public class FlowService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("devNames", devNames);
+        result.put("devIds", orderedIds);
         result.put("matrix", grid);
         return result;
     }

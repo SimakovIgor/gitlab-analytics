@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title th:text="${dev.displayName} + ' — GitLab Analytics'">Dev — GitLab Analytics</title>
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+</head>
+<body class="app-layout">
+
+<header th:replace="~{fragments/topbar :: topbar('team')}"></header>
+
+<div class="report-page">
+
+    <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
+
+    <main class="report-main">
+
+        <div id="sync-banners"></div>
+
+        <!-- Back link + period selector -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <a href="/team" style="font-size:12px;color:var(--fg-3);text-decoration:none">
+                &larr; К команде
+            </a>
+            <div class="period-segmented">
+                <button onclick="applyProfilePeriod('LAST_7_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">7д
+                </button>
+                <button onclick="applyProfilePeriod('LAST_30_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">30д
+                </button>
+                <button onclick="applyProfilePeriod('LAST_90_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">90д
+                </button>
+                <button onclick="applyProfilePeriod('LAST_180_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">180д
+                </button>
+                <button onclick="applyProfilePeriod('LAST_360_DAYS')"
+                        th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                        type="button">360д
+                </button>
+            </div>
+        </div>
+
+        <!-- Hero card -->
+        <div class="chart-card profile-hero">
+            <div class="dev-hero-avatar"
+                 th:style="'background:oklch(0.62 0.14 ' + ${(dev.id * 43) % 360} + ')'"
+                 th:text="${#strings.substring(dev.displayName, 0, 1).toUpperCase()}">A</div>
+            <div class="profile-hero-info">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <h2 style="margin:0;font-size:22px;font-weight:600;color:var(--fg-0)"
+                        th:text="${dev.displayName}">Name</h2>
+                </div>
+                <div style="font-size:12px;color:var(--fg-3);margin-top:4px;font-family:var(--font-mono, monospace)">
+                    <th:block th:if="${gitlabUsername != null}">
+                        @<span th:text="${gitlabUsername}">username</span>
+                        <span style="margin:0 4px">·</span>
+                    </th:block>
+                    <span th:text="${dev.email}">email</span>
+                </div>
+            </div>
+            <div class="profile-hero-metrics" th:if="${metrics != null}">
+                <div class="profile-metric">
+                    <div class="num profile-metric-val" th:text="${metrics.mrMergedCount}">0</div>
+                    <div class="profile-metric-label">MR</div>
+                </div>
+                <div class="profile-metric">
+                    <div class="num profile-metric-val" th:text="${metrics.reviewCommentsWrittenCount}">0</div>
+                    <div class="profile-metric-label">Комм.</div>
+                </div>
+                <div class="profile-metric">
+                    <div class="num profile-metric-val" th:text="${metrics.mrsReviewedCount}">0</div>
+                    <div class="profile-metric-label">Ревью</div>
+                </div>
+                <div class="profile-metric">
+                    <div class="num profile-metric-val" th:text="${medianH + 'ч'}">0ч</div>
+                    <div class="profile-metric-label">Медиана</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity sparkline -->
+        <div class="chart-card">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--fg-0)">
+                Активность · <span th:text="${periodWeeks + ' нед.'}">4 нед.</span>
+            </div>
+            <svg id="dev-sparkline" height="100" preserveAspectRatio="none" style="width:100%;display:block"></svg>
+            <div id="spark-labels" style="display:flex;width:100%;margin-top:4px"></div>
+        </div>
+
+        <!-- Commit calendar -->
+        <div class="chart-card">
+            <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--fg-0)"
+                 title="Количество коммитов по дням за выбранный период">
+                Коммиты
+            </div>
+            <div id="commit-calendar"></div>
+        </div>
+
+        <!-- MR list -->
+        <div class="chart-card" style="padding:0;overflow:hidden">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--border-1)">
+                <div style="font-size:14px;font-weight:600;color:var(--fg-0)">MR · за период</div>
+                <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
+                    <span th:text="${mrRows.size()}">0</span> всего
+                    <th:block th:if="${stuckMrCount > 0}">
+                        · <span style="color:var(--warn)" th:text="${stuckMrCount + ' открытых'}"></span>
+                    </th:block>
+                </div>
+            </div>
+
+            <div th:if="${mrRows.isEmpty()}" style="padding:32px;text-align:center;color:var(--fg-3);font-size:12px">
+                Нет MR за выбранный период.
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;font-size:12px" th:unless="${mrRows.isEmpty()}">
+                <thead>
+                <tr style="background:var(--bg-2)">
+                    <th class="flow-th" style="text-align:left">MR</th>
+                    <th class="flow-th" style="text-align:right">Открыт</th>
+                    <th class="flow-th" style="text-align:right">Смерджен</th>
+                    <th class="flow-th" style="text-align:right">До мержа</th>
+                    <th class="flow-th" style="text-align:right">+</th>
+                    <th class="flow-th" style="text-align:right">&minus;</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr style="border-bottom:1px solid var(--border-1)" th:each="row : ${mrRows}">
+                    <td class="flow-td">
+                        <a style="color:var(--accent);text-decoration:none;font-size:12px"
+                           target="_blank" th:href="${row.webUrl}"
+                           th:text="${row.title}">MR</a>
+                    </td>
+                    <td class="flow-td num" style="color:var(--fg-2);text-align:right;font-size:11px;white-space:nowrap"
+                        th:text="${row.openedAt}">—</td>
+                    <td class="flow-td num" style="color:var(--fg-2);text-align:right;font-size:11px;white-space:nowrap"
+                        th:text="${row.mergedAt}">—</td>
+                    <td class="flow-td num" style="text-align:right;font-weight:600;white-space:nowrap"
+                        th:style="'text-align:right;font-weight:600;white-space:nowrap;color:' + ${row.timeColor}"
+                        th:text="${row.timeToMerge}">—</td>
+                    <td class="flow-td num" style="text-align:right;white-space:nowrap"
+                        th:style="${row.additions != '—'} ? 'color:var(--good);text-align:right' : 'color:var(--fg-3);text-align:right'"
+                        th:text="${row.additions}">—</td>
+                    <td class="flow-td num" style="text-align:right;white-space:nowrap"
+                        th:style="${row.deletions != '—'} ? 'color:var(--bad);text-align:right' : 'color:var(--fg-3);text-align:right'"
+                        th:text="${row.deletions}">—</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</div>
+
+<style>
+    .profile-hero {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+    }
+    .profile-hero-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .profile-hero-metrics {
+        display: flex;
+        gap: 24px;
+        flex-shrink: 0;
+        align-items: flex-start;
+    }
+    .profile-metric {
+        text-align: center;
+        min-width: 44px;
+        cursor: default;
+    }
+    .profile-metric-val {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--fg-0);
+        line-height: 1.2;
+    }
+    .profile-metric-label {
+        font-size: 10px;
+        color: var(--fg-3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-top: 2px;
+    }
+    .metric-hint {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--bg-3);
+        color: var(--fg-3);
+        font-size: 8px;
+        font-weight: 700;
+        vertical-align: middle;
+        cursor: help;
+        font-style: normal;
+        letter-spacing: 0;
+        text-transform: none;
+    }
+    .dev-hero-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .team-badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+    .team-badge-bad { background: var(--bad-bg); color: var(--bad); }
+    .team-badge-warn { background: var(--warn-bg); color: var(--warn); }
+    .flow-th { padding: 8px 12px; font-size: 10px; color: var(--fg-3); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .flow-td { padding: 8px 12px; }
+    /* Instant tooltip for calendar cells — rendered via JS to avoid overflow clipping */
+    #cal-tooltip {
+        position: fixed;
+        background: var(--bg-inv, #1e1e2e);
+        color: var(--fg-inv, #cdd6f4);
+        font-size: 11px;
+        white-space: nowrap;
+        padding: 4px 8px;
+        border-radius: 5px;
+        pointer-events: none;
+        display: none;
+        z-index: 9999;
+    }
+</style>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+    window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
+    window.JIRA_JOB_IDS = /*[[${jiraJobIds}]]*/ [];
+    var SPARK_DATA      = JSON.parse([[${sparkJson}]]);
+    var SPARK_LABELS    = JSON.parse([[${sparkLabels}]]);
+    var CALENDAR_COUNTS = JSON.parse([[${calendarJson}]]);
+    var CALENDAR_FROM   = [[${calendarFrom}]];
+    /*]]>*/
+</script>
+<script src="/js/sidebar.js"></script>
+<script>
+    /*<![CDATA[*/
+    // ── Period filter ──
+    (function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('period')) {
+            try {
+                var saved = localStorage.getItem('gl_period');
+                if (saved && saved !== 'LAST_30_DAYS') {
+                    var p = new URLSearchParams(window.location.search);
+                    p.set('period', saved);
+                    window.location.replace(window.location.pathname + '?' + p.toString());
+                }
+            } catch (e) { /* ignore */ }
+        }
+    })();
+
+    function applyProfilePeriod(period) {
+        try { localStorage.setItem('gl_period', period); } catch (e) { /* ignore */ }
+        var params = new URLSearchParams(window.location.search);
+        params.set('period', period);
+        window.location.href = window.location.pathname + '?' + params.toString();
+    }
+
+    // ── Sparkline with month labels ──
+    (function() {
+        var svg    = document.getElementById('dev-sparkline');
+        var labels = document.getElementById('spark-labels');
+        var data   = SPARK_DATA;
+        if (!svg || !data || !data.length) { return; }
+
+        // Wait for layout
+        var w = svg.parentElement ? svg.parentElement.getBoundingClientRect().width - 32 : 0;
+        if (w <= 0) { w = 480; }
+        svg.setAttribute('width', w);
+
+        var h    = 100;
+        var padY = 6;
+        var maxV = Math.max.apply(null, data);
+        if (maxV === 0) { return; }
+
+        var step = w / (data.length - 1 || 1);
+        var pts  = data.map(function(v, i) {
+            return [i * step, h - padY - (v / maxV) * (h - padY * 2)];
+        });
+        var ptStr = pts.map(function(p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); });
+
+        var area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        area.setAttribute('points', '0,' + h + ' ' + ptStr.join(' ') + ' ' + w.toFixed(1) + ',' + h);
+        area.setAttribute('fill', 'var(--accent)');
+        area.setAttribute('opacity', '0.1');
+        svg.appendChild(area);
+
+        var line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        line.setAttribute('points', ptStr.join(' '));
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke', 'var(--accent)');
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(line);
+
+        var last = pts[pts.length - 1];
+        var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', last[0].toFixed(1));
+        dot.setAttribute('cy', last[1].toFixed(1));
+        dot.setAttribute('r', '3.5');
+        dot.setAttribute('fill', 'var(--accent)');
+        svg.appendChild(dot);
+
+        // Month labels below sparkline
+        if (labels && SPARK_LABELS && SPARK_LABELS.length) {
+            for (var i = 0; i < SPARK_LABELS.length; i++) {
+                var span = document.createElement('span');
+                span.style.cssText = 'flex:1;font-size:9px;color:var(--fg-3);font-family:var(--font-mono)';
+                span.textContent = SPARK_LABELS[i];
+                labels.appendChild(span);
+            }
+        }
+    })();
+
+    // ── Commit Calendar (GitHub-style) ──
+    (function() {
+        var container = document.getElementById('commit-calendar');
+        if (!container) { return; }
+
+        var counts   = CALENDAR_COUNTS;
+        var fromStr  = CALENDAR_FROM;
+        var msPerDay = 86400000;
+
+        // Find max count
+        var maxCount = 0;
+        Object.keys(counts).forEach(function(k) { if (counts[k] > maxCount) { maxCount = counts[k]; } });
+
+        // Parse fromDate and align start to Monday of that week
+        var fromDate = new Date(fromStr + 'T00:00:00Z');
+        var dow = (fromDate.getUTCDay() + 6) % 7; // 0=Mon..6=Sun
+        var startDate = new Date(fromDate.getTime() - dow * msPerDay);
+
+        var today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+
+        var diffDays = Math.ceil((today.getTime() - startDate.getTime()) / msPerDay) + 1;
+        var totalWeeks = Math.ceil(diffDays / 7);
+
+        var cellSize = 11;
+        var cellGap  = 2;
+        var dayLabelW = 22;
+        var monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+        var dayLabels  = ['Пн', '', 'Ср', '', 'Пт', '', ''];
+
+        // Pre-compute month labels per week
+        var monthLabels = [];
+        var lastMonth = -1;
+        for (var w = 0; w < totalWeeks; w++) {
+            var ws = new Date(startDate.getTime() + w * 7 * msPerDay);
+            var m = ws.getUTCMonth();
+            monthLabels.push(m !== lastMonth ? monthNames[m] : '');
+            lastMonth = m;
+        }
+
+        function pluralCommit(n) {
+            var n10 = n % 10, n100 = n % 100;
+            if (n10 === 1 && n100 !== 11) { return 'коммит'; }
+            if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) { return 'коммита'; }
+            return 'коммитов';
+        }
+
+        var cellPx = cellSize + 'px';
+        var gapPx  = cellGap + 'px';
+
+        var html = '<div style="overflow-x:auto;overflow-y:hidden"><div style="display:inline-flex;gap:' + gapPx + '">';
+
+        // Day-label column
+        html += '<div style="display:flex;flex-direction:column;gap:' + gapPx + ';padding-top:' + (cellSize + cellGap) + 'px">';
+        for (var d = 0; d < 7; d++) {
+            html += '<div style="width:' + dayLabelW + 'px;height:' + cellPx + ';font-size:9px;color:var(--fg-3);'
+                + 'display:flex;align-items:center;justify-content:flex-end;padding-right:4px">'
+                + dayLabels[d] + '</div>';
+        }
+        html += '</div>';
+
+        // Week columns
+        for (var w2 = 0; w2 < totalWeeks; w2++) {
+            html += '<div style="display:flex;flex-direction:column;gap:' + gapPx + '">';
+
+            // Month label row
+            html += '<div style="height:' + cellPx + ';font-size:9px;color:var(--fg-3);white-space:nowrap;'
+                + 'display:flex;align-items:center">' + monthLabels[w2] + '</div>';
+
+            for (var d2 = 0; d2 < 7; d2++) {
+                var cellDate = new Date(startDate.getTime() + (w2 * 7 + d2) * msPerDay);
+                var iso = cellDate.toISOString().slice(0, 10);
+                var isFuture = cellDate.getTime() > today.getTime();
+                var isBeforeStart = cellDate.getTime() < fromDate.getTime();
+
+                var bgStyle, tipText;
+                if (isFuture || isBeforeStart) {
+                    bgStyle = 'background:transparent';
+                    tipText = '';
+                } else {
+                    var cnt = counts[iso] || 0;
+                    if (cnt === 0) {
+                        bgStyle = 'background:var(--bg-3)';
+                    } else {
+                        var ratio = maxCount > 0 ? cnt / maxCount : 1;
+                        var alpha = (0.2 + ratio * 0.8).toFixed(2);
+                        bgStyle = 'background:var(--accent);opacity:' + alpha;
+                    }
+                    tipText = iso + (cnt > 0 ? ' — ' + cnt + ' ' + pluralCommit(cnt) : ' — нет коммитов');
+                }
+
+                html += '<div style="width:' + cellPx + ';height:' + cellPx + ';border-radius:2px;' + bgStyle + '"'
+                    + (tipText ? ' data-tip="' + tipText + '"' : '') + '></div>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+
+        // Legend
+        html += '<div style="display:flex;align-items:center;gap:4px;margin-top:6px;justify-content:flex-end;font-size:9px;color:var(--fg-3)">';
+        html += '<span>меньше</span>';
+        [0, 0.25, 0.5, 0.75, 1.0].forEach(function(lvl) {
+            var s = lvl === 0
+                ? 'background:var(--bg-3)'
+                : 'background:var(--accent);opacity:' + (0.2 + lvl * 0.8).toFixed(2);
+            html += '<div style="width:11px;height:11px;border-radius:2px;' + s + '"></div>';
+        });
+        html += '<span>больше</span></div>';
+
+        html += '</div>';
+        container.innerHTML = html;
+    })();
+    /*]]>*/
+</script>
+
+<div id="cal-tooltip"></div>
+<script>
+    /*<![CDATA[*/
+    (function() {
+        var tip = document.getElementById('cal-tooltip');
+        document.getElementById('commit-calendar').addEventListener('mouseover', function(e) {
+            var el = e.target.closest('[data-tip]');
+            if (!el) { tip.style.display = 'none'; return; }
+            tip.textContent = el.getAttribute('data-tip');
+            tip.style.display = 'block';
+        });
+        document.getElementById('commit-calendar').addEventListener('mousemove', function(e) {
+            tip.style.left = (e.clientX + 12) + 'px';
+            tip.style.top  = (e.clientY - 28) + 'px';
+        });
+        document.getElementById('commit-calendar').addEventListener('mouseleave', function() {
+            tip.style.display = 'none';
+        });
+    })();
+    /*]]>*/
+</script>
+</body>
+</html>

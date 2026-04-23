@@ -40,7 +40,7 @@ source "${ENV_FILE}"
 SERVER_IP="${SERVER_IP:?SERVER_IP не задан в .env.prod}"
 SERVER_USER="${SERVER_USER:-root}"
 REMOTE_DIR="/opt/gitlab-analytics"
-COMPOSE="docker compose -f ${REMOTE_DIR}/docker/docker-compose.prod.yml"
+COMPOSE="docker compose -f ${REMOTE_DIR}/docker/docker-compose.prod.yml --project-name gitlab-analytics --env-file ${REMOTE_DIR}/.env"
 
 info "Подключаемся к ${SERVER_USER}@${SERVER_IP}..."
 

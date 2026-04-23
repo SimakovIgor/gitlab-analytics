@@ -83,6 +83,16 @@
         <exclude name="SingularField"/>
         <exclude name="AvoidThrowingRawExceptionTypes"/>
         <exclude name="DataClass"/>
+        <!-- Spring MVC controllers aggregate multiple request handlers by design -->
+        <exclude name="GodClass"/>
+    </rule>
+
+    <rule ref="category/java/bestpractices.xml/UseVarargs">
+        <properties>
+            <!-- int[] is intentionally not varargs — it's a pre-computed stats array -->
+            <property name="violationSuppressXPath"
+                      value=".[ancestor::MethodDeclaration[@Name='toMrRow']]"/>
+        </properties>
     </rule>
 
     <rule ref="category/java/design.xml/SignatureDeclareThrowsException">

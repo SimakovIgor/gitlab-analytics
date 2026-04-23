@@ -10,7 +10,8 @@ public record InsightSummaryDto(
     String kind,
     String title,
     String body,
-    List<String> affectedUserNames
+    List<String> affectedUserNames,
+    List<Long> affectedUserIds
 ) {
 
 }

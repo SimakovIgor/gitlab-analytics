@@ -35,9 +35,8 @@
            th:class="${activePage == 'overview'} ? 'nav-link nav-link-active' : 'nav-link'">Обзор</a>
         <a href="/insights"
            th:class="${activePage == 'insights'} ? 'nav-link nav-link-active' : 'nav-link'">Инсайты</a>
-        <span class="nav-link nav-link-disabled">
-            Команда <span class="nav-badge-soon">soon</span>
-        </span>
+        <a href="/team"
+           th:class="${activePage == 'team'} ? 'nav-link nav-link-active' : 'nav-link'">Команда</a>
         <a href="/flow"
            th:class="${activePage == 'flow'} ? 'nav-link nav-link-active' : 'nav-link'">Flow</a>
         <a href="/dora"

@@ -101,10 +101,11 @@
                         <div class="insight-desc" th:text="${ins.body()}">Описание</div>
                         <div class="insight-card-footer">
                             <div class="insight-avatars">
-                                <th:block th:each="name,iter : ${ins.affectedUserNames()}">
+                                <th:block th:each="name,iter : ${ins.affectedUserNames()}"
+                                          th:with="uid=${ins.affectedUserIds().get(iter.index)}">
                                     <div class="insight-avatar"
                                          th:attr="data-name=${name}"
-                                         th:style="'background:oklch(0.62 0.14 ' + ${(iter.index * 60 + 200) % 360} + ')'"
+                                         th:style="'background:oklch(0.62 0.14 ' + ${(uid * 43) % 360} + ')'"
                                          th:text="${#strings.substring(name, 0, 1).toUpperCase()}">A
                                     </div>
                                 </th:block>
@@ -233,33 +234,15 @@
                     <thead>
                     <tr>
                         <th class="th-sortable">Сотрудник</th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Число MR, слитых в выбранном периоде.">MR
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Строк добавлено в смерджённых MR.">+ строк
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Строк удалено в смерджённых MR.">− строк
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Коммиты автора в смерджённых MR.">Коммиты
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Комментарии при ревью чужих MR.">Ревью-комм.
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Чужих MR, где оставил комментарий или аппрув.">Отревьюил
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Число выданных аппрувов.">Аппрувов
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Дней с хотя бы одним коммитом, комментарием или аппрувом.">Актив дней
-                        </th>
-                        <th class="th-sortable th-hint"
-                            data-tooltip="Среднее время от открытия MR до мержа.">До мержа
-                        </th>
+                        <th class="th-sortable" data-tip="Смёрженных MR за период">MR</th>
+                        <th class="th-sortable" data-tip="Строк добавлено в смёрженных MR">+ строк</th>
+                        <th class="th-sortable" data-tip="Строк удалено в смёрженных MR">− строк</th>
+                        <th class="th-sortable" data-tip="Коммиты автора в смёрженных MR">Коммиты</th>
+                        <th class="th-sortable" data-tip="Комментариев оставлено при ревью чужих MR">Ревью-комм.</th>
+                        <th class="th-sortable" data-tip="Чужих MR, где оставил комментарий или аппрув">Отревьюил</th>
+                        <th class="th-sortable" data-tip="Аппрувов выдано за период">Аппрувов</th>
+                        <th class="th-sortable" data-tip="Дней с хотя бы одним коммитом, комментарием или аппрувом">Актив дней</th>
+                        <th class="th-sortable" data-tip="Среднее время от открытия MR до мержа">До мержа</th>
                         <th>Тренд</th>
                     </tr>
                     </thead>
@@ -267,7 +250,8 @@
                     <tr th:class="${m.inactive} ? 'report-row row-inactive' : 'report-row'"
                         th:data-user="${m.displayName}"
                         th:data-user-id="${m.trackedUserId}"
-                        th:each="m : ${metrics}">
+                        th:each="m : ${metrics}"
+                        th:with="medianH=${m.avgTimeToMergeMinutes != null ? m.avgTimeToMergeMinutes / 60.0 : 0},isTop=${m.mrMergedCount >= avgMrs * 1.5 and (m.avgTimeToMergeMinutes == null or m.avgTimeToMergeMinutes <= 720)}">
                         <td class="td-user">
                             <div class="user-cell">
                                 <div class="user-avatar"
@@ -280,41 +264,45 @@
                                 </div>
                                 <span class="dev-status-badge dev-status-stuck"
                                       th:if="${m.avgTimeToMergeMinutes != null and m.avgTimeToMergeMinutes > 1440}"
-                                      title="STUCK — среднее время до мержа больше 24 часов. Вероятно, MR зависают без ревью.">STUCK</span>
+                                      data-tip="Медиана TTM &gt; 24ч — MR надолго зависают без ревью">STUCK</span>
                                 <span class="dev-status-badge dev-status-slow"
                                       th:if="${m.avgTimeToMergeMinutes != null
                                               and m.avgTimeToMergeMinutes > 720
                                               and m.avgTimeToMergeMinutes <= 1440}"
-                                      title="SLOW — среднее время до мержа от 12 до 24 часов. Есть резерв для ускорения.">SLOW</span>
+                                      data-tip="Медиана TTM 12–24ч — есть резерв для ускорения">SLOW</span>
+                                <span class="dev-status-badge dev-status-top"
+                                      th:if="${isTop}"
+                                      data-tip="MR ≥ 1.5× среднего по команде и медиана ≤ 12ч">★ TOP</span>
                             </div>
                         </td>
-                        <td class="td-num td-accent">
+                        <td class="td-num td-accent" data-tip="Смёрженных MR за период">
                             <span th:text="${m.mrMergedCount}">0</span>
                         </td>
-                        <td class="td-num td-good">
+                        <td class="td-num td-good" data-tip="Строк добавлено в смёрженных MR">
                             <span th:text="${m.linesAdded > 0 ? '+' + m.linesAdded : '—'}">—</span>
                         </td>
-                        <td class="td-num td-bad">
+                        <td class="td-num td-bad" data-tip="Строк удалено в смёрженных MR">
                             <span th:text="${m.linesDeleted > 0 ? '−' + m.linesDeleted : '—'}">—</span>
                         </td>
-                        <td class="td-num">
+                        <td class="td-num" data-tip="Коммиты автора в смёрженных MR">
                             <span th:text="${m.commitsInMrCount}">0</span>
                         </td>
-                        <td class="td-num">
+                        <td class="td-num" data-tip="Комментариев оставлено при ревью чужих MR">
                             <span th:text="${m.reviewCommentsWrittenCount}">0</span>
                         </td>
-                        <td class="td-num">
+                        <td class="td-num" data-tip="Чужих MR, где оставил комментарий или аппрув">
                             <span th:text="${m.mrsReviewedCount}">0</span>
                         </td>
-                        <td class="td-num">
+                        <td class="td-num" data-tip="Аппрувов выдано за период">
                             <span th:text="${m.approvalsGivenCount}">0</span>
                         </td>
-                        <td class="td-num">
+                        <td class="td-num" data-tip="Дней с хотя бы одним коммитом, комментарием или аппрувом">
                             <span th:text="${m.activeDaysCount}">0</span>
                         </td>
                         <td th:class="${ttm != null and ttm > 1440} ? 'td-num td-ttm-bad'
                                       : (${ttm != null and ttm > 720} ? 'td-num td-ttm-warn' : 'td-num')"
-                            th:with="ttm=${m.avgTimeToMergeMinutes}">
+                            th:with="ttm=${m.avgTimeToMergeMinutes}"
+                            data-tip="Среднее время от открытия MR до мержа">
                             <span th:text="${ttm != null
                                 ? #numbers.formatDecimal(ttm / 60.0, 1, 1) + ' ч' : '—'}">—</span>
                         </td>
@@ -1823,5 +1811,51 @@
     })();
 </script>
 
+<style>
+    #rpt-tip {
+        position: fixed;
+        background: var(--bg-inv, #1e1e2e);
+        color: var(--fg-inv, #cdd6f4);
+        font-size: 11px;
+        line-height: 1.4;
+        white-space: nowrap;
+        padding: 5px 9px;
+        border-radius: 6px;
+        pointer-events: none;
+        display: none;
+        z-index: 9999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+</style>
+<div id="rpt-tip"></div>
+<script>
+    /*<![CDATA[*/
+    (function() {
+        var tip = document.getElementById('rpt-tip');
+        document.addEventListener('mouseover', function(e) {
+            var el = e.target.closest('[data-tip]');
+            if (!el) { tip.style.display = 'none'; return; }
+            tip.textContent = el.getAttribute('data-tip');
+            tip.style.display = 'block';
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (tip.style.display === 'none') { return; }
+            var x = e.clientX + 14;
+            var y = e.clientY - 32;
+            if (x + tip.offsetWidth > window.innerWidth - 8) {
+                x = e.clientX - tip.offsetWidth - 10;
+            }
+            tip.style.left = x + 'px';
+            tip.style.top  = y + 'px';
+        });
+        document.addEventListener('mouseout', function(e) {
+            if (!e.target.closest('[data-tip]')) { return; }
+            if (!e.relatedTarget || !e.relatedTarget.closest('[data-tip]')) {
+                tip.style.display = 'none';
+            }
+        });
+    })();
+    /*]]>*/
+</script>
 </body>
 </html>
