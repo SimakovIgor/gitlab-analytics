@@ -126,8 +126,8 @@
             </div>
         </div>
 
-        <!-- ── 4 DORA metric cards ──────────────────────────────────────────── -->
-        <div class="dora-big-grid">
+        <!-- ── 4 DORA metric cards (only shown when release data exists) ──── -->
+        <div class="dora-big-grid" th:if="${hasReleases}">
 
             <!-- Lead Time for Changes (реальный: created_at → prod_deployed_at) -->
             <div class="dora-big-card">
@@ -272,7 +272,7 @@
         </div>
 
         <!-- ── Сервисы команды (Service Health Table) ─────────────────────── -->
-        <div class="svc-health-section" th:if="${serviceHealthRows != null and !serviceHealthRows.isEmpty()}">
+        <div class="svc-health-section" th:if="${hasReleases and serviceHealthRows != null and !serviceHealthRows.isEmpty()}">
             <div class="svc-health-header">
                 <div class="svc-health-title">Сервисы команды</div>
                 <div class="svc-health-subtitle">Health score — композитный: Lead Time, Deploy Freq, CFR, активность.</div>
@@ -356,7 +356,7 @@
         </div>
 
         <!-- ── Lead Time chart ────────────────────────────────────────────────── -->
-        <div class="chart-card">
+        <div class="chart-card" th:if="${hasReleases}">
             <div class="dora-chart-header">
                 <div>
                     <div class="chart-title">Lead Time for Changes · по неделям деплоя</div>
@@ -380,7 +380,7 @@
         </div>
 
         <!-- ── Deploy Frequency chart ─────────────────────────────────────────── -->
-        <div class="chart-card" th:if="${totalDeploys > 0}">
+        <div class="chart-card" th:if="${hasReleases and totalDeploys > 0}">
             <div class="dora-chart-header">
                 <div>
                     <div class="chart-title">Deploy Frequency · по неделям</div>
@@ -393,7 +393,7 @@
         </div>
 
         <!-- ── Change Failure Rate chart ──────────────────────────────────── -->
-        <div class="chart-card" th:if="${cfrPercent != null}">
+        <div class="chart-card" th:if="${hasReleases and cfrPercent != null}">
             <div class="dora-chart-header">
                 <div>
                     <div class="chart-title">Change Failure Rate · по неделям</div>
@@ -406,7 +406,7 @@
         </div>
 
         <!-- ── MTTR chart ─────────────────────────────────────────────────── -->
-        <div class="chart-card" th:if="${mttrHours != null}">
+        <div class="chart-card" th:if="${hasReleases and mttrHours != null}">
             <div class="dora-chart-header">
                 <div>
                     <div class="chart-title">MTTR · по инцидентам</div>
@@ -431,7 +431,7 @@
 
         <!-- ── Jira incident sync ──────────────────────────────────────────── -->
         <div class="chart-card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between"
-             th:if="${jiraEnabled}">
+             th:if="${hasReleases and jiraEnabled}">
             <div>
                 <div style="font-size:13px;font-weight:600;color:var(--fg-0)">Инциденты из Jira</div>
                 <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
@@ -444,7 +444,7 @@
         </div>
 
         <!-- ── Releases timeline ─────────────────────────────────────────────── -->
-        <div class="releases-section" th:if="${releases != null and !releases.isEmpty()}">
+        <div class="releases-section" th:if="${hasReleases and releases != null and !releases.isEmpty()}">
             <div class="releases-section-header">
                 <div>
                     <div class="releases-section-title">Релизы</div>
@@ -544,7 +544,7 @@
         </div>
 
         <!-- No releases placeholder -->
-        <div class="releases-empty" th:if="${releases == null or releases.isEmpty()}">
+        <div class="releases-empty" th:if="${hasReleases and (releases == null or releases.isEmpty())}">
             <div class="releases-empty-icon">🏷</div>
             <div class="releases-empty-title">Релизы не найдены</div>
             <div class="releases-empty-desc">Убедитесь, что в GitLab созданы теги/релизы, и запустите синк вручную.</div>

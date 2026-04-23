@@ -171,7 +171,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.innerHTML = buildSyncCardHtml(
-            jobId, projectName, 'Фаза 1 из 4',
+            jobId, projectName, 'Фаза 1 из 2',
             isRetry ? 'повторная загрузка merge requests' : 'загружаем merge requests'
         );
 
@@ -192,7 +192,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 1 из 4', 'загружаем merge requests');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 1 из 2', 'загружаем merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -210,7 +210,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 2 из 4', 'данные появляются в отчёте по мере загрузки');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 2 из 2', 'данные появляются в отчёте по мере загрузки');
         const counters = div.querySelector('.sync-card-counters');
         if (counters) {
             counters.classList.remove('hidden');
@@ -232,7 +232,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Фаза 3 из 4', 'синхронизируем релизы');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', 'Релизы', 'синхронизируем релизы');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -249,7 +249,7 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-card sync-card-running';
-        div.innerHTML = buildSyncCardHtml(jobId, 'Jira', 'Фаза 4 из 4', 'синхронизируем инциденты из Jira');
+        div.innerHTML = buildSyncCardHtml(jobId, 'Jira', 'Jira', 'синхронизируем инциденты из Jira');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -266,7 +266,7 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-card sync-card-running';
-        div.innerHTML = buildSyncCardHtml(jobId, projectName, 'Фаза 3 из 4', 'синхронизируем релизы');
+        div.innerHTML = buildSyncCardHtml(jobId, projectName, 'Релизы', 'синхронизируем релизы');
         container.prepend(div);
         startCardTimers(jobId, id, Date.now());
     };
@@ -327,9 +327,9 @@
                     if (nameEl && job.projectName) {
                         nameEl.textContent = job.projectName;
                     }
-                    const phaseLabel = job.phase === 'JIRA_INCIDENTS' ? 'Фаза 4 из 4'
-                        : (job.phase === 'RELEASE' ? 'Фаза 3 из 4'
-                            : (job.phase === 'ENRICH' ? 'Фаза 2 из 4' : 'Фаза 1 из 4'));
+                    const phaseLabel = job.phase === 'JIRA_INCIDENTS' ? 'Jira'
+                        : (job.phase === 'RELEASE' ? 'Релизы'
+                            : (job.phase === 'ENRICH' ? 'Фаза 2 из 2' : 'Фаза 1 из 2'));
                     const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
                     if (phaseLabelEl) {
                         phaseLabelEl.textContent = phaseLabel;
@@ -397,15 +397,15 @@
 
     function phaseLabel(phase) {
         if (phase === 'JIRA_INCIDENTS') {
-            return '4 из 4';
+            return 'Jira';
         }
         if (phase === 'RELEASE') {
-            return '3 из 4';
+            return 'Релизы';
         }
         if (phase === 'ENRICH') {
-            return '2 из 4';
+            return 'Фаза 2 из 2';
         }
-        return '1 из 4';
+        return 'Фаза 1 из 2';
     }
 
     function phaseDetail(job) {
@@ -447,9 +447,10 @@
         const isOk = job.status === 'COMPLETED';
         if (isOk) {
             el.className = 'sync-card sync-card-done';
+            var doneLabel = phaseLabel(job.phase);
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span class="sync-card-done-icon">&#10003;</span>'
-                + '<span>Фаза ' + phaseLabel(job.phase) + ' завершена &middot; '
+                + '<span>' + escHtml(doneLabel) + ' завершена &middot; '
                 + escHtml(phaseDetail(job)) + '</span>'
                 + '</div>';
             if (job.nextJobId) {
@@ -465,9 +466,10 @@
             }
         } else {
             el.className = 'sync-card sync-card-error';
+            var errLabel = phaseLabel(job.phase);
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span>&#10005;</span>'
-                + '<span>Фаза ' + phaseLabel(job.phase) + ' · ошибка: '
+                + '<span>' + escHtml(errLabel) + ' · ошибка: '
                 + escHtml(job.errorMessage || '') + '</span>'
                 + '</div>';
         }

@@ -5646,7 +5646,7 @@ body {
 
 .sync-bars-container {
     display: flex;
-    align-items: flex-end;
+    align-items: stretch;
     gap: 6px;
     height: 120px;
     flex: 1;
@@ -5666,6 +5666,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-end;
     gap: 4px;
 }
 

@@ -486,14 +486,14 @@
 
     // ── Unified sync cards ────────────────────────────────────────────────────
 
-    function buildSyncCardHtml(jobId, repoName, phaseNum, phaseDesc) {
+    function buildSyncCardHtml(jobId, repoName, badgeLabel, phaseDesc) {
         return '<div class="sync-card-row">'
             + '<div class="sync-card-icon-box"><span class="sync-spinner"></span></div>'
             + '<div class="sync-card-body">'
             + '<div class="sync-card-title">'
             + '<strong class="num">' + escHtml(repoName) + '</strong>'
             + '<span class="sync-card-phase-desc">\xb7 ' + escHtml(phaseDesc) + '</span>'
-            + '<span class="sync-phase-badge" id="sync-phase-label-' + jobId + '">\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2</span>'
+            + '<span class="sync-phase-badge" id="sync-phase-label-' + jobId + '">' + escHtml(badgeLabel) + '</span>'
             + '</div>'
             + '<div class="sync-card-meter-row">'
             + '<div class="sync-card-counters hidden" id="sync-counters-' + jobId + '">'
@@ -523,7 +523,7 @@
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-card sync-card-running';
-        div.innerHTML = buildSyncCardHtml(jobId, name || '...', 1, '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        div.innerHTML = buildSyncCardHtml(jobId, name || '...', '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2', '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, Date.now());
     }
@@ -541,7 +541,7 @@
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', 1, '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2', '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -617,10 +617,9 @@
                     if (nameEl && job.projectName) {
                         nameEl.textContent = job.projectName;
                     }
-                    const phaseNum = job.phase === 'ENRICH' ? 2 : 1;
                     const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
                     if (phaseLabelEl) {
-                        phaseLabelEl.textContent = '\u0424\u0430\u0437\u0430 ' + phaseNum + ' \u0438\u0437 2';
+                        phaseLabelEl.textContent = settingsPhaseLabel(job.phase);
                     }
                     if (job.phase === 'ENRICH') {
                         document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
@@ -659,19 +658,26 @@
 
     let reloadScheduled = false;
 
+    function settingsPhaseLabel(phase) {
+        if (phase === 'JIRA_INCIDENTS') return 'Jira';
+        if (phase === 'RELEASE') return '\u0420\u0435\u043b\u0438\u0437\u044b';
+        if (phase === 'ENRICH') return '\u0424\u0430\u0437\u0430 2 \u0438\u0437 2';
+        return '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2';
+    }
+
     function updateSyncCard(cardId, job) {
         const el = document.getElementById(cardId);
         if (!el) {
             return;
         }
         const isOk = job.status === 'COMPLETED';
-        const phaseLabel = job.phase === 'ENRICH' ? '2 \u0438\u0437 2' : '1 \u0438\u0437 2';
+        const label = settingsPhaseLabel(job.phase);
         if (isOk) {
             el.className = 'sync-card sync-card-done';
             const detail = job.totalMrs > 0 ? job.totalMrs + ' MR' : '\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e';
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span class="sync-card-done-icon">&#10003;</span>'
-                + '<span>\u0424\u0430\u0437\u0430 ' + phaseLabel + ' \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430 &middot; ' + escHtml(detail) + '</span>'
+                + '<span>' + escHtml(label) + ' \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430 &middot; ' + escHtml(detail) + '</span>'
                 + '</div>';
             if (!reloadScheduled) {
                 setTimeout(() => el.remove(), 5000);
@@ -680,7 +686,7 @@
             el.className = 'sync-card sync-card-error';
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span>&#10005;</span>'
-                + '<span>\u0424\u0430\u0437\u0430 ' + phaseLabel + ' \xb7 \u043e\u0448\u0438\u0431\u043a\u0430: ' + escHtml(job.errorMessage || '') + '</span>'
+                + '<span>' + escHtml(label) + ' \xb7 \u043e\u0448\u0438\u0431\u043a\u0430: ' + escHtml(job.errorMessage || '') + '</span>'
                 + '</div>';
         }
     }

@@ -255,7 +255,10 @@ class DoraControllerTest extends BaseIT {
     }
 
     @Test
-    void doraPageShowsCfrNoDataWhenNoDeploysOrIncidents() throws Exception {
+    void doraPageShowsCfrNoDataWhenNoIncidents() throws Exception {
+        // Releases exist so cards are visible, but no incidents → "Нет данных" for CFR
+        saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
+
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
@@ -263,6 +266,19 @@ class DoraControllerTest extends BaseIT {
 
         String body = result.getResponse().getContentAsString();
         assertThat(body).contains("Нет данных");
+    }
+
+    @Test
+    void doraPageHidesCardsWhenNoReleases() throws Exception {
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+                .param("period", "LAST_30_DAYS"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        // No releases → cards hidden, setup block shown
+        assertThat(body).contains("dora-setup-block");
+        assertThat(body).doesNotContain("dora-big-card");
     }
 
     @Test
