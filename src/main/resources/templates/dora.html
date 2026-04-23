@@ -892,24 +892,82 @@
 </script>
 <script th:inline="javascript">
     // MTTR bar chart — each bar is one incident, x-axis = weeks
+    // Outlier cap: values above cap are visually capped, with real value shown as label
     const mttrCanvas = document.getElementById('mttrChart');
     const JIRA_BASE_URL = /*[[${jiraBaseUrl}]]*/ '';
     if (mttrCanvas && mttrChartData.labels && mttrChartData.labels.length > 0) {
-        const mttrValues = mttrChartData.values || [];
+        const mttrRealValues = mttrChartData.values || [];
         const mttrKeys = mttrChartData.jiraKeys || [];
-        const mttrTrend = linregTrend(mttrValues);
-        const mttrThreshold = mttrValues.map(function () { return 4; });
 
-        // Color bars: amber if under threshold, red if over
-        const mttrBarColors = mttrValues.map(function (v) {
+        // Compute outlier cap: P75 * 2, minimum 10h
+        var sorted = mttrRealValues.slice().filter(function (v) { return v > 0; }).sort(function (a, b) { return a - b; });
+        var p75 = sorted.length > 0 ? sorted[Math.floor(sorted.length * 0.75)] : 0;
+        var autoCap = Math.max(p75 * 2, 10);
+        // Round cap to a nice number
+        autoCap = Math.ceil(autoCap / 10) * 10;
+        var hasOutliers = mttrRealValues.some(function (v) { return v > autoCap; });
+        var yCap = hasOutliers ? autoCap : null;
+
+        // Capped values for display; real values preserved for tooltip
+        var mttrValues = yCap
+            ? mttrRealValues.map(function (v) { return Math.min(v, yCap); })
+            : mttrRealValues;
+
+        var mttrTrend = linregTrend(mttrRealValues);
+        // Cap trend line too so it stays within visible area
+        if (yCap) {
+            mttrTrend = mttrTrend.map(function (v) { return v !== null ? Math.min(v, yCap) : v; });
+        }
+        var mttrThreshold = mttrRealValues.map(function () { return 4; });
+
+        // Color bars: amber if under threshold, red if over; outliers get a diagonal stripe pattern
+        var mttrBarColors = mttrRealValues.map(function (v) {
             return v > 4 ? 'rgba(239,68,68,0.55)' : 'rgba(245,158,11,0.55)';
         });
-        const mttrBorderColors = mttrValues.map(function (v) {
+        var mttrBorderColors = mttrRealValues.map(function (v) {
             return v > 4 ? '#ef4444' : '#f59e0b';
         });
 
-        const mttrChart = new Chart(mttrCanvas, {
+        // Chart.js plugin: draw real value labels above capped bars
+        var mttrOutlierPlugin = {
+            id: 'mttrOutlierLabels',
+            afterDatasetsDraw: function (chart) {
+                if (!yCap) return;
+                var ctx = chart.ctx;
+                var meta = chart.getDatasetMeta(0);
+                ctx.save();
+                ctx.font = 'bold 10px var(--font-mono, monospace)';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                for (var i = 0; i < mttrRealValues.length; i++) {
+                    if (mttrRealValues[i] > yCap) {
+                        var bar = meta.data[i];
+                        var realH = Math.round(mttrRealValues[i]);
+                        // Draw zigzag cut indicator at bar top
+                        var bx = bar.x, bw = bar.width || 12;
+                        var by = bar.y;
+                        ctx.strokeStyle = mttrBorderColors[i];
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        var zigW = bw / 2, zigH = 3;
+                        ctx.moveTo(bx - zigW, by);
+                        ctx.lineTo(bx - zigW / 2, by - zigH);
+                        ctx.lineTo(bx, by);
+                        ctx.lineTo(bx + zigW / 2, by - zigH);
+                        ctx.lineTo(bx + zigW, by);
+                        ctx.stroke();
+                        // Draw real value label
+                        ctx.fillStyle = mttrBorderColors[i];
+                        ctx.fillText(realH + 'ч', bx, by - zigH - 2);
+                    }
+                }
+                ctx.restore();
+            }
+        };
+
+        var mttrChart = new Chart(mttrCanvas, {
             type: 'bar',
+            plugins: [mttrOutlierPlugin],
             data: {
                 labels: mttrChartData.labels,
                 datasets: [
@@ -952,6 +1010,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                layout: { padding: { top: yCap ? 20 : 0 } },
                 onClick: function (evt, elements) {
                     if (elements.length > 0 && elements[0].datasetIndex === 0 && JIRA_BASE_URL) {
                         var idx = elements[0].index;
@@ -973,7 +1032,10 @@
                             },
                             label: function (ctx) {
                                 if (ctx.datasetIndex !== 0) return null;
-                                return ctx.parsed.y + ' ч';
+                                // Always show real value in tooltip
+                                var real = mttrRealValues[ctx.dataIndex];
+                                var suffix = (yCap && real > yCap) ? ' (выброс)' : '';
+                                return real + ' ч' + suffix;
                             }
                         }
                     }
@@ -986,6 +1048,7 @@
                     y: {
                         title: {display: true, text: 'Часы'},
                         beginAtZero: true,
+                        max: yCap ? yCap : undefined,
                         grid: {color: 'rgba(0,0,0,0.04)'}
                     }
                 }
