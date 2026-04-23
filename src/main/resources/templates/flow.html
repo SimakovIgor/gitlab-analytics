@@ -92,7 +92,7 @@
                     </div>
                 </div>
             </div>
-            <div id="flow-bars" style="display:flex;align-items:flex-end;gap:0;height:220px;padding:48px 0 56px">
+            <div id="flow-bars" style="display:flex;align-items:flex-end;gap:0;position:relative;min-height:140px;padding:28px 0 0">
                 <!-- rendered by JS from STAGES data -->
             </div>
         </div>
@@ -360,19 +360,12 @@
             var col = document.createElement('div');
             col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end';
 
-            if (i === bottleneckIdx && STAGES.length > 1) {
-                var tag = document.createElement('div');
-                tag.className = 'flow-bottleneck-tag';
-                tag.textContent = 'BOTTLENECK';
-                col.appendChild(tag);
-            }
-
             var label = document.createElement('div');
             label.className = 'flow-bar-label';
             label.textContent = s.hours + 'ч';
             col.appendChild(label);
 
-            var barH = Math.max(20, (s.hours / maxHours) * 110);
+            var barH = Math.max(20, (s.hours / maxHours) * 100);
             var bar = document.createElement('div');
             bar.style.cssText = 'width:calc(100% - 16px);border-radius:4px;background:var(--' + s.color + ');opacity:' + (i === bottleneckIdx ? '1' : '0.4') + ';height:' + barH + 'px';
             col.appendChild(bar);
@@ -396,6 +389,16 @@
 
             container.appendChild(col);
         });
+
+        // BOTTLENECK tag — absolutely positioned above the bottleneck column
+        if (STAGES.length > 1) {
+            var tag = document.createElement('div');
+            tag.className = 'flow-bottleneck-tag';
+            tag.textContent = 'BOTTLENECK';
+            var centerPct = (bottleneckIdx + 0.5) / STAGES.length * 100;
+            tag.style.cssText = 'position:absolute;top:0;left:' + centerPct + '%;transform:translateX(-50%)';
+            container.appendChild(tag);
+        }
     })();
 
     // ── Review matrix ──
