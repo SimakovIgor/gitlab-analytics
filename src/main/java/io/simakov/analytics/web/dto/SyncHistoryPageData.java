@@ -16,7 +16,8 @@ public record SyncHistoryPageData(
     List<TrackedProject> projects,
     List<Long> activeJobIds,
     Long enrichmentJobId,
-    List<Long> releaseJobIds
+    List<Long> releaseJobIds,
+    long chartMaxSecs
 ) {
 
 }

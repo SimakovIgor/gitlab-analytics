@@ -81,6 +81,14 @@ public class SyncOrchestrator {
                     errors.add("project " + projectId + ": " + e.getMessage());
                 }
             }
+            // Auto-discover authors BEFORE marking FAST as complete,
+            // so TrackedUsers exist when the client sees COMPLETED (avoids race condition).
+            if (phase == SyncJobPhase.FAST) {
+                Long workspaceId = syncJobService.findById(jobId).getWorkspaceId();
+                int discovered = authorDiscoveryService.discoverAndSave(workspaceId, request.projectIds());
+                log.info("FAST phase: auto-discovered {} author(s) for job {}", discovered, jobId);
+            }
+
             finishJob(jobId, errors, request.projectIds().size());
 
             if (phase == SyncJobPhase.FAST) {
@@ -90,7 +98,7 @@ public class SyncOrchestrator {
                 int linked = authorDiscoveryService.syncCommitEmails(request.projectIds());
                 log.info("ENRICH phase complete for job {}: linked {} commit email(s), triggering snapshot backfill", jobId, linked);
                 snapshotService.runDailyBackfillAsync(workspaceId, BACKFILL_DAYS);
-                chainReleasePhase(jobId, request);
+                // RELEASE phase is no longer auto-chained — triggered manually from DORA page
             }
         } catch (Exception e) {
             log.error("Sync job {} failed with error: {}", jobId, e.getMessage(), e);
@@ -184,38 +192,13 @@ public class SyncOrchestrator {
     }
 
     /**
-     * After ENRICH phase: start RELEASE phase as an independent tracked job per project set.
-     * Per-project idempotency: skips if a RELEASE job for the same projects is already running.
-     */
-    private void chainReleasePhase(Long enrichJobId,
-                                   ManualSyncRequest enrichRequest) {
-        try {
-            Long workspaceId = syncJobService.findById(enrichJobId).getWorkspaceId();
-            if (syncJobService.findActiveReleaseJobForProjects(workspaceId, enrichRequest.projectIds()).isPresent()) {
-                log.info("RELEASE phase already running for projects {}, skipping chain from job {}",
-                    enrichRequest.projectIds(), enrichJobId);
-                return;
-            }
-            SyncJob releaseJob = syncJobService.createReleaseJob(workspaceId, enrichRequest);
-            syncJobService.linkToNext(enrichJobId, releaseJob.getId());
-            log.info("Auto-starting RELEASE phase as job {} for projects {} after ENRICH job {}",
-                releaseJob.getId(), enrichRequest.projectIds(), enrichJobId);
-            doOrchestrateRelease(releaseJob.getId());
-        } catch (Exception e) {
-            log.error("Failed to start RELEASE phase after job {}: {}", enrichJobId, e.getMessage(), e);
-        }
-    }
-
-    /**
-     * After FAST phase: auto-discover authors from MR data, then start ENRICH phase.
-     * Both run in the background — user is already on the dashboard by now.
+     * After FAST phase: start ENRICH phase.
+     * Author discovery already happened before finishJob (see doOrchestrate).
      */
     private void chainEnrichmentPhase(Long fastJobId,
                                       ManualSyncRequest fastRequest) {
         try {
             Long workspaceId = syncJobService.findById(fastJobId).getWorkspaceId();
-            int discovered = authorDiscoveryService.discoverAndSave(workspaceId, fastRequest.projectIds());
-            log.info("Phase 1 complete for job {}: auto-discovered {} author(s)", fastJobId, discovered);
 
             ManualSyncRequest enrichRequest = new ManualSyncRequest(
                 fastRequest.projectIds(), fastRequest.dateFrom(), fastRequest.dateTo(),

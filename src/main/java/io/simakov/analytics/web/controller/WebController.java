@@ -129,6 +129,7 @@ public class WebController {
         model.addAttribute("failed14d", data.failed14d());
         model.addAttribute("avgDurLabel14d", data.avgDurLabel14d());
         model.addAttribute("projects", data.projects());
+        model.addAttribute("chartMaxSecs", data.chartMaxSecs());
         try {
             model.addAttribute("jobsJson", objectMapper.writeValueAsString(data.jobs()));
             model.addAttribute("chartBarsJson", objectMapper.writeValueAsString(data.chartBars()));

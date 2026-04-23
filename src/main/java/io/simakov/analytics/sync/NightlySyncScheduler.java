@@ -44,8 +44,7 @@ public class NightlySyncScheduler {
             } catch (Exception e) {
                 log.error("Nightly sync failed for workspace={}: {}", workspace.getId(), e.getMessage(), e);
             }
-            // RELEASE phase chains automatically from each ENRICH job when it completes.
-            // Workspace-level idempotency in SyncOrchestrator prevents duplicate RELEASE jobs.
+            // RELEASE and JIRA_INCIDENTS phases are triggered manually from the DORA page.
         }
     }
 

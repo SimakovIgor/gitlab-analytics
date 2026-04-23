@@ -104,6 +104,15 @@ public class DoraController {
             : "";
         model.addAttribute("jiraBaseUrl", jiraBase);
 
+        boolean hasReleases = !releases.isEmpty();
+        boolean hasJiraConfig = jiraProperties.baseUrl() != null
+            && !jiraProperties.baseUrl().isBlank();
+        long totalIncidents = ((Number) cfr.getOrDefault("totalIncidents", 0L)).longValue();
+        boolean hasIncidents = totalIncidents > 0;
+        model.addAttribute("hasReleases", hasReleases);
+        model.addAttribute("hasJiraConfig", hasJiraConfig);
+        model.addAttribute("hasIncidents", hasIncidents);
+
         return "dora";
     }
 

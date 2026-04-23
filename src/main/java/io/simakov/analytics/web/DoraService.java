@@ -563,11 +563,10 @@ public class DoraService {
             ? 0
             : ltRows.getFirst().getMrCount().intValue();
 
-        // Lead Time median (days internally, displayed as hours in table)
+        // Lead Time median (days)
         Double medianDays = ltRows.isEmpty() || ltRows.getFirst().getMedianDays() == null
             ? null
             : round(ltRows.getFirst().getMedianDays());
-        Double leadTimeHours = medianDays != null ? round(medianDays * 24) : null;
         DoraRating ltRating = DoraMetric.LEAD_TIME_FOR_CHANGES.computeRating(medianDays);
 
         // Deploy Frequency
@@ -596,7 +595,7 @@ public class DoraService {
             mrCount,
             healthScore,
             deploysPerWeek,
-            leadTimeHours,
+            medianDays,
             cfrPercent,
             incidents,
             trend
@@ -689,7 +688,7 @@ public class DoraService {
         int mrCount,
         int healthScore,
         double deploysPerWeek,
-        Double leadTimeHours,
+        Double leadTimeDays,
         Double cfrPercent,
         long incidents,
         String trend

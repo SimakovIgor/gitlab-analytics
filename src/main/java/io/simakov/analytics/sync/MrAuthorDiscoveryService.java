@@ -8,6 +8,7 @@ import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.MrAuthorProjection;
 import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
+import io.simakov.analytics.util.BotDetector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,6 +55,11 @@ public class MrAuthorDiscoveryService {
             String username = author.getAuthorUsername();
 
             if (aliasRepository.existsByGitlabUserId(gitlabUserId)) {
+                continue;
+            }
+
+            if (BotDetector.isSuspectedBot(authorName, username)) {
+                log.debug("Skipping suspected bot/placeholder: name='{}', username='{}'", authorName, username);
                 continue;
             }
 

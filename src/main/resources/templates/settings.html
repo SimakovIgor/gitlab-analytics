@@ -134,6 +134,7 @@
                     <div class="discovery-actions">
                         <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(false)">Снять все</button>
                         <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(true)">Выбрать всех</button>
+                        <span class="discovery-counter" id="discovery-counter"></span>
                         <button class="btn-sm btn-primary" disabled id="btn-add-discovered" onclick="addSelectedDiscovered()">
                             Добавить выбранных
                         </button>
@@ -1022,7 +1023,13 @@
 
     function renderDiscoveryList(contributors) {
         const list = document.getElementById('discovery-list');
-        list.innerHTML = contributors.map(c => {
+        // Sort: tracked first, then humans, then bots at bottom
+        const sorted = contributors.slice().sort((a, b) => {
+            if (a.alreadyTracked !== b.alreadyTracked) return a.alreadyTracked ? -1 : 1;
+            if (a.suspectedBot !== b.suspectedBot) return a.suspectedBot ? 1 : -1;
+            return b.commitCount - a.commitCount;
+        });
+        list.innerHTML = sorted.map(c => {
             const letter = (c.primaryName || c.email)[0].toUpperCase();
             const repos = (c.repoNames || []).map(r => `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
             const altNames = (c.allNames || []).length
@@ -1047,16 +1054,17 @@
             }
             const mergedData = c.mergedEmails && c.mergedEmails.length > 0
                 ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
+            const isBot = c.suspectedBot;
             return `
-        <label class="discovery-row discovery-row-selectable">
+        <label class="discovery-row discovery-row-selectable${isBot ? ' discovery-row-bot' : ''}">
             <input type="checkbox" class="discovery-check" value="${escHtml(c.email)}"
                    data-name="${escHtml(c.primaryName)}" ${mergedData}
-                   onchange="updateAddBtn()" checked>
-            <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+                   onchange="updateAddBtn()" ${isBot ? '' : 'checked'}>
+            <div class="user-avatar discovery-avatar${isBot ? ' discovery-avatar-bot' : ''}">${escHtml(letter)}</div>
             <div class="discovery-info">
-                <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}
+                <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}${isBot ? '<span class="badge badge-bot">BOT?</span>' : ''}
                 <span class="discovery-email">${escHtml(c.email)}</span>
-                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
+                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.mrCount > 0 ? c.mrCount + ' MR' : c.commitCount + ' коммитов'}</span></div>
             </div>
         </label>`;
         }).join('');
@@ -1064,12 +1072,15 @@
     }
 
     function updateAddBtn() {
-        const count = document.querySelectorAll('.discovery-check:checked').length;
+        const all = document.querySelectorAll('.discovery-check');
+        const checked = document.querySelectorAll('.discovery-check:checked');
         const btn = document.getElementById('btn-add-discovered');
-        btn.disabled = count === 0;
-        btn.textContent = count > 0
-            ? `Добавить выбранных (${count})`
+        btn.disabled = checked.length === 0;
+        btn.textContent = checked.length > 0
+            ? `Добавить выбранных (${checked.length})`
             : 'Добавить выбранных';
+        const counter = document.getElementById('discovery-counter');
+        if (counter) counter.textContent = `Выбрано: ${checked.length} / ${all.length}`;
     }
 
     function toggleAllDiscovered(checked) {

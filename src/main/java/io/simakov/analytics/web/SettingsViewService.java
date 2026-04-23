@@ -207,7 +207,8 @@ public class SettingsViewService {
             (long) kpi.get("total14d"), (long) kpi.get("ok14d"),
             (long) kpi.get("partial14d"), (long) kpi.get("failed14d"),
             (String) kpi.get("avgDurLabel14d"),
-            projects, activeJobIds, enrichmentJobId, releaseJobIds
+            projects, activeJobIds, enrichmentJobId, releaseJobIds,
+            computeChartMaxSecs(rawJobs)
         );
     }
 
@@ -282,6 +283,14 @@ public class SettingsViewService {
                 return bar;
             })
             .toList();
+    }
+
+    private long computeChartMaxSecs(List<SyncJob> rawJobs) {
+        return rawJobs.stream().limit(14)
+            .filter(j -> j.getFinishedAt() != null && j.getStatus() != SyncStatus.FAILED)
+            .mapToLong(SettingsViewService::durSecs)
+            .max()
+            .orElse(300L);
     }
 
     private Map<String, Object> buildKpi14d(List<SyncJob> rawJobs) {

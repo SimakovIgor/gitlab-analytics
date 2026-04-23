@@ -17,8 +17,10 @@ import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.model.enums.SyncJobPhase;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
+import io.simakov.analytics.domain.repository.MrAuthorWithCountProjection;
 import io.simakov.analytics.domain.repository.ReleaseTagRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.domain.repository.UserMrCountProjection;
 import io.simakov.analytics.encryption.EncryptionService;
@@ -29,6 +31,7 @@ import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.snapshot.SnapshotService;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
+import io.simakov.analytics.util.BotDetector;
 import io.simakov.analytics.util.DateTimeUtils;
 import io.simakov.analytics.web.dto.CreatedProjectResult;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
@@ -41,8 +44,10 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -67,6 +72,7 @@ public class SettingsService {
     private final ContributorDiscoveryService contributorDiscoveryService;
     private final UserAliasService userAliasService;
     private final SnapshotService snapshotService;
+    private final TrackedUserAliasRepository aliasRepository;
 
     // ── GitLab Sources ───────────────────────────────────────────────────────
 
@@ -174,14 +180,47 @@ public class SettingsService {
             .stream()
             .collect(Collectors.toMap(UserMrCountProjection::getTrackedUserId, UserMrCountProjection::getMrCount));
 
-        return trackedUserRepository.findAllByWorkspaceId(workspaceId).stream()
-            .map(u -> Map.<String, Object>of(
-                "id", u.getId(),
-                "displayName", u.getDisplayName(),
-                "mrCount", mrCountById.getOrDefault(u.getId(), 0L)
-            ))
-            .sorted(Comparator.comparingLong((Map<String, Object> m) -> (Long) m.get("mrCount")).reversed())
+        List<Map<String, Object>> result = new ArrayList<>(
+            trackedUserRepository.findAllByWorkspaceId(workspaceId).stream()
+                .map(u -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", u.getId());
+                    m.put("displayName", u.getDisplayName());
+                    m.put("mrCount", mrCountById.getOrDefault(u.getId(), 0L));
+                    m.put("suspectedBot", BotDetector.isSuspectedBot(u.getDisplayName(), null));
+                    return m;
+                })
+                .toList()
+        );
+
+        // Append MR authors that were skipped during auto-discovery (bots/placeholders)
+        List<Long> trackedUserIds = result.stream()
+            .map(m -> ((Number) m.get("id")).longValue())
+            .filter(id -> id > 0)
             .toList();
+        Set<Long> trackedGitlabIds = aliasRepository.findByTrackedUserIdIn(trackedUserIds).stream()
+            .filter(a -> a.getGitlabUserId() != null)
+            .map(io.simakov.analytics.domain.model.TrackedUserAlias::getGitlabUserId)
+            .collect(Collectors.toSet());
+        for (MrAuthorWithCountProjection author : mergeRequestRepository.findDistinctAuthorsByWorkspace(workspaceId)) {
+            if (trackedGitlabIds.contains(author.getAuthorGitlabUserId())) {
+                continue;
+            }
+            String name = author.getAuthorName() != null ? author.getAuthorName() : author.getAuthorUsername();
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", -author.getAuthorGitlabUserId());
+            m.put("displayName", name);
+            m.put("mrCount", author.getMrCount());
+            m.put("suspectedBot", BotDetector.isSuspectedBot(name, author.getAuthorUsername()));
+            m.put("gitlabUserId", author.getAuthorGitlabUserId());
+            m.put("username", author.getAuthorUsername());
+            result.add(m);
+        }
+
+        result.sort(Comparator
+            .comparing((Map<String, Object> m) -> Boolean.TRUE.equals(m.get("suspectedBot")))
+            .thenComparing(m -> -((Number) m.get("mrCount")).longValue()));
+        return result;
     }
 
     @Transactional

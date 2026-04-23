@@ -69,6 +69,63 @@
             </div>
         </div>
 
+        <!-- ── Data sources setup block ────────────────────────────────────── -->
+        <div class="dora-setup-block" th:if="${!hasReleases or !hasJiraConfig or !hasIncidents}">
+            <div class="dora-setup-header">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style="flex-shrink:0">
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M8 4.5V8.5M8 10.5V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <div class="dora-setup-title">Настройте источники данных</div>
+                    <div class="dora-setup-subtitle">Для полноценных DORA-метрик нужны данные о релизах и инцидентах.</div>
+                </div>
+            </div>
+            <div class="dora-setup-items">
+                <!-- Releases -->
+                <div class="dora-setup-item">
+                    <div class="dora-setup-item-icon" th:classappend="${hasReleases ? 'dora-setup-done' : 'dora-setup-pending'}">
+                        <svg th:if="${hasReleases}" width="14" height="14" viewBox="0 0 12 12" fill="none">
+                            <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span th:if="${!hasReleases}">1</span>
+                    </div>
+                    <div class="dora-setup-item-body">
+                        <div class="dora-setup-item-title">Релизы и деплои</div>
+                        <div class="dora-setup-item-desc" th:if="${!hasReleases}">Загрузите данные о релизах из GitLab для расчёта Lead Time и Deploy Frequency.</div>
+                        <div class="dora-setup-item-desc dora-setup-item-ok" th:if="${hasReleases}">Данные загружены</div>
+                    </div>
+                    <button class="btn-release-sync" id="setupSyncReleasesBtn"
+                            onclick="triggerReleaseSyncSelected()" th:if="${!hasReleases}" type="button">
+                        Синхронизировать релизы
+                    </button>
+                </div>
+                <!-- Jira -->
+                <div class="dora-setup-item">
+                    <div class="dora-setup-item-icon" th:classappend="${hasJiraConfig and hasIncidents ? 'dora-setup-done' : 'dora-setup-pending'}">
+                        <svg th:if="${hasJiraConfig and hasIncidents}" width="14" height="14" viewBox="0 0 12 12" fill="none">
+                            <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span th:if="${!hasJiraConfig or !hasIncidents}">2</span>
+                    </div>
+                    <div class="dora-setup-item-body">
+                        <div class="dora-setup-item-title">Инциденты из Jira</div>
+                        <div class="dora-setup-item-desc" th:if="${!hasJiraConfig}">
+                            Настройте подключение к Jira через переменные окружения
+                            (<code>JIRA_BASE_URL</code>, <code>JIRA_USERNAME</code>, <code>JIRA_API_TOKEN</code>).
+                        </div>
+                        <div class="dora-setup-item-desc" th:if="${hasJiraConfig and !hasIncidents}">Jira подключена — загрузите инциденты для CFR и MTTR.</div>
+                        <div class="dora-setup-item-desc dora-setup-item-ok" th:if="${hasJiraConfig and hasIncidents}">Инциденты загружены</div>
+                    </div>
+                    <button class="btn-release-sync" id="setupSyncIncidentsBtn"
+                            onclick="triggerIncidentSync()"
+                            th:if="${hasJiraConfig and !hasIncidents}" type="button">
+                        Загрузить инциденты
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- ── 4 DORA metric cards ──────────────────────────────────────────── -->
         <div class="dora-big-grid">
 
@@ -268,8 +325,8 @@
                         <span class="num" th:text="${row.deploysPerWeek()}">0</span><span class="svc-unit">/нед</span>
                     </td>
                     <td class="svc-td svc-td-num">
-                        <span class="num" th:text="${row.leadTimeHours() != null ? #numbers.formatDecimal(row.leadTimeHours(), 1, 1) : '—'}">—</span>
-                        <span class="svc-unit" th:if="${row.leadTimeHours() != null}">ч</span>
+                        <span class="num" th:text="${row.leadTimeDays() != null ? #numbers.formatDecimal(row.leadTimeDays(), 1, 1) : '—'}">—</span>
+                        <span class="svc-unit" th:if="${row.leadTimeDays() != null}">д</span>
                     </td>
                     <td class="svc-td svc-td-num">
                         <span class="num svc-cfr-value"
@@ -490,7 +547,7 @@
         <div class="releases-empty" th:if="${releases == null or releases.isEmpty()}">
             <div class="releases-empty-icon">🏷</div>
             <div class="releases-empty-title">Релизы не найдены</div>
-            <div class="releases-empty-desc">Убедитесь, что в GitLab созданы теги/релизы. Синк релизов запускается автоматически после каждого обогащения.</div>
+            <div class="releases-empty-desc">Убедитесь, что в GitLab созданы теги/релизы, и запустите синк вручную.</div>
             <button class="btn-release-sync" id="syncReleasesBtnEmpty" onclick="triggerReleaseSyncSelected()" style="margin-top:12px" type="button">
                 Запустить синк релизов
             </button>

@@ -2,8 +2,12 @@ package io.simakov.analytics.web;
 
 import io.simakov.analytics.domain.repository.CommitContributorProjection;
 import io.simakov.analytics.domain.repository.MergeRequestCommitRepository;
+import io.simakov.analytics.domain.repository.MergeRequestRepository;
+import io.simakov.analytics.domain.repository.MrAuthorWithCountProjection;
+import io.simakov.analytics.domain.repository.TrackedUserAliasRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.security.WorkspaceContext;
+import io.simakov.analytics.util.BotDetector;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,7 +35,9 @@ public class ContributorDiscoveryService {
     private static final int MIN_NAME_LENGTH_FOR_MERGE = 5;
 
     private final MergeRequestCommitRepository commitRepository;
+    private final MergeRequestRepository mergeRequestRepository;
     private final TrackedUserRepository trackedUserRepository;
+    private final TrackedUserAliasRepository aliasRepository;
 
     /**
      * Second pass: contributors sharing the same normalized display name are merged.
@@ -79,6 +85,8 @@ public class ContributorDiscoveryService {
             int totalCommits = group.stream().mapToInt(DiscoveredContributor::commitCount).sum();
             boolean tracked = group.stream().anyMatch(DiscoveredContributor::alreadyTracked);
 
+            boolean bot = group.stream().allMatch(DiscoveredContributor::suspectedBot);
+            long totalMrs = group.stream().mapToLong(DiscoveredContributor::mrCount).sum();
             result.add(new DiscoveredContributor(
                 primary.email(),
                 primary.primaryName(),
@@ -86,7 +94,9 @@ public class ContributorDiscoveryService {
                 totalCommits,
                 new ArrayList<>(allRepos),
                 tracked,
-                mergedEmails
+                mergedEmails,
+                bot,
+                totalMrs
             ));
             group.forEach(x -> consumed.add(x.email()));
         }
@@ -123,7 +133,9 @@ public class ContributorDiscoveryService {
             totalCommits,
             new ArrayList<>(emailRepos.getOrDefault(email, Set.of())),
             trackedEmails.contains(email),
-            List.of()
+            List.of(),
+            BotDetector.isSuspectedBot(primaryName, null, email),
+            0
         );
     }
 
@@ -161,7 +173,48 @@ public class ContributorDiscoveryService {
             .sorted(Comparator.comparingInt(DiscoveredContributor::commitCount).reversed())
             .collect(Collectors.toCollection(ArrayList::new));
 
-        return mergeByName(byEmail);
+        List<DiscoveredContributor> merged = mergeByName(byEmail);
+
+        // Add MR-based authors not found via commits (e.g. placeholder/bot accounts)
+        Set<String> seenNames = merged.stream()
+            .map(c -> normalizeName(c.primaryName()))
+            .collect(Collectors.toSet());
+        appendMrAuthors(workspaceId, seenNames, merged);
+
+        return merged;
+    }
+
+    /**
+     * Appends MR authors (by gitlab_user_id) that were not found via commit-based discovery.
+     * This catches placeholder/bot accounts that have MRs but no commits.
+     */
+    private void appendMrAuthors(Long workspaceId,
+                                 Set<String> seenNormalizedNames,
+                                 List<DiscoveredContributor> result) {
+        List<MrAuthorWithCountProjection> mrAuthors =
+            mergeRequestRepository.findDistinctAuthorsByWorkspace(workspaceId);
+        for (MrAuthorWithCountProjection author : mrAuthors) {
+            String name = author.getAuthorName() != null ? author.getAuthorName() : author.getAuthorUsername();
+            String username = author.getAuthorUsername();
+            // Use username as unique key — multiple users can share the same display name
+            String uniqueKey = normalizeName(username);
+            if (seenNormalizedNames.contains(uniqueKey) || seenNormalizedNames.contains(normalizeName(name))) {
+                continue;
+            }
+            seenNormalizedNames.add(uniqueKey);
+            boolean tracked = aliasRepository.existsByGitlabUserId(author.getAuthorGitlabUserId());
+            result.add(new DiscoveredContributor(
+                username + "@gitlab",
+                name,
+                List.of(),
+                0,
+                List.of(),
+                tracked,
+                List.of(),
+                BotDetector.isSuspectedBot(name, username),
+                author.getMrCount()
+            ));
+        }
     }
 
     private Set<String> buildTrackedEmailSet(Long workspaceId) {

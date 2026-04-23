@@ -99,6 +99,26 @@ public interface MergeRequestRepository extends JpaRepository<MergeRequest, Long
     List<UserMrCountProjection> countMrsByTrackedUser(@Param("workspaceId") Long workspaceId);
 
     /**
+     * Distinct MR authors for a workspace with MR count.
+     * Used by contributor discovery to show MR-based authors alongside commit-based ones.
+     */
+    @Query(nativeQuery = true,
+           value = """
+               SELECT mr.author_gitlab_user_id AS authorGitlabUserId,
+                      mr.author_name           AS authorName,
+                      mr.author_username        AS authorUsername,
+                      COUNT(mr.id)              AS mrCount
+               FROM merge_request mr
+               JOIN tracked_project tp ON tp.id = mr.tracked_project_id
+               WHERE tp.workspace_id = :workspaceId
+                 AND mr.author_gitlab_user_id IS NOT NULL
+                 AND mr.author_username IS NOT NULL
+               GROUP BY mr.author_gitlab_user_id, mr.author_name, mr.author_username
+               ORDER BY mrCount DESC
+               """)
+    List<MrAuthorWithCountProjection> findDistinctAuthorsByWorkspace(@Param("workspaceId") Long workspaceId);
+
+    /**
      * All currently open MRs for the given projects.
      * Used by insight rules to detect stuck or long-open MRs.
      */

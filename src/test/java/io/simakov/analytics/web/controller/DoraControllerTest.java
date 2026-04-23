@@ -194,6 +194,51 @@ class DoraControllerTest extends BaseIT {
             .doesNotContain("secret-repo");
     }
 
+    // ── Setup block ──────────────────────────────────────────────────────
+
+    @Test
+    void doraPageShowsSetupBlockWhenNoReleasesAndNoIncidents() throws Exception {
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("dora-setup-block");
+        assertThat(body).contains("Релизы и деплои");
+        assertThat(body).contains("Инциденты из Jira");
+    }
+
+    @Test
+    void doraPageHidesReleasesStepWhenReleasesExist() throws Exception {
+        saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
+
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        // Setup block still shown (no incidents), but releases step shows checkmark
+        assertThat(body).contains("Данные загружены");
+        assertThat(body).doesNotContain("Синхронизировать релизы");
+    }
+
+    @Test
+    void doraPageShowsJiraConfigHintWhenJiraNotConfigured() throws Exception {
+        // In test profile jira.base-url is empty → setup block shows config hint
+        saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
+        saveIncident("MI-1", now.minus(2, ChronoUnit.DAYS));
+
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        // Jira is not configured (base-url is blank in test profile)
+        // → setup block still visible with config hint
+        assertThat(body).contains("dora-setup-block");
+        assertThat(body).contains("JIRA_BASE_URL");
+    }
+
     // ── Change Failure Rate ──────────────────────────────────────────────
 
     @Test

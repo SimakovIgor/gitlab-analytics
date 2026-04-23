@@ -269,7 +269,7 @@
         <!-- ── Шаг 4: Синхронизация ───────────────────────────────────────── -->
         <div id="ob-content-4"
              th:class="${hasProjects and !(hasSyncCompleted and activeJobIds.isEmpty())} ? 'ob-step-body' : 'ob-step-body hidden'">
-            <div class="ob-eyebrow">Синхронизация · фаза 1 из 3</div>
+            <div class="ob-eyebrow">Синхронизация · фаза 1 из 2</div>
             <h1 class="ob-title">Собираем список MR</h1>
             <p class="ob-sub"
                th:classappend="${lastFailedSyncJobId != null and activeJobIds.isEmpty()} ? ' hidden' : ''">
@@ -310,16 +310,7 @@
                 </div>
             </div>
 
-            <!-- Превью фазы 3 -->
-            <div class="ob-phase2-preview" style="margin-top:8px">
-                <div class="ob-phase2-num">3</div>
-                <div>
-                    <div class="ob-phase2-eyebrow">Фаза 3 · DORA-метрики</div>
-                    <div class="ob-phase2-desc">
-                        Релизы и деплои из GitLab CI/CD — данные для расчёта DORA-метрик команды.
-                    </div>
-                </div>
-            </div>
+            <!-- DORA-метрики (релизы, инциденты) настраиваются отдельно на странице DORA -->
         </div>
 
         <!-- ── Шаг 5: Состав команды ──────────────────────────────────────── -->
@@ -436,19 +427,6 @@
                             <span class="ob-phase2-counter-loaded">загружено</span>
                         </div>
                         <div class="ob-phase2-counter-label">Коммент.</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Фаза 3: DORA-релизы (состояние обновляется JS-поллингом) -->
-            <div class="ob-phase-card ob-phase-card-pending" id="ob-phase3-card">
-                <div id="ob-phase3-icon">
-                    <div class="ob-phase2-num" style="margin-top:2px">3</div>
-                </div>
-                <div style="flex:1">
-                    <div class="ob-phase-title" id="ob-phase3-title">Фаза 3 · DORA-метрики</div>
-                    <div class="ob-phase-desc" id="ob-phase3-desc">
-                        Релизы и деплои из GitLab CI/CD — данные для расчёта DORA-метрик команды.
                     </div>
                 </div>
             </div>
@@ -1275,22 +1253,27 @@
     }
 
     function renderTrackedUserRow(u, idx) {
-        const ghost = isLikelyBot(u.displayName);
+        const ghost = u.suspectedBot === true;
+        const checked = !ghost;
         const hue = ghost ? null : AVATAR_HUES[idx % AVATAR_HUES.length];
         const avatarStyle = hue
             ? `background:oklch(0.62 0.14 ${hue});color:#fff`
             : `background:var(--bg-3);color:var(--fg-3)`;
         const letter = (u.displayName || '?')[0].toUpperCase();
-        const botBadge = ghost ? '<span class="ob-bot-badge">bot?</span>' : '';
+        const botBadge = ghost ? '<span class="ob-bot-badge">BOT?</span>' : '';
         const mrCount = u.mrCount > 0 ? `<div class="ob-check-mrs num">${u.mrCount} MR · 360d</div>` : '';
-        return `<label class="ob-check-row" onclick="obToggleRow(event, this)">
-            <input type="checkbox" class="ob-check" data-user-id="${u.id}" checked
+        const rowClass = ghost ? 'ob-check-row ob-check-row-bot' : 'ob-check-row';
+        const boxClass = checked ? 'ob-check-box ob-check-box-checked' : 'ob-check-box';
+        const checkSvg = checked
+            ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5 L5 9 L10 3.5" stroke="var(--accent-fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            : '';
+        return `<label class="${rowClass}" onclick="obToggleRow(event, this)">
+            <input type="checkbox" class="ob-check" data-user-id="${u.id}" ${checked ? 'checked' : ''}
+                   ${u.gitlabUserId ? 'data-gitlab-user-id="' + u.gitlabUserId + '"' : ''}
+                   ${u.username ? 'data-username="' + escHtml(u.username) + '"' : ''}
                    style="position:absolute;opacity:0;pointer-events:none" onchange="updateObCounter()">
-            <div class="ob-check-box ob-check-box-checked" id="ob-chkbox-${u.id}">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 6.5 L5 9 L10 3.5" stroke="var(--accent-fg)"
-                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+            <div class="${boxClass}" id="ob-chkbox-${u.id}">
+                ${checkSvg}
             </div>
             <div class="ob-avatar-colored" style="${avatarStyle}">${escHtml(letter)}</div>
             <div style="flex:1;min-width:0">
@@ -1387,7 +1370,9 @@
         }
         setDiscoveryActionsLocked(true);
         try {
-            await Promise.all(unchecked.map(cb => api('DELETE', '/settings/users/' + cb.dataset.userId)));
+            await Promise.all(unchecked
+                .filter(cb => Number(cb.dataset.userId) > 0)
+                .map(cb => api('DELETE', '/settings/users/' + cb.dataset.userId)));
             const checkedCount = document.querySelectorAll('#ob-discovery-list .ob-check:checked').length;
             obAddedDevs = checkedCount;
             OB_STATE.hasUsers = true;
@@ -1425,92 +1410,6 @@
         }
         if (!phase2Timer) {
             startPhase2Counters();
-        }
-        startPhase3Polling();
-    }
-
-    // ── Фаза 3: поллинг RELEASE-джоба ────────────────────────────────────────
-    let phase3PollInterval = null;
-    let phase3PollAttempts = 0;
-    const PHASE3_MAX_ATTEMPTS = 40; // 40 × 3с = 2 мин ожидания старта
-
-    function startPhase3Polling() {
-        if (phase3PollInterval) {
-            return;
-        }
-        phase3PollInterval = setInterval(async () => {
-            phase3PollAttempts++;
-            try {
-                const resp = await fetch('/api/v1/sync/jobs/latest-release', {
-                    headers: {
-                        [document.querySelector('meta[name="_csrf_header"]').content]:
-                        document.querySelector('meta[name="_csrf"]').content
-                    }
-                });
-                if (resp.status === 404) {
-                    // джоб ещё не создан — ждём, но не бесконечно
-                    if (phase3PollAttempts >= PHASE3_MAX_ATTEMPTS) {
-                        clearInterval(phase3PollInterval);
-                    }
-                    return;
-                }
-                const job = await resp.json();
-                if (job.status === 'STARTED') {
-                    setPhase3Running();
-                } else if (job.status === 'COMPLETED') {
-                    setPhase3Done();
-                    clearInterval(phase3PollInterval);
-                } else if (job.status === 'FAILED') {
-                    clearInterval(phase3PollInterval);
-                }
-            } catch (e) { /* ignore network errors */
-            }
-        }, 3000);
-    }
-
-    function setPhase3Running() {
-        const card = document.getElementById('ob-phase3-card');
-        const icon = document.getElementById('ob-phase3-icon');
-        const title = document.getElementById('ob-phase3-title');
-        const desc = document.getElementById('ob-phase3-desc');
-        if (!card) {
-            return;
-        }
-        card.className = 'ob-phase-card ob-phase-card-running';
-        if (icon) {
-            icon.innerHTML = '<svg class="ob-sync-spinner" width="22" height="22" viewBox="0 0 22 22">'
-                + '<circle cx="11" cy="11" r="8" fill="none" stroke="var(--border-2)" stroke-width="2"/>'
-                + '<path d="M19 11 A 8 8 0 0 0 11 3" fill="none" stroke="var(--accent)" stroke-linecap="round" stroke-width="2"/>'
-                + '</svg>';
-        }
-        if (title) {
-            title.textContent = 'Фаза 3 · загружаем релизы';
-        }
-        if (desc) {
-            desc.textContent = 'Синхронизируем теги и деплои из GitLab CI/CD...';
-        }
-    }
-
-    function setPhase3Done() {
-        const card = document.getElementById('ob-phase3-card');
-        const icon = document.getElementById('ob-phase3-icon');
-        const title = document.getElementById('ob-phase3-title');
-        const desc = document.getElementById('ob-phase3-desc');
-        if (!card) {
-            return;
-        }
-        card.className = 'ob-phase-card ob-phase-card-good';
-        if (icon) {
-            icon.innerHTML = '<div class="ob-phase-check">'
-                + '<svg width="12" height="12" viewBox="0 0 20 20">'
-                + '<path d="M4 10.5 L8 14.5 L16 6" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>'
-                + '</svg></div>';
-        }
-        if (title) {
-            title.textContent = 'Фаза 3 · DORA-метрики готовы';
-        }
-        if (desc) {
-            desc.textContent = 'Релизы загружены — данные DORA уже доступны на странице Сервисы & DORA.';
         }
     }
 

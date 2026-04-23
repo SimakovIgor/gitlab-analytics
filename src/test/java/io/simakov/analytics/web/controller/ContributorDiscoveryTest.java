@@ -148,6 +148,137 @@ class ContributorDiscoveryTest extends BaseIT {
     }
 
     @Test
+    void marksBotFromCommitWithSuspectedBotFlag() throws Exception {
+        MergeRequest mr = saveMergedMr(10L);
+        commitRepository.save(MergeRequestCommit.builder()
+            .mergeRequestId(mr.getId())
+            .gitlabCommitSha("bot001")
+            .authorEmail("noreply@gitlab.com")
+            .authorName("GitLab Bot")
+            .authoredDate(Instant.now())
+            .build());
+
+        MvcResult result = mockMvc.perform(get("/settings/users/discovered")
+                .session(webSession)
+                .with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("noreply@gitlab.com");
+        assertThat(body).contains("\"suspectedBot\":true");
+    }
+
+    @Test
+    void humanContributorHasSuspectedBotFalse() throws Exception {
+        MergeRequest mr = saveMergedMr(11L);
+        commitRepository.save(MergeRequestCommit.builder()
+            .mergeRequestId(mr.getId())
+            .gitlabCommitSha("human01")
+            .authorEmail("alice@company.com")
+            .authorName("Alice Smith")
+            .authoredDate(Instant.now())
+            .build());
+
+        MvcResult result = mockMvc.perform(get("/settings/users/discovered")
+                .session(webSession)
+                .with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("alice@company.com");
+        assertThat(body).contains("\"suspectedBot\":false");
+    }
+
+    @Test
+    void includesMrAuthorPlaceholderAsBot() throws Exception {
+        mergeRequestRepository.save(MergeRequest.builder()
+            .trackedProjectId(projectId)
+            .gitlabMrId(100L)
+            .gitlabMrIid(100L)
+            .state(MrState.MERGED)
+            .authorGitlabUserId(9001L)
+            .authorName("Placeholder github Source User")
+            .authorUsername("user_placeholder_abc123")
+            .createdAtGitlab(Instant.now())
+            .mergedAtGitlab(Instant.now())
+            .build());
+
+        MvcResult result = mockMvc.perform(get("/settings/users/discovered")
+                .session(webSession)
+                .with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("Placeholder github Source User");
+        assertThat(body).contains("\"suspectedBot\":true");
+        assertThat(body).contains("\"alreadyTracked\":false");
+    }
+
+    @Test
+    void includesMrAuthorHumanNotFoundInCommits() throws Exception {
+        mergeRequestRepository.save(MergeRequest.builder()
+            .trackedProjectId(projectId)
+            .gitlabMrId(200L)
+            .gitlabMrIid(200L)
+            .state(MrState.MERGED)
+            .authorGitlabUserId(9002L)
+            .authorName("Charlie Developer")
+            .authorUsername("c.developer")
+            .createdAtGitlab(Instant.now())
+            .mergedAtGitlab(Instant.now())
+            .build());
+
+        MvcResult result = mockMvc.perform(get("/settings/users/discovered")
+                .session(webSession)
+                .with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("Charlie Developer");
+        assertThat(body).contains("\"suspectedBot\":false");
+        assertThat(body).contains("\"mrCount\":1");
+    }
+
+    @Test
+    void mrAuthorMarkedAsTrackedWhenAliasExists() throws Exception {
+        TrackedUser user = trackedUserRepository.save(TrackedUser.builder()
+            .workspaceId(testWorkspaceId)
+            .displayName("Dave")
+            .enabled(true)
+            .build());
+        aliasRepository.save(TrackedUserAlias.builder()
+            .trackedUserId(user.getId())
+            .gitlabUserId(9003L)
+            .username("d.dave")
+            .build());
+
+        mergeRequestRepository.save(MergeRequest.builder()
+            .trackedProjectId(projectId)
+            .gitlabMrId(300L)
+            .gitlabMrIid(300L)
+            .state(MrState.MERGED)
+            .authorGitlabUserId(9003L)
+            .authorName("Dave")
+            .authorUsername("d.dave")
+            .createdAtGitlab(Instant.now())
+            .mergedAtGitlab(Instant.now())
+            .build());
+
+        MvcResult result = mockMvc.perform(get("/settings/users/discovered")
+                .session(webSession)
+                .with(oauth2Login()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).contains("\"alreadyTracked\":true");
+    }
+
+    @Test
     void marksContributorAsTrackedWhenEmailMatchesAlias() throws Exception {
         TrackedUser user = trackedUserRepository.save(TrackedUser.builder()
             .workspaceId(testWorkspaceId)
