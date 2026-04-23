@@ -347,6 +347,39 @@ public class GitLabApiClient {
                 new GitLabApiException("GitLab API failed after " + maxRetries + " retries: " + retrySignal.failure().getMessage()));
     }
 
+    /**
+     * Verify the token can access merge requests for the given project.
+     * Fetches one page with per_page=1 to minimise overhead.
+     * Throws GitLabApiException on 403/404 so callers can report the error early.
+     */
+    public void verifyProjectAccess(String baseUrl,
+                                    String token,
+                                    Long gitlabProjectId) {
+        String url = baseUrl + "/api/v4/projects/" + gitlabProjectId
+            + "/merge_requests?per_page=1&state=all";
+        webClient.get()
+            .uri(url)
+            .header(PRIVATE_TOKEN_HEADER, token)
+            .retrieve()
+            .onStatus(HttpStatusCode::isError, resp ->
+                resp.bodyToMono(String.class)
+                    .map(body -> {
+                        int code = resp.statusCode().value();
+                        if (code == 403) {
+                            return new GitLabApiException(
+                                "Токен не имеет доступа к merge requests проекта "
+                                    + gitlabProjectId
+                                    + ". Проверьте scope токена (нужен api или read_api) и уровень доступа к проекту (минимум Reporter).",
+                                resp.statusCode());
+                        }
+                        return new GitLabApiException(
+                            "GitLab API error " + resp.statusCode() + ": " + body,
+                            resp.statusCode());
+                    }))
+            .toBodilessEntity()
+            .block(readTimeout());
+    }
+
     private Duration readTimeout() {
         return Duration.ofSeconds(appProperties.gitlab().readTimeoutSeconds());
     }

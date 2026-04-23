@@ -124,9 +124,11 @@ public class SettingsService {
 
     public CreatedProjectResult createProject(CreateTrackedProjectRequest request) {
         Long workspaceId = WorkspaceContext.get();
-        gitSourceRepository.findById(request.gitSourceId())
+        GitSource source = gitSourceRepository.findById(request.gitSourceId())
             .filter(s -> workspaceId.equals(s.getWorkspaceId()))
             .orElseThrow(() -> new ResourceNotFoundException("GitSource", request.gitSourceId()));
+        gitLabApiClient.verifyProjectAccess(
+            source.getBaseUrl(), request.token(), request.gitlabProjectId());
         TrackedProject project = trackedProjectMapper.toEntity(request);
         project.setWorkspaceId(workspaceId);
         project.setTokenEncrypted(encryptionService.encrypt(request.token()));

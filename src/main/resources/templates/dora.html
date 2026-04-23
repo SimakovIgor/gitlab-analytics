@@ -337,18 +337,11 @@
                         <span class="num" th:text="${row.incidents()}">0</span>
                     </td>
                     <td class="svc-td svc-td-trend">
-                        <span class="svc-trend-arrow"
-                              th:classappend="${row.trend() == 'up' ? 'svc-trend-up' : (row.trend() == 'down' ? 'svc-trend-down' : 'svc-trend-flat')}">
-                            <svg th:if="${row.trend() == 'up'}" width="14" height="14" viewBox="0 0 12 12" fill="none">
-                                <path d="M6 10V2M2.5 5.5L6 2L9.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <svg th:if="${row.trend() == 'down'}" width="14" height="14" viewBox="0 0 12 12" fill="none">
-                                <path d="M6 2V10M2.5 6.5L6 10L9.5 6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <svg th:if="${row.trend() == 'flat'}" width="14" height="14" viewBox="0 0 12 12" fill="none">
-                                <path d="M2 6H10M6.5 3.5L10 6L6.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </span>
+                        <svg class="svc-trend-spark"
+                             th:id="'svc-spark-' + ${row.projectId()}"
+                             th:data-values="${row.trendData()}"
+                             th:data-trend="${row.trend()}"
+                             width="80" height="28" />
                     </td>
                 </tr>
                 </tbody>
@@ -1241,6 +1234,46 @@
             btn.classList.toggle('release-expand-btn-open', !isOpen);
         }
     }
+
+    // ── Service Health sparklines ──────────────────────────────────────────
+    (function () {
+        var COLORS = {up: 'var(--good)', down: 'var(--bad)', flat: 'var(--fg-3)'};
+        document.querySelectorAll('.svc-trend-spark').forEach(function (svg) {
+            var raw = svg.dataset.values;
+            if (!raw) return;
+            var values = JSON.parse(raw);
+            if (!values || values.length < 2) return;
+            var trend = svg.dataset.trend || 'flat';
+            var color = COLORS[trend] || COLORS.flat;
+            var w = parseFloat(svg.getAttribute('width')) || 80;
+            var h = parseFloat(svg.getAttribute('height')) || 28;
+            var max = Math.max.apply(null, values);
+            var min = Math.min.apply(null, values);
+            var range = max - min || 1;
+            var step = w / (values.length - 1);
+            var pts = values.map(function (v, i) {
+                var x = i * step;
+                var y = (h - 4) - ((v - min) / range) * (h - 8) + 2;
+                return x.toFixed(1) + ',' + y.toFixed(1);
+            });
+            var ns = 'http://www.w3.org/2000/svg';
+            var path = document.createElementNS(ns, 'path');
+            path.setAttribute('d', 'M ' + pts.join(' L '));
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '1.8');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+            svg.appendChild(path);
+            var lastPt = pts[pts.length - 1].split(',');
+            var circle = document.createElementNS(ns, 'circle');
+            circle.setAttribute('cx', lastPt[0]);
+            circle.setAttribute('cy', lastPt[1]);
+            circle.setAttribute('r', '3');
+            circle.setAttribute('fill', color);
+            svg.appendChild(circle);
+        });
+    })();
 </script>
 
 </body>

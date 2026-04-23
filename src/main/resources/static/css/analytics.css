@@ -3895,7 +3895,7 @@ body {
 
 .svc-th-trend {
     text-align: right;
-    width: 6%;
+    width: 8%;
 }
 
 .svc-row {
@@ -4063,24 +4063,11 @@ body {
 
 .svc-td-trend {
     text-align: right;
+    padding-right: 12px;
 }
 
-.svc-trend-arrow {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.svc-trend-up {
-    color: var(--good);
-}
-
-.svc-trend-down {
-    color: var(--bad);
-}
-
-.svc-trend-flat {
-    color: var(--fg-3);
+.svc-trend-spark {
+    vertical-align: middle;
 }
 
 /* Chart header + legend */

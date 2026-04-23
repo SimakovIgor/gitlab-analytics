@@ -589,6 +589,9 @@ public class DoraService {
         // Trend: compare with previous period
         String trend = computeTrend(pid, days, healthScore, dateFrom, prevFrom);
 
+        // Trend sparkline: weekly health scores over the period
+        List<Integer> trendData = computeWeeklyTrend(pid, days);
+
         return new ServiceHealthRow(
             project.getId(),
             project.getName(),
@@ -598,7 +601,8 @@ public class DoraService {
             medianDays,
             cfrPercent,
             incidents,
-            trend
+            trend,
+            trendData
         );
     }
 
@@ -682,6 +686,19 @@ public class DoraService {
         return computeHealthScore(ltR, dfR, cfrR, mrs, days);
     }
 
+    private List<Integer> computeWeeklyTrend(List<Long> pid, int days) {
+        Instant now = DateTimeUtils.now();
+        int weekCount = Math.max(days / 7, 2);
+        int windowDays = 7;
+        List<Integer> scores = new ArrayList<>();
+        for (int i = weekCount - 1; i >= 0; i--) {
+            Instant to = now.minus((long) i * 7, ChronoUnit.DAYS);
+            Instant from = to.minus(windowDays, ChronoUnit.DAYS);
+            scores.add(computePeriodHealthScore(pid, windowDays, from, to));
+        }
+        return scores;
+    }
+
     public record ServiceHealthRow(
         Long projectId,
         String projectName,
@@ -691,7 +708,8 @@ public class DoraService {
         Double leadTimeDays,
         Double cfrPercent,
         long incidents,
-        String trend
+        String trend,
+        List<Integer> trendData
     ) {
 
         /**
