@@ -38,9 +38,8 @@
         <span class="nav-link nav-link-disabled">
             Команда <span class="nav-badge-soon">soon</span>
         </span>
-        <span class="nav-link nav-link-disabled">
-            Flow <span class="nav-badge-soon">soon</span>
-        </span>
+        <a href="/flow"
+           th:class="${activePage == 'flow'} ? 'nav-link nav-link-active' : 'nav-link'">Flow</a>
         <a href="/dora"
            th:class="${activePage == 'dora'} ? 'nav-link nav-link-active' : 'nav-link'">Сервисы</a>
         <span class="nav-link nav-link-disabled">

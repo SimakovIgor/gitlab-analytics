@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Flow — GitLab Analytics</title>
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+</head>
+<body class="app-layout">
+
+<header th:replace="~{fragments/topbar :: topbar('flow')}"></header>
+
+<div class="report-page">
+
+    <th:block th:replace="~{fragments/sidebar :: sidebar}"></th:block>
+
+    <main class="report-main">
+
+        <div id="sync-banners"></div>
+
+        <!-- ── Заголовок + период ───────────────────────────── -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    Flow
+                    <span style="color:var(--fg-3);font-weight:400"> · где MR залипают</span>
+                </h1>
+                <div class="page-subtitle">
+                    Путь MR от первого коммита до мержа. Разбиваем время по стадиям — видно где теряем часы.
+                </div>
+            </div>
+            <div class="page-header-right">
+                <div class="period-segmented">
+                    <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">7д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">30д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">90д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">180д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">360д
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фильтр репозиториев -->
+        <div class="repo-filter-row" th:if="${allProjects != null and allProjects.size() > 1}">
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3)">Репозитории</span>
+            <div class="filter-checkboxes">
+                <th:block th:each="project : ${allProjects}">
+                    <label class="filter-checkbox-label">
+                        <input class="filter-project-check" onchange="applyFilters()"
+                               th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
+                               th:value="${project.id}" type="checkbox">
+                        <span class="filter-chip-check">&#10003;</span>
+                        <span th:text="${project.name}">repo</span>
+                    </label>
+                </th:block>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             1. FLOW CURVE — Среднее время MR по стадиям
+             ══════════════════════════════════════════════════════ -->
+        <div class="chart-card" th:if="${!stages.isEmpty()}">
+            <div class="chart-card-header">
+                <div>
+                    <div class="chart-title">Среднее время MR по стадиям</div>
+                    <div id="flow-subtitle" style="font-size:11px;color:var(--fg-3);margin-top:2px"
+                         th:attr="data-mr-count=${mrCount}">
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px">
+                    <div style="display:flex;flex-direction:column;align-items:flex-end">
+                        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);font-weight:600">ИТОГО</span>
+                        <span class="num" style="font-size:22px;font-weight:600;color:var(--fg-0)"
+                              th:text="${totalHours} + 'ч'">0ч</span>
+                    </div>
+                </div>
+            </div>
+            <div id="flow-bars" style="display:flex;align-items:flex-end;gap:0;height:220px;padding:48px 0 56px">
+                <!-- rendered by JS from STAGES data -->
+            </div>
+        </div>
+        <div class="chart-card" style="text-align:center;padding:40px;color:var(--fg-3)"
+             th:if="${stages.isEmpty()}">
+            Нет данных о смёрженных MR за выбранный период.
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             2 columns: Stuck MRs + Review Balance
+             ══════════════════════════════════════════════════════ -->
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
+
+            <!-- ── 2a. Застрявшие MR ──────────────────────────── -->
+            <div class="chart-card" style="padding:0;overflow:hidden">
+                <div style="padding:14px 16px;border-bottom:1px solid var(--border-1);display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                        <div style="font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;color:var(--fg-0)">
+                            Застрявшие MR
+                            <span style="padding:2px 6px;border-radius:4px;font-size:10px;background:var(--bad-bg);color:var(--bad);font-weight:700"
+                                  th:text="${stuckCount}">0</span>
+                        </div>
+                        <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
+                            Открытые MR старше порога
+                        </div>
+                    </div>
+                    <div class="period-segmented">
+                        <button onclick="switchStuck(24)" type="button"
+                                th:class="${stuckHours == 24} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'">&gt;24ч</button>
+                        <button onclick="switchStuck(72)" type="button"
+                                th:class="${stuckHours == 72} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'">&gt;3д</button>
+                        <button onclick="switchStuck(168)" type="button"
+                                th:class="${stuckHours == 168} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'">&gt;7д</button>
+                    </div>
+                </div>
+
+                <div th:if="${stuckMrs.isEmpty()}" style="padding:32px;text-align:center;color:var(--fg-3);font-size:12px">
+                    Нет застрявших MR — все в движении!
+                </div>
+
+                <table style="width:100%;border-collapse:collapse;font-size:12px" th:unless="${stuckMrs.isEmpty()}">
+                    <thead>
+                    <tr style="background:var(--bg-2)">
+                        <th class="flow-th">#</th>
+                        <th class="flow-th" style="text-align:left">MR</th>
+                        <th class="flow-th" style="text-align:left">Автор</th>
+                        <th class="flow-th" style="text-align:right">Открыт</th>
+                        <th class="flow-th" style="text-align:right">Возраст</th>
+                        <th class="flow-th" style="text-align:right">+</th>
+                        <th class="flow-th" style="text-align:right">&minus;</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr style="border-bottom:1px solid var(--border-1)" th:each="mr, iter : ${stuckMrs}">
+                        <td class="flow-td num" style="color:var(--fg-3)" th:text="${iter.index + 1}">1</td>
+                        <td class="flow-td">
+                            <div style="display:flex;align-items:center;gap:6px">
+                                <span class="stuck-dot"
+                                      th:classappend="${mr.severity() == 'bad'} ? ' stuck-dot-glow'"
+                                      th:style="'background:var(--' + ${mr.severity()} + ')'"></span>
+                                <a style="color:var(--fg-0);text-decoration:none;font-size:12px"
+                                   target="_blank"
+                                   th:href="${mr.webUrl()}"
+                                   th:text="${#strings.abbreviate(mr.title(), 60)}">MR Title</a>
+                            </div>
+                        </td>
+                        <td class="flow-td" style="color:var(--fg-2);font-size:11px" th:text="${mr.authorName()}">Author</td>
+                        <td class="flow-td num" style="color:var(--fg-2);text-align:right;font-size:11px" th:text="${mr.opened()}">01.01</td>
+                        <td class="flow-td num" style="text-align:right;font-weight:600"
+                            th:style="'color:var(--' + ${mr.severity()} + ')'"
+                            th:text="${mr.daysOpen()} + 'д'">1д</td>
+                        <td class="flow-td num" style="color:var(--good);text-align:right" th:text="'+' + ${mr.additions()}">+0</td>
+                        <td class="flow-td num" style="color:var(--bad);text-align:right" th:text="'-' + ${mr.deletions()}">-0</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ── 2b. Review-нагрузка ────────────────────────── -->
+            <div class="chart-card">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+                    <div>
+                        <div style="font-size:14px;font-weight:600;color:var(--fg-0)">Review-нагрузка</div>
+                        <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
+                            Красная линия — среднее. Кто делает больше — кандидат на выгорание.
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${reviewBalance.isEmpty()}" style="padding:24px 0;text-align:center;color:var(--fg-3);font-size:12px">
+                    Нет данных о ревью за период.
+                </div>
+
+                <div id="review-balance-bars" style="display:flex;flex-direction:column;gap:6px">
+                    <th:block th:each="rb : ${reviewBalance}">
+                        <div style="display:grid;grid-template-columns:140px 1fr 48px;align-items:center;gap:10px">
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                                <div style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0"
+                                     th:style="'background:oklch(0.62 0.14 ' + ${(rb.userId() * 60 + 200) % 360} + ')'"
+                                     th:text="${#strings.substring(rb.displayName(), 0, 1).toUpperCase()}">A</div>
+                                <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                                      th:text="${rb.displayName()}">Name</span>
+                            </div>
+                            <div style="position:relative;height:18px;background:var(--bg-3);border-radius:3px">
+                                <div th:style="'width:' + ${reviewBalance.isEmpty() ? 0 : (rb.reviews() * 100 / reviewBalance.get(0).reviews())} + '%;height:100%;border-radius:3px;background:' + ${rb.reviews() > avgReviews ? 'var(--warn)' : (rb.reviews() < avgReviews * 0.6 ? 'var(--bad)' : 'var(--accent)')}"></div>
+                                <div th:if="${!reviewBalance.isEmpty() and reviewBalance.get(0).reviews() > 0}"
+                                     th:style="'position:absolute;left:' + ${avgReviews * 100 / reviewBalance.get(0).reviews()} + '%;top:-2px;bottom:-2px;width:1px;background:var(--fg-2);opacity:0.5'"></div>
+                            </div>
+                            <span class="num" style="font-size:11px;color:var(--fg-1);text-align:right"
+                                  th:text="${rb.reviews()}">0</span>
+                        </div>
+                    </th:block>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             3. REVIEW MATRIX — кто кого ревьюит
+             ══════════════════════════════════════════════════════ -->
+        <div class="chart-card" id="review-matrix-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+                <div>
+                    <div style="font-size:14px;font-weight:600;color:var(--fg-0)">Матрица ревью · кто кого ревьюит</div>
+                    <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
+                        Строка — ревьюер, столбец — автор. Видно перекосы и изоляцию.
+                    </div>
+                </div>
+            </div>
+            <div id="review-matrix-grid" style="overflow-x:auto"></div>
+        </div>
+
+    </main>
+</div>
+
+<style>
+    .flow-th {
+        padding: 8px 12px;
+        font-size: 10px;
+        color: var(--fg-3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+    }
+    .flow-td {
+        padding: 8px 12px;
+    }
+    .flow-bar-label {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--fg-0);
+        font-family: var(--font-mono);
+        text-align: center;
+        margin-bottom: 6px;
+    }
+    .flow-bar-stage {
+        font-size: 11px;
+        color: var(--fg-2);
+        text-align: center;
+        margin-top: 10px;
+    }
+    .flow-bar-pct {
+        font-size: 9px;
+        color: var(--fg-3);
+        font-family: var(--font-mono);
+        text-align: center;
+        margin-top: 2px;
+    }
+    .matrix-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-family: var(--font-mono);
+    }
+    .matrix-header-col {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        padding: 8px 4px;
+        background: var(--bg-1);
+        font-size: 10px;
+        color: var(--fg-2);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+    }
+    .matrix-header-row {
+        padding: 6px 10px;
+        background: var(--bg-1);
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .flow-bottleneck-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        background: var(--bad-bg);
+        color: var(--bad);
+        margin-bottom: 4px;
+    }
+    .flow-bar-desc {
+        font-size: 9px;
+        color: var(--fg-3);
+        text-align: center;
+        margin-top: 2px;
+        max-width: 160px;
+        line-height: 1.3;
+    }
+    .stuck-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .stuck-dot-glow {
+        box-shadow: 0 0 6px 1px var(--bad);
+    }
+</style>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    window.ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
+    window.ENRICHMENT_JOB_ID = /*[[${enrichmentJobId}]]*/ null;
+    window.RELEASE_JOB_IDS = /*[[${releaseJobIds}]]*/ [];
+    window.JIRA_JOB_IDS = /*[[${jiraJobIds}]]*/ [];
+    /*]]>*/
+</script>
+<script src="/js/sidebar.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    var STAGES = JSON.parse([[${stagesJson}]]);
+    var MATRIX_DATA = JSON.parse([[${matrixJson}]]);
+
+    // ── Flow bars ──
+    (function() {
+        var container = document.getElementById('flow-bars');
+        if (!container || !STAGES.length) return;
+
+        var total = STAGES.reduce(function(a, s) { return a + s.hours; }, 0);
+        if (total === 0) return;
+
+        var maxHours = Math.max.apply(null, STAGES.map(function(s) { return s.hours; }));
+        var bottleneckIdx = STAGES.indexOf(STAGES.reduce(function(a, b) { return a.hours >= b.hours ? a : b; }));
+        var bottleneck = STAGES[bottleneckIdx];
+        var bottleneckPct = Math.round(bottleneck.hours / total * 100);
+
+        // Subtitle: "Из всех N MR за период. X — Y% от общего времени."
+        var subtitleEl = document.getElementById('flow-subtitle');
+        if (subtitleEl) {
+            var mrCount = subtitleEl.getAttribute('data-mr-count') || '0';
+            subtitleEl.textContent = 'Из всех ' + mrCount + ' MR за период. '
+                + bottleneck.stage + ' \u2014 ' + bottleneckPct + '% от общего времени.';
+        }
+
+        STAGES.forEach(function(s, i) {
+            var col = document.createElement('div');
+            col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end';
+
+            if (i === bottleneckIdx && STAGES.length > 1) {
+                var tag = document.createElement('div');
+                tag.className = 'flow-bottleneck-tag';
+                tag.textContent = 'BOTTLENECK';
+                col.appendChild(tag);
+            }
+
+            var label = document.createElement('div');
+            label.className = 'flow-bar-label';
+            label.textContent = s.hours + 'ч';
+            col.appendChild(label);
+
+            var barH = Math.max(20, (s.hours / maxHours) * 110);
+            var bar = document.createElement('div');
+            bar.style.cssText = 'width:calc(100% - 16px);border-radius:4px;background:var(--' + s.color + ');opacity:' + (i === bottleneckIdx ? '1' : '0.4') + ';height:' + barH + 'px';
+            col.appendChild(bar);
+
+            var stage = document.createElement('div');
+            stage.className = 'flow-bar-stage';
+            stage.textContent = s.stage;
+            col.appendChild(stage);
+
+            var pct = document.createElement('div');
+            pct.className = 'flow-bar-pct';
+            pct.textContent = Math.round(s.hours / total * 100) + '%';
+            col.appendChild(pct);
+
+            if (s.description) {
+                var desc = document.createElement('div');
+                desc.className = 'flow-bar-desc';
+                desc.textContent = s.description;
+                col.appendChild(desc);
+            }
+
+            container.appendChild(col);
+        });
+    })();
+
+    // ── Review matrix ──
+    (function() {
+        var grid = document.getElementById('review-matrix-grid');
+        if (!grid || !MATRIX_DATA.devNames || !MATRIX_DATA.devNames.length) {
+            grid.innerHTML = '<div style="padding:24px 0;text-align:center;color:var(--fg-3);font-size:12px">Нет данных о ревью для построения матрицы.</div>';
+            return;
+        }
+
+        var names = MATRIX_DATA.devNames;
+        var m = MATRIX_DATA.matrix;
+        var size = names.length;
+        var cell = 34;
+        var maxV = 0;
+        for (var i = 0; i < size; i++) {
+            for (var j = 0; j < size; j++) {
+                if (m[i][j] > maxV) maxV = m[i][j];
+            }
+        }
+
+        var table = document.createElement('div');
+        table.style.cssText = 'display:inline-grid;grid-template-columns:140px repeat(' + size + ',' + cell + 'px);gap:1px;background:var(--border-1);padding:1px';
+
+        // top-left corner
+        var corner = document.createElement('div');
+        corner.style.background = 'var(--bg-1)';
+        table.appendChild(corner);
+
+        // column headers
+        names.forEach(function(n) {
+            var h = document.createElement('div');
+            h.className = 'matrix-header-col';
+            h.textContent = n;
+            table.appendChild(h);
+        });
+
+        // rows
+        for (var r = 0; r < size; r++) {
+            var rowH = document.createElement('div');
+            rowH.className = 'matrix-header-row';
+            rowH.innerHTML = '<div style="width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;background:oklch(0.62 0.14 ' + ((r * 60 + 200) % 360) + ')">' + names[r].charAt(0).toUpperCase() + '</div><span>' + names[r] + '</span>';
+            table.appendChild(rowH);
+
+            for (var c = 0; c < size; c++) {
+                var v = m[r][c];
+                var cellEl = document.createElement('div');
+                cellEl.className = 'matrix-cell';
+                cellEl.style.height = cell + 'px';
+                if (r === c) {
+                    cellEl.style.background = 'var(--bg-3)';
+                    cellEl.style.color = 'var(--fg-3)';
+                    cellEl.textContent = '—';
+                } else if (v === 0) {
+                    cellEl.style.background = 'var(--bg-1)';
+                } else {
+                    var intensity = maxV > 0 ? v / maxV : 0;
+                    cellEl.style.background = 'oklch(from var(--accent) l c h / ' + Math.max(0.1, intensity) + ')';
+                    cellEl.style.color = intensity > 0.5 ? '#fff' : 'var(--fg-1)';
+                    cellEl.textContent = v;
+                }
+                table.appendChild(cellEl);
+            }
+        }
+
+        grid.appendChild(table);
+    })();
+
+    // ── Filters ──
+    function applyFiltersWithPeriod(period) {
+        var params = new URLSearchParams();
+        params.set('period', period);
+        document.querySelectorAll('.filter-project-check:checked').forEach(function(cb) {
+            params.append('projectIds', cb.value);
+        });
+        window.location.href = '/flow?' + params.toString();
+    }
+
+    function applyFilters() {
+        var params = new URLSearchParams(window.location.search);
+        params.delete('projectIds');
+        document.querySelectorAll('.filter-project-check:checked').forEach(function(cb) {
+            params.append('projectIds', cb.value);
+        });
+        window.location.href = '/flow?' + params.toString();
+    }
+
+    function switchStuck(hours) {
+        var params = new URLSearchParams(window.location.search);
+        params.set('stuckHours', hours);
+        window.location.href = '/flow?' + params.toString();
+    }
+    /*]]>*/
+</script>
+
+</body>
+</html>

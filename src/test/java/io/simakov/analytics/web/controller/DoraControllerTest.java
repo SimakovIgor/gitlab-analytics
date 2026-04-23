@@ -92,6 +92,8 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageRendersAllMetricSections() throws Exception {
+        saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
+
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
@@ -244,6 +246,8 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageRendersCfrCardAsAvailable() throws Exception {
+        saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
+
         MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
             .andExpect(status().isOk())
             .andReturn();
