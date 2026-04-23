@@ -88,6 +88,11 @@ dependencyManagement {
     }
 }
 
+// ── JAR packaging ────────────────────────────────────────────────────────────
+// Disable the plain jar so build/libs/ contains exactly one artifact for Docker COPY
+tasks.jar { enabled = false }
+tasks.bootJar { archiveFileName.set("app.jar") }
+
 // ── Checkstyle ────────────────────────────────────────────────────────────────
 checkstyle {
     toolVersion = "10.17.0"

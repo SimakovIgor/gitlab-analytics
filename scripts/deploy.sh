@@ -50,14 +50,20 @@ if [[ "${SKIP_BUILD}" == "false" ]]; then
   info "Собираем JAR..."
   cd "${PROJECT_DIR}"
   ./gradlew bootJar -x test
-  JAR_FILE=$(ls -t "${PROJECT_DIR}"/build/libs/*.jar 2>/dev/null | head -1)
-  if [[ -z "${JAR_FILE}" ]]; then
-    error "JAR не найден после сборки!"
+  JAR_FILE="${PROJECT_DIR}/build/libs/app.jar"
+  if [[ ! -f "${JAR_FILE}" ]]; then
+    error "JAR не найден после сборки: ${JAR_FILE}"
     exit 1
   fi
-  success "JAR собран: $(basename "${JAR_FILE}")"
+  success "JAR собран: $(basename "${JAR_FILE}") ($(du -sh "${JAR_FILE}" | cut -f1))"
 else
-  info "Сборка пропущена (--skip-build)"
+  JAR_FILE="${PROJECT_DIR}/build/libs/app.jar"
+  if [[ ! -f "${JAR_FILE}" ]]; then
+    error "--skip-build указан, но JAR не найден: ${JAR_FILE}"
+    error "Запустите без --skip-build или выполните ./gradlew bootJar вручную."
+    exit 1
+  fi
+  info "Сборка пропущена (--skip-build), используем: $(basename "${JAR_FILE}")"
 fi
 
 # --- Синхронизация файлов ---
