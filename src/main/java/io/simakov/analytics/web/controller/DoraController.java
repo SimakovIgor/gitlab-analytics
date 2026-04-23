@@ -162,11 +162,11 @@ public class DoraController {
 
     @PostMapping("/dora/sync/releases")
     @ResponseBody
-    public List<Long> triggerReleaseSync(@RequestParam(required = false) Long projectId) {
+    public List<Map<String, Object>> triggerReleaseSync(@RequestParam(required = false) Long projectId) {
         List<Long> ids = projectId != null
             ? List.of(projectId)
             : List.of();
-        return settingsService.startReleaseSyncForProjects(ids);
+        return settingsService.startReleaseSyncForProjectsDetailed(ids);
     }
 
     @PostMapping("/dora/sync/incidents")

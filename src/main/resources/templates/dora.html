@@ -28,6 +28,15 @@
                 <div class="page-subtitle">Индустриальные метрики здоровья инженерной работы — по каждому сервису.</div>
             </div>
             <div class="page-header-right">
+                <div class="dora-action-btns" th:if="${hasReleases}">
+                    <button class="dora-action-btn" id="headerSyncReleasesBtn"
+                            onclick="triggerReleaseSync()" type="button">⟳ Релизы
+                    </button>
+                    <button class="dora-action-btn" id="headerSyncIncidentsBtn"
+                            onclick="triggerIncidentSync()"
+                            th:if="${jiraEnabled}" type="button">⟳ Инциденты
+                    </button>
+                </div>
                 <div class="period-segmented">
                     <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')"
                             th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
@@ -96,7 +105,7 @@
                         <div class="dora-setup-item-desc dora-setup-item-ok" th:if="${hasReleases}">Данные загружены</div>
                     </div>
                     <button class="btn-release-sync" id="setupSyncReleasesBtn"
-                            onclick="triggerReleaseSyncSelected()" th:if="${!hasReleases}" type="button">
+                            onclick="triggerSetupReleaseSync()" th:if="${!hasReleases}" type="button">
                         Синхронизировать релизы
                     </button>
                 </div>
@@ -132,7 +141,7 @@
             <!-- Lead Time for Changes (реальный: created_at → prod_deployed_at) -->
             <div class="dora-big-card">
                 <div class="dora-big-header">
-                    <span class="dora-big-label">Lead Time for Changes</span>
+                    <span class="dora-big-label">LEAD TIME</span>
                     <span class="rating-pill rating-pill-hoverable"
                           th:attr="data-tooltip=${leadTimeRatingDesc}"
                           th:classappend="${leadTimeRating.cssClass()}"
@@ -159,16 +168,13 @@
                 <div class="dora-big-secondary" th:if="${medianDays == null and totalMrs == 0}">
                     <span style="font-size:12px;color:var(--fg-3)">Нет данных — обновите релизы в секции ниже</span>
                 </div>
-                <div class="dora-big-desc">
-                    Медиана от создания MR до деплоя в прод.
-                    Считается по MR, попавшим в релиз с известной датой деплоя.
-                </div>
+                <div class="dora-big-desc">От открытия MR до продакшна</div>
             </div>
 
             <!-- Deploy Frequency (prod deploys per period) -->
             <div class="dora-big-card">
                 <div class="dora-big-header">
-                    <span class="dora-big-label">Deploy Frequency</span>
+                    <span class="dora-big-label">DEPLOY FREQ.</span>
                     <span class="rating-pill rating-pill-hoverable"
                           th:attr="data-tooltip=${deployFreqRatingDesc}"
                           th:classappend="${deployFreqRating.cssClass()}"
@@ -190,15 +196,13 @@
                 <div class="dora-big-secondary" th:if="${totalDeploys == 0}">
                     <span style="font-size:12px;color:var(--fg-3)">Нет данных — обновите релизы в секции ниже</span>
                 </div>
-                <div class="dora-big-desc">
-                    Частота деплоев в прод. Считается по релизам с известной датой prod deploy.
-                </div>
+                <div class="dora-big-desc">Деплои в продакшн, в среднем</div>
             </div>
 
             <!-- Change Failure Rate (incidents / deployments) -->
             <div class="dora-big-card">
                 <div class="dora-big-header">
-                    <span class="dora-big-label">Change Failure Rate</span>
+                    <span class="dora-big-label">CHANGE FAILURE</span>
                     <span class="rating-pill rating-pill-hoverable"
                           th:attr="data-tooltip=${cfrRatingDesc}"
                           th:classappend="${cfrRating.cssClass()}"
@@ -220,9 +224,7 @@
                 <div class="dora-big-secondary" th:if="${cfrPercent == null}">
                     <span style="font-size:12px;color:var(--fg-3)">Нет данных — нужны деплои и синк инцидентов из Jira</span>
                 </div>
-                <div class="dora-big-desc">
-                    Процент деплоев, вызвавших инциденты. Считается по Jira (компонент = сервис).
-                </div>
+                <div class="dora-big-desc">Деплоев, вызвавших инциденты</div>
             </div>
 
             <!-- MTTR (Mean Time To Recovery) -->
@@ -248,9 +250,7 @@
                 <div class="dora-big-secondary" th:if="${mttrHours == null}">
                     <span style="font-size:12px;color:var(--fg-3)">Нет данных — нужны инциденты с Start/End of Impact</span>
                 </div>
-                <div class="dora-big-desc">
-                    Среднее время восстановления. Считается по Jira (Start of Impact → End of Impact).
-                </div>
+                <div class="dora-big-desc">Среднее время восстановления</div>
             </div>
 
             <!-- COMING_SOON metrics rendered from DoraMetric enum -->
@@ -429,40 +429,12 @@
             </div>
         </div>
 
-        <!-- ── Jira incident sync ──────────────────────────────────────────── -->
-        <div class="chart-card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between"
-             th:if="${hasReleases and jiraEnabled}">
-            <div>
-                <div style="font-size:13px;font-weight:600;color:var(--fg-0)">Инциденты из Jira</div>
-                <div style="font-size:11px;color:var(--fg-3);margin-top:2px">
-                    Синк инцидентов для расчёта Change Failure Rate и MTTR
-                </div>
-            </div>
-            <button class="btn-release-sync" id="syncIncidentsBtn" onclick="triggerIncidentSync()" type="button">
-                ⟳ Обновить инциденты
-            </button>
-        </div>
-
         <!-- ── Releases timeline ─────────────────────────────────────────────── -->
         <div class="releases-section" th:if="${hasReleases and releases != null and !releases.isEmpty()}">
             <div class="releases-section-header">
                 <div>
                     <div class="releases-section-title">Релизы</div>
                     <div class="releases-section-subtitle">Тег → деплой в прод · MR в релизе · Lead Time от создания MR до прода</div>
-                </div>
-                <div class="releases-sync-controls">
-                    <select class="releases-project-select" id="releaseSyncProjectSelect"
-                            th:if="${allProjects != null and allProjects.size() > 1}">
-                        <option value="">Все репозитории</option>
-                        <option th:each="project : ${allProjects}"
-                                th:text="${project.name}"
-                                th:value="${project.id}">repo
-                        </option>
-                    </select>
-                    <button class="btn-release-sync" id="syncReleasesBtn" onclick="triggerReleaseSyncSelected()"
-                            title="Загрузить данные о деплоях из GitLab CI/CD"
-                            type="button">⟳ Обновить данные
-                    </button>
                 </div>
             </div>
             <div class="releases-list">
@@ -547,10 +519,7 @@
         <div class="releases-empty" th:if="${hasReleases and (releases == null or releases.isEmpty())}">
             <div class="releases-empty-icon">🏷</div>
             <div class="releases-empty-title">Релизы не найдены</div>
-            <div class="releases-empty-desc">Убедитесь, что в GitLab созданы теги/релизы, и запустите синк вручную.</div>
-            <button class="btn-release-sync" id="syncReleasesBtnEmpty" onclick="triggerReleaseSyncSelected()" style="margin-top:12px" type="button">
-                Запустить синк релизов
-            </button>
+            <div class="releases-empty-desc">Убедитесь, что в GitLab созданы теги/релизы, и нажмите «⟳ Релизы» в заголовке страницы.</div>
         </div>
 
     </main>
@@ -1120,44 +1089,47 @@
     }
 </script>
 <script>
-    function doReleaseSync(url, projectName, btns) {
-        btns.forEach(function (btn) {
-            btn.disabled = true;
-            btn.textContent = '⟳ запускаем...';
-        });
-        window.api('POST', url)
-            .then(function (jobIds) {
-                btns.forEach(function (btn) {
-                    btn.textContent = '✓ запущен';
-                });
-                if (Array.isArray(jobIds)) {
-                    jobIds.forEach(function (jobId) {
-                        window.showReleaseBanner(jobId, projectName);
+    function triggerSetupReleaseSync() {
+        var btn = document.getElementById('setupSyncReleasesBtn');
+        btn.disabled = true;
+        btn.textContent = '⟳ запускаем...';
+        window.api('POST', '/dora/sync/releases')
+            .then(function (jobs) {
+                btn.textContent = '✓ запущен';
+                if (Array.isArray(jobs)) {
+                    jobs.forEach(function (j) {
+                        window.showReleaseBanner(j.jobId, j.projectName);
                     });
                 }
             })
             .catch(function () {
-                btns.forEach(function (btn) {
-                    btn.disabled = false;
-                    btn.textContent = '⟳ релизы';
-                });
+                btn.disabled = false;
+                btn.textContent = 'Синхронизировать релизы';
             });
     }
 
-    function triggerReleaseSyncSelected() {
-        const select = document.getElementById('releaseSyncProjectSelect');
-        const btns = [...document.querySelectorAll('.btn-release-sync')];
-        const projectId = select ? select.value : '';
-        if (projectId) {
-            const projectName = select.options[select.selectedIndex].text;
-            doReleaseSync('/dora/sync/releases?projectId=' + projectId, projectName, btns);
-        } else {
-            doReleaseSync('/dora/sync/releases', 'все репозитории', btns);
-        }
+    function triggerReleaseSync() {
+        var btn = document.getElementById('headerSyncReleasesBtn');
+        btn.disabled = true;
+        btn.textContent = '⟳ запускаем...';
+        window.api('POST', '/dora/sync/releases')
+            .then(function (jobs) {
+                btn.textContent = '✓ запущен';
+                if (Array.isArray(jobs)) {
+                    jobs.forEach(function (j) {
+                        window.showReleaseBanner(j.jobId, j.projectName);
+                    });
+                }
+            })
+            .catch(function () {
+                btn.disabled = false;
+                btn.textContent = '⟳ Релизы';
+            });
     }
 
     function triggerIncidentSync() {
-        var btn = document.getElementById('syncIncidentsBtn');
+        var btn = document.getElementById('headerSyncIncidentsBtn');
+        if (!btn) return;
         btn.disabled = true;
         btn.textContent = '⟳ загружаем...';
         window.api('POST', '/dora/sync/incidents?days=360')
@@ -1169,7 +1141,7 @@
             })
             .catch(function () {
                 btn.disabled = false;
-                btn.textContent = '⟳ Обновить инциденты';
+                btn.textContent = '⟳ Инциденты';
             });
     }
 

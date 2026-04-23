@@ -39,6 +39,7 @@ source "${ENV_FILE}"
 SERVER_IP="${SERVER_IP:?SERVER_IP не задан в .env.prod}"
 SERVER_USER="${SERVER_USER:-root}"
 REMOTE_DIR="/opt/gitlab-analytics"
+COMPOSE_CMD="docker compose -f docker/docker-compose.prod.yml --project-name gitlab-analytics --env-file .env"
 
 warn "⚠️  Это сбросит ВСЕ данные на ${SERVER_IP}!"
 read -r -p "Введите 'yes' для подтверждения: " confirm
@@ -49,35 +50,31 @@ ssh "${SERVER_USER}@${SERVER_IP}" bash <<ENDSSH
 set -e
 cd ${REMOTE_DIR}
 
-echo "Сбрасываем таблицы..."
-docker compose -f docker/docker-compose.prod.yml exec -T postgres \
+echo "Сбрасываем все таблицы..."
+${COMPOSE_CMD} exec -T postgres \
   psql -U analytics -d gitlab_analytics <<'SQL'
-DROP TABLE IF EXISTS
-  merge_request_approval,
-  merge_request_note,
-  merge_request_discussion,
-  merge_request_commit,
-  merge_request,
-  release_tag,
-  tracked_user_alias,
-  metric_snapshot,
-  sync_job,
-  tracked_project,
-  tracked_user,
-  git_source,
-  workspace_member,
-  workspace,
-  app_user
-CASCADE;
+DO \$\$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != 'flyway_schema_history') LOOP
+    EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+  END LOOP;
+END \$\$;
 DELETE FROM flyway_schema_history;
 SQL
 echo "БД очищена."
 
 if [[ "${FULL}" == "true" ]]; then
   echo "Перезапускаем приложение..."
-  docker compose -f docker/docker-compose.prod.yml restart app
-  sleep 10
-  docker compose -f docker/docker-compose.prod.yml ps
+  ${COMPOSE_CMD} restart app
+  for i in \$(seq 1 30); do
+    if curl -sf http://localhost:8080/actuator/health/liveness > /dev/null 2>&1; then
+      echo "Приложение запущено!"
+      break
+    fi
+    sleep 2
+  done
+  ${COMPOSE_CMD} ps
 fi
 ENDSSH
 

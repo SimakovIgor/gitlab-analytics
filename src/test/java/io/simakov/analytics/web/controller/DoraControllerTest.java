@@ -98,9 +98,9 @@ class DoraControllerTest extends BaseIT {
 
         String body = result.getResponse().getContentAsString();
         assertThat(body)
-            .contains("Lead Time")
-            .contains("Deploy Frequency")
-            .contains("Change Failure Rate")
+            .contains("LEAD TIME")
+            .contains("DEPLOY FREQ.")
+            .contains("CHANGE FAILURE")
             .contains("MTTR");
     }
 
@@ -219,7 +219,8 @@ class DoraControllerTest extends BaseIT {
         String body = result.getResponse().getContentAsString();
         // Setup block still shown (no incidents), but releases step shows checkmark
         assertThat(body).contains("Данные загружены");
-        assertThat(body).doesNotContain("Синхронизировать релизы");
+        // The setup button is hidden (th:if="${!hasReleases}"), only JS fallback string remains
+        assertThat(body).doesNotContain("id=\"setupSyncReleasesBtn\"");
     }
 
     @Test
@@ -250,7 +251,7 @@ class DoraControllerTest extends BaseIT {
         String body = result.getResponse().getContentAsString();
         // CFR card should NOT be in the "Скоро" TBD section
         // It should render the real card with incident/deploy data
-        assertThat(body).contains("Change Failure Rate");
+        assertThat(body).contains("CHANGE FAILURE");
         assertThat(body).contains("cfrSparkline");
     }
 

@@ -361,6 +361,12 @@ public class SettingsService {
      * @return IDs of the newly created RELEASE jobs
      */
     public List<Long> startReleaseSyncForProjects(List<Long> projectIds) {
+        return startReleaseSyncForProjectsDetailed(projectIds).stream()
+            .map(m -> ((Number) m.get("jobId")).longValue())
+            .toList();
+    }
+
+    public List<Map<String, Object>> startReleaseSyncForProjectsDetailed(List<Long> projectIds) {
         Long workspaceId = WorkspaceContext.get();
         List<TrackedProject> targets;
         if (projectIds.isEmpty()) {
@@ -371,7 +377,7 @@ public class SettingsService {
                 .filter(p -> projectIds.contains(p.getId()))
                 .toList();
         }
-        List<Long> jobIds = new ArrayList<>();
+        List<Map<String, Object>> results = new ArrayList<>();
         Instant now = DateTimeUtils.now();
         for (TrackedProject project : targets) {
             List<Long> ids = List.of(project.getId());
@@ -384,9 +390,9 @@ public class SettingsService {
             );
             SyncJob job = syncJobService.createReleaseJob(workspaceId, request);
             syncOrchestrator.orchestrateReleaseAsync(job.getId());
-            jobIds.add(job.getId());
+            results.add(Map.of("jobId", job.getId(), "projectName", project.getName()));
         }
-        return jobIds;
+        return results;
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
