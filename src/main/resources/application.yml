@@ -42,10 +42,13 @@ spring:
 
 app:
   encryption:
-    # Шифрование токенов GitLab в базе данных.
+    # Шифрование токенов GitLab в базе данных (AES-256-GCM).
     # false — токены хранятся в открытом виде (NoOpEncryptionService).
-    # Для production установить true и предоставить реальный бин EncryptionService.
+    # true  — активирует AesEncryptionService; требует непустого ключа в ENCRYPTION_KEY.
     enabled: false
+    # 256-битный ключ в base64 (32 байта). Генерация: openssl rand -base64 32
+    # Игнорируется, если enabled=false.
+    key: ${ENCRYPTION_KEY:}
 
   gitlab:
     # Таймаут установки соединения с GitLab API (секунды)

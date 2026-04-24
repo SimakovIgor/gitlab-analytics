@@ -120,7 +120,7 @@ class MembersServiceTest extends BaseIT {
     @Test
     void removeMemberIsIdempotentForNonExistentUser() {
         // Should not throw
-        membersService.removeMember(testWorkspaceId, 99999L);
+        membersService.removeMember(testWorkspaceId, 99_999L);
 
         assertThat(memberRepository.findByWorkspaceId(testWorkspaceId)).hasSize(2);
     }

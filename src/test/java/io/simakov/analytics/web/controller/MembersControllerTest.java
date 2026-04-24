@@ -32,7 +32,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -161,7 +160,7 @@ class MembersControllerTest extends BaseIT {
     }
 
     @Test
-    void joinWithValidTokenUnauthenticatedRedirectsToOAuth() throws Exception {
+    void joinWithValidTokenUnauthenticatedRedirectsToLogin() throws Exception {
         WorkspaceInvite invite = inviteService.createInvite(testWorkspaceId, owner.getId());
 
         mockMvc.perform(get("/join").param("token", invite.getToken()))
