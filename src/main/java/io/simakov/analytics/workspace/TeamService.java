@@ -2,7 +2,9 @@ package io.simakov.analytics.workspace;
 
 import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.Team;
+import io.simakov.analytics.domain.model.TeamProject;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.repository.TeamProjectRepository;
 import io.simakov.analytics.domain.repository.TeamRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.web.dto.TeamDto;
@@ -20,6 +22,7 @@ public class TeamService {
 
     private final TeamRepository teamRepository;
     private final TrackedUserRepository trackedUserRepository;
+    private final TeamProjectRepository teamProjectRepository;
 
     public List<TeamDto> listTeams(Long workspaceId) {
         List<Team> teams = teamRepository.findByWorkspaceId(workspaceId);
@@ -30,13 +33,17 @@ public class TeamService {
         List<TrackedUser> allMembers = trackedUserRepository.findByWorkspaceIdAndTeamIdIn(workspaceId, teamIds);
         Map<Long, List<TrackedUser>> byTeam = allMembers.stream()
             .collect(Collectors.groupingBy(TrackedUser::getTeamId));
+        Map<Long, List<Long>> projectsByTeam = teamIds.stream()
+            .collect(Collectors.toMap(id -> id, teamProjectRepository::findProjectIdsByTeamId));
         return teams.stream()
-            .map(t -> TeamDto.of(t, byTeam.getOrDefault(t.getId(), List.of())))
+            .map(t -> TeamDto.of(t, byTeam.getOrDefault(t.getId(), List.of()),
+                projectsByTeam.getOrDefault(t.getId(), List.of())))
             .toList();
     }
 
     @Transactional
-    public TeamDto createTeam(Long workspaceId, String name, int colorIndex, List<Long> memberIds) {
+    public TeamDto createTeam(Long workspaceId, String name, int colorIndex,
+                               List<Long> memberIds, List<Long> projectIds) {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(workspaceId)
             .name(name)
@@ -45,28 +52,31 @@ public class TeamService {
         if (!memberIds.isEmpty()) {
             trackedUserRepository.assignTeamId(workspaceId, memberIds, team.getId());
         }
+        saveTeamProjects(team.getId(), projectIds);
         List<TrackedUser> members = trackedUserRepository.findByWorkspaceIdAndTeamIdIn(
             workspaceId, List.of(team.getId()));
-        return TeamDto.of(team, members);
+        return TeamDto.of(team, members, teamProjectRepository.findProjectIdsByTeamId(team.getId()));
     }
 
     @Transactional
-    public TeamDto updateTeam(Long workspaceId, Long teamId, String name, int colorIndex, List<Long> memberIds) {
+    public TeamDto updateTeam(Long workspaceId, Long teamId, String name, int colorIndex,
+                               List<Long> memberIds, List<Long> projectIds) {
         Team team = teamRepository.findByWorkspaceIdAndId(workspaceId, teamId)
             .orElseThrow(() -> new ResourceNotFoundException("Team", teamId));
         team.setName(name);
         team.setColorIndex(colorIndex);
         teamRepository.save(team);
 
-        // Replace member set: clear current, assign new
         trackedUserRepository.clearTeamId(workspaceId, teamId);
         if (!memberIds.isEmpty()) {
             trackedUserRepository.assignTeamId(workspaceId, memberIds, teamId);
         }
 
+        saveTeamProjects(teamId, projectIds);
+
         List<TrackedUser> members = trackedUserRepository.findByWorkspaceIdAndTeamIdIn(
             workspaceId, List.of(teamId));
-        return TeamDto.of(team, members);
+        return TeamDto.of(team, members, teamProjectRepository.findProjectIdsByTeamId(teamId));
     }
 
     @Transactional
@@ -74,11 +84,24 @@ public class TeamService {
         if (!teamRepository.findByWorkspaceIdAndId(workspaceId, teamId).isPresent()) {
             throw new ResourceNotFoundException("Team", teamId);
         }
-        // ON DELETE SET NULL FK constraint handles nulling out tracked_user.team_id
         teamRepository.deleteByWorkspaceIdAndId(workspaceId, teamId);
     }
 
     public int countTeams(Long workspaceId) {
         return teamRepository.countByWorkspaceId(workspaceId);
+    }
+
+    public List<Long> getProjectIds(Long teamId) {
+        return teamProjectRepository.findProjectIdsByTeamId(teamId);
+    }
+
+    private void saveTeamProjects(Long teamId, List<Long> projectIds) {
+        teamProjectRepository.deleteByTeamId(teamId);
+        if (!projectIds.isEmpty()) {
+            List<TeamProject> entries = projectIds.stream()
+                .map(pid -> TeamProject.of(teamId, pid))
+                .toList();
+            teamProjectRepository.saveAll(entries);
+        }
     }
 }

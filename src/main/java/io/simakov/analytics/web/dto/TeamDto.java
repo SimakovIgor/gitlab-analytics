@@ -10,10 +10,11 @@ public record TeamDto(
     String name,
     int colorIndex,
     int memberCount,
-    List<MemberInfo> members
+    List<MemberInfo> members,
+    List<Long> projectIds
 ) {
 
-    public static TeamDto of(Team team, List<TrackedUser> members) {
+    public static TeamDto of(Team team, List<TrackedUser> members, List<Long> projectIds) {
         return new TeamDto(
             team.getId(),
             team.getName(),
@@ -21,7 +22,8 @@ public record TeamDto(
             members.size(),
             members.stream()
                 .map(u -> new MemberInfo(u.getId(), u.getDisplayName()))
-                .toList()
+                .toList(),
+            projectIds
         );
     }
 

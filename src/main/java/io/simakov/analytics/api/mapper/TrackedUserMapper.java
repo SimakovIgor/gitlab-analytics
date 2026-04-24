@@ -17,6 +17,8 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface TrackedUserMapper {
 
+    @Mapping(target = "teamId",
+             ignore = true)
     @Mapping(target = "workspaceId",
              ignore = true)
     @Mapping(target = "id",
@@ -29,6 +31,8 @@ public interface TrackedUserMapper {
              expression = "java(true)")
     TrackedUser toEntity(CreateTrackedUserRequest request);
 
+    @Mapping(target = "teamId",
+             ignore = true)
     @Mapping(target = "workspaceId",
              ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

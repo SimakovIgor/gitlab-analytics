@@ -327,6 +327,14 @@
                 <label class="form-label">Участники</label>
                 <div id="team-members-list" class="member-checklist"></div>
             </div>
+            <div>
+                <label class="form-label">Репозитории команды
+                    <span style="font-weight:400;color:var(--fg-3);font-size:11px;margin-left:4px;">
+                        — нужны для Deploy и CFR на странице Сравнения
+                    </span>
+                </label>
+                <div id="team-projects-list" class="member-checklist"></div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeModal('modal-team')">Отмена</button>
@@ -528,6 +536,7 @@
 
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     let hasProjects = /*[[${hasProjects}]]*/ false;
+    const ALL_PROJECTS = JSON.parse(/*[[${allProjectsJson}]]*/ '[]');
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
 
@@ -657,6 +666,15 @@
             </label>`;
         }).join('');
 
+        // Repos checklist
+        const teamProjectIds = new Set(team && team.projectIds ? team.projectIds : []);
+        document.getElementById('team-projects-list').innerHTML = ALL_PROJECTS.length === 0
+            ? '<div style="font-size:12px;color:var(--fg-3);padding:4px 0;">Нет добавленных репозиториев</div>'
+            : ALL_PROJECTS.map(p => `<label class="member-checklist-item">
+                <input type="checkbox" value="${p.id}" ${teamProjectIds.has(p.id) ? 'checked' : ''}>
+                <span class="member-name">${p.name}</span>
+            </label>`).join('');
+
         document.getElementById('modal-team').classList.remove('hidden');
     }
 
@@ -682,8 +700,12 @@
             document.querySelectorAll('#team-members-list input[type=checkbox]:checked')
         ).map(el => parseInt(el.value));
 
+        const projectIds = Array.from(
+            document.querySelectorAll('#team-projects-list input[type=checkbox]:checked')
+        ).map(el => parseInt(el.value));
+
         try {
-            const payload = {name, colorIndex: selectedTeamColor, memberIds};
+            const payload = {name, colorIndex: selectedTeamColor, memberIds, projectIds};
             const result = editingTeamId
                 ? await api('PUT', '/settings/teams/' + editingTeamId, payload)
                 : await api('POST', '/settings/teams', payload);

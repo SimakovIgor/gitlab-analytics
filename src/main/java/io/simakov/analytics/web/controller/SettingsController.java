@@ -1,5 +1,7 @@
 package io.simakov.analytics.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simakov.analytics.api.dto.request.CreateGitSourceRequest;
 import io.simakov.analytics.api.dto.request.CreateTrackedProjectRequest;
 import io.simakov.analytics.api.dto.request.CreateTrackedUserRequest;
@@ -56,6 +58,7 @@ public class SettingsController {
     private final WorkspaceService workspaceService;
     private final MembersService membersService;
     private final TeamService teamService;
+    private final ObjectMapper objectMapper;
 
     // ── Settings page ────────────────────────────────────────────────────────
 
@@ -85,7 +88,22 @@ public class SettingsController {
         List<MemberDto> members = membersService.listMembers(workspaceId);
         model.addAttribute("members", members);
 
+        String allProjectsJson = buildProjectsJson(data);
+        model.addAttribute("allProjectsJson", allProjectsJson);
+
         return "settings";
+    }
+
+    @SuppressWarnings("checkstyle:IllegalCatch")
+    private String buildProjectsJson(SettingsPageData data) {
+        try {
+            List<Map<String, Object>> list = data.projects().stream()
+                .map(p -> Map.<String, Object>of("id", p.getId(), "name", p.getName()))
+                .toList();
+            return objectMapper.writeValueAsString(list);
+        } catch (JsonProcessingException e) {
+            return "[]";
+        }
     }
 
     // ── Members ──────────────────────────────────────────────────────────────
@@ -291,7 +309,8 @@ public class SettingsController {
             ? ((Number) body.get("colorIndex")).intValue()
             : 1;
         List<Long> memberIds = parseMemberIds(body);
-        TeamDto team = teamService.createTeam(WorkspaceContext.get(), name, colorIndex, memberIds);
+        List<Long> projectIds = parseProjectIds(body);
+        TeamDto team = teamService.createTeam(WorkspaceContext.get(), name, colorIndex, memberIds, projectIds);
         return ResponseEntity.status(HttpStatus.CREATED).body(team);
     }
 
@@ -304,7 +323,8 @@ public class SettingsController {
             ? ((Number) body.get("colorIndex")).intValue()
             : 1;
         List<Long> memberIds = parseMemberIds(body);
-        TeamDto team = teamService.updateTeam(WorkspaceContext.get(), id, name, colorIndex, memberIds);
+        List<Long> projectIds = parseProjectIds(body);
+        TeamDto team = teamService.updateTeam(WorkspaceContext.get(), id, name, colorIndex, memberIds, projectIds);
         return ResponseEntity.ok(team);
     }
 
@@ -318,6 +338,15 @@ public class SettingsController {
     @SuppressWarnings("unchecked")
     private static List<Long> parseMemberIds(Map<String, Object> body) {
         Object raw = body.get("memberIds");
+        if (raw instanceof List<?> list) {
+            return ((List<Number>) list).stream().map(Number::longValue).toList();
+        }
+        return List.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Long> parseProjectIds(Map<String, Object> body) {
+        Object raw = body.get("projectIds");
         if (raw instanceof List<?> list) {
             return ((List<Number>) list).stream().map(Number::longValue).toList();
         }
