@@ -1,15 +1,14 @@
 package io.simakov.analytics.workspace;
 
+import io.simakov.analytics.api.exception.ResourceNotFoundException;
 import io.simakov.analytics.domain.model.Team;
 import io.simakov.analytics.domain.model.TrackedUser;
 import io.simakov.analytics.domain.repository.TeamRepository;
 import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import io.simakov.analytics.web.dto.TeamDto;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -54,7 +53,7 @@ public class TeamService {
     @Transactional
     public TeamDto updateTeam(Long workspaceId, Long teamId, String name, int colorIndex, List<Long> memberIds) {
         Team team = teamRepository.findByWorkspaceIdAndId(workspaceId, teamId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new ResourceNotFoundException("Team", teamId));
         team.setName(name);
         team.setColorIndex(colorIndex);
         teamRepository.save(team);
@@ -73,7 +72,7 @@ public class TeamService {
     @Transactional
     public void deleteTeam(Long workspaceId, Long teamId) {
         if (!teamRepository.findByWorkspaceIdAndId(workspaceId, teamId).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            throw new ResourceNotFoundException("Team", teamId);
         }
         // ON DELETE SET NULL FK constraint handles nulling out tracked_user.team_id
         teamRepository.deleteByWorkspaceIdAndId(workspaceId, teamId);

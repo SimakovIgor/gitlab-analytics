@@ -6624,3 +6624,17 @@ body {
     white-space: nowrap;
     flex-shrink: 0;
 }
+
+.member-checklist-item-taken {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.member-checklist-item-taken:hover {
+    background: transparent;
+}
+
+.member-team-tag-locked {
+    background: var(--accent-dim);
+    color: var(--accent);
+}

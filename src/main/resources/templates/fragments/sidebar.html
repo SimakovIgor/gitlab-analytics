@@ -24,7 +24,18 @@
                     <div style="font-size:12px;font-weight:600;color:var(--fg-0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                          th:text="${workspaceName != null and !#strings.isEmpty(workspaceName)} ? ${workspaceName} : 'Analytics'">Analytics
                     </div>
-                    <div style="font-size:10px;color:var(--fg-3);">Free beta</div>
+                    <div style="font-size:10px;color:var(--fg-3);">
+                        Free beta
+                        <span th:if="${teamCount != null and teamCount > 0}"
+                              style="margin-left:4px;opacity:0.7;">·
+                            <span th:text="${teamCount}">0</span>
+                            <th:block th:switch="${teamCount}">
+                                <span th:case="1">команда</span>
+                                <span th:case="*"
+                                      th:text="${teamCount >= 2 and teamCount <= 4} ? 'команды' : 'команд'">команд</span>
+                            </th:block>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -128,7 +139,18 @@
                     <div style="font-size:12px;font-weight:600;color:var(--fg-0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                          th:text="${workspaceName != null and !#strings.isEmpty(workspaceName)} ? ${workspaceName} : 'Analytics'">Analytics
                     </div>
-                    <div style="font-size:10px;color:var(--fg-3);">Free beta</div>
+                    <div style="font-size:10px;color:var(--fg-3);">
+                        Free beta
+                        <span th:if="${teamCount != null and teamCount > 0}"
+                              style="margin-left:4px;opacity:0.7;">·
+                            <span th:text="${teamCount}">0</span>
+                            <th:block th:switch="${teamCount}">
+                                <span th:case="1">команда</span>
+                                <span th:case="*"
+                                      th:text="${teamCount >= 2 and teamCount <= 4} ? 'команды' : 'команд'">команд</span>
+                            </th:block>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>

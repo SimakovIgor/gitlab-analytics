@@ -641,13 +641,20 @@
             }
         });
 
-        document.getElementById('team-members-list').innerHTML = allTrackedUsersCache.map(u =>
-            `<label class="member-checklist-item">
-                <input type="checkbox" value="${u.id}" ${teamMemberIds.has(u.id) ? 'checked' : ''}>
+        document.getElementById('team-members-list').innerHTML = allTrackedUsersCache.map(u => {
+            const otherTeam = userTeamMap[u.id];
+            const isCurrentMember = teamMemberIds.has(u.id);
+            const disabled = otherTeam ? 'disabled' : '';
+            const itemClass = otherTeam ? 'member-checklist-item member-checklist-item-taken' : 'member-checklist-item';
+            const tag = otherTeam
+                ? `<span class="member-team-tag member-team-tag-locked" title="Уже в другой команде">${otherTeam}</span>`
+                : '';
+            return `<label class="${itemClass}">
+                <input type="checkbox" value="${u.id}" ${isCurrentMember ? 'checked' : ''} ${disabled}>
                 <span class="member-name">${u.displayName}</span>
-                ${userTeamMap[u.id] ? `<span class="member-team-tag">${userTeamMap[u.id]}</span>` : ''}
-            </label>`
-        ).join('');
+                ${tag}
+            </label>`;
+        }).join('');
 
         document.getElementById('modal-team').classList.remove('hidden');
     }
