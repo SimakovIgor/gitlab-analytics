@@ -599,9 +599,10 @@
         }
         empty.style.display = 'none';
         list.innerHTML = teams.map(team => {
+            const extra = team.memberCount > 5 ? team.memberCount - 5 : 0;
             const avatars = team.members.slice(0, 5).map(m =>
-                `<div class="avatar-placeholder" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:oklch(0.62 0.14 ${m.id * 43 % 360}deg);" title="${m.displayName}">${m.displayName.charAt(0)}</div>`
-            ).join('');
+                `<div class="avatar-placeholder team-member-avatar" data-tooltip="${m.displayName}" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:oklch(0.62 0.14 ${m.id * 43 % 360}deg);">${m.displayName.charAt(0)}</div>`
+            ).join('') + (extra > 0 ? `<div class="avatar-placeholder" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:var(--bg-3);color:var(--fg-3);">+${extra}</div>` : '');
             const safeName = team.name.replace(/'/g, "\\'");
             return `<div class="team-card" id="team-card-${team.id}">
                 <div class="team-card-header">
