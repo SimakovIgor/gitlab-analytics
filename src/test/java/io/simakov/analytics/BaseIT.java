@@ -106,6 +106,7 @@ public abstract class BaseIT {
         jdbcTemplate.execute("TRUNCATE TABLE metric_snapshot CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE tracked_user_alias CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE tracked_user CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE team CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE tracked_project CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE git_source CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE workspace_invite CASCADE");

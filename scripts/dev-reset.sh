@@ -73,7 +73,7 @@ DROP TABLE IF EXISTS
   merge_request_approval, merge_request_note, merge_request_discussion,
   merge_request_commit, merge_request, release_tag, tracked_user_alias, metric_snapshot,
   jira_incident, sync_job,
-  tracked_project, tracked_user, git_source, workspace_member, workspace, app_user
+  tracked_project, tracked_user, team, git_source, workspace_member, workspace, app_user
 CASCADE;
 DELETE FROM flyway_schema_history;
 " > /dev/null

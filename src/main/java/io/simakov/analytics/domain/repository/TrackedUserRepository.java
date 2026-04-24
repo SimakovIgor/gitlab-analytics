@@ -2,6 +2,7 @@ package io.simakov.analytics.domain.repository;
 
 import io.simakov.analytics.domain.model.TrackedUser;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,6 +16,18 @@ public interface TrackedUserRepository extends JpaRepository<TrackedUser, Long> 
 
     List<TrackedUser> findAllByWorkspaceIdAndIdIn(Long workspaceId,
                                                   List<Long> ids);
+
+    List<TrackedUser> findByWorkspaceIdAndTeamIdIn(Long workspaceId, List<Long> teamIds);
+
+    @Modifying
+    @Query("UPDATE TrackedUser u SET u.teamId = null WHERE u.workspaceId = :workspaceId AND u.teamId = :teamId")
+    void clearTeamId(@Param("workspaceId") Long workspaceId, @Param("teamId") Long teamId);
+
+    @Modifying
+    @Query("UPDATE TrackedUser u SET u.teamId = :teamId WHERE u.workspaceId = :workspaceId AND u.id IN :memberIds")
+    void assignTeamId(@Param("workspaceId") Long workspaceId,
+                      @Param("memberIds") List<Long> memberIds,
+                      @Param("teamId") Long teamId);
 
     /**
      * All tracked emails for a workspace in one query: user emails UNION alias emails.

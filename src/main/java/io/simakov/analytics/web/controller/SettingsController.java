@@ -18,7 +18,9 @@ import io.simakov.analytics.web.dto.CreatedProjectResult;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
 import io.simakov.analytics.web.dto.MemberDto;
 import io.simakov.analytics.web.dto.SettingsPageData;
+import io.simakov.analytics.web.dto.TeamDto;
 import io.simakov.analytics.workspace.MembersService;
+import io.simakov.analytics.workspace.TeamService;
 import io.simakov.analytics.workspace.WorkspaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -52,6 +55,7 @@ public class SettingsController {
     private final OAuth2UserResolver userResolver;
     private final WorkspaceService workspaceService;
     private final MembersService membersService;
+    private final TeamService teamService;
 
     // ── Settings page ────────────────────────────────────────────────────────
 
@@ -269,6 +273,55 @@ public class SettingsController {
     public ResponseEntity<Map<String, Integer>> triggerSnapshotBackfillSync() {
         int created = settingsService.triggerSnapshotBackfill();
         return ResponseEntity.ok(Map.of("snapshotsCreated", created));
+    }
+
+    // ── Teams ────────────────────────────────────────────────────────────────
+
+    @GetMapping("/teams")
+    @ResponseBody
+    public List<TeamDto> listTeams() {
+        return teamService.listTeams(WorkspaceContext.get());
+    }
+
+    @PostMapping("/teams")
+    @ResponseBody
+    public ResponseEntity<TeamDto> createTeam(@RequestBody Map<String, Object> body) {
+        String name = Objects.toString(body.get("name"), "").trim();
+        int colorIndex = body.containsKey("colorIndex")
+            ? ((Number) body.get("colorIndex")).intValue()
+            : 1;
+        List<Long> memberIds = parseMemberIds(body);
+        TeamDto team = teamService.createTeam(WorkspaceContext.get(), name, colorIndex, memberIds);
+        return ResponseEntity.status(HttpStatus.CREATED).body(team);
+    }
+
+    @PutMapping("/teams/{id}")
+    @ResponseBody
+    public ResponseEntity<TeamDto> updateTeam(@PathVariable Long id,
+                                              @RequestBody Map<String, Object> body) {
+        String name = Objects.toString(body.get("name"), "").trim();
+        int colorIndex = body.containsKey("colorIndex")
+            ? ((Number) body.get("colorIndex")).intValue()
+            : 1;
+        List<Long> memberIds = parseMemberIds(body);
+        TeamDto team = teamService.updateTeam(WorkspaceContext.get(), id, name, colorIndex, memberIds);
+        return ResponseEntity.ok(team);
+    }
+
+    @DeleteMapping("/teams/{id}")
+    @ResponseBody
+    public ResponseEntity<Void> deleteTeam(@PathVariable Long id) {
+        teamService.deleteTeam(WorkspaceContext.get(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Long> parseMemberIds(Map<String, Object> body) {
+        Object raw = body.get("memberIds");
+        if (raw instanceof List<?> list) {
+            return ((List<Number>) list).stream().map(Number::longValue).toList();
+        }
+        return List.of();
     }
 
     // ── Sync status polling ──────────────────────────────────────────────────

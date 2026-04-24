@@ -12,18 +12,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
+@SuppressWarnings("PMD.ShortClassName")
 @Entity
-@Table(name = "tracked_user")
+@Table(name = "team")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class TrackedUser {
+public class Team {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,28 +33,17 @@ public class TrackedUser {
             nullable = false)
     private Long workspaceId;
 
-    @Column(name = "display_name",
-            nullable = false)
-    private String displayName;
-
-    @Column
-    private String email;
-
     @Column(nullable = false)
-    @Builder.Default
-    private boolean enabled = true;
+    private String name;
 
-    @Column(name = "team_id")
-    private Long teamId;
+    @Column(name = "color_index",
+            nullable = false)
+    @Builder.Default
+    private int colorIndex = 1;
 
     @CreationTimestamp
     @Column(name = "created_at",
             nullable = false,
             updatable = false)
     private Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at",
-            nullable = false)
-    private Instant updatedAt;
 }

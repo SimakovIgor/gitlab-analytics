@@ -4,7 +4,7 @@
 
 <!--
     Новая топ-навигация Phase 1.
-    Параметр activePage: 'overview' | 'insights' | 'dora' | 'sync' | 'settings'
+    Параметр activePage: 'overview' | 'insights' | 'team' | 'flow' | 'dora' | 'compare' | 'sync' | 'settings'
     Использование: <header th:replace="~{fragments/topbar :: topbar('overview')}"></header>
 -->
 <header class="topbar" th:fragment="topbar(activePage)">
@@ -41,9 +41,8 @@
            th:class="${activePage == 'flow'} ? 'nav-link nav-link-active' : 'nav-link'">Flow</a>
         <a href="/dora"
            th:class="${activePage == 'dora'} ? 'nav-link nav-link-active' : 'nav-link'">Сервисы</a>
-        <span class="nav-link nav-link-disabled">
-            Сравнение <span class="nav-badge-soon">soon</span>
-        </span>
+        <a href="/compare"
+           th:class="${activePage == 'compare'} ? 'nav-link nav-link-active' : 'nav-link'">Сравнение</a>
         <a href="/sync"
            th:class="${activePage == 'sync'} ? 'nav-link nav-link-active' : 'nav-link'">Sync</a>
         <a href="/settings"

@@ -31,6 +31,7 @@
             <button class="tab-btn" onclick="switchTab('projects')">Репозитории</button>
             <button class="tab-btn" onclick="switchTab('users')">Сотрудники</button>
             <button class="tab-btn" onclick="switchTab('members')">Участники</button>
+            <button class="tab-btn" onclick="switchTab('teams')">Команды</button>
         </div>
 
         <!-- ── GitLab Sources ─────────────────────────────────────────────────── -->
@@ -280,11 +281,59 @@
             </div>
         </div>
 
+        <!-- ── Команды ────────────────────────────────────────────────────── -->
+        <div class="tab-content hidden" id="tab-teams">
+            <div class="tab-toolbar">
+                <span class="section-title" style="margin-bottom:0">Команды</span>
+                <button class="btn-primary" onclick="openTeamModal(null)">+ Создать команду</button>
+            </div>
+            <div class="empty-state" id="teams-empty" style="display:none">
+                Разбейте сотрудников по командам, чтобы сравнивать их на вкладке
+                <a href="/compare">Сравнение</a>.
+            </div>
+            <div id="teams-list"></div>
+        </div>
+
     </main>
 
 </div><!-- /.report-page -->
 
 <!-- ═══════════════ Модалки ═══════════════ -->
+
+<!-- Создать / редактировать команду -->
+<div class="modal-overlay hidden" id="modal-team" onclick="handleOverlayClick(event, 'modal-team')">
+    <div class="modal" style="max-width:480px">
+        <div class="modal-header">
+            <span id="team-modal-title">Создать команду</span>
+            <button class="modal-close" onclick="closeModal('modal-team')">✕</button>
+        </div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+            <div>
+                <label class="form-label">Название</label>
+                <input class="form-input" id="team-name-input" placeholder="Например: KE Backend" type="text">
+            </div>
+            <div>
+                <label class="form-label">Цвет</label>
+                <div id="team-color-picker" style="display:flex;gap:8px;margin-top:6px">
+                    <button class="color-swatch" data-color-index="1" onclick="selectTeamColor(1)" style="background:var(--c-1)" title="Цвет 1" type="button"></button>
+                    <button class="color-swatch" data-color-index="2" onclick="selectTeamColor(2)" style="background:var(--c-2)" title="Цвет 2" type="button"></button>
+                    <button class="color-swatch" data-color-index="3" onclick="selectTeamColor(3)" style="background:var(--c-3)" title="Цвет 3" type="button"></button>
+                    <button class="color-swatch" data-color-index="4" onclick="selectTeamColor(4)" style="background:var(--c-4)" title="Цвет 4" type="button"></button>
+                    <button class="color-swatch" data-color-index="5" onclick="selectTeamColor(5)" style="background:var(--c-5)" title="Цвет 5" type="button"></button>
+                    <button class="color-swatch" data-color-index="6" onclick="selectTeamColor(6)" style="background:var(--c-6)" title="Цвет 6" type="button"></button>
+                </div>
+            </div>
+            <div>
+                <label class="form-label">Участники</label>
+                <div id="team-members-list" class="member-checklist"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('modal-team')">Отмена</button>
+            <button class="btn-primary" onclick="saveTeam()">Сохранить</button>
+        </div>
+    </div>
+</div>
 
 <!-- Добавить источник -->
 <div class="modal-overlay hidden" id="modal-source" onclick="handleOverlayClick(event, 'modal-source')">
@@ -507,7 +556,7 @@
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-btn-active'));
         document.getElementById('tab-' + name).classList.remove('hidden');
         const buttons = document.querySelectorAll('.tab-btn');
-        const map = {sources: 0, projects: 1, users: 2, members: 3};
+        const map = {sources: 0, projects: 1, users: 2, members: 3, teams: 4};
         if (map[name] !== undefined) {
             buttons[map[name]].classList.add('tab-btn-active');
         }
@@ -515,15 +564,147 @@
         if (name === 'users') {
             loadDiscoveredContributors();
         }
+        if (name === 'teams') {
+            loadTeams();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         const saved = sessionStorage.getItem(TAB_STORAGE_KEY);
-        const validTabs = ['sources', 'projects', 'users', 'members'];
+        const validTabs = ['sources', 'projects', 'users', 'members', 'teams'];
         const defaultTab = validTabs.includes(saved) ? saved : 'sources';
         switchTab(defaultTab);
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncCard(jobId));
     });
+
+    // ── Команды ───────────────────────────────────────────────────────────────
+
+    let teamsData = [];
+    let editingTeamId = null;
+    let selectedTeamColor = 1;
+    let allTrackedUsersCache = [];
+
+    async function loadTeams() {
+        teamsData = await api('GET', '/settings/teams');
+        renderTeams(teamsData);
+    }
+
+    function renderTeams(teams) {
+        const list = document.getElementById('teams-list');
+        const empty = document.getElementById('teams-empty');
+        if (teams.length === 0) {
+            list.innerHTML = '';
+            empty.style.display = '';
+            return;
+        }
+        empty.style.display = 'none';
+        list.innerHTML = teams.map(team => {
+            const avatars = team.members.slice(0, 5).map(m =>
+                `<div class="avatar-placeholder" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:oklch(0.62 0.14 ${m.id * 43 % 360}deg);" title="${m.displayName}">${m.displayName.charAt(0)}</div>`
+            ).join('');
+            const safeName = team.name.replace(/'/g, "\\'");
+            return `<div class="team-card" id="team-card-${team.id}">
+                <div class="team-card-header">
+                    <div class="team-color-dot" style="background:var(--c-${team.colorIndex})"></div>
+                    <div class="team-card-info">
+                        <span class="team-card-name">${team.name}</span>
+                        <span class="team-card-count">${team.memberCount} сотр.</span>
+                    </div>
+                    <div class="team-card-avatars">${avatars}</div>
+                    <div class="team-card-actions">
+                        <button class="btn-sm btn-secondary" onclick="openTeamModal(${team.id})">Редактировать</button>
+                        <button class="btn-sm btn-danger" onclick="deleteTeamConfirm(${team.id}, '${safeName}')">Удалить</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    async function openTeamModal(teamId) {
+        editingTeamId = teamId;
+        document.getElementById('team-modal-title').textContent = teamId ? 'Редактировать команду' : 'Создать команду';
+
+        const team = teamId ? teamsData.find(t => t.id === teamId) : null;
+        document.getElementById('team-name-input').value = team ? team.name : '';
+
+        selectedTeamColor = team ? team.colorIndex : 1;
+        renderTeamColorPicker();
+
+        if (allTrackedUsersCache.length === 0) {
+            allTrackedUsersCache = await api('GET', '/settings/users/tracked');
+        }
+        const teamMemberIds = new Set(team ? team.members.map(m => m.id) : []);
+        const userTeamMap = {};
+        teamsData.forEach(t => {
+            if (t.id !== teamId) {
+                t.members.forEach(m => { userTeamMap[m.id] = t.name; });
+            }
+        });
+
+        document.getElementById('team-members-list').innerHTML = allTrackedUsersCache.map(u =>
+            `<label class="member-checklist-item">
+                <input type="checkbox" value="${u.id}" ${teamMemberIds.has(u.id) ? 'checked' : ''}>
+                <span class="member-name">${u.displayName}</span>
+                ${userTeamMap[u.id] ? `<span class="member-team-tag">${userTeamMap[u.id]}</span>` : ''}
+            </label>`
+        ).join('');
+
+        document.getElementById('modal-team').classList.remove('hidden');
+    }
+
+    function renderTeamColorPicker() {
+        document.querySelectorAll('#team-color-picker .color-swatch').forEach(btn => {
+            btn.classList.toggle('color-swatch-selected',
+                parseInt(btn.dataset.colorIndex) === selectedTeamColor);
+        });
+    }
+
+    function selectTeamColor(index) {
+        selectedTeamColor = index;
+        renderTeamColorPicker();
+    }
+
+    async function saveTeam() {
+        const name = document.getElementById('team-name-input').value.trim();
+        if (!name) {
+            alert('Введите название команды');
+            return;
+        }
+        const memberIds = Array.from(
+            document.querySelectorAll('#team-members-list input[type=checkbox]:checked')
+        ).map(el => parseInt(el.value));
+
+        try {
+            const payload = {name, colorIndex: selectedTeamColor, memberIds};
+            const result = editingTeamId
+                ? await api('PUT', '/settings/teams/' + editingTeamId, payload)
+                : await api('POST', '/settings/teams', payload);
+
+            if (editingTeamId) {
+                teamsData = teamsData.map(t => t.id === editingTeamId ? result : t);
+            } else {
+                teamsData.push(result);
+            }
+            allTrackedUsersCache = [];
+            renderTeams(teamsData);
+            closeModal('modal-team');
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    }
+
+    async function deleteTeamConfirm(teamId, name) {
+        if (!confirm(`Удалить команду «${name}»? Сотрудники останутся, но будут откреплены.`)) {
+            return;
+        }
+        try {
+            await api('DELETE', '/settings/teams/' + teamId);
+            teamsData = teamsData.filter(t => t.id !== teamId);
+            renderTeams(teamsData);
+        } catch (e) {
+            alert('Ошибка удаления: ' + e.message);
+        }
+    }
 
     // ── Участники ─────────────────────────────────────────────────────────────
 
