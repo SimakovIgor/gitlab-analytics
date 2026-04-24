@@ -10,7 +10,7 @@
 </head>
 <body class="app-layout">
 
-<header th:replace="~{fragments/topbar :: topbar('sync')}"></header>
+<header th:replace="~{fragments/topbar :: topbar('settings')}"></header>
 
 <div class="report-page">
 
@@ -30,6 +30,7 @@
             <button class="tab-btn tab-btn-active" onclick="switchTab('sources')">GitLab Sources</button>
             <button class="tab-btn" onclick="switchTab('projects')">Репозитории</button>
             <button class="tab-btn" onclick="switchTab('users')">Сотрудники</button>
+            <button class="tab-btn" onclick="switchTab('members')">Участники</button>
         </div>
 
         <!-- ── GitLab Sources ─────────────────────────────────────────────────── -->
@@ -207,6 +208,75 @@
             </table>
             <div class="empty-state" id="users-empty" th:if="${usersWithAliases.isEmpty()}">
                 Нет отслеживаемых сотрудников. Добавьте первого.
+            </div>
+        </div>
+
+        <!-- ── Участники ────────────────────────────────────────────────────── -->
+        <div class="tab-content hidden" id="tab-members">
+            <div class="tab-toolbar">
+                <span class="section-title" style="margin-bottom:0">Участники workspace</span>
+                <button class="btn-primary" onclick="generateInviteLink()">+ Пригласить участника</button>
+            </div>
+
+            <!-- Инвайт-ссылка (появляется после генерации) -->
+            <div class="invite-link-box hidden" id="invite-link-box">
+                <span class="invite-link-label">Ссылка действует 7 дней. Скопируйте и отправьте коллеге:</span>
+                <div class="invite-link-row">
+                    <input class="invite-link-input" id="invite-link-input" readonly type="text">
+                    <button class="btn-secondary" onclick="copyInviteLink()">Скопировать</button>
+                </div>
+            </div>
+
+            <table class="data-table" th:if="${!members.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>Участник</th>
+                    <th>Роль</th>
+                    <th>Добавлен</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="m : ${members}">
+                    <td>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <img class="avatar" style="width:32px;height:32px;border-radius:50%;"
+                                 th:alt="${m.name}"
+                                 th:if="${!#strings.isEmpty(m.avatarUrl)}"
+                                 th:src="${m.avatarUrl}">
+                            <div class="avatar-placeholder"
+                                 style="width:32px;height:32px;font-size:13px;"
+                                 th:style="'background:oklch(0.62 0.14 ' + (${m.appUserId} * 43 % 360) + 'deg);width:32px;height:32px;font-size:13px;'"
+                                 th:text="${#strings.substring(m.name,0,1)}"
+                                 th:unless="${!#strings.isEmpty(m.avatarUrl)}">?
+                            </div>
+                            <div>
+                                <div style="font-weight:500;" th:text="${m.name}">Имя</div>
+                                <div style="color:var(--text-muted);font-size:12px;"
+                                     th:text="'@' + ${m.username}">@login
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="dev-status-badge"
+                              th:classappend="${m.isOwner()} ? 'dev-status-top' : ''"
+                              th:text="${m.isOwner()} ? 'Владелец' : 'Участник'">Участник</span>
+                    </td>
+                    <td th:text="${m.joinedAt()}">—</td>
+                    <td>
+                        <button class="btn-danger-sm"
+                                onclick="removeMember([[${m.appUserId()}]])"
+                                th:disabled="${m.isOwner()}"
+                                th:if="${!m.isOwner()}">Удалить</button>
+                        <span style="color:var(--text-muted);font-size:12px;" th:if="${m.isOwner()}">—</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="empty-state" th:if="${members.isEmpty()}">
+                Только вы в workspace. Пригласите коллег по ссылке.
             </div>
         </div>
 
@@ -437,7 +507,7 @@
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-btn-active'));
         document.getElementById('tab-' + name).classList.remove('hidden');
         const buttons = document.querySelectorAll('.tab-btn');
-        const map = {sources: 0, projects: 1, users: 2};
+        const map = {sources: 0, projects: 1, users: 2, members: 3};
         if (map[name] !== undefined) {
             buttons[map[name]].classList.add('tab-btn-active');
         }
@@ -449,11 +519,42 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         const saved = sessionStorage.getItem(TAB_STORAGE_KEY);
-        const validTabs = ['sources', 'projects', 'users'];
+        const validTabs = ['sources', 'projects', 'users', 'members'];
         const defaultTab = validTabs.includes(saved) ? saved : 'sources';
         switchTab(defaultTab);
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncCard(jobId));
     });
+
+    // ── Участники ─────────────────────────────────────────────────────────────
+
+    async function generateInviteLink() {
+        try {
+            const data = await api('POST', '/settings/members/invite');
+            document.getElementById('invite-link-input').value = data.link;
+            document.getElementById('invite-link-box').classList.remove('hidden');
+        } catch (e) {
+            alert('Ошибка генерации ссылки: ' + e.message);
+        }
+    }
+
+    function copyInviteLink() {
+        const input = document.getElementById('invite-link-input');
+        navigator.clipboard.writeText(input.value).then(() => {
+            const btn = event.target;
+            btn.textContent = 'Скопировано!';
+            setTimeout(() => { btn.textContent = 'Скопировать'; }, 2000);
+        });
+    }
+
+    async function removeMember(appUserId) {
+        if (!confirm('Удалить участника из workspace?')) return;
+        try {
+            await api('DELETE', '/settings/members/' + appUserId);
+            location.reload();
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    }
 
     // ── Модалки ───────────────────────────────────────────────────────────────
 

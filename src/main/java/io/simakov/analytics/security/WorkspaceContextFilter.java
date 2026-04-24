@@ -31,7 +31,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class WorkspaceContextFilter extends OncePerRequestFilter {
 
-    private static final Set<String> EXEMPT_PATHS = Set.of("/onboarding", "/login", "/logout");
+    private static final Set<String> EXEMPT_PATHS = Set.of("/onboarding", "/login", "/logout", "/join");
     private static final List<String> EXEMPT_PREFIXES = List.of("/oauth2/", "/css/", "/js/", "/actuator/");
 
     private final WorkspaceRepository workspaceRepository;

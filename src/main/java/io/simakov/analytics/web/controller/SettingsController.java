@@ -6,20 +6,25 @@ import io.simakov.analytics.api.dto.request.CreateTrackedUserRequest;
 import io.simakov.analytics.api.dto.response.SyncJobResponse;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.WorkspaceInvite;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
+import io.simakov.analytics.security.AppUserPrincipal;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsService;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.CreatedProjectResult;
 import io.simakov.analytics.web.dto.DiscoveredContributor;
+import io.simakov.analytics.web.dto.MemberDto;
 import io.simakov.analytics.web.dto.SettingsPageData;
+import io.simakov.analytics.workspace.MembersService;
 import io.simakov.analytics.workspace.WorkspaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -31,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -45,6 +51,7 @@ public class SettingsController {
     private final SettingsViewService settingsViewService;
     private final OAuth2UserResolver userResolver;
     private final WorkspaceService workspaceService;
+    private final MembersService membersService;
 
     // ── Settings page ────────────────────────────────────────────────────────
 
@@ -70,7 +77,36 @@ public class SettingsController {
         model.addAttribute("showInactive", false);
         model.addAttribute("workspaceName", workspaceService.findWorkspaceName(WorkspaceContext.get()));
 
+        Long workspaceId = WorkspaceContext.get();
+        List<MemberDto> members = membersService.listMembers(workspaceId);
+        model.addAttribute("members", members);
+
         return "settings";
+    }
+
+    // ── Members ──────────────────────────────────────────────────────────────
+
+    @PostMapping("/members/invite")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> createInvite(@AuthenticationPrincipal AppUserPrincipal principal) {
+        Long workspaceId = WorkspaceContext.get();
+        WorkspaceInvite invite = membersService.createInvite(workspaceId, principal.getAppUser().getId());
+        String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+        String link = baseUrl + "/join?token=" + invite.getToken();
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("link", link));
+    }
+
+    @DeleteMapping("/members/{appUserId}")
+    @ResponseBody
+    public ResponseEntity<Void> removeMember(@PathVariable Long appUserId,
+                                             @AuthenticationPrincipal AppUserPrincipal principal) {
+        Long workspaceId = WorkspaceContext.get();
+        // Owner cannot be removed
+        if (appUserId.equals(principal.getAppUser().getId())) {
+            return ResponseEntity.badRequest().build();
+        }
+        membersService.removeMember(workspaceId, appUserId);
+        return ResponseEntity.noContent().build();
     }
 
     // ── GitLab Sources ──────────────────────────────────────────────────────
