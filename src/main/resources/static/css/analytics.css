@@ -412,28 +412,6 @@ body {
     color: var(--fg-0);
 }
 
-.topbar-settings-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: var(--r-sm);
-    color: var(--fg-3);
-    text-decoration: none;
-    transition: color 0.15s, background 0.15s;
-    flex-shrink: 0;
-}
-
-.topbar-settings-btn:hover {
-    color: var(--fg-0);
-    background: var(--bg-hover);
-}
-
-.topbar-settings-btn-active {
-    color: var(--accent);
-}
-
 .btn-logout {
     background: none;
     border: none;

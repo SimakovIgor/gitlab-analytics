@@ -46,6 +46,8 @@
         </span>
         <a href="/sync"
            th:class="${activePage == 'sync'} ? 'nav-link nav-link-active' : 'nav-link'">Sync</a>
+        <a href="/settings"
+           th:class="${activePage == 'settings'} ? 'nav-link nav-link-active' : 'nav-link'">Настройки</a>
     </nav>
 
     <!-- Поиск-заглушка -->
@@ -57,19 +59,6 @@
         <span>Найти...</span>
         <span class="topbar-kbd">⌘K</span>
     </button>
-
-    <!-- Настройки -->
-    <a class="topbar-settings-btn"
-       href="/settings"
-       th:class="${activePage == 'settings'} ? 'topbar-settings-btn topbar-settings-btn-active' : 'topbar-settings-btn'"
-       title="Настройки">
-        <svg fill="none" height="15" viewBox="0 0 15 15" width="15" xmlns="http://www.w3.org/2000/svg">
-            <path clip-rule="evenodd"
-                  d="M6.28 1.06a.75.75 0 0 1 .72-.56h.5a.75.75 0 0 1 .72.56l.14.55a5 5 0 0 1 .9.37l.48-.28a.75.75 0 0 1 .9.1l.35.36a.75.75 0 0 1 .1.9l-.28.47a5 5 0 0 1 .37.9l.55.15a.75.75 0 0 1 .56.72v.5a.75.75 0 0 1-.56.72l-.55.14a5 5 0 0 1-.37.9l.28.48a.75.75 0 0 1-.1.9l-.35.35a.75.75 0 0 1-.9.1l-.47-.27a5 5 0 0 1-.91.37l-.14.55a.75.75 0 0 1-.72.56h-.5a.75.75 0 0 1-.72-.56l-.14-.55a5 5 0 0 1-.9-.37l-.48.27a.75.75 0 0 1-.9-.1l-.36-.35a.75.75 0 0 1-.1-.9l.28-.48a5 5 0 0 1-.37-.9l-.55-.14A.75.75 0 0 1 1 7.75v-.5a.75.75 0 0 1 .56-.72l.55-.15a5 5 0 0 1 .37-.9l-.28-.47a.75.75 0 0 1 .1-.9l.36-.36a.75.75 0 0 1 .9-.1l.47.28a5 5 0 0 1 .91-.37l.14-.55ZM7.5 9.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
-                  fill="currentColor"
-                  fill-rule="evenodd"/>
-        </svg>
-    </a>
 
     <!-- Пользователь -->
     <div class="topbar-user" th:if="${currentUser}">
