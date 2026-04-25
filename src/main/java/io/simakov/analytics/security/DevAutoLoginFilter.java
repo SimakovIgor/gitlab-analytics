@@ -70,20 +70,28 @@ public class DevAutoLoginFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
 
-        // In dev mode, clicking "Login via GitHub" would start the real OAuth2 flow
-        // with fake credentials and fail. Intercept these URLs and redirect home instead.
-        boolean isLoginTrigger = "/login".equals(uri) || uri.startsWith("/oauth2/authorization/");
-        if (isLoginTrigger) {
+        // Let /login, /register and /logout pass through without auto-login so the
+        // email+password auth flow can be tested in dev (e.g. after clicking "Выйти").
+        boolean isAuthFlow = "/login".equals(uri) || "/register".equals(uri)
+            || "/logout".equals(uri);
+        if (isAuthFlow) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // OAuth2 flow won't work with fake credentials — redirect home instead.
+        if (uri.startsWith("/oauth2/authorization/")) {
             ensureDevSession(request);
             response.sendRedirect(request.getContextPath() + "/");
-        } else {
-            HttpSession session = request.getSession(false);
-            if (session == null
-                || session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY) == null) {
-                ensureDevSession(request);
-            }
-            filterChain.doFilter(request, response);
+            return;
         }
+
+        HttpSession session = request.getSession(false);
+        if (session == null
+            || session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY) == null) {
+            ensureDevSession(request);
+        }
+        filterChain.doFilter(request, response);
     }
 
     private void ensureDevSession(HttpServletRequest request) {
