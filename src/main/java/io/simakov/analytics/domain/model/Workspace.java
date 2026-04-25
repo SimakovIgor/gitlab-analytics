@@ -54,4 +54,8 @@ public class Workspace {
     @UpdateTimestamp
     @Column(nullable = false)
     private Instant updatedAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean digestEnabled = true;
 }

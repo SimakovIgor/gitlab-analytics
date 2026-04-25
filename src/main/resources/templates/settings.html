@@ -32,6 +32,7 @@
             <button class="tab-btn" onclick="switchTab('users')">Сотрудники</button>
             <button class="tab-btn" onclick="switchTab('members')">Участники</button>
             <button class="tab-btn" onclick="switchTab('teams')">Команды</button>
+            <button class="tab-btn" onclick="switchTab('notifications')">Уведомления</button>
         </div>
 
         <!-- ── GitLab Sources ─────────────────────────────────────────────────── -->
@@ -292,6 +293,35 @@
                 <a href="/compare">Сравнение</a>.
             </div>
             <div id="teams-list"></div>
+        </div>
+
+        <!-- ── Уведомления ───────────────────────────────────────────────────── -->
+        <div class="tab-content hidden" id="tab-notifications">
+            <div class="tab-toolbar">
+                <span class="section-title" style="margin-bottom:0">Уведомления</span>
+            </div>
+
+            <div style="background:var(--bg-1); border:1px solid var(--border-1); border-radius:var(--r-lg); padding:24px 28px; max-width:560px;">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+                    <div>
+                        <div style="font-size:15px; font-weight:600; color:var(--fg-0); margin-bottom:4px;">
+                            Еженедельный email-дайджест
+                        </div>
+                        <div style="font-size:13px; color:var(--fg-2); line-height:1.5; max-width:380px;">
+                            Каждый понедельник в 9:00 UTC отправляем на ваш email краткий отчёт:
+                            MR за неделю, TTM-медиана, топ участников и активные инсайты.
+                        </div>
+                    </div>
+                    <button id="digest-toggle-btn"
+                            onclick="toggleDigest()"
+                            style="flex-shrink:0; padding:7px 16px; border-radius:8px; font-size:13px;
+                                   font-weight:600; cursor:pointer; border:1.5px solid var(--border-2);
+                                   background:var(--bg-0); color:var(--fg-1); transition:all 0.15s;">
+                        Загрузка…
+                    </button>
+                </div>
+                <div id="digest-status-msg" style="margin-top:12px; font-size:12px; color:var(--fg-3); display:none;"></div>
+            </div>
         </div>
 
     </main>
@@ -571,7 +601,7 @@
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-btn-active'));
         document.getElementById('tab-' + name).classList.remove('hidden');
         const buttons = document.querySelectorAll('.tab-btn');
-        const map = {sources: 0, projects: 1, users: 2, members: 3, teams: 4};
+        const map = {sources: 0, projects: 1, users: 2, members: 3, teams: 4, notifications: 5};
         if (map[name] !== undefined) {
             buttons[map[name]].classList.add('tab-btn-active');
         }
@@ -582,11 +612,14 @@
         if (name === 'teams') {
             loadTeams();
         }
+        if (name === 'notifications') {
+            loadDigestStatus();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         const saved = sessionStorage.getItem(TAB_STORAGE_KEY);
-        const validTabs = ['sources', 'projects', 'users', 'members', 'teams'];
+        const validTabs = ['sources', 'projects', 'users', 'members', 'teams', 'notifications'];
         const defaultTab = validTabs.includes(saved) ? saved : 'sources';
         switchTab(defaultTab);
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncCard(jobId));
@@ -1697,6 +1730,47 @@
             });
         } catch (e) {
             showError('link-gitlab-error', e.message);
+        }
+    }
+
+    // ── Digest ────────────────────────────────────────────────────────────────
+
+    async function loadDigestStatus() {
+        try {
+            const res = await api('GET', '/settings/digest/status');
+            renderDigestBtn(res.digestEnabled);
+        } catch (e) {
+            document.getElementById('digest-toggle-btn').textContent = 'Ошибка';
+        }
+    }
+
+    function renderDigestBtn(enabled) {
+        const btn = document.getElementById('digest-toggle-btn');
+        if (enabled) {
+            btn.textContent = 'Включён ✓';
+            btn.style.background = 'var(--good-bg)';
+            btn.style.color = 'var(--good)';
+            btn.style.borderColor = 'var(--good)';
+        } else {
+            btn.textContent = 'Отключён';
+            btn.style.background = 'var(--bg-0)';
+            btn.style.color = 'var(--fg-3)';
+            btn.style.borderColor = 'var(--border-2)';
+        }
+    }
+
+    async function toggleDigest() {
+        try {
+            const res = await api('POST', '/settings/digest/toggle');
+            renderDigestBtn(res.digestEnabled);
+            const msg = document.getElementById('digest-status-msg');
+            msg.textContent = res.digestEnabled
+                ? 'Дайджест включён. Следующий выпуск — ближайший понедельник в 9:00 UTC.'
+                : 'Дайджест отключён.';
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 4000);
+        } catch (e) {
+            alert('Не удалось изменить настройку');
         }
     }
 

@@ -8,7 +8,9 @@ import io.simakov.analytics.api.dto.request.CreateTrackedUserRequest;
 import io.simakov.analytics.api.dto.response.SyncJobResponse;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.TrackedUser;
+import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.WorkspaceInvite;
+import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
 import io.simakov.analytics.security.AppUserPrincipal;
@@ -53,6 +55,7 @@ public class SettingsController {
     private final SettingsService settingsService;
     private final SettingsViewService settingsViewService;
     private final WorkspaceService workspaceService;
+    private final WorkspaceRepository workspaceRepository;
     private final MembersService membersService;
     private final TeamService teamService;
     private final ObjectMapper objectMapper;
@@ -368,5 +371,27 @@ public class SettingsController {
     @ResponseBody
     public SyncJobResponse retrySync(@PathVariable Long jobId) {
         return settingsService.retrySync(jobId);
+    }
+
+    // ── Digest settings ──────────────────────────────────────────────────────
+
+    @PostMapping("/digest/toggle")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> toggleDigest() {
+        Long workspaceId = WorkspaceContext.get();
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new IllegalStateException("Workspace not found"));
+        workspace.setDigestEnabled(!workspace.isDigestEnabled());
+        workspaceRepository.save(workspace);
+        return ResponseEntity.ok(Map.of("digestEnabled", workspace.isDigestEnabled()));
+    }
+
+    @GetMapping("/digest/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> digestStatus() {
+        Long workspaceId = WorkspaceContext.get();
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new IllegalStateException("Workspace not found"));
+        return ResponseEntity.ok(Map.of("digestEnabled", workspace.isDigestEnabled()));
     }
 }
