@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>GitPulse — подтвердите email</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/analytics.css}">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; font-family: 'Inter', -apple-system, system-ui, sans-serif; }
+        .root { min-height: 100vh; display: flex; align-items: center; justify-content: center;
+                background: #f7f5f0; padding: 32px 16px; }
+        .card { width: 100%; max-width: 420px; background: #fff; border-radius: 16px;
+                border: 1px solid #e8e3d9; padding: 48px 36px; text-align: center;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+        .icon { font-size: 40px; margin-bottom: 20px; }
+        .title { font-size: 22px; font-weight: 600; color: #16150f; letter-spacing: -0.02em; margin-bottom: 12px; }
+        .sub { font-size: 14px; color: #8a8573; line-height: 1.6; margin-bottom: 28px; }
+        .link { color: oklch(0.42 0.19 275); font-weight: 500; text-decoration: none; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="root">
+    <div class="card">
+        <div class="icon">📬</div>
+        <h1 class="title">Проверьте вашу почту</h1>
+        <p class="sub">
+            Мы отправили письмо со ссылкой для подтверждения email.
+            Перейдите по ссылке, чтобы активировать аккаунт.<br><br>
+            Письмо может попасть в папку «Спам».
+        </p>
+        <a class="link" href="/login">← Вернуться на страницу входа</a>
+    </div>
+</div>
+</body>
+</html>

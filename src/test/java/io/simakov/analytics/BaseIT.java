@@ -112,6 +112,7 @@ public abstract class BaseIT {
         jdbcTemplate.execute("TRUNCATE TABLE workspace_invite CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE workspace_member CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE workspace CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE password_reset_token CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE app_user CASCADE");
     }
 }

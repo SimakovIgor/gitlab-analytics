@@ -10,4 +10,6 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByGithubId(Long githubId);
 
     Optional<AppUser> findByEmail(String email);
+
+    Optional<AppUser> findByEmailVerificationToken(String token);
 }

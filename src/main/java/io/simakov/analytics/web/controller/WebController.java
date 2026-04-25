@@ -16,6 +16,7 @@ import io.simakov.analytics.web.dto.SyncHistoryPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,8 +38,16 @@ public class WebController {
     private final ObjectMapper objectMapper;
 
     @GetMapping("/")
-    public String home() {
-        return "redirect:/report";
+    public String home(Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            return "redirect:/report";
+        }
+        return "landing";
+    }
+
+    @GetMapping("/landing")
+    public String landingPreview() {
+        return "landing";
     }
 
     @GetMapping("/login")

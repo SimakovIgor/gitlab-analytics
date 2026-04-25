@@ -163,14 +163,14 @@
                         <div class="ob-option-desc">Ваш собственный инстанс — Community или Enterprise Edition</div>
                     </div>
                 </button>
-                <!-- GitLab.com — недоступна -->
-                <button class="ob-option-card" disabled id="ob-option-gitlab-com" type="button">
+                <!-- GitLab.com -->
+                <button class="ob-option-card" id="ob-option-gitlab-com"
+                        onclick="selectGitOption('gitlab-com')" type="button">
                     <div class="ob-option-radio" id="ob-radio-gitlab-com"></div>
                     <div style="flex:1;min-width:0">
                         <div class="ob-option-title">
                             GitLab.com
                             <span class="ob-option-mono">gitlab.com</span>
-                            <span class="ob-option-soon">Скоро</span>
                         </div>
                         <div class="ob-option-desc">Публичное облако GitLab</div>
                     </div>
@@ -622,12 +622,20 @@
         obSelectedGitOption = option;
         const selfCard = document.getElementById('ob-option-self-hosted');
         const selfRadio = document.getElementById('ob-radio-self-hosted');
+        const comCard = document.getElementById('ob-option-gitlab-com');
+        const comRadio = document.getElementById('ob-radio-gitlab-com');
         const hostWrap = document.getElementById('ob-host-wrap');
         if (selfCard) {
             selfCard.classList.toggle('ob-option-card-active', option === 'self-hosted');
         }
         if (selfRadio) {
             selfRadio.classList.toggle('ob-option-radio-active', option === 'self-hosted');
+        }
+        if (comCard) {
+            comCard.classList.toggle('ob-option-card-active', option === 'gitlab-com');
+        }
+        if (comRadio) {
+            comRadio.classList.toggle('ob-option-radio-active', option === 'gitlab-com');
         }
         if (hostWrap) {
             hostWrap.classList.toggle('hidden', option !== 'self-hosted');
@@ -636,17 +644,30 @@
     }
 
     function updateStep2NextBtn() {
+        const btn = document.getElementById('ob-step2-next-btn');
+        if (!btn) {
+            return;
+        }
+        if (obSelectedGitOption === 'gitlab-com') {
+            btn.disabled = false;
+            return;
+        }
         const hostEl = document.getElementById('ob-host');
         const host = hostEl ? hostEl.value.trim() : '';
-        const btn = document.getElementById('ob-step2-next-btn');
-        if (btn) {
-            btn.disabled = host.length < 3 || !host.includes('.');
-        }
+        btn.disabled = host.length < 3 || !host.includes('.');
     }
 
     async function ob_step2_next() {
-        const rawHost = (document.getElementById('ob-host').value || '').trim()
-            .replace(/^https?:\/\//, '').replace(/\/$/, '');
+        let rawHost;
+        let baseUrl;
+        if (obSelectedGitOption === 'gitlab-com') {
+            rawHost = 'gitlab.com';
+            baseUrl = 'https://gitlab.com';
+        } else {
+            rawHost = (document.getElementById('ob-host').value || '').trim()
+                .replace(/^https?:\/\//, '').replace(/\/$/, '');
+            baseUrl = 'https://' + rawHost;
+        }
         if (!rawHost) {
             return;
         }
@@ -660,7 +681,7 @@
         try {
             const source = await api('POST', '/settings/sources', {
                 name: rawHost,
-                baseUrl: 'https://' + rawHost
+                baseUrl
             });
             const sourceIdEl = document.getElementById('project-source-id');
             if (sourceIdEl) {
@@ -668,7 +689,7 @@
             }
             const tokenLink = document.getElementById('ob-token-link');
             if (tokenLink) {
-                tokenLink.href = 'https://' + rawHost + '/-/user_settings/personal_access_tokens';
+                tokenLink.href = baseUrl + '/-/user_settings/personal_access_tokens';
             }
             OB_STATE.hasSources = true;
             refreshOnboarding();

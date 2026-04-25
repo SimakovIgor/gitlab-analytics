@@ -42,6 +42,17 @@ public class AppUser {
     @Column(name = "password_hash")
     private String passwordHash;
 
+    /** True once the user has clicked the verification link in the welcome email. */
+    @Column(nullable = false)
+    private boolean emailVerified;
+
+    /** One-time token sent in the verification email. Null after verification. */
+    @Column(name = "email_verification_token")
+    private String emailVerificationToken;
+
+    @Column(name = "email_verification_expires_at")
+    private Instant emailVerificationExpiresAt;
+
     @CreationTimestamp
     @Column(nullable = false,
             updatable = false)

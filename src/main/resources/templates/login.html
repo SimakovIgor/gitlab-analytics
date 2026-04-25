@@ -596,7 +596,24 @@
             <div class="lp-error" th:if="${param.error}">
                 Неверный email или пароль.
             </div>
+            <div class="lp-error" th:if="${param.disabled}"
+                 style="background:oklch(0.95 0.05 60 / 0.5);border-color:oklch(0.75 0.12 60 / 0.4);color:oklch(0.45 0.12 60)">
+                Email не подтверждён. Проверьте почту или
+                <a href="/register" style="color:oklch(0.42 0.19 275);font-weight:500;">зарегистрируйтесь снова</a>.
+            </div>
+            <div class="lp-error" th:if="${param.tokenExpired}"
+                 style="background:oklch(0.95 0.05 60 / 0.5);border-color:oklch(0.75 0.12 60 / 0.4);color:oklch(0.45 0.12 60)">
+                Ссылка устарела. Запросите новую через «Забыли пароль?».
+            </div>
 
+            <div style="margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;
+                        border-radius:8px;font-size:13px;color:#15803d;"
+                 th:if="${param.verified}">Email подтверждён — войдите в аккаунт.
+            </div>
+            <div style="margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;
+                        border-radius:8px;font-size:13px;color:#15803d;"
+                 th:if="${param.passwordReset}">Пароль успешно изменён. Войдите с новым паролем.
+            </div>
             <div style="margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;
                         border-radius:8px;font-size:13px;color:#15803d;"
                  th:if="${param.logout}">Вы вышли из системы.
@@ -618,6 +635,9 @@
                 <button class="lp-btn-primary" type="submit">Войти</button>
             </form>
 
+            <p style="font-size:12px;color:#8a8573;text-align:center;margin:0 0 8px;">
+                <a href="/forgot-password" style="color:#8a8573;text-decoration:none;">Забыли пароль?</a>
+            </p>
             <p style="font-size:12px;color:#8a8573;text-align:center;margin-bottom:0;">
                 Нет аккаунта?
                 <a href="/register" style="color:oklch(0.42 0.19 275);font-weight:500;text-decoration:none;">Зарегистрироваться</a>

@@ -2,6 +2,10 @@ spring:
   application:
     name: gitlab-analytics
 
+  # spring.mail.* is intentionally absent from yml.
+  # Set SPRING_MAIL_HOST env var to enable email sending.
+  # When absent, JavaMailSender is not auto-created and EmailService silently skips sending.
+
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gitlab_analytics}
     username: ${DB_USERNAME:analytics}
@@ -32,6 +36,13 @@ spring:
       fail-on-unknown-properties: false
 
 app:
+  # Public URL of the app — used in email links (e.g. https://gitpulse.ru).
+  # Override via APP_BASE_URL env var in production.
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
+  mail:
+    from: ${SMTP_FROM:noreply@gitpulse.ru}
+
   encryption:
     # Шифрование токенов GitLab в базе данных (AES-256-GCM).
     # false — токены хранятся в открытом виде (NoOpEncryptionService).

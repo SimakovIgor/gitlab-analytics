@@ -4,6 +4,7 @@ import io.micrometer.common.KeyValue;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import io.simakov.analytics.gitlab.client.GitLabRateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,9 +63,17 @@ public class WebClientConfig {
 
     // Inject WebClient.Builder — Spring Boot auto-applies ObservationWebClientCustomizer,
     // which records http_client_requests_seconds_* metrics via Micrometer.
+    private static ExchangeFilterFunction rateLimitFilter(GitLabRateLimiter rateLimiter) {
+        return (request, next) -> {
+            rateLimiter.acquire(request.url().toString());
+            return next.exchange(request);
+        };
+    }
+
     @Bean
     public WebClient gitLabWebClient(AppProperties props,
-                                     WebClient.Builder builder) {
+                                     WebClient.Builder builder,
+                                     GitLabRateLimiter rateLimiter) {
         AppProperties.Gitlab gitlab = props.gitlab();
         int connectMs = gitlab.connectTimeoutSeconds() * 1000;
         int readSec = gitlab.readTimeoutSeconds();
@@ -79,6 +88,7 @@ public class WebClientConfig {
             .clientConnector(new ReactorClientHttpConnector(httpClient))
             .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
             .filter(gitLabLoggingFilter())
+            .filter(rateLimitFilter(rateLimiter))
             .build();
     }
 }

@@ -97,6 +97,7 @@ class RegisterControllerTest extends BaseIT {
             .name("Login Test")
             .email(email)
             .passwordHash(passwordEncoder.encode(password))
+            .emailVerified(true)
             .lastLoginAt(Instant.now())
             .build());
 
@@ -115,6 +116,7 @@ class RegisterControllerTest extends BaseIT {
             .name("Wrong Pass")
             .email(email)
             .passwordHash(passwordEncoder.encode("correctpassword"))
+            .emailVerified(true)
             .lastLoginAt(Instant.now())
             .build());
 

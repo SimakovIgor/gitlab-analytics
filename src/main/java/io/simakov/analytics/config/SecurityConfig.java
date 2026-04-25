@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -18,6 +19,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -90,9 +92,15 @@ public class SecurityConfig {
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
                     "/actuator/**",
+                    "/",
+                    "/landing",
                     "/login",
                     "/register",
                     "/join",
+                    "/verify-email",
+                    "/verify-email-sent",
+                    "/forgot-password",
+                    "/reset-password",
                     "/css/**",
                     "/js/**",
                     "/error"
@@ -106,11 +114,23 @@ public class SecurityConfig {
                 .usernameParameter("email")
                 .passwordParameter("password")
                 .successHandler(workspaceAwareSuccessHandler)
-                .failureUrl("/login?error")
+                .failureHandler(authFailureHandler())
             )
             .logout(logout -> logout
                 .logoutSuccessUrl("/login?logout")
             )
             .build();
+    }
+
+    @Bean
+    public AuthenticationFailureHandler authFailureHandler() {
+        return (request, response, exception) -> {
+            if (exception.getCause() instanceof DisabledException
+                || exception instanceof DisabledException) {
+                response.sendRedirect("/login?disabled");
+            } else {
+                response.sendRedirect("/login?error");
+            }
+        };
     }
 }

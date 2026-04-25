@@ -90,6 +90,7 @@ public class DevAutoLoginFilter extends OncePerRequestFilter {
             AppUser user = AppUser.builder()
                 .email(DEV_EMAIL)
                 .name("Dev User")
+                .emailVerified(true)
                 .lastLoginAt(Instant.now())
                 .build();
             AppUser saved = appUserRepository.save(user);

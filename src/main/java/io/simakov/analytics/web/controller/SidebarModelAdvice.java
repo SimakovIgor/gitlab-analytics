@@ -1,6 +1,8 @@
 package io.simakov.analytics.web.controller;
 
 import io.simakov.analytics.domain.model.AppUser;
+import io.simakov.analytics.domain.model.enums.WorkspaceRole;
+import io.simakov.analytics.domain.repository.WorkspaceMemberRepository;
 import io.simakov.analytics.security.AppUserPrincipal;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.workspace.TeamService;
@@ -17,6 +19,7 @@ import java.util.Map;
 public class SidebarModelAdvice {
 
     private final TeamService teamService;
+    private final WorkspaceMemberRepository memberRepository;
 
     @ModelAttribute("teamCount")
     public int teamCount() {
@@ -24,6 +27,28 @@ public class SidebarModelAdvice {
             return 0;
         }
         return teamService.countTeams(WorkspaceContext.get());
+    }
+
+    /**
+     * Whether the current user is a workspace OWNER.
+     * Used by templates to conditionally show management controls.
+     */
+    @ModelAttribute("isOwner")
+    public boolean isOwner() {
+        if (!WorkspaceContext.isSet()) {
+            return false;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null
+            || !auth.isAuthenticated()
+            || !(auth.getPrincipal() instanceof AppUserPrincipal principal)) {
+            return false;
+        }
+        Long appUserId = principal.getAppUser().getId();
+        Long workspaceId = WorkspaceContext.get();
+        return memberRepository.findByWorkspaceIdAndAppUserId(workspaceId, appUserId)
+            .map(m -> WorkspaceRole.OWNER.name().equals(m.getRole()))
+            .orElse(false);
     }
 
     /**
