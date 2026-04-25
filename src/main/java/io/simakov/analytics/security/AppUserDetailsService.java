@@ -15,8 +15,9 @@ public class AppUserDetailsService implements UserDetailsService {
     private final AppUserRepository appUserRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        AppUser user = appUserRepository.findByEmail(email.toLowerCase())
+    @SuppressWarnings("PMD.AvoidUncheckedExceptionsInSignatures")
+    public UserDetails loadUserByUsername(String email) {
+        AppUser user = appUserRepository.findByEmail(email.toLowerCase(java.util.Locale.ROOT))
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
         return new AppUserPrincipal(user);
     }

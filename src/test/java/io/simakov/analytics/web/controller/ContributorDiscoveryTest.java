@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -90,7 +90,7 @@ class ContributorDiscoveryTest extends BaseIT {
     void returnsEmptyListWhenNoCommits() throws Exception {
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -110,7 +110,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -140,7 +140,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -160,7 +160,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -182,7 +182,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -207,7 +207,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -233,7 +233,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -270,7 +270,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -303,7 +303,7 @@ class ContributorDiscoveryTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/settings/users/discovered")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 

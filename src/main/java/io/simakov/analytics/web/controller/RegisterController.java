@@ -38,7 +38,7 @@ public class RegisterController {
                            @RequestParam String password,
                            HttpServletRequest request,
                            Model model) {
-        String normalizedEmail = email.trim().toLowerCase();
+        String normalizedEmail = email.trim().toLowerCase(java.util.Locale.ROOT);
 
         if (appUserRepository.findByEmail(normalizedEmail).isPresent()) {
             model.addAttribute("error", "Пользователь с таким email уже зарегистрирован.");

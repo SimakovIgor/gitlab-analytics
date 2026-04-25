@@ -27,7 +27,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -90,7 +90,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageReturns200ForAuthenticatedUser() throws Exception {
         MvcResult result = mockMvc.perform(get("/flow")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -110,7 +110,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageShowsEmptyStateWhenNoMergedMrs() throws Exception {
         MvcResult result = mockMvc.perform(get("/flow")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -124,7 +124,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageRespectsPeriodParameter() throws Exception {
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_7_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -136,7 +136,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageHandlesInvalidPeriodGracefully() throws Exception {
         mockMvc.perform(get("/flow?period=INVALID")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk());
     }
 
@@ -148,7 +148,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_90_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -177,7 +177,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_90_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -208,7 +208,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_30_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -236,14 +236,14 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult at24h = mockMvc.perform(get("/flow?stuckHours=24")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
         assertThat(at24h.getResponse().getContentAsString()).contains("2-day old MR");
 
         MvcResult at7d = mockMvc.perform(get("/flow?stuckHours=168")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
         assertThat(at7d.getResponse().getContentAsString()).doesNotContain("2-day old MR");
@@ -253,7 +253,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageShowsEmptyStuckState() throws Exception {
         MvcResult result = mockMvc.perform(get("/flow")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -279,7 +279,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -310,7 +310,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_90_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -323,7 +323,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageShowsEmptyReviewBalanceWhenNoReviews() throws Exception {
         MvcResult result = mockMvc.perform(get("/flow")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -351,7 +351,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_90_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -375,7 +375,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_90_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -406,7 +406,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_90_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -422,7 +422,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageShowsEmptyMatrixWhenNoReviews() throws Exception {
         MvcResult result = mockMvc.perform(get("/flow")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -452,7 +452,7 @@ class FlowControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/flow?period=LAST_90_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -482,7 +482,7 @@ class FlowControllerTest extends BaseIT {
         // With non-existing project filter → should not see stuck MR
         MvcResult result = mockMvc.perform(get("/flow?projectIds=99999")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -494,7 +494,7 @@ class FlowControllerTest extends BaseIT {
     void flowPageShowsProjectCheckboxes() throws Exception {
         MvcResult result = mockMvc.perform(get("/flow")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 

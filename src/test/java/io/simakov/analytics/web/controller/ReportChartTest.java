@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,7 +46,7 @@ class ReportChartTest extends BaseIT {
     void chartEndpointReturnsEmptyJsonWhenNoUsers() throws Exception {
         MvcResult result = mockMvc.perform(get("/report/chart")
                 .session(webSession)
-                .with(oauth2Login())
+                .with(user("owner@test.com").roles("USER"))
                 .param("metric", "mr_merged_count")
                 .param("period", "LAST_360_DAYS"))
             .andExpect(status().isOk())
@@ -78,7 +78,7 @@ class ReportChartTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/report/chart")
                 .session(webSession)
-                .with(oauth2Login())
+                .with(user("owner@test.com").roles("USER"))
                 .param("metric", "mr_merged_count")
                 .param("period", "LAST_360_DAYS"))
             .andExpect(status().isOk())
@@ -101,7 +101,7 @@ class ReportChartTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/report/chart")
                 .session(webSession)
-                .with(oauth2Login())
+                .with(user("owner@test.com").roles("USER"))
                 .param("metric", "mr_merged_count")
                 .param("period", "LAST_360_DAYS")
                 .param("showInactive", "true"))

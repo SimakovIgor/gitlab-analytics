@@ -5,7 +5,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta name="_csrf" th:content="${_csrf?.token}"/>
     <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
-    <title>GitLab Analytics — Настройка</title>
+    <title>GitPulse — Настройка</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
 </head>
 <body class="app-layout">
@@ -24,7 +24,7 @@
             <path d="M11 1 L17 21 L11 14 L5 21 Z" fill="rgba(0,0,0,0.15)"/>
         </svg>
         <div class="topbar-brand-text">
-            <span class="topbar-brand-name">gitlens</span>
+            <span class="topbar-brand-name">gitpulse</span>
             <span class="topbar-brand-sub">analytics</span>
         </div>
     </a>
@@ -187,7 +187,7 @@
                        placeholder="gitlab.yourcompany.ru"
                        type="text">
                 <div class="ob-field-hint">
-                    Без <code style="font-family:var(--font-mono)">https://</code> — только домен. Нужен доступ из сети gitlens.
+                    Без <code style="font-family:var(--font-mono)">https://</code> — только домен. Нужен доступ из сети gitpulse.
                 </div>
             </div>
 
@@ -1275,6 +1275,7 @@
             <input type="checkbox" class="ob-check" data-user-id="${u.id}" ${checked ? 'checked' : ''}
                    ${u.gitlabUserId ? 'data-gitlab-user-id="' + u.gitlabUserId + '"' : ''}
                    ${u.username ? 'data-username="' + escHtml(u.username) + '"' : ''}
+                   data-display-name="${escHtml(u.displayName)}"
                    style="position:absolute;opacity:0;pointer-events:none" onchange="updateObCounter()">
             <div class="${boxClass}" id="ob-chkbox-${u.id}">
                 ${checkSvg}
@@ -1367,6 +1368,9 @@
 
     async function confirmTeamSelection() {
         const unchecked = [...document.querySelectorAll('#ob-discovery-list .ob-check:not(:checked)')];
+        // Negative IDs = MR authors not yet in tracked_user table; need to be created.
+        const checkedNew = [...document.querySelectorAll('#ob-discovery-list .ob-check:checked')]
+            .filter(cb => Number(cb.dataset.userId) < 0);
         const btn = document.getElementById('ob-btn-confirm');
         if (btn) {
             btn.disabled = true;
@@ -1374,12 +1378,30 @@
         }
         setDiscoveryActionsLocked(true);
         try {
+            // Delete unchecked existing tracked users (positive IDs only)
             await Promise.all(unchecked
                 .filter(cb => Number(cb.dataset.userId) > 0)
                 .map(cb => api('DELETE', '/settings/users/' + cb.dataset.userId)));
+            // Create tracked users for checked MR authors (negative IDs = not yet in DB)
+            await Promise.all(checkedNew.map(async (cb) => {
+                const name = cb.dataset.displayName || cb.dataset.username || 'Unknown';
+                const gitlabUserId = cb.dataset.gitlabUserId ? parseInt(cb.dataset.gitlabUserId) : null;
+                const username = cb.dataset.username || null;
+                const created = await api('POST', '/settings/users', {
+                    displayName: name,
+                    email: null,
+                    aliasEmails: []
+                });
+                if (gitlabUserId && created && created.id) {
+                    await api('POST', '/settings/users/' + created.id + '/link-gitlab', {
+                        gitlabUserId,
+                        username
+                    });
+                }
+            }));
             const checkedCount = document.querySelectorAll('#ob-discovery-list .ob-check:checked').length;
             obAddedDevs = checkedCount;
-            OB_STATE.hasUsers = true;
+            OB_STATE.hasUsers = checkedCount > 0;
             awaitingTeamConfirmation = false;
             api('POST', '/settings/snapshots/backfill?days=360').catch(() => {
             });

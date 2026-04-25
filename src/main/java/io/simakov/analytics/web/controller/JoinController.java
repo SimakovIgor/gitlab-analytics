@@ -50,9 +50,9 @@ public class JoinController {
             return "redirect:/report";
         }
 
-        // Not authenticated — store token in session and go through OAuth
+        // Not authenticated — store token in session and redirect to login
         HttpSession session = request.getSession(true);
         session.setAttribute(SESSION_PENDING_INVITE, token);
-        return "redirect:/oauth2/authorization/github";
+        return "redirect:/login";
     }
 }

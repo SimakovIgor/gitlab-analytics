@@ -32,6 +32,7 @@ public class SidebarModelAdvice {
      * GitHub OAuth and email+password login.
      */
     @ModelAttribute("currentUser")
+    @SuppressWarnings("PMD.ReturnEmptyCollectionRatherThanNull")
     public Map<String, String> currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null
@@ -42,7 +43,7 @@ public class SidebarModelAdvice {
         AppUser user = principal.getAppUser();
         String name = user.getName() != null
             ? user.getName()
-            : (user.getEmail() != null ? user.getEmail() : "");
+            : user.getEmail() != null ? user.getEmail() : "";
         String avatarUrl = user.getAvatarUrl() != null ? user.getAvatarUrl() : "";
         return Map.of("name", name, "avatarUrl", avatarUrl);
     }

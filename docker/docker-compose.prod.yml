@@ -28,14 +28,37 @@ services:
       DB_USERNAME: analytics
       DB_PASSWORD: ${DB_PASSWORD}
       API_TOKEN: ${API_TOKEN}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      APP_ENCRYPTION_ENABLED: ${APP_ENCRYPTION_ENABLED:-false}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
       JIRA_BASE_URL: ${JIRA_BASE_URL:-}
       JIRA_USERNAME: ${JIRA_USERNAME:-}
       JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
       JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-MI}
+    # Port NOT exposed directly — Nginx proxies to app:8080
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: gitlab-analytics-nginx
     ports:
-      - "8080:8080"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/gitpulse.conf:/etc/nginx/conf.d/gitpulse.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: gitlab-analytics-certbot
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Renew every 12h
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
     restart: unless-stopped
 
   node-exporter:
@@ -55,8 +78,6 @@ services:
   prometheus:
     image: prom/prometheus:v2.52.0
     container_name: gitlab-analytics-prometheus
-    ports:
-      - "9090:9090"
     volumes:
       - ../monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -70,8 +91,6 @@ services:
   loki:
     image: grafana/loki:2.9.8
     container_name: gitlab-analytics-loki
-    ports:
-      - "3100:3100"
     volumes:
       - ../monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki_data:/loki
@@ -93,8 +112,6 @@ services:
   grafana:
     image: grafana/grafana:10.4.3
     container_name: gitlab-analytics-grafana
-    ports:
-      - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
@@ -126,3 +143,4 @@ volumes:
   grafana_data:
   loki_data:
   portainer_data:
+  certbot_www:

@@ -27,7 +27,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -75,7 +75,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageReturns200() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
@@ -94,7 +94,7 @@ class DoraControllerTest extends BaseIT {
     void doraPageRendersAllMetricSections() throws Exception {
         saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -108,7 +108,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageShowsZeroMrsWhenNoData() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -122,7 +122,7 @@ class DoraControllerTest extends BaseIT {
         saveMergedMrWithTag(1L, 4, tag.getId());
         saveMergedMrWithTag(2L, 8, tag.getId());
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -134,7 +134,7 @@ class DoraControllerTest extends BaseIT {
     void doraPageFiltersToSelectedProjectIds() throws Exception {
         saveMergedMr(1L, 4);
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("projectIds", "99999")
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
@@ -157,7 +157,7 @@ class DoraControllerTest extends BaseIT {
         opened.setAuthorGitlabUserId(1L);
         mergeRequestRepository.save(opened);
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -167,7 +167,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageShowsProjectCheckboxes() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -187,7 +187,7 @@ class DoraControllerTest extends BaseIT {
             .gitlabProjectId(99L).pathWithNamespace("other/secret-repo").name("secret-repo")
             .tokenEncrypted("tok").enabled(true).build());
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -200,7 +200,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageShowsSetupBlockWhenNoReleasesAndNoIncidents() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -214,7 +214,7 @@ class DoraControllerTest extends BaseIT {
     void doraPageHidesReleasesStepWhenReleasesExist() throws Exception {
         saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -231,7 +231,7 @@ class DoraControllerTest extends BaseIT {
         saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
         saveIncident("MI-1", now.minus(2, ChronoUnit.DAYS));
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -248,7 +248,7 @@ class DoraControllerTest extends BaseIT {
     void doraPageRendersCfrCardAsAvailable() throws Exception {
         saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login()))
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -264,7 +264,7 @@ class DoraControllerTest extends BaseIT {
         // Releases exist so cards are visible, but no incidents → "Нет данных" for CFR
         saveReleaseTag("v1.0", now.minus(1, ChronoUnit.DAYS));
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -275,7 +275,7 @@ class DoraControllerTest extends BaseIT {
 
     @Test
     void doraPageHidesCardsWhenNoReleases() throws Exception {
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -294,7 +294,7 @@ class DoraControllerTest extends BaseIT {
         }
         saveIncident("MI-1", now.minus(2, ChronoUnit.DAYS));
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -310,7 +310,7 @@ class DoraControllerTest extends BaseIT {
         saveReleaseTag("v1", now.minus(5, ChronoUnit.DAYS));
         saveIncident("MI-1", now.minus(5, ChronoUnit.DAYS));
 
-        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(oauth2Login())
+        MvcResult result = mockMvc.perform(get("/dora").session(webSession).with(user("owner@test.com").roles("USER"))
                 .param("period", "LAST_30_DAYS"))
             .andExpect(status().isOk())
             .andReturn();
@@ -326,7 +326,7 @@ class DoraControllerTest extends BaseIT {
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .post("/dora/sync/incidents")
                     .session(webSession)
-                    .with(oauth2Login())
+                    .with(user("owner@test.com").roles("USER"))
                     .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
             .andExpect(status().isOk())
             .andReturn();

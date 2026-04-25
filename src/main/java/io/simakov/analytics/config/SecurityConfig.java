@@ -1,7 +1,6 @@
 package io.simakov.analytics.config;
 
 import io.simakov.analytics.security.AppUserDetailsService;
-import io.simakov.analytics.security.AppUserOauthService;
 import io.simakov.analytics.security.BearerTokenAuthFilter;
 import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final BearerTokenAuthFilter bearerTokenAuthFilter;
-    private final AppUserOauthService appUserOauthService;
     private final AppUserDetailsService appUserDetailsService;
     private final WorkspaceAwareSuccessHandler workspaceAwareSuccessHandler;
 
@@ -107,12 +105,6 @@ public class SecurityConfig {
                 .loginProcessingUrl("/login")
                 .usernameParameter("email")
                 .passwordParameter("password")
-                .successHandler(workspaceAwareSuccessHandler)
-                .failureUrl("/login?error")
-            )
-            .oauth2Login(oauth2 -> oauth2
-                .loginPage("/login")
-                .userInfoEndpoint(ui -> ui.userService(appUserOauthService))
                 .successHandler(workspaceAwareSuccessHandler)
                 .failureUrl("/login?error")
             )

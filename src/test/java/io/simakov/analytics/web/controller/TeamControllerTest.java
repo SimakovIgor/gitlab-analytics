@@ -27,7 +27,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -90,7 +90,7 @@ class TeamControllerTest extends BaseIT {
     void teamPageReturns200ForAuthenticatedUser() throws Exception {
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -109,7 +109,7 @@ class TeamControllerTest extends BaseIT {
     void teamPageShowsEmptyStateWhenNoActiveDevs() throws Exception {
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -123,7 +123,7 @@ class TeamControllerTest extends BaseIT {
     void teamPageRespectsPeriodParameter() throws Exception {
         MvcResult result = mockMvc.perform(get("/team?period=LAST_7_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -135,7 +135,7 @@ class TeamControllerTest extends BaseIT {
     void teamPageHandlesInvalidPeriodGracefully() throws Exception {
         mockMvc.perform(get("/team?period=INVALID")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk());
     }
 
@@ -149,7 +149,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -165,7 +165,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -183,7 +183,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -199,7 +199,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -219,7 +219,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -235,7 +235,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login())
+                .with(user("owner@test.com").roles("USER"))
                 .param("projectIds", "99999"))
             .andExpect(status().isOk())
             .andReturn();
@@ -259,7 +259,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -276,7 +276,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -295,7 +295,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -319,7 +319,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -338,7 +338,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -355,7 +355,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -382,7 +382,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -405,7 +405,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -421,7 +421,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -437,7 +437,7 @@ class TeamControllerTest extends BaseIT {
     void teamPageShowsActiveTabInTopbar() throws Exception {
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -465,7 +465,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -487,7 +487,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -518,7 +518,7 @@ class TeamControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/team?period=LAST_7_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -530,7 +530,7 @@ class TeamControllerTest extends BaseIT {
     void teamPageDefaultPeriodIsLast30Days() throws Exception {
         MvcResult result = mockMvc.perform(get("/team")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 

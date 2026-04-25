@@ -31,7 +31,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -349,7 +349,7 @@ class TeamProjectTest extends BaseIT {
         teamProjectRepository.save(TeamProject.of(team.getId(), projectId1));
         createUser("dev@test.com", "Dev", team.getId());
 
-        mockMvc.perform(get("/compare").session(webSession).with(oauth2Login()))
+        mockMvc.perform(get("/compare").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk());
     }
 
@@ -359,13 +359,13 @@ class TeamProjectTest extends BaseIT {
             .workspaceId(testWorkspaceId).name("NoProjects").colorIndex(2).build());
         createUser("dev@test.com", "Dev", team.getId());
 
-        mockMvc.perform(get("/compare").session(webSession).with(oauth2Login()))
+        mockMvc.perform(get("/compare").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk());
     }
 
     @Test
     void comparePageLoadsWhenNoTeamsExist() throws Exception {
-        mockMvc.perform(get("/compare").session(webSession).with(oauth2Login()))
+        mockMvc.perform(get("/compare").session(webSession).with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk());
     }
 

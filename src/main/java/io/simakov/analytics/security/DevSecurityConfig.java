@@ -1,12 +1,16 @@
 package io.simakov.analytics.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Dev-profile override that disables CSRF for the web chain.
@@ -18,28 +22,23 @@ import org.springframework.security.web.SecurityFilterChain;
  */
 @Configuration
 @Profile("dev")
+@RequiredArgsConstructor
 public class DevSecurityConfig {
 
-    private final AppUserOauthService appUserOauthService;
     private final BearerTokenAuthFilter bearerTokenAuthFilter;
     private final WorkspaceAwareSuccessHandler workspaceAwareSuccessHandler;
+    private final AppUserDetailsService appUserDetailsService;
+    private final PasswordEncoder passwordEncoder;
 
-    public DevSecurityConfig(AppUserOauthService appUserOauthService,
-                             BearerTokenAuthFilter bearerTokenAuthFilter,
-                             WorkspaceAwareSuccessHandler workspaceAwareSuccessHandler) {
-        this.appUserOauthService = appUserOauthService;
-        this.bearerTokenAuthFilter = bearerTokenAuthFilter;
-        this.workspaceAwareSuccessHandler = workspaceAwareSuccessHandler;
-    }
-
-    /**
-     * Web UI filter chain with CSRF disabled for local dev convenience.
-     * Order(2) matches the production webFilterChain so beans are interchangeable.
-     */
     @Bean
     @Order(2)
     public SecurityFilterChain devWebFilterChain(HttpSecurity http) throws Exception {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(appUserDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+
         return http
+            .authenticationProvider(provider)
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
@@ -56,19 +55,12 @@ public class DevSecurityConfig {
                 ).permitAll()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(bearerTokenAuthFilter,
-                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(bearerTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .formLogin(form -> form
                 .loginPage("/login")
                 .loginProcessingUrl("/login")
                 .usernameParameter("email")
                 .passwordParameter("password")
-                .successHandler(workspaceAwareSuccessHandler)
-                .failureUrl("/login?error")
-            )
-            .oauth2Login(oauth2 -> oauth2
-                .loginPage("/login")
-                .userInfoEndpoint(ui -> ui.userService(appUserOauthService))
                 .successHandler(workspaceAwareSuccessHandler)
                 .failureUrl("/login?error")
             )

@@ -62,8 +62,8 @@ public abstract class BaseIT {
     @BeforeEach
     void setUpWorkspace() {
         AppUser owner = appUserRepository.save(AppUser.builder()
-            .githubId(1L)
-            .githubLogin("test-owner")
+            .email("owner@test.com")
+            .name("Test Owner")
             .lastLoginAt(Instant.now())
             .build());
 

@@ -14,14 +14,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,20 +54,19 @@ class MembersControllerTest extends BaseIT {
 
     private AppUser owner;
     private AppUser guest;
-    private OAuth2AuthenticationToken ownerAuth;
+    private Authentication ownerAuth;
 
     @BeforeEach
     void setUp() {
         owner = appUserRepository.findAll().get(0);
 
         guest = appUserRepository.save(AppUser.builder()
-            .githubId(55L)
-            .githubLogin("guest-ctrl")
+            .email("guest-ctrl@test.com")
             .name("Guest Ctrl")
             .lastLoginAt(Instant.now())
             .build());
 
-        ownerAuth = oauthToken(owner);
+        ownerAuth = formAuth(owner);
     }
 
     // ── POST /settings/members/invite ─────────────────────────────────────────
@@ -165,13 +163,13 @@ class MembersControllerTest extends BaseIT {
 
         mockMvc.perform(get("/join").param("token", invite.getToken()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/oauth2/authorization/github"));
+            .andExpect(redirectedUrl("/login"));
     }
 
     @Test
     void joinWithValidTokenAuthenticatedConsumesMembershipAndRedirects() throws Exception {
         WorkspaceInvite invite = inviteService.createInvite(testWorkspaceId, owner.getId());
-        OAuth2AuthenticationToken guestAuth = oauthToken(guest);
+        Authentication guestAuth = formAuth(guest);
 
         mockMvc.perform(get("/join")
                 .param("token", invite.getToken())
@@ -192,7 +190,6 @@ class MembersControllerTest extends BaseIT {
     void joinWithValidTokenAlreadyMemberStillRedirectsToReport() throws Exception {
         WorkspaceInvite invite = inviteService.createInvite(testWorkspaceId, owner.getId());
 
-        // owner is already a member
         mockMvc.perform(get("/join")
                 .param("token", invite.getToken())
                 .with(authentication(ownerAuth))
@@ -208,15 +205,8 @@ class MembersControllerTest extends BaseIT {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private static OAuth2AuthenticationToken oauthToken(AppUser appUser) {
-        DefaultOAuth2User oauthUser = new DefaultOAuth2User(
-            List.of(),
-            Map.of("login", appUser.getGithubLogin() != null
-                ? appUser.getGithubLogin()
-                : "unknown"),
-            "login"
-        );
-        AppUserPrincipal principal = new AppUserPrincipal(appUser, oauthUser);
-        return new OAuth2AuthenticationToken(principal, List.of(), "github");
+    private static Authentication formAuth(AppUser appUser) {
+        AppUserPrincipal principal = new AppUserPrincipal(appUser);
+        return UsernamePasswordAuthenticationToken.authenticated(principal, null, principal.getAuthorities());
     }
 }

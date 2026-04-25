@@ -23,7 +23,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,7 +75,7 @@ class InsightsControllerTest extends BaseIT {
     void insightsPage_returnsOkForAuthenticatedUser() throws Exception {
         MvcResult result = mockMvc.perform(get("/insights")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -96,7 +96,7 @@ class InsightsControllerTest extends BaseIT {
         // No users → InsightService returns empty list → empty state
         MvcResult result = mockMvc.perform(get("/insights?period=LAST_30_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -135,7 +135,7 @@ class InsightsControllerTest extends BaseIT {
 
         MvcResult result = mockMvc.perform(get("/insights?period=LAST_30_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -148,7 +148,7 @@ class InsightsControllerTest extends BaseIT {
     void insightsPage_respectsPeriodParameter() throws Exception {
         MvcResult result = mockMvc.perform(get("/insights?period=LAST_7_DAYS")
                 .session(webSession)
-                .with(oauth2Login()))
+                .with(user("owner@test.com").roles("USER")))
             .andExpect(status().isOk())
             .andReturn();
 
