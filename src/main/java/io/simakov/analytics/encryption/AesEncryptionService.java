@@ -22,7 +22,13 @@ import javax.crypto.spec.SecretKeySpec;
 /**
  * AES-256-GCM encryption service. Activated when app.encryption.enabled=true.
  * Each call to encrypt() generates a fresh 12-byte random IV; the output is
- * base64(iv || ciphertext+tag) so the IV is recovered automatically during decrypt().
+ * {@code ENC:} + base64(iv || ciphertext+tag).
+ *
+ * <p>The {@code ENC:} prefix enables transparent backward-compatibility: if
+ * a stored value does not start with the prefix it was written as plaintext
+ * (e.g. before encryption was enabled) and is returned as-is by {@link #decrypt}.
+ * This means existing tokens continue to work after enabling encryption; they
+ * will be re-encrypted the next time they are written through the service.
  */
 @Slf4j
 @Service
@@ -34,6 +40,7 @@ public final class AesEncryptionService implements EncryptionService {
     private static final int GCM_TAG_BITS = 128;
     private static final int AES_KEY_BYTES = 32;
     private static final String CIPHER_ALGORITHM = "AES/GCM/NoPadding";
+    private static final String ENC_PREFIX = "ENC:";
 
     private final SecretKeySpec secretKey;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -60,7 +67,7 @@ public final class AesEncryptionService implements EncryptionService {
             byte[] combined = new byte[GCM_IV_LENGTH + ciphertext.length];
             System.arraycopy(iv, 0, combined, 0, GCM_IV_LENGTH);
             System.arraycopy(ciphertext, 0, combined, GCM_IV_LENGTH, ciphertext.length);
-            return Base64.getEncoder().encodeToString(combined);
+            return ENC_PREFIX + Base64.getEncoder().encodeToString(combined);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException
                  | InvalidKeyException | InvalidAlgorithmParameterException
                  | IllegalBlockSizeException | BadPaddingException e) {
@@ -70,7 +77,11 @@ public final class AesEncryptionService implements EncryptionService {
 
     @Override
     public String decrypt(String base64Ciphertext) {
-        byte[] combined = Base64.getDecoder().decode(base64Ciphertext);
+        if (!base64Ciphertext.startsWith(ENC_PREFIX)) {
+            // Plaintext token written before encryption was enabled — return as-is.
+            return base64Ciphertext;
+        }
+        byte[] combined = Base64.getDecoder().decode(base64Ciphertext.substring(ENC_PREFIX.length()));
         byte[] iv = Arrays.copyOfRange(combined, 0, GCM_IV_LENGTH);
         byte[] ciphertext = Arrays.copyOfRange(combined, GCM_IV_LENGTH, combined.length);
         try {

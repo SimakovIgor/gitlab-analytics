@@ -28,9 +28,18 @@ class AesEncryptionServiceTest {
     }
 
     @Test
-    void encryptProducesBase64Output() {
+    void encryptProducesEncPrefixedBase64Output() {
         String encrypted = service.encrypt(PLAINTEXT);
-        assertThat(encrypted).matches("[A-Za-z0-9+/]+=*");
+        assertThat(encrypted).startsWith("ENC:");
+        String payload = encrypted.substring(4);
+        assertThat(payload).matches("[A-Za-z0-9+/]+=*");
+    }
+
+    @Test
+    void decryptLegacyPlaintextTokenReturnsAsIs() {
+        // Tokens stored before encryption was enabled have no ENC: prefix.
+        // decrypt() must return them unchanged (backward compatibility).
+        assertThat(service.decrypt("glpat-legacytoken")).isEqualTo("glpat-legacytoken");
     }
 
     @Test

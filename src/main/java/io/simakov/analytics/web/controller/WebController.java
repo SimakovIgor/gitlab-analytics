@@ -6,7 +6,6 @@ import io.simakov.analytics.metrics.model.UserMetrics;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.MetricTrendService;
-import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.ReportViewService;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.MetricChartData;
@@ -17,7 +16,6 @@ import io.simakov.analytics.web.dto.SyncHistoryPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,7 +32,6 @@ public class WebController {
     private final ReportViewService reportViewService;
     private final MetricTrendService metricTrendService;
     private final SettingsViewService settingsViewService;
-    private final OAuth2UserResolver userResolver;
     private final WorkspaceService workspaceService;
     private final SyncJobService syncJobService;
     private final ObjectMapper objectMapper;
@@ -55,8 +52,7 @@ public class WebController {
     }
 
     @GetMapping("/report")
-    public String report(OAuth2AuthenticationToken authentication,
-                         @RequestParam(defaultValue = "LAST_30_DAYS") String period,
+    public String report(@RequestParam(defaultValue = "LAST_30_DAYS") String period,
                          @RequestParam(required = false) List<Long> projectIds,
                          @RequestParam(defaultValue = "true") boolean showInactive,
                          @RequestParam(required = false) String metric,
@@ -66,9 +62,6 @@ public class WebController {
             return "redirect:/onboarding";
         }
 
-        if (authentication != null) {
-            model.addAttribute("currentUser", userResolver.resolve(authentication));
-        }
         model.addAttribute("sources", data.sources());
         model.addAttribute("hasProjects", data.hasProjects());
         model.addAttribute("activeJobIds", data.activeJobIds());
@@ -113,11 +106,7 @@ public class WebController {
     }
 
     @GetMapping("/sync")
-    public String syncHistory(OAuth2AuthenticationToken authentication,
-                              Model model) {
-        if (authentication != null) {
-            model.addAttribute("currentUser", userResolver.resolve(authentication));
-        }
+    public String syncHistory(Model model) {
         SettingsPageData sidebar = settingsViewService.buildSettingsPage();
         model.addAttribute("allProjects", sidebar.projects());
         model.addAttribute("usersWithAliases", sidebar.usersWithAliases());

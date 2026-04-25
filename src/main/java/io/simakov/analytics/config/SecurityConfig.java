@@ -1,5 +1,6 @@
 package io.simakov.analytics.config;
 
+import io.simakov.analytics.security.AppUserDetailsService;
 import io.simakov.analytics.security.AppUserOauthService;
 import io.simakov.analytics.security.BearerTokenAuthFilter;
 import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
@@ -10,10 +11,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -25,7 +29,21 @@ public class SecurityConfig {
 
     private final BearerTokenAuthFilter bearerTokenAuthFilter;
     private final AppUserOauthService appUserOauthService;
+    private final AppUserDetailsService appUserDetailsService;
     private final WorkspaceAwareSuccessHandler workspaceAwareSuccessHandler;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public DaoAuthenticationProvider daoAuthenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(appUserDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
+    }
 
     /**
      * Filter chain for REST API endpoints (/api/**).
@@ -59,7 +77,7 @@ public class SecurityConfig {
 
     /**
      * Filter chain for web UI routes (non-dev profiles).
-     * Session-based, OAuth2 login via GitHub. Bearer token also accepted for JSON endpoints.
+     * Session-based. Supports both email+password form login and GitHub OAuth2.
      * Dev profile uses DevSecurityConfig which additionally disables CSRF.
      */
     @Bean
@@ -67,6 +85,7 @@ public class SecurityConfig {
     @Profile("!dev")
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         return http
+            .authenticationProvider(daoAuthenticationProvider())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/swagger-ui/**",
@@ -74,6 +93,7 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/actuator/**",
                     "/login",
+                    "/register",
                     "/join",
                     "/css/**",
                     "/js/**",
@@ -82,6 +102,14 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .addFilterBefore(bearerTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .formLogin(form -> form
+                .loginPage("/login")
+                .loginProcessingUrl("/login")
+                .usernameParameter("email")
+                .passwordParameter("password")
+                .successHandler(workspaceAwareSuccessHandler)
+                .failureUrl("/login?error")
+            )
             .oauth2Login(oauth2 -> oauth2
                 .loginPage("/login")
                 .userInfoEndpoint(ui -> ui.userService(appUserOauthService))

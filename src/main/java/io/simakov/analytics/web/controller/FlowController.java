@@ -8,12 +8,10 @@ import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.FlowService;
-import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,7 +29,6 @@ import java.util.stream.Collectors;
 public class FlowController {
 
     private final FlowService flowService;
-    private final OAuth2UserResolver userResolver;
     private final SettingsViewService settingsViewService;
     private final WorkspaceService workspaceService;
     private final SyncJobService syncJobService;
@@ -39,16 +36,11 @@ public class FlowController {
 
     @GetMapping("/flow")
     @SuppressWarnings("checkstyle:IllegalCatch")
-    public String flow(OAuth2AuthenticationToken authentication,
-                       @RequestParam(defaultValue = "LAST_30_DAYS") String period,
+    public String flow(@RequestParam(defaultValue = "LAST_30_DAYS") String period,
                        @RequestParam(required = false) List<Long> projectIds,
                        @RequestParam(defaultValue = "24") int stuckHours,
                        Model model) {
         Long workspaceId = WorkspaceContext.get();
-
-        if (authentication != null) {
-            model.addAttribute("currentUser", userResolver.resolve(authentication));
-        }
 
         PeriodType periodType;
         try {

@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     Optional<AppUser> findByGithubId(Long githubId);
+
+    Optional<AppUser> findByEmail(String email);
 }

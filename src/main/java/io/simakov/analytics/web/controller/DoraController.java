@@ -11,13 +11,11 @@ import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.sync.SyncOrchestrator;
 import io.simakov.analytics.web.DoraService;
-import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsService;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,7 +33,6 @@ import java.util.stream.Collectors;
 public class DoraController {
 
     private final DoraService doraService;
-    private final OAuth2UserResolver userResolver;
     private final SettingsViewService settingsViewService;
     private final WorkspaceService workspaceService;
     private final SyncJobService syncJobService;
@@ -45,14 +42,9 @@ public class DoraController {
     private final JiraProperties jiraProperties;
 
     @GetMapping("/dora")
-    public String dora(OAuth2AuthenticationToken authentication,
-                       @RequestParam(required = false) List<Long> projectIds,
+    public String dora(@RequestParam(required = false) List<Long> projectIds,
                        @RequestParam(defaultValue = "LAST_30_DAYS") String period,
                        Model model) {
-        if (authentication != null) {
-            model.addAttribute("currentUser", userResolver.resolve(authentication));
-        }
-
         PeriodType periodType;
         try {
             periodType = PeriodType.valueOf(period);

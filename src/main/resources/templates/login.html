@@ -324,12 +324,48 @@
             color: oklch(0.55 0.22 28);
         }
 
-        /* ── GitHub button ────────────────────────────────────────────── */
-        .lp-btn-github {
+        /* ── Form inputs ──────────────────────────────────────────────── */
+        .lp-field {
+            margin-bottom: 14px;
+        }
+
+        .lp-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #5a5648;
+            margin-bottom: 5px;
+            letter-spacing: 0.01em;
+        }
+
+        .lp-input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1.5px solid #e8e3d9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            color: #16150f;
+            background: #fafaf8;
+            outline: none;
+            transition: border-color 0.15s;
+            box-sizing: border-box;
+        }
+
+        .lp-input:focus {
+            border-color: oklch(0.42 0.19 275);
+            background: #fff;
+        }
+
+        .lp-input::placeholder {
+            color: #c5c0b4;
+        }
+
+        /* ── Primary button ───────────────────────────────────────────── */
+        .lp-btn-primary {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
             width: 100%;
             padding: 13px 20px;
             background: oklch(0.42 0.19 275);
@@ -339,22 +375,64 @@
             font-size: 14px;
             font-weight: 600;
             font-family: 'Inter', sans-serif;
-            text-decoration: none;
             cursor: pointer;
             letter-spacing: -0.01em;
             transition: filter 0.15s, transform 0.1s;
             box-shadow: 0 1px 2px oklch(0.42 0.19 275 / 0.25),
             0 4px 12px oklch(0.42 0.19 275 / 0.18);
+            margin-bottom: 14px;
         }
 
-        .lp-btn-github:hover {
+        .lp-btn-primary:hover {
             filter: brightness(1.1);
             transform: translateY(-1px);
         }
 
-        .lp-btn-github:active {
+        .lp-btn-primary:active {
             filter: brightness(0.96);
             transform: translateY(0);
+        }
+
+        /* ── Divider ──────────────────────────────────────────────────── */
+        .lp-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0;
+            font-size: 11px;
+            color: #c5c0b4;
+        }
+
+        .lp-divider::before, .lp-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e8e3d9;
+        }
+
+        /* ── GitHub button ────────────────────────────────────────────── */
+        .lp-btn-github {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 11px 20px;
+            background: #fff;
+            color: #16150f;
+            border: 1.5px solid #e8e3d9;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .lp-btn-github:hover {
+            border-color: #b5b09c;
+            background: #fafaf8;
         }
 
         .lp-auth-hint {
@@ -513,55 +591,47 @@
             </div>
 
             <h2 class="lp-auth-heading">Добро пожаловать</h2>
-            <p class="lp-auth-sub">Войдите через GitHub, чтобы получить доступ к аналитике команды.</p>
-
-            <ul class="lp-features">
-                <li class="lp-feature">
-                    <span class="lp-feature-icon">
-                        <svg fill="none" height="9" viewBox="0 0 10 10" width="9">
-                            <path d="M1.5 5.5 L4 8 L8.5 2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
-                        </svg>
-                    </span>
-                    MR/PR, коммиты и ревью — по каждому разработчику
-                </li>
-                <li class="lp-feature">
-                    <span class="lp-feature-icon">
-                        <svg fill="none" height="9" viewBox="0 0 10 10" width="9">
-                            <path d="M1.5 5.5 L4 8 L8.5 2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
-                        </svg>
-                    </span>
-                    DORA-метрики: Lead Time, Deployment Frequency, MTTR
-                </li>
-                <li class="lp-feature">
-                    <span class="lp-feature-icon">
-                        <svg fill="none" height="9" viewBox="0 0 10 10" width="9">
-                            <path d="M1.5 5.5 L4 8 L8.5 2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
-                        </svg>
-                    </span>
-                    Инсайты: застрявшие MR, дисбаланс ревью, рост Lead Time
-                </li>
-            </ul>
+            <p class="lp-auth-sub">Войдите в аналитику своей команды.</p>
 
             <div class="lp-error" th:if="${param.error}">
-                Не удалось войти через GitHub. Попробуйте ещё раз.
+                Неверный email или пароль.
             </div>
 
-            <div class="lp-auth-hint" style="margin-bottom:16px"
+            <div style="margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;
+                        border-radius:8px;font-size:13px;color:#15803d;"
                  th:if="${param.logout}">Вы вышли из системы.
             </div>
 
+            <!-- Email + password form -->
+            <form action="/login" method="post" th:action="@{/login}">
+                <input th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" type="hidden"/>
+                <div class="lp-field">
+                    <label class="lp-label" for="email">Email</label>
+                    <input autocomplete="email" class="lp-input" id="email"
+                           name="email" placeholder="you@company.com" required type="email"/>
+                </div>
+                <div class="lp-field">
+                    <label class="lp-label" for="password">Пароль</label>
+                    <input autocomplete="current-password" class="lp-input" id="password"
+                           name="password" placeholder="••••••••" required type="password"/>
+                </div>
+                <button class="lp-btn-primary" type="submit">Войти</button>
+            </form>
+
+            <p style="font-size:12px;color:#8a8573;text-align:center;margin-bottom:0;">
+                Нет аккаунта?
+                <a href="/register" style="color:oklch(0.42 0.19 275);font-weight:500;text-decoration:none;">Зарегистрироваться</a>
+            </p>
+
+            <div class="lp-divider">или</div>
+
             <a class="lp-btn-github" href="/oauth2/authorization/github">
-                <svg fill="white" height="18" viewBox="0 0 24 24" width="18">
+                <svg fill="#24292f" height="16" viewBox="0 0 24 24" width="16">
                     <path
                         d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
                 </svg>
                 Войти через GitHub
             </a>
-
-            <p class="lp-auth-hint">
-                OAuth — пароль не нужен.<br>
-                Данные хранятся только в вашем GitLab.
-            </p>
 
         </div>
 

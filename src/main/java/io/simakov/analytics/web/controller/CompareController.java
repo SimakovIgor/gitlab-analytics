@@ -7,12 +7,10 @@ import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.CompareService;
 import io.simakov.analytics.web.DoraService;
-import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.workspace.WorkspaceService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,22 +28,16 @@ public class CompareController {
 
     private final CompareService compareService;
     private final DoraService doraService;
-    private final OAuth2UserResolver userResolver;
     private final SettingsViewService settingsViewService;
     private final WorkspaceService workspaceService;
     private final SyncJobService syncJobService;
 
     @GetMapping("/compare")
     @SuppressWarnings("checkstyle:IllegalCatch")
-    public String compare(OAuth2AuthenticationToken authentication,
-                          @RequestParam(defaultValue = "LAST_30_DAYS") String period,
+    public String compare(@RequestParam(defaultValue = "LAST_30_DAYS") String period,
                           @RequestParam(required = false) List<Long> projectIds,
                           Model model) {
         Long workspaceId = WorkspaceContext.get();
-
-        if (authentication != null) {
-            model.addAttribute("currentUser", userResolver.resolve(authentication));
-        }
 
         PeriodType periodType;
         try {

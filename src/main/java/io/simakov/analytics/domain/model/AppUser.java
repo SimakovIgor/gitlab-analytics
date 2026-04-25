@@ -28,17 +28,19 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false,
-            unique = true)
+    @Column(unique = true)
     private Long githubId;
 
-    @Column(nullable = false,
-            unique = true)
+    @Column(unique = true)
     private String githubLogin;
 
     private String name;
     private String avatarUrl;
     private String email;
+
+    /** BCrypt hash. Null for GitHub-OAuth-only users. */
+    @Column(name = "password_hash")
+    private String passwordHash;
 
     @CreationTimestamp
     @Column(nullable = false,

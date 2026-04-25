@@ -48,6 +48,7 @@ public class DevSecurityConfig {
                     "/v3/api-docs/**",
                     "/actuator/**",
                     "/login",
+                    "/register",
                     "/join",
                     "/css/**",
                     "/js/**",
@@ -57,6 +58,14 @@ public class DevSecurityConfig {
             )
             .addFilterBefore(bearerTokenAuthFilter,
                 org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+            .formLogin(form -> form
+                .loginPage("/login")
+                .loginProcessingUrl("/login")
+                .usernameParameter("email")
+                .passwordParameter("password")
+                .successHandler(workspaceAwareSuccessHandler)
+                .failureUrl("/login?error")
+            )
             .oauth2Login(oauth2 -> oauth2
                 .loginPage("/login")
                 .userInfoEndpoint(ui -> ui.userService(appUserOauthService))

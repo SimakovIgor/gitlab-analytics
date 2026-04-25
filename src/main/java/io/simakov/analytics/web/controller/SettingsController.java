@@ -13,7 +13,6 @@ import io.simakov.analytics.gitlab.dto.GitLabProjectDto;
 import io.simakov.analytics.gitlab.dto.GitLabUserSearchDto;
 import io.simakov.analytics.security.AppUserPrincipal;
 import io.simakov.analytics.security.WorkspaceContext;
-import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsService;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.CreatedProjectResult;
@@ -29,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -54,7 +52,6 @@ public class SettingsController {
 
     private final SettingsService settingsService;
     private final SettingsViewService settingsViewService;
-    private final OAuth2UserResolver userResolver;
     private final WorkspaceService workspaceService;
     private final MembersService membersService;
     private final TeamService teamService;
@@ -63,12 +60,7 @@ public class SettingsController {
     // ── Settings page ────────────────────────────────────────────────────────
 
     @GetMapping
-    public String settings(OAuth2AuthenticationToken authentication,
-                           Model model) {
-        if (authentication != null) {
-            model.addAttribute("currentUser", userResolver.resolve(authentication));
-        }
-
+    public String settings(Model model) {
         SettingsPageData data = settingsViewService.buildSettingsPage();
         model.addAttribute("sources", data.sources());
         model.addAttribute("projects", data.projects());
