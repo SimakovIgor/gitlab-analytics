@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
     <title>GitLab Analytics — Сравнение команд</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
 </head>
@@ -19,23 +19,50 @@
     <main class="report-main">
 
         <!-- ── Header ──────────────────────────────────────────────────────── -->
-        <div class="page-header-row" style="margin-bottom:20px">
+        <div class="page-header">
             <div>
-                <h1 class="page-title" style="margin:0">
-                    Сравнение команд
-                    <span style="color:var(--fg-3);font-weight:400"> · для Head of Engineering</span>
-                </h1>
-                <div class="page-subtitle" style="margin-top:4px">
-                    Все команды рядом. Красные — требуют внимания, зелёные — держат планку.
+                <h1 class="page-title">Сравнение команд</h1>
+                <div class="page-subtitle">Все команды рядом. Красные — требуют внимания, зелёные — держат планку.</div>
+            </div>
+            <div class="page-header-right">
+                <div class="period-segmented">
+                    <button onclick="applyFiltersWithPeriod('LAST_7_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_7_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">7д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_30_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_30_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">30д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_90_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_90_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">90д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_180_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_180_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">180д
+                    </button>
+                    <button onclick="applyFiltersWithPeriod('LAST_360_DAYS')"
+                            th:class="${selectedPeriod == 'LAST_360_DAYS'} ? 'period-seg-btn period-seg-btn-active' : 'period-seg-btn'"
+                            type="button">360д
+                    </button>
                 </div>
             </div>
-            <!-- Period filter -->
-            <div class="period-seg" style="flex-shrink:0">
-                <a th:each="p : ${ {'LAST_7_DAYS','LAST_30_DAYS','LAST_90_DAYS'} }"
-                   th:href="@{/compare(period=${p})}"
-                   th:classappend="${selectedPeriod == p} ? ' period-seg-btn-active' : ''"
-                   th:text="${p == 'LAST_7_DAYS'} ? '7д' : (${p == 'LAST_30_DAYS'} ? '30д' : '90д')"
-                   class="period-seg-btn">30д</a>
+        </div>
+
+        <!-- Фильтр репозиториев -->
+        <div class="repo-filter-row" th:if="${allProjects != null and allProjects.size() > 1}">
+            <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--fg-3)">Репозитории</span>
+            <div class="filter-checkboxes">
+                <th:block th:each="project : ${allProjects}">
+                    <label class="filter-checkbox-label">
+                        <input class="filter-project-check" onchange="applyFilters()"
+                               th:checked="${selectedProjectIds != null and selectedProjectIds.contains(project.id)}"
+                               th:value="${project.id}" type="checkbox">
+                        <span class="filter-chip-check">✓</span>
+                        <span th:text="${project.name}">repo</span>
+                    </label>
+                </th:block>
             </div>
         </div>
 
@@ -78,9 +105,10 @@
                 </div>
             </div>
 
-            <!-- ── Benchmark panel ───────────────────────────────────────────── -->
+            <!-- ── Benchmark panel (4 DORA-aligned metrics) ─────────────────── -->
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
 
+                <!-- Lead Time -->
                 <div class="card" style="padding:14px;">
                     <div class="metric-label" style="margin-bottom:6px;">Средний Lead Time</div>
                     <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px;">
@@ -88,40 +116,82 @@
                               th:text="${#numbers.formatDecimal(benchmark.avgLeadTimeHours, 1, 1)}">0</span>
                         <span style="font-size:12px;color:var(--fg-2);">ч</span>
                     </div>
-                    <div th:with="ok=${benchmark.avgLeadTimeHours < 24}"
+                    <!-- DORA High = <7д = 168ч -->
+                    <div th:with="ok=${benchmark.avgLeadTimeHours < 168}"
+                         th:style="${ok} ? 'font-size:10px;color:var(--good);display:flex;align-items:center;gap:4px' : 'font-size:10px;color:var(--warn);display:flex;align-items:center;gap:4px'">
+                        <span th:text="${ok} ? '✓' : '!'">!</span>
+                        <span>Industry High: &lt;7д</span>
+                    </div>
+                </div>
+
+                <!-- Deploys per day -->
+                <div class="card" style="padding:14px;">
+                    <div class="metric-label" style="margin-bottom:6px;">Deploys в день</div>
+                    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px;">
+                        <th:block th:if="${benchmark.deploysPerDay >= 0}">
+                            <span class="num" style="font-size:24px;font-weight:600;color:var(--fg-0);"
+                                  th:text="${#numbers.formatDecimal(benchmark.deploysPerDay, 1, 1)}">—</span>
+                        </th:block>
+                        <th:block th:unless="${benchmark.deploysPerDay >= 0}">
+                            <span style="font-size:24px;font-weight:600;color:var(--fg-3);">—</span>
+                        </th:block>
+                    </div>
+                    <!-- DORA Elite = ≥1/д -->
+                    <div th:if="${benchmark.deploysPerDay >= 0}"
+                         th:with="ok=${benchmark.deploysPerDay >= 1}"
+                         th:style="${ok} ? 'font-size:10px;color:var(--good);display:flex;align-items:center;gap:4px' : 'font-size:10px;color:var(--warn);display:flex;align-items:center;gap:4px'">
+                        <span th:text="${ok} ? '✓' : '!'">!</span>
+                        <span>Industry Elite: ≥1/д</span>
+                    </div>
+                    <div th:unless="${benchmark.deploysPerDay >= 0}"
+                         style="font-size:10px;color:var(--fg-3);">Нет данных о релизах</div>
+                </div>
+
+                <!-- Change Failure Rate -->
+                <div class="card" style="padding:14px;">
+                    <div class="metric-label" style="margin-bottom:6px;">Change Failure</div>
+                    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px;">
+                        <th:block th:if="${benchmark.avgCfrPercent >= 0}">
+                            <span class="num" style="font-size:24px;font-weight:600;color:var(--fg-0);"
+                                  th:text="${#numbers.formatDecimal(benchmark.avgCfrPercent, 1, 1)}">—</span>
+                            <span style="font-size:12px;color:var(--fg-2);">%</span>
+                        </th:block>
+                        <th:block th:unless="${benchmark.avgCfrPercent >= 0}">
+                            <span style="font-size:24px;font-weight:600;color:var(--fg-3);">—</span>
+                        </th:block>
+                    </div>
+                    <!-- DORA High = <10%, Medium = <15% -->
+                    <div th:if="${benchmark.avgCfrPercent >= 0}"
+                         th:with="ok=${benchmark.avgCfrPercent < 10}"
+                         th:style="${ok} ? 'font-size:10px;color:var(--good);display:flex;align-items:center;gap:4px' : 'font-size:10px;color:var(--bad);display:flex;align-items:center;gap:4px'">
+                        <span th:text="${ok} ? '✓' : '!'">!</span>
+                        <span>Industry High: &lt;10%</span>
+                    </div>
+                    <div th:unless="${benchmark.avgCfrPercent >= 0}"
+                         style="font-size:10px;color:var(--fg-3);">Нет данных о релизах</div>
+                </div>
+
+                <!-- MTTR -->
+                <div class="card" style="padding:14px;">
+                    <div class="metric-label" style="margin-bottom:6px;">MTTR</div>
+                    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px;">
+                        <th:block th:if="${mttrHours != null}">
+                            <span class="num" style="font-size:24px;font-weight:600;color:var(--fg-0);"
+                                  th:text="${#numbers.formatDecimal(mttrHours, 1, 1)}">0</span>
+                            <span style="font-size:12px;color:var(--fg-2);">ч</span>
+                        </th:block>
+                        <th:block th:unless="${mttrHours != null}">
+                            <span style="font-size:24px;font-weight:600;color:var(--fg-3);">—</span>
+                        </th:block>
+                    </div>
+                    <div th:if="${mttrHours != null}"
+                         th:with="ok=${mttrHours < 24}"
                          th:style="${ok} ? 'font-size:10px;color:var(--good);display:flex;align-items:center;gap:4px' : 'font-size:10px;color:var(--warn);display:flex;align-items:center;gap:4px'">
                         <span th:text="${ok} ? '✓' : '!'">!</span>
                         <span>Industry High: &lt;24ч</span>
                     </div>
-                </div>
-
-                <div class="card" style="padding:14px;">
-                    <div class="metric-label" style="margin-bottom:6px;">MR всего</div>
-                    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px;">
-                        <span class="num" style="font-size:24px;font-weight:600;color:var(--fg-0);"
-                              th:text="${benchmark.totalMrs}">0</span>
-                    </div>
-                    <div style="font-size:10px;color:var(--fg-3);">за выбранный период</div>
-                </div>
-
-                <div class="card" style="padding:14px;">
-                    <div class="metric-label" style="margin-bottom:6px;">Команд</div>
-                    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px;">
-                        <span class="num" style="font-size:24px;font-weight:600;color:var(--fg-0);"
-                              th:text="${benchmark.teamCount}">0</span>
-                    </div>
-                    <div style="font-size:10px;color:var(--fg-3);">сравниваются</div>
-                </div>
-
-                <div class="card" style="padding:14px;">
-                    <div class="metric-label" style="margin-bottom:6px;">Средний Health</div>
-                    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px;">
-                        <span class="num" style="font-size:24px;font-weight:600;"
-                              th:style="${benchmark.avgHealthScore >= 75} ? 'font-size:24px;font-weight:600;color:var(--good)' : (${benchmark.avgHealthScore >= 50} ? 'font-size:24px;font-weight:600;color:var(--warn)' : 'font-size:24px;font-weight:600;color:var(--bad)')"
-                              th:text="${#numbers.formatDecimal(benchmark.avgHealthScore, 1, 0)}">0</span>
-                        <span style="font-size:12px;color:var(--fg-2);">/100</span>
-                    </div>
-                    <div style="font-size:10px;color:var(--fg-3);">по всем командам</div>
+                    <div th:unless="${mttrHours != null}"
+                         style="font-size:10px;color:var(--fg-3);">Нет данных об инцидентах</div>
                 </div>
             </div>
 
@@ -142,12 +212,22 @@
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">
                     <div>
                         <div style="font-size:14px;font-weight:600;color:var(--fg-0);">Health trend · по неделям</div>
-                        <div style="font-size:11px;color:var(--fg-3);margin-top:2px;">Композитный health score по каждой команде.</div>
+                        <div style="font-size:11px;color:var(--fg-3);margin-top:2px;">Динамика команд по неделям.</div>
+                    </div>
+                    <div class="period-segmented" id="trend-metric-filter">
+                        <button class="period-seg-btn period-seg-btn-active" data-metric="health"
+                                onclick="setTrendMetric('health')" type="button">Health</button>
+                        <button class="period-seg-btn" data-metric="mrs"
+                                onclick="setTrendMetric('mrs')" type="button">MR</button>
+                        <button class="period-seg-btn" data-metric="lead"
+                                onclick="setTrendMetric('lead')" type="button">Lead</button>
+                        <button class="period-seg-btn" data-metric="cfr"
+                                onclick="setTrendMetric('cfr')" type="button">CFR</button>
+                        <button class="period-seg-btn" data-metric="deploys"
+                                onclick="setTrendMetric('deploys')" type="button">Deploys</button>
                     </div>
                 </div>
-                <div style="position:relative;height:220px;">
-                    <canvas id="trend-chart"></canvas>
-                </div>
+                <div id="trend-chart-svg" style="width:100%;"></div>
             </div>
 
         </div><!-- /hasTeams -->
@@ -159,24 +239,40 @@
 <script th:inline="javascript">
     /*<![CDATA[*/
     const CARDS_DATA = /*[[${cards}]]*/ [];
-    const TREND_DATA = JSON.parse(/*[[${trendJson}]]*/ '{"labels":[],"datasets":[]}');
+    const TREND_DATA = JSON.parse(/*[[${trendJson}]]*/ '{"labels":[],"series":[]}');
     /*]]>*/
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// ── CSS variable helper ──────────────────────────────────────────────────────
-function cssVar(name) {
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
+    function getProjectIds() {
+        return [...document.querySelectorAll('.filter-project-check:checked')].map(cb => cb.value);
+    }
 
+    function navigateCompare(period, projectIds) {
+        const params = new URLSearchParams();
+        params.set('period', period);
+        projectIds.forEach(id => params.append('projectIds', id));
+        window.location.href = '/compare?' + params.toString();
+    }
+
+    function applyFilters() {
+        const period = new URLSearchParams(window.location.search).get('period') || 'LAST_30_DAYS';
+        navigateCompare(period, getProjectIds());
+    }
+
+    function applyFiltersWithPeriod(period) {
+        navigateCompare(period, getProjectIds());
+    }
+</script>
+
+<script>
 // ── Radar SVG ───────────────────────────────────────────────────────────────
 function buildRadar(card, size) {
     size = size || 120;
-    const axes = ['MR', 'Lead T.', 'Deploy', 'CFR', 'Quality'];
+    const axes = ['MR', 'Lead T.', 'Deploy', 'CFR', 'Rework'];
     const values = [card.velocityScore, card.leadTimeScore, card.deployScore, card.cfrScore, card.qualityScore];
     const N = 5;
-    const cx = size / 2, cy = size / 2, r = size / 2 - 14;
+    const cx = size / 2, cy = size / 2, r = size / 2 - 22;
     const angle = i => -Math.PI / 2 + (2 * Math.PI * i / N);
     const pt = (i, v) => [cx + Math.cos(angle(i)) * r * (v / 100), cy + Math.sin(angle(i)) * r * (v / 100)];
 
@@ -192,7 +288,7 @@ function buildRadar(card, size) {
 
     const axis_labels = axes.map((label, i) => {
         const [x, y] = pt(i, 118);
-        return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="var(--fg-3)">${label}</text>`;
+        return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="7.5" fill="var(--fg-3)">${label}</text>`;
     }).join('');
 
     return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
@@ -214,14 +310,16 @@ function buildTeamCard(card) {
             : `<span style="color:var(--fg-3);font-size:14px;">→</span>`;
 
     const noProjects = card.projectCount === 0;
-    const deployVal = noProjects ? '—' : card.deploysPerWeek.toFixed(1) + '/н';
-    const cfrVal = noProjects ? '—' : card.cfrPercent.toFixed(1) + '%';
+    const noDeployData = noProjects || card.deploysPerWeek < 0;
+    const noCfrData = noProjects || card.cfrPercent < 0;
+    const deployVal = noDeployData ? '—' : card.deploysPerWeek.toFixed(1) + '/н';
+    const cfrVal = noCfrData ? '—' : card.cfrPercent.toFixed(1) + '%';
     const bars = [
         {l: 'Health',  score: card.healthScore,   raw: card.healthScore + '',        invert: false},
         {l: 'MR',      score: Math.min(100, card.mrsCount / 30 * 100), raw: card.mrsCount + '',  invert: false},
         {l: 'Lead T.', score: card.leadTimeScore, raw: card.leadTimeHours + 'ч',     invert: false},
-        {l: 'Deploy',  score: noProjects ? 50 : card.deployScore, raw: deployVal,    invert: false},
-        {l: 'CFR',     score: noProjects ? 50 : card.cfrScore,    raw: cfrVal,       invert: false},
+        {l: 'Deploy',  score: noDeployData ? 50 : card.deployScore,  raw: deployVal, invert: false},
+        {l: 'CFR',     score: noCfrData ? 50 : card.cfrScore,        raw: cfrVal,    invert: false},
     ].map(row => {
         const pct = Math.min(100, Math.max(0, row.score));
         const color = row.l === 'Health'
@@ -263,54 +361,141 @@ if (grid && CARDS_DATA.length) {
 }
 
 // ── Trend chart ──────────────────────────────────────────────────────────────
-const canvas = document.getElementById('trend-chart');
-if (canvas && TREND_DATA.datasets && TREND_DATA.datasets.length) {
-    const fg3 = cssVar('--fg-3');
-    const border1 = cssVar('--border-1');
+const TREND_METRIC_DEFS = {
+    health:  {yMax: 100, yMin: 0, unit: ''},
+    mrs:     {yMax: null, yMin: 0, unit: '/н'},
+    lead:    {yMax: null, yMin: 0, unit: 'ч'},
+    cfr:     {yMax: null, yMin: 0, unit: '%'},
+    deploys: {yMax: null, yMin: 0, unit: '/н'},
+};
 
-    new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: TREND_DATA.labels,
-            datasets: TREND_DATA.datasets.map(ds => ({
-                label: ds.label,
-                data: ds.data,
-                borderColor: ds.color,
-                backgroundColor: 'transparent',
-                borderWidth: 1.8,
-                pointRadius: 0,
-                pointHoverRadius: 3,
-                tension: 0.3,
-                spanGaps: true,
-            })),
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {color: fg3, font: {size: 11}, boxWidth: 12, boxHeight: 2},
-                },
-                tooltip: {mode: 'index', intersect: false},
-            },
-            scales: {
-                x: {
-                    ticks: {color: fg3, font: {size: 10}, maxTicksLimit: 8},
-                    grid: {color: border1},
-                },
-                y: {
-                    min: 0, max: 100,
-                    ticks: {
-                        color: fg3, font: {size: 10},
-                        callback: v => v,
-                    },
-                    grid: {color: border1},
-                },
-            },
-        },
-    });
+function niceStep(rough) {
+    if (rough <= 0) {
+        return 1;
+    }
+    const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    const n = rough / mag;
+    return n <= 1.5 ? mag : n <= 3 ? 2 * mag : n <= 7 ? 5 * mag : 10 * mag;
 }
+
+function gridTicks(yMin, yMax) {
+    if (yMin === 0 && yMax === 100) {
+        return [0, 25, 50, 75, 100];
+    }
+    const step = niceStep((yMax - yMin) / 4);
+    const start = Math.floor(yMin / step) * step;
+    const ticks = [];
+    for (let t = start; t <= yMax * 1.001; t = Math.round((t + step) * 1e6) / 1e6) {
+        if (t >= yMin - 0.001) {
+            ticks.push(Math.round(t * 10) / 10);
+        }
+    }
+    return ticks;
+}
+
+function buildTrendSVG(labels, datasets, yMin, yMax) {
+    const W = 820, H = 220;
+    const padL = 38, padR = 120, padT = 14, padB = 28;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const n = labels.length;
+    const xOf = i => padL + (n > 1 ? (i / (n - 1)) * plotW : plotW / 2);
+    const yRange = Math.max(yMax - yMin, 0.001);
+    const yOf = v => padT + plotH * (1 - (v - yMin) / yRange);
+
+    let svg = '';
+
+    gridTicks(yMin, yMax).forEach((tick, idx) => {
+        const y = yOf(tick).toFixed(1);
+        const dash = idx === 0 ? '' : ' stroke-dasharray="3 4"';
+        svg += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--border-1)" stroke-width="1"${dash}/>`;
+        svg += `<text x="${padL - 5}" y="${(+y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--fg-3)" font-family="var(--font-mono)">${tick}</text>`;
+    });
+
+    const step = Math.max(1, Math.ceil(n / 7));
+    labels.forEach((label, i) => {
+        if (i % step !== 0 && i !== n - 1) {
+            return;
+        }
+        svg += `<text x="${xOf(i).toFixed(1)}" y="${(H - padB + 14).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--fg-3)">${label}</text>`;
+    });
+
+    svg += `<line x1="${xOf(n - 1).toFixed(1)}" x2="${xOf(n - 1).toFixed(1)}" y1="${padT}" y2="${padT + plotH}" stroke="var(--border-1)" stroke-width="1" stroke-dasharray="3 4"/>`;
+
+    const sorted = [...datasets].sort((a, b) => {
+        const lastA = [...a.data].reverse().find(v => v != null) ?? 0;
+        const lastB = [...b.data].reverse().find(v => v != null) ?? 0;
+        return lastB - lastA;
+    });
+
+    const usedY = [];
+    const labelMinGap = 13;
+
+    sorted.forEach(ds => {
+        const color = ds.color;
+        let d = '', lastX = null, lastY = null;
+        ds.data.forEach((v, i) => {
+            if (v == null) { lastX = null; return; }
+            const x = xOf(i).toFixed(1);
+            const y = yOf(v).toFixed(1);
+            d += (lastX === null ? `M${x},${y}` : `L${x},${y}`) + ' ';
+            lastX = x; lastY = y;
+        });
+        if (!d.trim()) {
+            return;
+        }
+        svg += `<path d="${d.trim()}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>`;
+        if (lastX !== null) {
+            let labelY = +lastY;
+            for (const used of usedY) {
+                if (Math.abs(labelY - used) < labelMinGap) {
+                    labelY = used + labelMinGap;
+                }
+            }
+            usedY.push(labelY);
+            svg += `<circle cx="${lastX}" cy="${lastY}" r="3" fill="${color}"/>`;
+            if (Math.abs(labelY - +lastY) > 4) {
+                svg += `<line x1="${+lastX + 4}" y1="${lastY}" x2="${+lastX + 4}" y2="${labelY}" stroke="${color}" stroke-width="1" opacity="0.4"/>`;
+            }
+            svg += `<text x="${+lastX + 10}" y="${(labelY + 3.5).toFixed(1)}" font-size="10" fill="${color}" font-weight="500">${ds.label}</text>`;
+        }
+    });
+
+    return `<svg width="100%" viewBox="0 0 ${W} ${H}" style="overflow:visible;display:block;">${svg}</svg>`;
+}
+
+function setTrendMetric(metric) {
+    document.querySelectorAll('#trend-metric-filter .period-seg-btn').forEach(b => {
+        b.classList.toggle('period-seg-btn-active', b.dataset.metric === metric);
+    });
+    renderTrendChart(metric);
+}
+
+function renderTrendChart(metric) {
+    const container = document.getElementById('trend-chart-svg');
+    if (!container || !TREND_DATA.series || !TREND_DATA.series.length) {
+        return;
+    }
+    const def = TREND_METRIC_DEFS[metric] || TREND_METRIC_DEFS.health;
+    const datasets = TREND_DATA.series
+        .map(s => ({label: s.label, color: s.color, data: s[metric] || []}))
+        .filter(d => d.data.some(v => v != null));
+
+    if (!datasets.length) {
+        container.innerHTML = '<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--fg-3);">Нет данных для этой метрики</div>';
+        return;
+    }
+
+    let yMax = def.yMax;
+    if (!yMax) {
+        const all = datasets.flatMap(d => d.data.filter(v => v != null));
+        yMax = all.length ? Math.ceil(Math.max(...all) * 1.2) : 10;
+        yMax = Math.max(yMax, 1);
+    }
+    container.innerHTML = buildTrendSVG(TREND_DATA.labels, datasets, def.yMin, yMax);
+}
+
+renderTrendChart('health');
 </script>
 
 </body>

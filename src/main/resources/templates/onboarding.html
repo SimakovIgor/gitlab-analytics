@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
     <title>GitLab Analytics — Настройка</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
 </head>
@@ -72,7 +72,7 @@
         </p>
 
         <form method="post" th:action="@{/onboarding}">
-            <input th:name="${_csrf.parameterName}" th:value="${_csrf.token}" type="hidden"/>
+            <input th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" type="hidden"/>
             <label class="ob-field-label">Название workspace</label>
             <input autofocus class="ob-text-input" maxlength="255"
                    name="workspaceName"
@@ -475,7 +475,9 @@
 
     async function api(method, url, body) {
         const headers = {'Content-Type': 'application/json'};
-        headers[CSRF_HEADER] = CSRF_TOKEN;
+        if (CSRF_HEADER) {
+            headers[CSRF_HEADER] = CSRF_TOKEN;
+        }
         const resp = await fetch(url, {
             method,
             headers,
@@ -565,17 +567,16 @@
         if (!s.hasProjects) {
             return 3;
         }
+        // Once employees are confirmed, always show the final step — even if
+        // the background enrichment sync (phase 2) is still running.
+        if (s.hasUsers && !awaitingTeamConfirmation) {
+            return 6;
+        }
         const syncDone = hasSyncCompleted && !activeSyncRunning;
         if (!syncDone) {
             return 4;
         }
-        if (awaitingTeamConfirmation) {
-            return 5;
-        }
-        if (!s.hasUsers) {
-            return 5;
-        }
-        return 6;
+        return 5;
     }
 
     function showContent(num, visible) {
@@ -591,7 +592,8 @@
 
         applyStep(2, s.hasSources ? 'done' : 'active');
         applyStep(3, s.hasProjects ? 'done' : s.hasSources ? 'active' : 'inactive');
-        applyStep(4, syncDone ? 'done' : s.hasProjects ? 'active' : 'inactive');
+        // Mark step 4 done once employees are confirmed, even if enrichment sync still runs.
+        applyStep(4, (syncDone || s.hasUsers) ? 'done' : s.hasProjects ? 'active' : 'inactive');
         applyStep(5, s.hasUsers ? 'done' : syncDone ? 'active' : 'inactive');
         applyStep(6, s.hasUsers ? 'active' : 'inactive');
 
@@ -600,7 +602,9 @@
 
         showContent(2, !s.hasSources);
         showContent(3, s.hasSources && !s.hasProjects);
-        showContent(4, s.hasProjects && !syncDone);
+        // Hide step 4 (sync) once employees are confirmed: enrichment may still
+        // be running in the background, but the user has already moved past it.
+        showContent(4, s.hasProjects && !syncDone && !(s.hasUsers && !awaitingTeamConfirmation));
         showContent(5, awaitingTeamConfirmation);
         showContent(6, s.hasUsers && !awaitingTeamConfirmation);
 

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
     <title>GitLab Analytics</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
 </head>
@@ -462,7 +462,9 @@
 
     async function api(method, url, body) {
         const headers = {'Content-Type': 'application/json'};
-        headers[CSRF_HEADER] = CSRF_TOKEN;
+        if (CSRF_HEADER) {
+            headers[CSRF_HEADER] = CSRF_TOKEN;
+        }
         const resp = await fetch(url, {
             method,
             headers,

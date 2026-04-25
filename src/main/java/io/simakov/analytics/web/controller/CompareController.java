@@ -6,6 +6,7 @@ import io.simakov.analytics.domain.model.enums.PeriodType;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.sync.SyncJobService;
 import io.simakov.analytics.web.CompareService;
+import io.simakov.analytics.web.DoraService;
 import io.simakov.analytics.web.OAuth2UserResolver;
 import io.simakov.analytics.web.SettingsViewService;
 import io.simakov.analytics.web.dto.SettingsPageData;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 public class CompareController {
 
     private final CompareService compareService;
+    private final DoraService doraService;
     private final OAuth2UserResolver userResolver;
     private final SettingsViewService settingsViewService;
     private final WorkspaceService workspaceService;
@@ -85,11 +87,13 @@ public class CompareController {
         List<CompareService.TeamCardData> cards = compareService.buildTeamCards(
             workspaceId, effectiveProjectIds, dateFrom, dateTo);
         CompareService.OrgBenchmark benchmark = compareService.buildBenchmark(cards);
-        String trendJson = compareService.buildTrendChartJson(workspaceId, cards);
+        String trendJson = compareService.buildTrendChartJson(workspaceId, cards, effectiveProjectIds, days);
+        Double mttrHours = doraService.computeMttrHours(effectiveProjectIds, dateFrom);
 
         model.addAttribute("cards", cards);
         model.addAttribute("benchmark", benchmark);
         model.addAttribute("trendJson", trendJson);
+        model.addAttribute("mttrHours", mttrHours);
         model.addAttribute("hasTeams", !cards.isEmpty());
 
         return "compare";

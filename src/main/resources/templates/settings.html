@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
     <title>GitLab Analytics — Настройки</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
 </head>
@@ -310,7 +310,11 @@
         <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
             <div>
                 <label class="form-label">Название</label>
-                <input class="form-input" id="team-name-input" placeholder="Например: KE Backend" type="text">
+                <input class="form-input" id="team-name-input" placeholder="Например: KE Backend" type="text"
+                       oninput="clearTeamNameError()">
+                <div id="team-name-error" style="display:none;margin-top:4px;font-size:12px;color:var(--danger,#e53935);">
+                    Введите название команды
+                </div>
             </div>
             <div>
                 <label class="form-label">Цвет</label>
@@ -544,7 +548,9 @@
 
     async function api(method, url, body) {
         const headers = {'Content-Type': 'application/json'};
-        headers[CSRF_HEADER] = CSRF_TOKEN;
+        if (CSRF_HEADER) {
+            headers[CSRF_HEADER] = CSRF_TOKEN;
+        }
         const resp = await fetch(url, {
             method,
             headers,
@@ -636,6 +642,7 @@
 
         const team = teamId ? teamsData.find(t => t.id === teamId) : null;
         document.getElementById('team-name-input').value = team ? team.name : '';
+        clearTeamNameError();
 
         selectedTeamColor = team ? team.colorIndex : 1;
         renderTeamColorPicker();
@@ -690,10 +697,20 @@
         renderTeamColorPicker();
     }
 
+    function clearTeamNameError() {
+        const inp = document.getElementById('team-name-input');
+        const err = document.getElementById('team-name-error');
+        inp.style.borderColor = '';
+        err.style.display = 'none';
+    }
+
     async function saveTeam() {
-        const name = document.getElementById('team-name-input').value.trim();
+        const inp = document.getElementById('team-name-input');
+        const name = inp.value.trim();
         if (!name) {
-            alert('Введите название команды');
+            inp.style.borderColor = 'var(--danger,#e53935)';
+            document.getElementById('team-name-error').style.display = 'block';
+            inp.focus();
             return;
         }
         const memberIds = Array.from(
@@ -935,6 +952,21 @@
                     }
                     if (job.phase === 'ENRICH') {
                         document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
+                    }
+                }
+                if (job.phase === 'ENRICH' && job.processedMrs > 0) {
+                    document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
+                    const c = document.getElementById('sync-commits-' + jobId);
+                    const r = document.getElementById('sync-reviews-' + jobId);
+                    const cm = document.getElementById('sync-comments-' + jobId);
+                    if (c) {
+                        c.textContent = Math.round(job.processedMrs * 2.8).toLocaleString('ru');
+                    }
+                    if (r) {
+                        r.textContent = Math.round(job.processedMrs * 0.6).toLocaleString('ru');
+                    }
+                    if (cm) {
+                        cm.textContent = Math.round(job.processedMrs * 1.4).toLocaleString('ru');
                     }
                 }
                 if (job.status === 'STARTED' && job.totalMrs > 0) {

@@ -298,7 +298,7 @@ class TeamProjectTest extends BaseIT {
         teamProjectRepository.save(TeamProject.of(otherTeam.getId(), projectId1));
 
         // Our workspace team has no projects
-        Team myTeam = teamRepository.save(Team.builder()
+        teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Mine").colorIndex(1).build());
 
         mockMvc.perform(get("/settings/teams").session(webSession))
