@@ -406,10 +406,12 @@
     }
 
     async function retryJobFromSync(jobId) {
-        var csrfToken = document.querySelector('meta[name="_csrf"]').content;
-        var csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+        var csrfToken = (document.querySelector('meta[name="_csrf"]') || {}).content || '';
+        var csrfHeader = (document.querySelector('meta[name="_csrf_header"]') || {}).content || '';
         var headers = {'Content-Type': 'application/json'};
-        headers[csrfHeader] = csrfToken;
+        if (csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
         try {
             var resp = await fetch('/settings/sync/' + jobId + '/retry', {method: 'POST', headers: headers});
             if (!resp.ok) {

@@ -5,199 +5,296 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="'Дайджест · ' + ${d.workspaceName()}">Дайджест команды</title>
     <style>
-        body { margin: 0; padding: 0; background: #f1eee7; font-family: -apple-system, 'Segoe UI', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-        a { color: #5046cf; text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        body { margin:0; padding:0; background:#f1eee7; font-family:-apple-system,'Segoe UI',Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+        a { color:#5046cf; text-decoration:none; }
+        a:hover { text-decoration:underline; }
     </style>
 </head>
 <body>
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1eee7; padding: 32px 16px;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1eee7; padding:32px 16px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0"
+       style="max-width:600px; width:100%; border-radius:14px; overflow:hidden;
+              box-shadow:0 4px 24px rgba(22,21,15,0.10);">
+
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
     <tr>
-        <td align="center">
-            <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%;">
-
-                <!-- ── Header ──────────────────────────────────────────── -->
+        <td style="background:linear-gradient(150deg,#1a1740 0%,#2d2a6e 100%);
+                    border-radius:14px 14px 0 0; padding:32px 36px 28px;">
+            <table cellpadding="0" cellspacing="0">
                 <tr>
-                    <td style="background: linear-gradient(150deg, #1a1740 0%, #2d2a6e 100%);
-                                border-radius: 14px 14px 0 0; padding: 32px 36px 28px;">
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr>
-                                <td>
-                                    <table cellpadding="0" cellspacing="0">
-                                        <tr>
-                                            <td style="vertical-align:middle; padding-right:10px;">
-                                                <!-- Hexagon logo -->
-                                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <polygon points="16,4 28,10.5 28,22.5 16,29 4,22.5 4,10.5" fill="none" stroke="rgba(160,150,255,0.6)" stroke-width="1.5"/>
-                                                    <polyline points="8,20 13,13 18,17 24,9" stroke="#a09cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                                    <circle cx="24" cy="9" r="2.5" fill="#a09cff"/>
-                                                </svg>
-                                            </td>
-                                            <td style="vertical-align:middle;">
-                                                <span style="font-size:17px; font-weight:700; color:#fff; letter-spacing:-0.3px;">GitPulse</span>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    <div style="margin-top:20px;">
-                                        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(160,150,255,0.8); margin-bottom:6px;">
-                                            Еженедельный дайджест
-                                        </div>
-                                        <div style="font-size:24px; font-weight:800; color:#fff; letter-spacing:-0.5px; line-height:1.2;"
-                                             th:text="${d.workspaceName()}">Команда</div>
-                                        <div style="margin-top:6px; font-size:13px; color:rgba(200,196,255,0.7);"
-                                             th:text="${d.periodLabel()}">14 — 20 апреля</div>
-                                    </div>
-                                </td>
-                            </tr>
-                        </table>
+                    <td style="vertical-align:middle; padding-right:10px;">
+                        <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+                            <polygon points="16,4 28,10.5 28,22.5 16,29 4,22.5 4,10.5"
+                                     fill="none" stroke="rgba(160,150,255,0.55)" stroke-width="1.5"/>
+                            <polyline points="8,20 13,13 18,17 24,9" stroke="#a09cff" stroke-width="2"
+                                      stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <circle cx="24" cy="9" r="2.5" fill="#a09cff"/>
+                        </svg>
+                    </td>
+                    <td style="vertical-align:middle;">
+                        <span style="font-size:16px; font-weight:700; color:#fff; letter-spacing:-0.2px;">GitPulse</span>
                     </td>
                 </tr>
+            </table>
+            <div style="margin-top:22px;">
+                <div style="font-size:11px; font-weight:700; text-transform:uppercase;
+                            letter-spacing:1px; color:rgba(160,150,255,0.8); margin-bottom:6px;">
+                    Еженедельный дайджест
+                </div>
+                <div style="font-size:22px; font-weight:800; color:#fff; letter-spacing:-0.5px; line-height:1.2;"
+                     th:text="${d.workspaceName()}">Команда</div>
+                <div style="margin-top:5px; font-size:13px; color:rgba(200,196,255,0.65);"
+                     th:text="${d.periodLabel()}">14 — 20 апреля</div>
+            </div>
+        </td>
+    </tr>
 
-                <!-- ── KPI Row ─────────────────────────────────────────── -->
+    <!-- ── Workspace KPI (всегда) ──────────────────────────────────────── -->
+    <tr>
+        <td style="background:#fff; padding:24px 36px; border-top:3px solid #5046cf;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase;
+                        letter-spacing:0.8px; color:#8a8573; margin-bottom:16px;">Итого за неделю</div>
+            <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                    <td style="background:#fff; padding: 24px 36px 20px; border-top: 3px solid #5046cf;">
-                        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#8a8573; margin-bottom:16px;">
-                            Ключевые метрики
-                        </div>
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr>
-                                <!-- MR merged -->
-                                <td width="33%" style="text-align:center; padding: 0 8px 0 0; border-right: 1px solid #e7e3d8;">
-                                    <div style="font-size:32px; font-weight:800; color:#16150f; letter-spacing:-1px; line-height:1;"
-                                         th:text="${d.mrCount()}">0</div>
-                                    <div style="font-size:12px; color:#5a5648; margin-top:4px;">MR смержено</div>
-                                    <div th:if="${d.mrCount() != null and d.prevMrCount() != null and d.prevMrCount() > 0}"
-                                         style="margin-top:4px; font-size:11px; font-weight:600;"
-                                         th:with="pct=${T(io.simakov.analytics.digest.DigestData).pctChange(d.mrCount(), d.prevMrCount())}"
-                                         th:style="${pct != null and pct >= 0} ? 'color:#3d9e6c' : 'color:#c0392b'"
-                                         th:text="${pct != null} ? (${pct >= 0} ? '↑ +' + pct + '% vs пред. нед.' : '↓ ' + pct + '% vs пред. нед.') : ''">
-                                    </div>
-                                </td>
-                                <!-- TTM median -->
-                                <td width="33%" style="text-align:center; padding: 0 8px; border-right: 1px solid #e7e3d8;">
-                                    <div style="font-size:32px; font-weight:800; color:#16150f; letter-spacing:-1px; line-height:1;"
-                                         th:text="${d.ttmMedianHours() != null} ? ${#numbers.formatDecimal(d.ttmMedianHours(), 1, 1)} + 'ч' : '—'">—</div>
-                                    <div style="font-size:12px; color:#5a5648; margin-top:4px;">TTM медиана</div>
-                                    <div th:if="${d.ttmMedianHours() != null and d.prevTtmMedianHours() != null}"
-                                         style="margin-top:4px; font-size:11px; font-weight:600;"
-                                         th:with="pct=${T(io.simakov.analytics.digest.DigestData).pctChangeDouble(d.ttmMedianHours(), d.prevTtmMedianHours())}"
-                                         th:style="${pct != null and pct <= 0} ? 'color:#3d9e6c' : 'color:#c0392b'"
-                                         th:text="${pct != null} ? (${pct <= 0} ? '↓ ' + pct + '% (лучше)' : '↑ +' + pct + '% (хуже)') : ''">
-                                    </div>
-                                </td>
-                                <!-- Deploys -->
-                                <td width="33%" style="text-align:center; padding: 0 0 0 8px;">
-                                    <div style="font-size:32px; font-weight:800; color:#16150f; letter-spacing:-1px; line-height:1;"
-                                         th:text="${d.deploysCount()}">0</div>
-                                    <div style="font-size:12px; color:#5a5648; margin-top:4px;">Деплоев</div>
-                                    <div style="margin-top:4px; font-size:11px; color:#b5b09c;">за неделю</div>
-                                </td>
-                            </tr>
-                        </table>
+                    <!-- MR -->
+                    <td width="33%" style="vertical-align:top; text-align:center;
+                                           padding:0 16px 0 0; border-right:1px solid #e7e3d8;">
+                        <div style="font-size:34px; font-weight:800; color:#16150f;
+                                    letter-spacing:-1px; line-height:1;"
+                             th:text="${d.mrCount()}">0</div>
+                        <div style="font-size:12px; color:#5a5648; margin-top:5px;">MR смержено</div>
+                        <div style="margin-top:5px; font-size:11px; font-weight:600; min-height:16px;"
+                             th:if="${d.prevMrCount() > 0}"
+                             th:with="pct=${T(io.simakov.analytics.digest.DigestData).pctChange(d.mrCount(), d.prevMrCount())}"
+                             th:style="${pct != null and pct >= 0} ? 'color:#3d9e6c' : 'color:#c0392b'"
+                             th:text="${pct != null} ? (${pct >= 0} ? '↑ +' + pct + '%' : '↓ ' + pct + '%') : ''"></div>
+                        <div th:unless="${d.prevMrCount() > 0}" style="margin-top:5px; min-height:16px;"></div>
+                    </td>
+                    <!-- TTM -->
+                    <td width="34%" style="vertical-align:top; text-align:center;
+                                           padding:0 16px; border-right:1px solid #e7e3d8;">
+                        <div style="font-size:34px; font-weight:800; color:#16150f;
+                                    letter-spacing:-1px; line-height:1;"
+                             th:text="${d.ttmMedianHours() != null}
+                                 ? ${#numbers.formatDecimal(d.ttmMedianHours(), 1, 1)} + 'ч'
+                                 : '—'">—</div>
+                        <div style="font-size:12px; color:#5a5648; margin-top:5px;">TTM медиана</div>
+                        <div style="margin-top:5px; font-size:11px; font-weight:600; min-height:16px;"
+                             th:if="${d.ttmMedianHours() != null and d.prevTtmMedianHours() != null}"
+                             th:with="pct=${T(io.simakov.analytics.digest.DigestData).pctChangeDouble(d.ttmMedianHours(), d.prevTtmMedianHours())}"
+                             th:style="${pct != null and pct <= 0} ? 'color:#3d9e6c' : 'color:#c0392b'"
+                             th:text="${pct != null} ? (${pct <= 0} ? '↓ ' + pct + '% (лучше)' : '↑ +' + pct + '% (хуже)') : ''"></div>
+                        <div th:unless="${d.ttmMedianHours() != null and d.prevTtmMedianHours() != null}"
+                             style="margin-top:5px; min-height:16px;"></div>
+                    </td>
+                    <!-- Deploys -->
+                    <td width="33%" style="vertical-align:top; text-align:center; padding:0 0 0 16px;">
+                        <div style="font-size:34px; font-weight:800; color:#16150f;
+                                    letter-spacing:-1px; line-height:1;"
+                             th:text="${d.deploysCount()}">0</div>
+                        <div style="font-size:12px; color:#5a5648; margin-top:5px;">Деплоев</div>
+                        <div style="margin-top:5px; font-size:11px; color:#b5b09c; min-height:16px;">за неделю</div>
                     </td>
                 </tr>
-
-                <!-- ── Top Contributors ────────────────────────────────── -->
-                <tr th:if="${not #lists.isEmpty(d.topContributors())}">
-                    <td style="background:#fff; padding: 0 36px 24px; border-top: 1px solid #f1eee7;">
-                        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#8a8573; margin-bottom:12px;">
-                            Топ участников
-                        </div>
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr style="background:#f6f4ef;">
-                                <td style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8a8573; letter-spacing:0.5px; padding:6px 10px; border-radius:4px 0 0 4px;">Участник</td>
-                                <td style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8a8573; letter-spacing:0.5px; padding:6px 10px; text-align:center;">MR</td>
-                                <td style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8a8573; letter-spacing:0.5px; padding:6px 10px; text-align:center; border-radius:0 4px 4px 0;">TTM</td>
-                            </tr>
-                            <tr th:each="c, iter : ${d.topContributors()}"
-                                th:style="${iter.odd} ? 'background:#faf9f6' : 'background:#fff'">
-                                <td style="font-size:13px; color:#2e2c22; padding:9px 10px; font-weight:500;"
-                                    th:text="${c.name()}">User</td>
-                                <td style="font-size:13px; color:#2e2c22; padding:9px 10px; text-align:center; font-weight:700;"
-                                    th:text="${c.mrCount()}">0</td>
-                                <td style="font-size:13px; color:#5a5648; padding:9px 10px; text-align:center;"
-                                    th:text="${c.ttmHours() != null} ? ${#numbers.formatDecimal(c.ttmHours(), 1, 1)} + 'ч' : '—'">—</td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-
-                <!-- ── Insights ────────────────────────────────────────── -->
-                <tr th:if="${not #lists.isEmpty(d.insights())}">
-                    <td style="background:#fff; padding: 0 36px 28px; border-top: 1px solid #f1eee7;">
-                        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#8a8573; margin-bottom:12px;">
-                            Активные инсайты
-                        </div>
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr th:each="insight : ${d.insights()}">
-                                <td style="padding: 6px 0; border-bottom: 1px solid #f1eee7;">
-                                    <table cellpadding="0" cellspacing="0">
-                                        <tr>
-                                            <td style="vertical-align:top; padding-right:10px; padding-top:2px;">
-                                                <span th:if="${insight.kind() == 'BAD'}"
-                                                      style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#c0392b; margin-top:3px;"></span>
-                                                <span th:if="${insight.kind() == 'WARN'}"
-                                                      style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#e67e22; margin-top:3px;"></span>
-                                                <span th:if="${insight.kind() == 'INFO' or insight.kind() == 'GOOD'}"
-                                                      style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#3d9e6c; margin-top:3px;"></span>
-                                            </td>
-                                            <td style="font-size:13px; color:#2e2c22; line-height:1.4;"
-                                                th:text="${insight.title()}">Insight title</td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-
-                <!-- ── CTA ─────────────────────────────────────────────── -->
-                <tr>
-                    <td style="background:#fff; padding: 0 36px 32px; border-top: 1px solid #f1eee7;">
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr>
-                                <td align="center">
-                                    <a th:href="${d.appUrl() + '/report'}"
-                                       style="display:inline-block; background:#5046cf; color:#fff; font-size:14px;
-                                              font-weight:600; padding:12px 28px; border-radius:8px;
-                                              text-decoration:none; letter-spacing:-0.2px;">
-                                        Открыть дашборд →
-                                    </a>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-
-                <!-- ── Footer ─────────────────────────────────────────── -->
-                <tr>
-                    <td style="background:#f6f4ef; border-radius: 0 0 14px 14px; padding: 20px 36px;
-                                border-top: 1px solid #e7e3d8;">
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr>
-                                <td style="font-size:12px; color:#8a8573; line-height:1.5;">
-                                    Вы получаете этот дайджест как владелец рабочего пространства
-                                    <strong th:text="${d.workspaceName()}">Workspace</strong> в GitPulse.<br>
-                                    <a th:href="${d.appUrl() + '/settings'}"
-                                       style="color:#5046cf;">Настройки уведомлений</a>
-                                </td>
-                                <td style="text-align:right;">
-                                    <a th:href="${d.appUrl()}" style="text-decoration:none;">
-                                        <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <polygon points="16,4 28,10.5 28,22.5 16,29 4,22.5 4,10.5" fill="none" stroke="#b5b09c" stroke-width="1.5"/>
-                                            <polyline points="8,20 13,13 18,17 24,9" stroke="#b5b09c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                                            <circle cx="24" cy="9" r="2.5" fill="#b5b09c"/>
-                                        </svg>
-                                    </a>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-
             </table>
         </td>
     </tr>
+
+    <!-- ── TEAMS MODE: per-team sections ───────────────────────────────── -->
+    <th:block th:if="${not #lists.isEmpty(d.teamSections())}">
+
+        <tr th:each="section, sIter : ${d.teamSections()}">
+            <td style="background:#fff; padding:0 36px;">
+                <div style="height:1px; background:#e7e3d8;"></div>
+            </td>
+        </tr>
+
+        <tr th:each="section : ${d.teamSections()}">
+            <td style="background:#fff; padding:20px 36px 22px;">
+
+                <!-- Team header row -->
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;">
+                    <tr>
+                        <td style="vertical-align:middle;">
+                            <!-- color dot -->
+                            <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="vertical-align:middle; padding-right:8px;">
+                                        <div th:style="'width:10px; height:10px; border-radius:50%; display:inline-block; background:' +
+                                            (${section.colorIndex() == 1} ? '#5046cf' :
+                                             ${section.colorIndex() == 2} ? '#3d9e6c' :
+                                             ${section.colorIndex() == 3} ? '#e67e22' :
+                                             ${section.colorIndex() == 4} ? '#c0392b' :
+                                             ${section.colorIndex() == 5} ? '#2980b9' :
+                                             ${section.colorIndex() == 6} ? '#8e44ad' : '#8a8573')">
+                                        </div>
+                                    </td>
+                                    <td style="vertical-align:middle;">
+                                        <span style="font-size:14px; font-weight:700; color:#16150f;"
+                                              th:text="${section.teamName()}">Команда</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                        <!-- mini KPIs inline -->
+                        <td style="vertical-align:middle; text-align:right;">
+                            <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <!-- MR count -->
+                                    <td style="text-align:center; padding:0 14px 0 0; border-right:1px solid #e7e3d8;">
+                                        <div style="font-size:20px; font-weight:800; color:#16150f; letter-spacing:-0.5px; line-height:1;"
+                                             th:text="${section.mrCount()}">0</div>
+                                        <div style="font-size:10px; color:#8a8573; margin-top:2px;">MR</div>
+                                        <div style="font-size:10px; font-weight:600; margin-top:2px; min-height:14px;"
+                                             th:if="${section.prevMrCount() > 0}"
+                                             th:with="pct=${T(io.simakov.analytics.digest.DigestData).pctChange(section.mrCount(), section.prevMrCount())}"
+                                             th:style="${pct != null and pct >= 0} ? 'color:#3d9e6c' : 'color:#c0392b'"
+                                             th:text="${pct != null} ? (${pct >= 0} ? '↑ +' + pct + '%' : '↓ ' + pct + '%') : ''"></div>
+                                        <div th:unless="${section.prevMrCount() > 0}" style="min-height:14px;"></div>
+                                    </td>
+                                    <!-- TTM -->
+                                    <td style="text-align:center; padding:0 0 0 14px;">
+                                        <div style="font-size:20px; font-weight:800; color:#16150f; letter-spacing:-0.5px; line-height:1;"
+                                             th:text="${section.ttmMedianHours() != null}
+                                                 ? ${#numbers.formatDecimal(section.ttmMedianHours(), 1, 1)} + 'ч'
+                                                 : '—'">—</div>
+                                        <div style="font-size:10px; color:#8a8573; margin-top:2px;">TTM</div>
+                                        <div style="font-size:10px; font-weight:600; margin-top:2px; min-height:14px;"
+                                             th:if="${section.ttmMedianHours() != null and section.prevTtmMedianHours() != null}"
+                                             th:with="pct=${T(io.simakov.analytics.digest.DigestData).pctChangeDouble(section.ttmMedianHours(), section.prevTtmMedianHours())}"
+                                             th:style="${pct != null and pct <= 0} ? 'color:#3d9e6c' : 'color:#c0392b'"
+                                             th:text="${pct != null} ? (${pct <= 0} ? '↓ ' + pct + '%' : '↑ +' + pct + '%') : ''"></div>
+                                        <div th:unless="${section.ttmMedianHours() != null and section.prevTtmMedianHours() != null}"
+                                             style="min-height:14px;"></div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Contributors for this team -->
+                <table width="100%" cellpadding="0" cellspacing="0"
+                       th:if="${not #lists.isEmpty(section.topContributors())}"
+                       style="border:1px solid #e7e3d8; border-radius:8px; overflow:hidden;">
+                    <tr th:each="c, iter : ${section.topContributors()}"
+                        th:style="${!iter.first} ? 'border-top:1px solid #f1eee7;' : ''">
+                        <td th:style="${iter.odd} ? 'background:#faf9f6; padding:8px 12px;'
+                                                  : 'background:#fff; padding:8px 12px;'">
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="font-size:13px; color:#2e2c22; font-weight:500;"
+                                        th:text="${c.name()}">user</td>
+                                    <td style="text-align:right; font-size:12px; color:#5a5648; white-space:nowrap;">
+                                        <span style="font-weight:700; color:#16150f;"
+                                              th:text="${c.mrCount()}">0</span> MR
+                                        <span th:if="${c.ttmHours() != null}"
+                                              style="margin-left:10px; color:#8a8573;">
+                                            · TTM <span th:text="${#numbers.formatDecimal(c.ttmHours(), 1, 1)} + 'ч'">—</span>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- No activity -->
+                <div th:if="${#lists.isEmpty(section.topContributors())}"
+                     style="font-size:13px; color:#b5b09c; font-style:italic;">
+                    Активности за эту неделю не было
+                </div>
+
+            </td>
+        </tr>
+
+    </th:block>
+
+    <!-- ── FALLBACK: no teams — workspace-wide contributors ────────────── -->
+    <!-- (teamSections is empty = no teams configured, show nothing extra) -->
+
+    <!-- ── Insights ────────────────────────────────────────────────────── -->
+    <tr th:if="${not #lists.isEmpty(d.insights())}">
+        <td style="background:#fff; padding:0 36px;">
+            <div style="height:1px; background:#e7e3d8;"></div>
+        </td>
+    </tr>
+
+    <tr th:if="${not #lists.isEmpty(d.insights())}">
+        <td style="background:#fff; padding:20px 36px 24px;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase;
+                        letter-spacing:0.8px; color:#8a8573; margin-bottom:12px;">Инсайты</div>
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr th:each="insight, iter : ${d.insights()}">
+                    <td th:style="${!iter.last} ? 'padding:7px 0; border-bottom:1px solid #f1eee7;'
+                                               : 'padding:7px 0;'">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                            <tr>
+                                <td style="vertical-align:top; width:18px; padding-top:3px;">
+                                    <span th:if="${insight.kind() == 'BAD'}"
+                                          style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#c0392b;"></span>
+                                    <span th:if="${insight.kind() == 'WARN'}"
+                                          style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#e67e22;"></span>
+                                    <span th:if="${insight.kind() == 'INFO' or insight.kind() == 'GOOD'}"
+                                          style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#3d9e6c;"></span>
+                                </td>
+                                <td style="font-size:13px; color:#2e2c22; line-height:1.5;"
+                                    th:text="${insight.title()}">Insight</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+    <!-- ── CTA ─────────────────────────────────────────────────────────── -->
+    <tr>
+        <td style="background:#fff; padding:0 36px;">
+            <div style="height:1px; background:#e7e3d8;"></div>
+        </td>
+    </tr>
+    <tr>
+        <td style="background:#fff; padding:24px 36px 28px; text-align:center;">
+            <a th:href="${d.appUrl() + '/report'}"
+               style="display:inline-block; background:#5046cf; color:#fff; font-size:14px;
+                      font-weight:600; padding:13px 32px; border-radius:8px;
+                      text-decoration:none; letter-spacing:-0.1px;">
+                Открыть дашборд →
+            </a>
+        </td>
+    </tr>
+
+    <!-- ── Footer ──────────────────────────────────────────────────────── -->
+    <tr>
+        <td style="background:#f6f4ef; border-radius:0 0 14px 14px;
+                    padding:18px 36px; border-top:1px solid #e7e3d8;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td style="font-size:12px; color:#8a8573; line-height:1.6; vertical-align:middle;">
+                        Вы получаете этот дайджест как владелец рабочего пространства
+                        <strong th:text="${d.workspaceName()}">Workspace</strong> в GitPulse.<br>
+                        <a th:href="${d.appUrl() + '/settings'}" style="color:#5046cf;">Настройки уведомлений</a>
+                    </td>
+                    <td style="text-align:right; vertical-align:middle; padding-left:16px; width:32px;">
+                        <a th:href="${d.appUrl()}" style="text-decoration:none; display:inline-block;">
+                            <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+                                <polygon points="16,4 28,10.5 28,22.5 16,29 4,22.5 4,10.5"
+                                         fill="none" stroke="#b5b09c" stroke-width="1.5"/>
+                                <polyline points="8,20 13,13 18,17 24,9" stroke="#b5b09c" stroke-width="2"
+                                          stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                <circle cx="24" cy="9" r="2.5" fill="#b5b09c"/>
+                            </svg>
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
+</table>
+</td></tr>
 </table>
 </body>
 </html>

@@ -4,6 +4,8 @@ import java.util.List;
 
 /**
  * Aggregated weekly data for one workspace, passed to the email template.
+ * If teams are configured, {@link #teamSections()} is non-empty and the template
+ * renders per-team blocks; otherwise it falls back to a single workspace-wide section.
  */
 public record DigestData(
     String workspaceName,
@@ -12,21 +14,21 @@ public record DigestData(
     String periodLabel,
     String appUrl,
 
-    // ── KPI ───────────────────────────────────────────────────────────────
+    // ── Workspace-level KPI (always shown at the top) ─────────────────────
     int mrCount,
     int prevMrCount,
     Double ttmMedianHours,
     Double prevTtmMedianHours,
     int deploysCount,
 
-    // ── Top contributors (up to 5) ────────────────────────────────────────
-    List<ContributorRow> topContributors,
+    // ── Per-team breakdown (empty = no teams configured, use workspace view) ─
+    List<TeamSection> teamSections,
 
-    // ── Active insights (up to 5, sorted by severity desc) ───────────────
+    // ── Workspace-wide insights ────────────────────────────────────────────
     List<InsightRow> insights
 ) {
 
-    /** Returns percentage change between prev and current, or null if prev is 0. */
+    /** Returns percentage change, or null if prev is 0. */
     public static Integer pctChange(int current, int prev) {
         if (prev == 0) {
             return null;
@@ -34,12 +36,23 @@ public record DigestData(
         return (int) Math.round((current - prev) * 100.0 / prev);
     }
 
-    /** Returns percentage change between prev and current double values, or null if prev is 0/null. */
+    /** Returns percentage change for doubles, or null if prev is 0/null. */
     public static Integer pctChangeDouble(Double current, Double prev) {
         if (prev == null || prev == 0 || current == null) {
             return null;
         }
         return (int) Math.round((current - prev) * 100.0 / prev);
+    }
+
+    public record TeamSection(
+        String teamName,
+        int colorIndex,
+        int mrCount,
+        int prevMrCount,
+        Double ttmMedianHours,
+        Double prevTtmMedianHours,
+        List<ContributorRow> topContributors
+    ) {
     }
 
     public record ContributorRow(String name, int mrCount, Double ttmHours) {
