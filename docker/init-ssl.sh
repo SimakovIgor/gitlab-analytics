@@ -3,7 +3,7 @@
 # After this, certbot container handles renewals automatically.
 
 DOMAIN="gitpulse.ru"
-EMAIL="your-email@example.com"   # <-- замени на свой email
+EMAIL="igorsimakoff@gmail.com"
 
 set -e
 

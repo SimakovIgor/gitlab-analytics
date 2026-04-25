@@ -137,7 +137,6 @@ ENDSSH
 
 echo ""
 success "Деплой завершён!"
-echo "    App:        http://${SERVER_IP}:8080"
+echo "    App:        https://gitpulse.ru"
 echo "    Grafana:    http://${SERVER_IP}:3000"
-echo "    Prometheus: http://${SERVER_IP}:9090"
 echo "    Portainer:  http://${SERVER_IP}:9000"
