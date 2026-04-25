@@ -21,6 +21,9 @@ public record DigestData(
     Double prevTtmMedianHours,
     int deploysCount,
 
+    // ── Per-service DORA breakdown ─────────────────────────────────────────
+    List<ServiceRow> services,
+
     // ── Per-team breakdown (empty = no teams configured, use workspace view) ─
     List<TeamSection> teamSections,
 
@@ -70,5 +73,36 @@ public record DigestData(
     }
 
     public record InsightRow(String kind, String title) {
+    }
+
+    /** Per-service DORA snapshot shown in the digest services table. */
+    public record ServiceRow(
+        String name,
+        double deploysPerWeek,
+        Double leadTimeDays,
+        Double cfrPercent
+    ) {
+        public String deploysColor() {
+            if (deploysPerWeek >= 3) {
+                return "#3d9e6c";
+            }
+            if (deploysPerWeek >= 1) {
+                return "#e67e22";
+            }
+            return "#d1cec5";
+        }
+
+        public String cfrColor() {
+            if (cfrPercent == null) {
+                return "#b5b09c";
+            }
+            if (cfrPercent == 0) {
+                return "#3d9e6c";
+            }
+            if (cfrPercent <= 15) {
+                return "#e67e22";
+            }
+            return "#c0392b";
+        }
     }
 }

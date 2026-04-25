@@ -2,6 +2,7 @@ package io.simakov.analytics.digest;
 
 import io.simakov.analytics.digest.DigestData.ContributorRow;
 import io.simakov.analytics.digest.DigestData.InsightRow;
+import io.simakov.analytics.digest.DigestData.ServiceRow;
 import io.simakov.analytics.digest.DigestData.TeamSection;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
@@ -31,6 +32,12 @@ public class DigestPreviewController {
             18.4,
             23.1,
             6,
+            List.of(
+                new ServiceRow("payment-service", 3.0, 2.1, 0.0),
+                new ServiceRow("catalog-api", 2.0, 4.5, null),
+                new ServiceRow("user-service", 1.0, 1.8, 5.0),
+                new ServiceRow("notification-svc", 0.0, null, null)
+            ),
             List.of(
                 new TeamSection(
                     "Backend",

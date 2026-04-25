@@ -2,6 +2,7 @@ package io.simakov.analytics.digest;
 
 import io.simakov.analytics.digest.DigestData.ContributorRow;
 import io.simakov.analytics.digest.DigestData.InsightRow;
+import io.simakov.analytics.digest.DigestData.ServiceRow;
 import io.simakov.analytics.digest.DigestData.TeamSection;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.Team;
@@ -17,6 +18,7 @@ import io.simakov.analytics.insights.InsightService;
 import io.simakov.analytics.insights.model.TeamInsight;
 import io.simakov.analytics.metrics.MetricCalculationService;
 import io.simakov.analytics.metrics.model.UserMetrics;
+import io.simakov.analytics.web.DoraService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,6 +55,7 @@ public class DigestService {
     private final MetricCalculationService metricCalculationService;
     private final ReleaseTagRepository releaseTagRepository;
     private final InsightService insightService;
+    private final DoraService doraService;
 
     @Value("${app.base-url:http://localhost:8080}")
     private String appUrl;
@@ -91,6 +94,7 @@ public class DigestService {
 
         List<TeamSection> teamSections = buildTeamSections(workspace.getId(), users, current, prev);
         List<InsightRow> insights = buildInsights(workspace.getId(), projectIds);
+        List<ServiceRow> services = buildServiceRows(projectIds);
 
         String periodLabel = DATE_FMT.format(weekStart) + " — " + DATE_FMT.format(now);
         AppUser owner = ownerOpt.get();
@@ -104,9 +108,21 @@ public class DigestService {
             mrCount, prevMrCount,
             ttmMedian, prevTtmMedian,
             (int) deploys,
+            services,
             teamSections,
             insights
         ));
+    }
+
+    private List<ServiceRow> buildServiceRows(List<Long> projectIds) {
+        try {
+            return doraService.buildServiceHealthData(projectIds, DIGEST_DAYS).stream()
+                .map(r -> new ServiceRow(r.projectName(), r.deploysPerWeek(), r.leadTimeDays(), r.cfrPercent()))
+                .toList();
+        } catch (Exception e) {
+            log.warn("Failed to build service DORA rows for digest: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     private List<TeamSection> buildTeamSections(Long workspaceId,
