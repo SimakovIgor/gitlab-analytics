@@ -26,25 +26,34 @@ for env_file in "$ROOT_DIR/.env" "$ROOT_DIR/.env.local"; do
   fi
 done
 
-missing=()
-[[ -z "${GITHUB_CLIENT_ID:-}" ]]     && missing+=("GITHUB_CLIENT_ID")
-[[ -z "${GITHUB_CLIENT_SECRET:-}" ]] && missing+=("GITHUB_CLIENT_SECRET")
-if [[ ${#missing[@]} -gt 0 ]]; then
-  error "Не заданы переменные: ${missing[*]}"
-  error "Создайте .env.local: cp .env.example .env.local"
-  exit 1
+# GitHub credentials are only required outside the dev profile.
+SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-dev}"
+if [[ "$SPRING_PROFILES_ACTIVE" != *dev* ]]; then
+  missing=()
+  [[ -z "${GITHUB_CLIENT_ID:-}" ]]     && missing+=("GITHUB_CLIENT_ID")
+  [[ -z "${GITHUB_CLIENT_SECRET:-}" ]] && missing+=("GITHUB_CLIENT_SECRET")
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    error "Не заданы переменные: ${missing[*]}"
+    error "Создайте .env.local: cp .env.example .env.local"
+    exit 1
+  fi
 fi
 
 # ── 1. Убить приложение ────────────────────────────────────────────────────────
-info "Останавливаем приложение на порту 8080..."
-if lsof -ti:8080 > /dev/null 2>&1; then
-  kill -TERM "$(lsof -ti:8080)" 2>/dev/null || true
-  sleep 2
-  if lsof -ti:8080 > /dev/null 2>&1; then
-    kill -9 "$(lsof -ti:8080)" 2>/dev/null || true
+OLD_PIDS=$(lsof -ti:8080 2>/dev/null || true)
+if [[ -n "$OLD_PIDS" ]]; then
+  info "Останавливаем процессы на порту 8080 (PIDs: $(echo "$OLD_PIDS" | tr '\n' ' '))..."
+  echo "$OLD_PIDS" | xargs kill -TERM 2>/dev/null || true
+  for i in {1..15}; do
+    lsof -ti:8080 > /dev/null 2>&1 || break
+    sleep 1
+  done
+  REMAINING=$(lsof -ti:8080 2>/dev/null || true)
+  if [[ -n "$REMAINING" ]]; then
+    echo "$REMAINING" | xargs kill -9 2>/dev/null || true
     sleep 1
   fi
-  success "Приложение остановлено"
+  success "Порт 8080 освобождён"
 else
   info "Приложение не запущено, пропускаем"
 fi
@@ -72,7 +81,7 @@ docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T postgres \
 DROP TABLE IF EXISTS
   merge_request_approval, merge_request_note, merge_request_discussion,
   merge_request_commit, merge_request, release_tag, tracked_user_alias, metric_snapshot,
-  jira_incident, sync_job,
+  jira_incident, sync_job, team_project,
   tracked_project, tracked_user, team, git_source, workspace_member, workspace, app_user
 CASCADE;
 DELETE FROM flyway_schema_history;
@@ -91,9 +100,10 @@ JAR=$(ls "$ROOT_DIR"/build/libs/*.jar 2>/dev/null | grep -v plain | head -1)
 LOG_FILE="/tmp/app.log"
 
 info "Запускаем приложение (лог: $LOG_FILE)..."
-nohup env \
-  GITHUB_CLIENT_ID="$GITHUB_CLIENT_ID" \
-  GITHUB_CLIENT_SECRET="$GITHUB_CLIENT_SECRET" \
+env \
+  SPRING_PROFILES_ACTIVE="$SPRING_PROFILES_ACTIVE" \
+  GITHUB_CLIENT_ID="${GITHUB_CLIENT_ID:-dev-mock-client-id}" \
+  GITHUB_CLIENT_SECRET="${GITHUB_CLIENT_SECRET:-dev-mock-client-secret}" \
   DB_URL="jdbc:postgresql://localhost:5432/gitlab_analytics" \
   DB_USERNAME="analytics" \
   DB_PASSWORD="analytics" \
@@ -102,6 +112,7 @@ nohup env \
   > "$LOG_FILE" 2>&1 &
 
 APP_PID=$!
+disown "$APP_PID"
 info "PID: $APP_PID"
 
 # ── 6. Дождаться старта ────────────────────────────────────────────────────────

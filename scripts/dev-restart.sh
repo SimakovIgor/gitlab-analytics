@@ -32,15 +32,26 @@ for env_file in "$ROOT_DIR/.env" "$ROOT_DIR/.env.local"; do
 done
 
 # ── Остановка приложения ─────────────────────────────────────────────────────
-if lsof -ti:8080 > /dev/null 2>&1; then
-  info "Останавливаем приложение на порту 8080..."
-  kill -TERM $(lsof -ti:8080) 2>/dev/null || true
-  sleep 2
-  if lsof -ti:8080 > /dev/null 2>&1; then
-    kill -9 $(lsof -ti:8080) 2>/dev/null || true
+# lsof can return multiple PIDs (Gradle wrapper + JVM) — kill them all.
+OLD_PIDS=$(lsof -ti:8080 2>/dev/null || true)
+if [[ -n "$OLD_PIDS" ]]; then
+  info "Останавливаем процессы на порту 8080 (PIDs: $(echo $OLD_PIDS | tr '\n' ' '))..."
+  echo "$OLD_PIDS" | xargs kill -TERM 2>/dev/null || true
+
+  # Wait until port 8080 is actually free (up to 15s).
+  for i in {1..15}; do
+    lsof -ti:8080 > /dev/null 2>&1 || break
+    sleep 1
+  done
+
+  # Force-kill anything still holding the port.
+  REMAINING=$(lsof -ti:8080 2>/dev/null || true)
+  if [[ -n "$REMAINING" ]]; then
+    warn "Принудительное завершение (PIDs: $(echo $REMAINING | tr '\n' ' '))..."
+    echo "$REMAINING" | xargs kill -9 2>/dev/null || true
     sleep 1
   fi
-  success "Приложение остановлено"
+  success "Порт 8080 освобождён"
 else
   info "Порт 8080 свободен"
 fi
@@ -49,8 +60,9 @@ fi
 cd "$ROOT_DIR"
 
 APP_ENV=(
-  GITHUB_CLIENT_ID="${GITHUB_CLIENT_ID:-}"
-  GITHUB_CLIENT_SECRET="${GITHUB_CLIENT_SECRET:-}"
+  SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-dev}"
+  GITHUB_CLIENT_ID="${GITHUB_CLIENT_ID:-dev-mock-client-id}"
+  GITHUB_CLIENT_SECRET="${GITHUB_CLIENT_SECRET:-dev-mock-client-secret}"
   DB_URL="jdbc:postgresql://localhost:5432/gitlab_analytics"
   DB_USERNAME="analytics"
   DB_PASSWORD="analytics"
@@ -70,10 +82,16 @@ fi
 
 LOG_FILE="$ROOT_DIR/build/dev-app.log"
 mkdir -p "$ROOT_DIR/build"
+# Rotate old log so `tail -f` below only shows the new process output,
+# not the "BUILD FAILED" written by the just-killed Gradle JVM.
+[[ -f "$LOG_FILE" ]] && mv "$LOG_FILE" "${LOG_FILE}.old"
 
 info "Пересобираем и запускаем Spring Boot..."
-nohup env "${APP_ENV[@]}" ./gradlew bootRun $GRADLE_ARGS > "$LOG_FILE" 2>&1 &
+env "${APP_ENV[@]}" ./gradlew bootRun $GRADLE_ARGS > "$LOG_FILE" 2>&1 &
 BOOT_PID=$!
+# Detach from terminal process group so Ctrl+C on `tail -f` below
+# does not send SIGINT to the Gradle/Spring process.
+disown "$BOOT_PID"
 echo "$BOOT_PID" > "$ROOT_DIR/build/dev-app.pid"
 
 success "PID: $BOOT_PID"
@@ -81,4 +99,4 @@ echo ""
 info "App → http://localhost:8080"
 echo ""
 info "Логи (Ctrl+C — выйти из просмотра, приложение продолжит работу):"
-tail -f "$LOG_FILE"
+tail -f "$LOG_FILE" || true

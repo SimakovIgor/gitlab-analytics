@@ -26,7 +26,10 @@
 
     window.api = async function (method, url, body) {
         const headers = {'Content-Type': 'application/json'};
-        headers[csrfHeader()] = csrfToken();
+        const ch = csrfHeader();
+        if (ch) {
+            headers[ch] = csrfToken();
+        }
         const resp = await fetch(url, {
             method,
             headers,

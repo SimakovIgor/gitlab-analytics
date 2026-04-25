@@ -1,0 +1,12 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: dev-mock-client-id
+            client-secret: dev-mock-client-secret
+
+logging:
+  level:
+    io.simakov.analytics: DEBUG

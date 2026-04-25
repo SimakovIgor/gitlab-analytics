@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -57,11 +58,13 @@ public class SecurityConfig {
     }
 
     /**
-     * Filter chain for web UI routes.
+     * Filter chain for web UI routes (non-dev profiles).
      * Session-based, OAuth2 login via GitHub. Bearer token also accepted for JSON endpoints.
+     * Dev profile uses DevSecurityConfig which additionally disables CSRF.
      */
     @Bean
     @Order(2)
+    @Profile("!dev")
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         return http
             .authorizeHttpRequests(auth -> auth
