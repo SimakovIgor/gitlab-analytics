@@ -121,13 +121,7 @@
                             <table cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="vertical-align:middle; padding-right:8px;">
-                                        <div th:style="'width:10px; height:10px; border-radius:50%; display:inline-block; background:' +
-                                            (${section.colorIndex() == 1} ? '#5046cf' :
-                                             ${section.colorIndex() == 2} ? '#3d9e6c' :
-                                             ${section.colorIndex() == 3} ? '#e67e22' :
-                                             ${section.colorIndex() == 4} ? '#c0392b' :
-                                             ${section.colorIndex() == 5} ? '#2980b9' :
-                                             ${section.colorIndex() == 6} ? '#8e44ad' : '#8a8573')">
+                                        <div th:style="|width:10px; height:10px; border-radius:50%; display:inline-block; background:${section.colorHex()}|">
                                         </div>
                                     </td>
                                     <td style="vertical-align:middle;">

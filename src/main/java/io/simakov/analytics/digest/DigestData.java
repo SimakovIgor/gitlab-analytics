@@ -53,6 +53,17 @@ public record DigestData(
         Double prevTtmMedianHours,
         List<ContributorRow> topContributors
     ) {
+        public String colorHex() {
+            return switch (colorIndex) {
+                case 1 -> "#5046cf";
+                case 2 -> "#3d9e6c";
+                case 3 -> "#e67e22";
+                case 4 -> "#c0392b";
+                case 5 -> "#2980b9";
+                case 6 -> "#8e44ad";
+                default -> "#8a8573";
+            };
+        }
     }
 
     public record ContributorRow(String name, int mrCount, Double ttmHours) {
