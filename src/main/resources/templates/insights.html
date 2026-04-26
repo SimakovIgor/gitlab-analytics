@@ -74,6 +74,20 @@
             </div>
         </div>
 
+        <!-- Предупреждение: синк в процессе — данные неполные -->
+        <div class="insight-sync-notice"
+             th:if="${enrichmentJobId != null or (activeJobIds != null and !activeJobIds.isEmpty())}">
+            <svg fill="none" height="16" viewBox="0 0 16 16" width="16">
+                <circle cx="8" cy="8" fill="none" r="6" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M8 5v3.5M8 11h.01" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+            </svg>
+            <div>
+                <strong>Синхронизация данных идёт</strong> — метрики загружены не полностью.
+                Алгоритмические правила и AI-анализ будут точнее после завершения синка.
+                Запустите <strong>↻ Обновить AI-анализ</strong> после того, как синк завершится.
+            </div>
+        </div>
+
         <!-- Карточки-объяснения -->
         <div class="insight-meta-grid">
             <div class="insight-meta-card">
