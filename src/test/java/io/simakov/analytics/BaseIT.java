@@ -1,6 +1,5 @@
 package io.simakov.analytics;
 
-import com.icegreen.greenmail.util.GreenMail;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.WorkspaceMember;
@@ -10,6 +9,10 @@ import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.security.AppUserPrincipal;
 import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +27,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.io.IOException;
 import java.time.Instant;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -34,6 +40,27 @@ import java.time.Instant;
 @ActiveProfiles("test")
 @Import(TestConfig.class)
 public abstract class BaseIT {
+
+    /** Fake Resend API server shared across all integration tests. */
+    protected static final MockWebServer RESEND_SERVER;
+
+    static {
+        try {
+            RESEND_SERVER = new MockWebServer();
+            RESEND_SERVER.setDispatcher(new Dispatcher() {
+                @Override
+                public MockResponse dispatch(RecordedRequest request) {
+                    return new MockResponse()
+                        .setResponseCode(200)
+                        .addHeader("Content-Type", "application/json")
+                        .setBody("{\"id\":\"test-email-id\"}");
+                }
+            });
+            RESEND_SERVER.start();
+        } catch (IOException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     protected static final String TEST_TOKEN = "test-token";
     protected static final String BEARER_TEST_TOKEN = "Bearer " + TEST_TOKEN;
@@ -49,9 +76,6 @@ public abstract class BaseIT {
 
     @Autowired
     protected JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    protected GreenMail greenMail;
 
     /**
      * GitLab is an external dependency — mock it so tests don't require a real GitLab instance.
@@ -73,9 +97,10 @@ public abstract class BaseIT {
     @Autowired
     private WorkspaceMemberRepository workspaceMemberRepository;
 
-    @BeforeEach
-    void resetMailbox() {
-        greenMail.reset();
+    @DynamicPropertySource
+    static void resendProperties(DynamicPropertyRegistry registry) {
+        registry.add("app.resend.api-url", () -> RESEND_SERVER.url("/").toString());
+        registry.add("RESEND_API_KEY", () -> "test-resend-key");
     }
 
     @BeforeEach

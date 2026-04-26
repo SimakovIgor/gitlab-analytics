@@ -37,11 +37,8 @@ services:
       JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-MI}
       # AI insights
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      # Mail / SMTP
-      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
-      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
-      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
-      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      # Mail / Resend HTTP API (https://resend.com)
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@gitpulse.ru}
       APP_BASE_URL: ${APP_BASE_URL:-https://gitpulse.ru}
     # Port NOT exposed directly — Nginx proxies to app:8080

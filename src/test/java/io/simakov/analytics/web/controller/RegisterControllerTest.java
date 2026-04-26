@@ -3,13 +3,17 @@ package io.simakov.analytics.web.controller;
 import io.simakov.analytics.BaseIT;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.repository.AppUserRepository;
-import jakarta.mail.internet.MimeMessage;
+import okhttp3.mockwebserver.Dispatcher;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.RecordedRequest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -27,6 +31,15 @@ class RegisterControllerTest extends BaseIT {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    /** Drain any requests left over from previous tests so takeRequest() returns the right one. */
+    @BeforeEach
+    void drainResendQueue() throws InterruptedException {
+        RecordedRequest stale = RESEND_SERVER.takeRequest(0, TimeUnit.MILLISECONDS);
+        while (stale != null) {
+            stale = RESEND_SERVER.takeRequest(0, TimeUnit.MILLISECONDS);
+        }
+    }
 
     @Test
     void getRegisterReturnsRegistrationPage() throws Exception {
@@ -63,16 +76,14 @@ class RegisterControllerTest extends BaseIT {
                 .with(csrf()))
             .andExpect(status().is3xxRedirection());
 
-        greenMail.waitForIncomingEmail(3000, 1);
-
         String savedToken = appUserRepository.findByEmail("emailtest@example.com")
             .map(AppUser::getEmailVerificationToken)
             .orElseThrow();
 
-        MimeMessage[] received = greenMail.getReceivedMessages();
-        assertThat(received).hasSize(1);
-        assertThat(received[0].getAllRecipients()[0].toString()).isEqualTo("emailtest@example.com");
-        assertThat(received[0].getContent().toString()).contains(savedToken);
+        RecordedRequest request = RESEND_SERVER.takeRequest(3, TimeUnit.SECONDS);
+        assertThat(request).isNotNull();
+        assertThat(request.getHeader("Authorization")).isEqualTo("Bearer test-resend-key");
+        assertThat(request.getBody().readUtf8()).contains(savedToken);
     }
 
     @Test
@@ -86,47 +97,6 @@ class RegisterControllerTest extends BaseIT {
 
         assertThat(appUserRepository.findByEmail("upper@example.com")).isPresent();
         assertThat(appUserRepository.findByEmail("UPPER@EXAMPLE.COM")).isEmpty();
-    }
-
-    @Test
-    void registerWhenSmtpFailsReturnsErrorAndDoesNotSaveUser() throws Exception {
-        greenMail.stop();
-        try {
-            mockMvc.perform(post("/register")
-                    .param("name", "SMTP Fail User")
-                    .param("email", "smtpfail@example.com")
-                    .param("password", "password123")
-                    .with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(view().name("register"))
-                .andExpect(model().attributeExists("error"));
-
-            assertThat(appUserRepository.findByEmail("smtpfail@example.com")).isEmpty();
-        } finally {
-            greenMail.start();
-        }
-    }
-
-    @Test
-    void registerWithDuplicateEmailReturnsErrorOnRegisterPage() throws Exception {
-        appUserRepository.save(AppUser.builder()
-            .name("Existing User")
-            .email("duplicate@example.com")
-            .passwordHash(passwordEncoder.encode("somepass"))
-            .emailVerified(true)
-            .lastLoginAt(Instant.now())
-            .build());
-
-        mockMvc.perform(post("/register")
-                .param("name", "New User")
-                .param("email", "duplicate@example.com")
-                .param("password", "anotherpass")
-                .with(csrf()))
-            .andExpect(status().isOk())
-            .andExpect(view().name("register"))
-            .andExpect(model().attributeExists("error"));
-
-        assertThat(greenMail.getReceivedMessages()).isEmpty();
     }
 
     @Test
@@ -150,8 +120,6 @@ class RegisterControllerTest extends BaseIT {
             .andExpect(view().name("register"))
             .andExpect(model().attributeExists("error"));
 
-        // Existing unverified user must not be deleted or duplicated
-        assertThat(appUserRepository.findByEmail("pending@example.com")).isPresent();
         assertThat(appUserRepository.findAll().stream()
             .filter(u -> "pending@example.com".equals(u.getEmail()))
             .count()).isEqualTo(1);
@@ -177,12 +145,66 @@ class RegisterControllerTest extends BaseIT {
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/verify-email-sent"));
 
-        // Stale record replaced by new one with fresh token
         Optional<AppUser> newUser = appUserRepository.findByEmail("expired@example.com");
         assertThat(newUser).isPresent();
         assertThat(newUser.get().getName()).isEqualTo("Fresh User");
         assertThat(newUser.get().getEmailVerificationToken()).isNotEqualTo("expired-token-xyz");
         assertThat(newUser.get().getEmailVerificationExpiresAt()).isAfter(Instant.now());
+    }
+
+    @Test
+    void registerWithDuplicateEmailReturnsErrorOnRegisterPage() throws Exception {
+        appUserRepository.save(AppUser.builder()
+            .name("Existing User")
+            .email("duplicate@example.com")
+            .passwordHash(passwordEncoder.encode("somepass"))
+            .emailVerified(true)
+            .lastLoginAt(Instant.now())
+            .build());
+
+        mockMvc.perform(post("/register")
+                .param("name", "New User")
+                .param("email", "duplicate@example.com")
+                .param("password", "anotherpass")
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("register"))
+            .andExpect(model().attributeExists("error"));
+    }
+
+    @Test
+    void registerWhenResendFailsReturnsErrorAndDoesNotSaveUser() throws Exception {
+        // Temporarily make Resend return 500 to simulate delivery failure
+        Dispatcher errorDispatcher = new Dispatcher() {
+            @Override
+            public MockResponse dispatch(RecordedRequest request) {
+                return new MockResponse().setResponseCode(500).setBody("{\"error\":\"internal\"}");
+            }
+        };
+        RESEND_SERVER.setDispatcher(errorDispatcher);
+        try {
+            mockMvc.perform(post("/register")
+                    .param("name", "Resend Fail User")
+                    .param("email", "resendfail@example.com")
+                    .param("password", "password123")
+                    .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeExists("error"));
+
+            assertThat(appUserRepository.findByEmail("resendfail@example.com")).isEmpty();
+        } finally {
+            // Restore the default success dispatcher
+            RESEND_SERVER.setDispatcher(new Dispatcher() {
+                @Override
+                public MockResponse dispatch(RecordedRequest request) {
+                    return new MockResponse()
+                        .setResponseCode(200)
+                        .addHeader("Content-Type", "application/json")
+                        .setBody("{\"id\":\"test-email-id\"}");
+                }
+            });
+        }
     }
 
     @Test

@@ -7,14 +7,8 @@ spring:
     # Spring Boot default is 30 min — too short when the browser tab is backgrounded.
     timeout: 8h
 
-  # spring.mail.* is intentionally absent from yml.
-  # Set SPRING_MAIL_HOST env var to enable email sending.
-  # When absent, JavaMailSender is not auto-created and EmailService silently skips sending.
-  mail:
-    properties:
-      mail.smtp.connectiontimeout: 5000
-      mail.smtp.timeout: 5000
-      mail.smtp.writetimeout: 5000
+  # Email is sent via Resend HTTP API (not SMTP).
+  # Set RESEND_API_KEY env var to enable. When absent, EmailService logs tokens to console.
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gitlab_analytics}
