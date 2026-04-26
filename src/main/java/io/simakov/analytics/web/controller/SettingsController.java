@@ -24,6 +24,7 @@ import io.simakov.analytics.web.dto.SettingsPageData;
 import io.simakov.analytics.web.dto.TeamDto;
 import io.simakov.analytics.workspace.MembersService;
 import io.simakov.analytics.workspace.TeamService;
+import io.simakov.analytics.workspace.WorkspacePermissionService;
 import io.simakov.analytics.workspace.WorkspaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -58,12 +59,16 @@ public class SettingsController {
     private final WorkspaceRepository workspaceRepository;
     private final MembersService membersService;
     private final TeamService teamService;
+    private final WorkspacePermissionService permissionService;
     private final ObjectMapper objectMapper;
 
     // ── Settings page ────────────────────────────────────────────────────────
 
     @GetMapping
     public String settings(Model model) {
+        if (!permissionService.isOwner()) {
+            return "redirect:/";
+        }
         SettingsPageData data = settingsViewService.buildSettingsPage();
         model.addAttribute("sources", data.sources());
         model.addAttribute("projects", data.projects());
@@ -106,6 +111,7 @@ public class SettingsController {
     @PostMapping("/members/invite")
     @ResponseBody
     public ResponseEntity<Map<String, String>> createInvite(@AuthenticationPrincipal AppUserPrincipal principal) {
+        permissionService.requireOwner();
         Long workspaceId = WorkspaceContext.get();
         WorkspaceInvite invite = membersService.createInvite(workspaceId, principal.getAppUser().getId());
         String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
@@ -117,6 +123,7 @@ public class SettingsController {
     @ResponseBody
     public ResponseEntity<Void> removeMember(@PathVariable Long appUserId,
                                              @AuthenticationPrincipal AppUserPrincipal principal) {
+        permissionService.requireOwner();
         Long workspaceId = WorkspaceContext.get();
         // Owner cannot be removed
         if (appUserId.equals(principal.getAppUser().getId())) {
@@ -131,6 +138,7 @@ public class SettingsController {
     @PostMapping("/sources")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createSource(@RequestBody @Valid CreateGitSourceRequest request) {
+        permissionService.requireOwner();
         GitSource source = settingsService.createSource(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
             "id", source.getId(),
@@ -142,6 +150,7 @@ public class SettingsController {
     @DeleteMapping("/sources/{id}")
     @ResponseBody
     public ResponseEntity<Void> deleteSource(@PathVariable Long id) {
+        permissionService.requireOwner();
         settingsService.deleteSource(id);
         return ResponseEntity.noContent().build();
     }
@@ -166,6 +175,7 @@ public class SettingsController {
     @PostMapping("/projects")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createProject(@RequestBody @Valid CreateTrackedProjectRequest request) {
+        permissionService.requireOwner();
         CreatedProjectResult result = settingsService.createProject(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
             "id", result.project().getId(),
@@ -179,6 +189,7 @@ public class SettingsController {
     @DeleteMapping("/projects/{id}")
     @ResponseBody
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
+        permissionService.requireOwner();
         settingsService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
@@ -186,6 +197,7 @@ public class SettingsController {
     @PostMapping("/projects/{id}/backfill")
     @ResponseBody
     public SyncJobResponse backfillProject(@PathVariable Long id) {
+        permissionService.requireOwner();
         return settingsService.backfillProject(id);
     }
 
@@ -216,6 +228,7 @@ public class SettingsController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createUsersBulk(
         @RequestBody List<CreateTrackedUserRequest> requests) {
+        permissionService.requireOwner();
         List<Map<String, Object>> created = settingsService.createUsersBulk(requests).stream()
             .map(u -> Map.<String, Object>of(
                 "id", u.getId(),
@@ -231,6 +244,7 @@ public class SettingsController {
     @PostMapping("/users")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createUser(@RequestBody @Valid CreateTrackedUserRequest request) {
+        permissionService.requireOwner();
         TrackedUser saved = settingsService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
             "id", saved.getId(),
@@ -246,6 +260,7 @@ public class SettingsController {
     @ResponseBody
     public ResponseEntity<Void> linkGitlabAccount(@PathVariable Long id,
                                                   @RequestBody Map<String, Object> body) {
+        permissionService.requireOwner();
         Object raw = body.get("gitlabUserId");
         if (raw == null) {
             return ResponseEntity.badRequest().build();
@@ -264,6 +279,7 @@ public class SettingsController {
     @DeleteMapping("/users/{id}")
     @ResponseBody
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        permissionService.requireOwner();
         settingsService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
@@ -273,6 +289,7 @@ public class SettingsController {
     @PostMapping("/snapshots/backfill")
     @ResponseBody
     public ResponseEntity<Void> triggerSnapshotBackfill() {
+        permissionService.requireOwner();
         settingsService.scheduleSnapshotBackfill();
         return ResponseEntity.accepted().build();
     }
@@ -284,6 +301,7 @@ public class SettingsController {
     @PostMapping("/snapshots/backfill/sync")
     @ResponseBody
     public ResponseEntity<Map<String, Integer>> triggerSnapshotBackfillSync() {
+        permissionService.requireOwner();
         int created = settingsService.triggerSnapshotBackfill();
         return ResponseEntity.ok(Map.of("snapshotsCreated", created));
     }
@@ -299,6 +317,7 @@ public class SettingsController {
     @PostMapping("/teams")
     @ResponseBody
     public ResponseEntity<TeamDto> createTeam(@RequestBody Map<String, Object> body) {
+        permissionService.requireOwner();
         String name = Objects.toString(body.get("name"), "").trim();
         int colorIndex = body.containsKey("colorIndex")
             ? ((Number) body.get("colorIndex")).intValue()
@@ -313,6 +332,7 @@ public class SettingsController {
     @ResponseBody
     public ResponseEntity<TeamDto> updateTeam(@PathVariable Long id,
                                               @RequestBody Map<String, Object> body) {
+        permissionService.requireOwner();
         String name = Objects.toString(body.get("name"), "").trim();
         int colorIndex = body.containsKey("colorIndex")
             ? ((Number) body.get("colorIndex")).intValue()
@@ -326,6 +346,7 @@ public class SettingsController {
     @DeleteMapping("/teams/{id}")
     @ResponseBody
     public ResponseEntity<Void> deleteTeam(@PathVariable Long id) {
+        permissionService.requireOwner();
         teamService.deleteTeam(WorkspaceContext.get(), id);
         return ResponseEntity.noContent().build();
     }
@@ -370,6 +391,7 @@ public class SettingsController {
     @PostMapping("/sync/{jobId}/retry")
     @ResponseBody
     public SyncJobResponse retrySync(@PathVariable Long jobId) {
+        permissionService.requireOwner();
         return settingsService.retrySync(jobId);
     }
 
@@ -378,6 +400,7 @@ public class SettingsController {
     @PostMapping("/digest/toggle")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> toggleDigest() {
+        permissionService.requireOwner();
         Long workspaceId = WorkspaceContext.get();
         Workspace workspace = workspaceRepository.findById(workspaceId)
             .orElseThrow(() -> new IllegalStateException("Workspace not found"));

@@ -8,6 +8,7 @@ import io.simakov.analytics.domain.repository.AppUserRepository;
 import io.simakov.analytics.domain.repository.WorkspaceMemberRepository;
 import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
+import io.simakov.analytics.security.AppUserPrincipal;
 import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,8 +22,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.time.Instant;
 
@@ -59,6 +62,7 @@ public abstract class BaseIT {
 
     protected Long testWorkspaceId;
     protected MockHttpSession webSession;
+    protected AppUser ownerUser;
 
     @Autowired
     private AppUserRepository appUserRepository;
@@ -76,7 +80,7 @@ public abstract class BaseIT {
 
     @BeforeEach
     void setUpWorkspace() {
-        AppUser owner = appUserRepository.save(AppUser.builder()
+        ownerUser = appUserRepository.save(AppUser.builder()
             .email("owner@test.com")
             .name("Test Owner")
             .lastLoginAt(Instant.now())
@@ -85,14 +89,14 @@ public abstract class BaseIT {
         Workspace workspace = workspaceRepository.save(Workspace.builder()
             .name("Test Workspace")
             .slug("test-workspace")
-            .ownerId(owner.getId())
+            .ownerId(ownerUser.getId())
             .plan("FREE")
             .apiToken(TEST_TOKEN)
             .build());
 
         workspaceMemberRepository.save(WorkspaceMember.builder()
             .workspaceId(workspace.getId())
-            .appUserId(owner.getId())
+            .appUserId(ownerUser.getId())
             .role("OWNER")
             .build());
 
@@ -100,6 +104,11 @@ public abstract class BaseIT {
 
         webSession = new MockHttpSession();
         webSession.setAttribute(WorkspaceAwareSuccessHandler.SESSION_WORKSPACE_ID, testWorkspaceId);
+    }
+
+    /** Returns a RequestPostProcessor that authenticates as the workspace owner (AppUserPrincipal). */
+    protected RequestPostProcessor ownerPrincipal() {
+        return SecurityMockMvcRequestPostProcessors.user(new AppUserPrincipal(ownerUser));
     }
 
     protected HttpHeaders authHeaders() {

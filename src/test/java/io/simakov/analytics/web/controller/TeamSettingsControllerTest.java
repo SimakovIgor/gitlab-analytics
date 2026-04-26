@@ -13,7 +13,6 @@ import io.simakov.analytics.domain.repository.WorkspaceRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 
 import java.time.Instant;
 import java.util.List;
@@ -48,22 +47,20 @@ class TeamSettingsControllerTest extends BaseIT {
     // ── GET /settings/teams ──────────────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void listTeamsReturnsEmptyArrayWhenNoTeamsExist() throws Exception {
-        mockMvc.perform(get("/settings/teams").session(webSession))
+        mockMvc.perform(get("/settings/teams").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
-    @WithMockUser
     void listTeamsReturnsCreatedTeams() throws Exception {
         teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Backend").colorIndex(1).build());
         teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Frontend").colorIndex(3).build());
 
-        mockMvc.perform(get("/settings/teams").session(webSession))
+        mockMvc.perform(get("/settings/teams").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].name").value("Backend"))
@@ -71,13 +68,12 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void listTeamsIncludesMembersInResponse() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Alpha").colorIndex(2).build());
         TrackedUser user = createUser("alice@test.com", "Alice", team.getId());
 
-        mockMvc.perform(get("/settings/teams").session(webSession))
+        mockMvc.perform(get("/settings/teams").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].memberCount").value(1))
             .andExpect(jsonPath("$[0].members[0].id").value(user.getId()))
@@ -85,7 +81,6 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void listTeamsDoesNotReturnTeamsFromAnotherWorkspace() throws Exception {
         Long otherWorkspaceId = createOtherWorkspaceId();
         teamRepository.save(Team.builder()
@@ -93,7 +88,7 @@ class TeamSettingsControllerTest extends BaseIT {
         teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("My Team").colorIndex(1).build());
 
-        mockMvc.perform(get("/settings/teams").session(webSession))
+        mockMvc.perform(get("/settings/teams").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].name").value("My Team"));
@@ -102,7 +97,6 @@ class TeamSettingsControllerTest extends BaseIT {
     // ── POST /settings/teams ─────────────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void createTeamReturns201AndPersistsToDb() throws Exception {
         String body = objectMapper.writeValueAsString(Map.of(
             "name", "Platform",
@@ -111,7 +105,9 @@ class TeamSettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isCreated())
@@ -124,7 +120,6 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void createTeamAssignsMembersOnCreation() throws Exception {
         TrackedUser alice = createUser("alice@test.com", "Alice", null);
         TrackedUser bob = createUser("bob@test.com", "Bob", null);
@@ -136,7 +131,9 @@ class TeamSettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isCreated())
@@ -151,7 +148,6 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void createTeamWithDefaultColorIndex() throws Exception {
         String body = objectMapper.writeValueAsString(Map.of(
             "name", "Squad",
@@ -159,7 +155,9 @@ class TeamSettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isCreated())
@@ -169,7 +167,6 @@ class TeamSettingsControllerTest extends BaseIT {
     // ── PUT /settings/teams/{id} ─────────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void updateTeamReturns200AndPersistsChanges() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Old Name").colorIndex(1).build());
@@ -181,7 +178,9 @@ class TeamSettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(put("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
@@ -194,7 +193,6 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void updateTeamReplacesMemberSet() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Alpha").colorIndex(1).build());
@@ -209,7 +207,9 @@ class TeamSettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(put("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
@@ -225,7 +225,6 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void updateTeamClearsMembersWhenEmptyList() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Solo").colorIndex(1).build());
@@ -238,7 +237,9 @@ class TeamSettingsControllerTest extends BaseIT {
         ));
 
         mockMvc.perform(put("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
@@ -249,20 +250,20 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void updateTeamReturns404ForUnknownId() throws Exception {
         String body = objectMapper.writeValueAsString(Map.of(
             "name", "X", "colorIndex", 1, "memberIds", List.of()));
 
         mockMvc.perform(put("/settings/teams/99999")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isNotFound());
     }
 
     @Test
-    @WithMockUser
     void updateTeamReturns404ForTeamInAnotherWorkspace() throws Exception {
         Long otherWorkspaceId = createOtherWorkspaceId();
         Team otherTeam = teamRepository.save(Team.builder()
@@ -272,7 +273,9 @@ class TeamSettingsControllerTest extends BaseIT {
             "name", "Hacked", "colorIndex", 1, "memberIds", List.of()));
 
         mockMvc.perform(put("/settings/teams/" + otherTeam.getId())
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isNotFound());
@@ -284,27 +287,29 @@ class TeamSettingsControllerTest extends BaseIT {
     // ── DELETE /settings/teams/{id} ──────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void deleteTeamReturns204AndRemovesFromDb() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Expired").colorIndex(1).build());
 
         mockMvc.perform(delete("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf()))
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
             .andExpect(status().isNoContent());
 
         assertThat(teamRepository.findById(team.getId())).isEmpty();
     }
 
     @Test
-    @WithMockUser
     void deleteTeamNullsOutMembersTeamId() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("ToDelete").colorIndex(1).build());
         TrackedUser member = createUser("dev@test.com", "Dev", team.getId());
 
         mockMvc.perform(delete("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf()))
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
             .andExpect(status().isNoContent());
 
         TrackedUser afterDelete = trackedUserRepository.findById(member.getId()).orElseThrow();
@@ -312,22 +317,24 @@ class TeamSettingsControllerTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void deleteTeamReturns404ForUnknownId() throws Exception {
         mockMvc.perform(delete("/settings/teams/99999")
-                .session(webSession).with(csrf()))
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
             .andExpect(status().isNotFound());
     }
 
     @Test
-    @WithMockUser
     void deleteTeamReturns404ForTeamInAnotherWorkspace() throws Exception {
         Long otherWorkspaceId = createOtherWorkspaceId();
         Team otherTeam = teamRepository.save(Team.builder()
             .workspaceId(otherWorkspaceId).name("Other").colorIndex(1).build());
 
         mockMvc.perform(delete("/settings/teams/" + otherTeam.getId())
-                .session(webSession).with(csrf()))
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
             .andExpect(status().isNotFound());
 
         assertThat(teamRepository.findById(otherTeam.getId())).isPresent();

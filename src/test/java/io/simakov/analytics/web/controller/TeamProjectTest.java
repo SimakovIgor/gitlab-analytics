@@ -21,7 +21,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -92,26 +90,24 @@ class TeamProjectTest extends BaseIT {
     // ── listTeams includes projectIds ─────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void listTeamsReturnsEmptyProjectIdsWhenNoneAssigned() throws Exception {
         teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Backend").colorIndex(1).build());
 
-        mockMvc.perform(get("/settings/teams").session(webSession))
+        mockMvc.perform(get("/settings/teams").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].projectIds").isArray())
             .andExpect(jsonPath("$[0].projectIds.length()").value(0));
     }
 
     @Test
-    @WithMockUser
     void listTeamsReturnsAssignedProjectIds() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Backend").colorIndex(1).build());
         teamProjectRepository.save(TeamProject.of(team.getId(), projectId1));
         teamProjectRepository.save(TeamProject.of(team.getId(), projectId2));
 
-        mockMvc.perform(get("/settings/teams").session(webSession))
+        mockMvc.perform(get("/settings/teams").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].projectIds.length()").value(2));
     }
@@ -119,7 +115,6 @@ class TeamProjectTest extends BaseIT {
     // ── createTeam with projectIds ────────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void createTeamPersistsProjectAssociations() throws Exception {
         String body = objectMapper.writeValueAsString(Map.of(
             "name", "Platform",
@@ -129,7 +124,9 @@ class TeamProjectTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isCreated())
@@ -141,7 +138,6 @@ class TeamProjectTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void createTeamWithNoProjectIdsStoresNone() throws Exception {
         String body = objectMapper.writeValueAsString(Map.of(
             "name", "Infra",
@@ -151,7 +147,9 @@ class TeamProjectTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isCreated())
@@ -162,7 +160,6 @@ class TeamProjectTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void createTeamWithoutProjectIdsFieldStoresNone() throws Exception {
         // projectIds key absent — should default to empty
         String body = objectMapper.writeValueAsString(Map.of(
@@ -172,7 +169,9 @@ class TeamProjectTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isCreated())
@@ -182,7 +181,6 @@ class TeamProjectTest extends BaseIT {
     // ── updateTeam with projectIds ────────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void updateTeamAddsProjectAssociations() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Alpha").colorIndex(1).build());
@@ -195,7 +193,9 @@ class TeamProjectTest extends BaseIT {
         ));
 
         mockMvc.perform(put("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
@@ -206,7 +206,6 @@ class TeamProjectTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void updateTeamReplacesProjectAssociations() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Alpha").colorIndex(1).build());
@@ -221,7 +220,9 @@ class TeamProjectTest extends BaseIT {
         ));
 
         mockMvc.perform(put("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
@@ -233,7 +234,6 @@ class TeamProjectTest extends BaseIT {
     }
 
     @Test
-    @WithMockUser
     void updateTeamClearsProjectAssociationsWhenEmptyList() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Solo").colorIndex(1).build());
@@ -248,7 +248,9 @@ class TeamProjectTest extends BaseIT {
         ));
 
         mockMvc.perform(put("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
             .andExpect(status().isOk())
@@ -260,7 +262,6 @@ class TeamProjectTest extends BaseIT {
     // ── deleteTeam cascades to team_project ───────────────────────────────────
 
     @Test
-    @WithMockUser
     void deleteTeamRemovesProjectAssociations() throws Exception {
         Team team = teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("ToDelete").colorIndex(1).build());
@@ -268,7 +269,9 @@ class TeamProjectTest extends BaseIT {
         teamProjectRepository.save(TeamProject.of(team.getId(), projectId2));
 
         mockMvc.perform(delete("/settings/teams/" + team.getId())
-                .session(webSession).with(csrf()))
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
             .andExpect(status().isNoContent());
 
         assertThat(teamProjectRepository.existsById(new TeamProjectId(team.getId(), projectId1))).isFalse();
@@ -278,7 +281,6 @@ class TeamProjectTest extends BaseIT {
     // ── workspace isolation ───────────────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void projectsFromOtherWorkspaceAreNotReturnedInList() throws Exception {
         // Create another workspace with its own team
         AppUser otherOwner = appUserRepository.save(AppUser.builder()
@@ -295,7 +297,7 @@ class TeamProjectTest extends BaseIT {
         teamRepository.save(Team.builder()
             .workspaceId(testWorkspaceId).name("Mine").colorIndex(1).build());
 
-        mockMvc.perform(get("/settings/teams").session(webSession))
+        mockMvc.perform(get("/settings/teams").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].name").value("Mine"))
@@ -305,7 +307,6 @@ class TeamProjectTest extends BaseIT {
     // ── multiple teams sharing a repository (monolith case) ──────────────────
 
     @Test
-    @WithMockUser
     void multipleTeamsCanShareTheSameRepository() throws Exception {
         String bodyA = objectMapper.writeValueAsString(Map.of(
             "name", "TeamA", "colorIndex", 1,
@@ -317,12 +318,16 @@ class TeamProjectTest extends BaseIT {
         ));
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content(bodyA))
             .andExpect(status().isCreated());
 
         mockMvc.perform(post("/settings/teams")
-                .session(webSession).with(csrf())
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content(bodyB))
             .andExpect(status().isCreated());
 
@@ -343,7 +348,7 @@ class TeamProjectTest extends BaseIT {
         teamProjectRepository.save(TeamProject.of(team.getId(), projectId1));
         createUser("dev@test.com", "Dev", team.getId());
 
-        mockMvc.perform(get("/compare").session(webSession).with(user("owner@test.com").roles("USER")))
+        mockMvc.perform(get("/compare").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk());
     }
 
@@ -353,13 +358,13 @@ class TeamProjectTest extends BaseIT {
             .workspaceId(testWorkspaceId).name("NoProjects").colorIndex(2).build());
         createUser("dev@test.com", "Dev", team.getId());
 
-        mockMvc.perform(get("/compare").session(webSession).with(user("owner@test.com").roles("USER")))
+        mockMvc.perform(get("/compare").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk());
     }
 
     @Test
     void comparePageLoadsWhenNoTeamsExist() throws Exception {
-        mockMvc.perform(get("/compare").session(webSession).with(user("owner@test.com").roles("USER")))
+        mockMvc.perform(get("/compare").session(webSession).with(ownerPrincipal()))
             .andExpect(status().isOk());
     }
 
