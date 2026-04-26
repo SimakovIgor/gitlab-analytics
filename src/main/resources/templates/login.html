@@ -387,8 +387,7 @@
                 Вы вышли из системы.
             </div>
 
-            <form action="#" method="post" th:action="@{/login}">
-                <input th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" type="hidden"/>
+            <form method="post" th:action="@{/login}">
 
                 <div class="field">
                     <div class="label-row">

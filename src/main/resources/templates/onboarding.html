@@ -72,7 +72,6 @@
         </p>
 
         <form method="post" th:action="@{/onboarding}">
-            <input th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" type="hidden"/>
             <label class="ob-field-label">Название workspace</label>
             <input autofocus class="ob-text-input" maxlength="255"
                    name="workspaceName"

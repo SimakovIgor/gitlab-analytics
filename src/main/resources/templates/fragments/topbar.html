@@ -88,7 +88,6 @@
 
     <!-- Выход -->
     <form method="post" style="flex-shrink:0" th:action="@{/logout}" th:if="${currentUser}">
-        <input th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" type="hidden">
         <button class="btn-logout" type="submit">Выйти</button>
     </form>
 

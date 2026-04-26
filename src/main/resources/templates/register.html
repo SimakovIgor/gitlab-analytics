@@ -142,7 +142,6 @@
         <div class="reg-error" th:if="${error}" th:text="${error}">Ошибка</div>
 
         <form action="/register" method="post" th:action="@{/register}">
-            <input th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" type="hidden"/>
 
             <div class="reg-field">
                 <label class="reg-label" for="name">Имя</label>
