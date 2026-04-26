@@ -238,6 +238,26 @@
   }
   .btn-primary:hover { background: var(--ink-2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
 
+  .btn-secondary {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; padding: 12px;
+    background: #fff; color: var(--ink);
+    border: 1.5px solid var(--line-2); border-radius: 8px;
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    cursor: pointer; text-decoration: none;
+    transition: border-color .15s, background .15s;
+  }
+  .btn-secondary:hover { border-color: var(--ink); background: var(--paper); }
+
+  .auth-divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0;
+    font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .auth-divider::before, .auth-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--line);
+  }
+
   .auth-foot {
     margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted);
   }
@@ -426,7 +446,9 @@
                 <button class="btn-primary" type="submit">Войти</button>
             </form>
 
-            <p class="auth-foot">Нет аккаунта? <a th:href="@{/register}">Зарегистрироваться</a></p>
+            <div class="auth-divider">или</div>
+
+            <a class="btn-secondary" th:href="@{/register}">Создать аккаунт</a>
         </div>
 
         <div class="auth-meta">
