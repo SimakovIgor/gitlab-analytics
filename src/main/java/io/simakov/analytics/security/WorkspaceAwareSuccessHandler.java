@@ -56,6 +56,9 @@ public class WorkspaceAwareSuccessHandler implements AuthenticationSuccessHandle
 
         if (memberships.isEmpty()) {
             log.info("AppUser id={} has no workspace — redirecting to onboarding", appUserId);
+            // Clear any stale workspace from a previous session so WorkspaceContextFilter
+            // does not restore it and skip the workspace-creation step in onboarding.
+            session.removeAttribute(SESSION_WORKSPACE_ID);
             response.sendRedirect("/onboarding");
         } else {
             Long workspaceId = memberships.get(0).getWorkspaceId();
