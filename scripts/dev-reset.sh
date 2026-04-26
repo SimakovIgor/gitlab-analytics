@@ -81,6 +81,7 @@ docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T postgres \
 DROP TABLE IF EXISTS
   merge_request_approval, merge_request_note, merge_request_discussion,
   merge_request_commit, merge_request, release_tag, tracked_user_alias, metric_snapshot,
+  ai_insight_cache, password_reset_token, workspace_invite,
   jira_incident, sync_job, team_project,
   tracked_project, tracked_user, team, git_source, workspace_member, workspace, app_user
 CASCADE;
