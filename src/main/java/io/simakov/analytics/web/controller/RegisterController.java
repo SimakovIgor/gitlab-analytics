@@ -48,11 +48,27 @@ public class RegisterController {
                            Model model) {
         String normalizedEmail = email.trim().toLowerCase(java.util.Locale.ROOT);
 
-        if (appUserRepository.findByEmail(normalizedEmail).isPresent()) {
-            model.addAttribute("error", "Пользователь с таким email уже зарегистрирован.");
-            model.addAttribute("name", name);
-            model.addAttribute("email", email);
-            return "register";
+        Optional<AppUser> existing = appUserRepository.findByEmail(normalizedEmail);
+        if (existing.isPresent()) {
+            AppUser existingUser = existing.get();
+            if (existingUser.isEmailVerified()) {
+                model.addAttribute("error", "Пользователь с таким email уже зарегистрирован.");
+                model.addAttribute("name", name);
+                model.addAttribute("email", email);
+                return "register";
+            }
+            // Unverified: if token still valid → prompt to check email
+            if (existingUser.getEmailVerificationExpiresAt() != null
+                && existingUser.getEmailVerificationExpiresAt().isAfter(Instant.now())) {
+                model.addAttribute("error",
+                    "Письмо с подтверждением уже отправлено на " + normalizedEmail
+                    + ". Проверьте почту (в том числе папку «Спам»).");
+                model.addAttribute("name", name);
+                model.addAttribute("email", email);
+                return "register";
+            }
+            // Token expired — delete stale unverified account and allow fresh registration
+            appUserRepository.delete(existingUser);
         }
 
         HttpSession session = request.getSession(false);
