@@ -3,6 +3,9 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: true
+  mail:
+    host: localhost
+    port: 3025
 
 app:
   encryption:

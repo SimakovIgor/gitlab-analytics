@@ -3,11 +3,10 @@ package io.simakov.analytics.web.controller;
 import io.simakov.analytics.BaseIT;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.repository.AppUserRepository;
+import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -21,11 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-@AutoConfigureMockMvc
 class RegisterControllerTest extends BaseIT {
-
-    @Autowired
-    private MockMvc mockMvc;
 
     @Autowired
     private AppUserRepository appUserRepository;
@@ -41,20 +36,43 @@ class RegisterControllerTest extends BaseIT {
     }
 
     @Test
-    void registerWithValidDataCreatesUserAndRedirectsToOnboarding() throws Exception {
+    void registerWithValidDataSavesUnverifiedUserAndRedirectsToVerifyEmailSent() throws Exception {
         mockMvc.perform(post("/register")
                 .param("name", "Test User")
                 .param("email", "newuser@example.com")
                 .param("password", "securepass123")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/onboarding"));
+            .andExpect(redirectedUrl("/verify-email-sent"));
 
         Optional<AppUser> created = appUserRepository.findByEmail("newuser@example.com");
         assertThat(created).isPresent();
         assertThat(created.get().getName()).isEqualTo("Test User");
         assertThat(created.get().getPasswordHash()).startsWith("$2a$");
+        assertThat(created.get().isEmailVerified()).isFalse();
+        assertThat(created.get().getEmailVerificationToken()).isNotBlank();
         assertThat(created.get().getGithubId()).isNull();
+    }
+
+    @Test
+    void registerSendsVerificationEmailWithTokenLink() throws Exception {
+        mockMvc.perform(post("/register")
+                .param("name", "Email User")
+                .param("email", "emailtest@example.com")
+                .param("password", "password123")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        greenMail.waitForIncomingEmail(3000, 1);
+
+        String savedToken = appUserRepository.findByEmail("emailtest@example.com")
+            .map(AppUser::getEmailVerificationToken)
+            .orElseThrow();
+
+        MimeMessage[] received = greenMail.getReceivedMessages();
+        assertThat(received).hasSize(1);
+        assertThat(received[0].getAllRecipients()[0].toString()).isEqualTo("emailtest@example.com");
+        assertThat(received[0].getContent().toString()).contains(savedToken);
     }
 
     @Test
@@ -76,6 +94,7 @@ class RegisterControllerTest extends BaseIT {
             .name("Existing User")
             .email("duplicate@example.com")
             .passwordHash(passwordEncoder.encode("somepass"))
+            .emailVerified(true)
             .lastLoginAt(Instant.now())
             .build());
 
@@ -87,6 +106,8 @@ class RegisterControllerTest extends BaseIT {
             .andExpect(status().isOk())
             .andExpect(view().name("register"))
             .andExpect(model().attributeExists("error"));
+
+        assertThat(greenMail.getReceivedMessages()).isEmpty();
     }
 
     @Test

@@ -15,8 +15,6 @@ import io.simakov.analytics.domain.repository.TrackedUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
@@ -28,15 +26,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@AutoConfigureMockMvc
 class ReportControllerTest extends BaseIT {
 
     private static final long ALICE_GITLAB_ID = 101L;
     private static final long BOB_GITLAB_ID = 202L;
     private static final Instant NOW = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-
-    @Autowired
-    private MockMvc mockMvc;
 
     @Autowired
     private GitSourceRepository gitSourceRepository;

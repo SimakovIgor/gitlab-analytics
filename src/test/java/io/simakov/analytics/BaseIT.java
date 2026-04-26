@@ -1,5 +1,6 @@
 package io.simakov.analytics;
 
+import com.icegreen.greenmail.util.GreenMail;
 import io.simakov.analytics.domain.model.AppUser;
 import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.WorkspaceMember;
@@ -11,6 +12,7 @@ import io.simakov.analytics.security.WorkspaceAwareSuccessHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -20,10 +22,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestConfig.class)
 public abstract class BaseIT {
@@ -38,7 +42,13 @@ public abstract class BaseIT {
     protected TestRestTemplate restTemplate;
 
     @Autowired
+    protected MockMvc mockMvc;
+
+    @Autowired
     protected JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    protected GreenMail greenMail;
 
     /**
      * GitLab is an external dependency — mock it so tests don't require a real GitLab instance.
@@ -58,6 +68,11 @@ public abstract class BaseIT {
 
     @Autowired
     private WorkspaceMemberRepository workspaceMemberRepository;
+
+    @BeforeEach
+    void resetMailbox() {
+        greenMail.reset();
+    }
 
     @BeforeEach
     void setUpWorkspace() {

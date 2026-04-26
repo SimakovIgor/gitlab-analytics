@@ -78,6 +78,7 @@ dependencies {
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.junit.platform:junit-platform-launcher")
     testImplementation("org.apache.httpcomponents.client5:httpclient5")
+    testImplementation("com.icegreen:greenmail:2.1.2")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
 }

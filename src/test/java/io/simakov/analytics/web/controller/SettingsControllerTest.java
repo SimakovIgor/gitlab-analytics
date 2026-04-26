@@ -24,10 +24,8 @@ import io.simakov.analytics.gitlab.dto.GitLabUserDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -47,11 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@AutoConfigureMockMvc
 class SettingsControllerTest extends BaseIT {
-
-    @Autowired
-    private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -667,5 +661,53 @@ class SettingsControllerTest extends BaseIT {
         mockMvc.perform(delete("/settings/users/1")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection());
+    }
+
+    // ── Digest settings ───────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser
+    void digestStatusReturnsTrueByDefault() throws Exception {
+        mockMvc.perform(get("/settings/digest/status")
+                .session(webSession))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.digestEnabled").value(true));
+    }
+
+    @Test
+    @WithMockUser
+    void toggleDigestDisablesDigestAndReturnsFalse() throws Exception {
+        mockMvc.perform(post("/settings/digest/toggle")
+                .session(webSession)
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.digestEnabled").value(false));
+    }
+
+    @Test
+    @WithMockUser
+    void toggleDigestTwiceRestoresToEnabled() throws Exception {
+        mockMvc.perform(post("/settings/digest/toggle")
+                .session(webSession)
+                .with(csrf()))
+            .andExpect(jsonPath("$.digestEnabled").value(false));
+
+        mockMvc.perform(post("/settings/digest/toggle")
+                .session(webSession)
+                .with(csrf()))
+            .andExpect(jsonPath("$.digestEnabled").value(true));
+    }
+
+    @Test
+    @WithMockUser
+    void digestStatusReflectsToggledState() throws Exception {
+        mockMvc.perform(post("/settings/digest/toggle")
+                .session(webSession)
+                .with(csrf()));
+
+        mockMvc.perform(get("/settings/digest/status")
+                .session(webSession))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.digestEnabled").value(false));
     }
 }
