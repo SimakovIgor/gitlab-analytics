@@ -39,7 +39,8 @@
         <div class="tab-content" id="tab-sources">
             <div class="tab-toolbar">
                 <span class="section-title" style="margin-bottom:0">Источники GitLab</span>
-                <button class="btn-primary" onclick="openModal('modal-source')">+ Добавить источник</button>
+                <button class="btn-primary" onclick="openModal('modal-source')"
+                        th:if="${isOwner}">+ Добавить источник</button>
             </div>
 
             <table class="data-table" th:if="${!sources.isEmpty()}">
@@ -48,7 +49,7 @@
                     <th>Название</th>
                     <th>URL</th>
                     <th>Добавлен</th>
-                    <th>Действия</th>
+                    <th th:if="${isOwner}">Действия</th>
                 </tr>
                 </thead>
                 <tbody id="sources-table-body">
@@ -56,7 +57,7 @@
                     <td th:text="${source.name}">—</td>
                     <td><span class="repo-path" th:text="${source.baseUrl}">—</span></td>
                     <td th:text="${#strings.substring(source.createdAt.toString(), 0, 10)}">—</td>
-                    <td class="actions-cell">
+                    <td class="actions-cell" th:if="${isOwner}">
                         <button class="btn-sm btn-danger"
                                 onclick="deleteSource(this.dataset.id, this.dataset.name)"
                                 th:data-id="${source.id}"
@@ -76,7 +77,8 @@
         <div class="tab-content hidden" id="tab-projects">
             <div class="tab-toolbar">
                 <span class="section-title" style="margin-bottom:0">Репозитории</span>
-                <button class="btn-primary" onclick="openModal('modal-project')">+ Добавить репозиторий</button>
+                <button class="btn-primary" onclick="openModal('modal-project')"
+                        th:if="${isOwner}">+ Добавить репозиторий</button>
             </div>
 
             <table class="data-table" id="projects-table" th:if="${!projects.isEmpty()}">
@@ -86,7 +88,7 @@
                     <th>Путь</th>
                     <th>Источник</th>
                     <th>Статус</th>
-                    <th>Действия</th>
+                    <th th:if="${isOwner}">Действия</th>
                 </tr>
                 </thead>
                 <tbody id="projects-table-body">
@@ -98,7 +100,7 @@
                         <span class="badge badge-active" th:if="${project.enabled}">Активен</span>
                         <span class="badge badge-inactive" th:unless="${project.enabled}">Отключён</span>
                     </td>
-                    <td class="actions-cell">
+                    <td class="actions-cell" th:if="${isOwner}">
                         <button class="btn-sm btn-secondary"
                                 onclick="triggerBackfill(this.dataset.id, this.dataset.name)"
                                 th:data-id="${project.id}"
@@ -124,11 +126,12 @@
         <div class="tab-content hidden" id="tab-users">
             <div class="tab-toolbar">
                 <span class="section-title" style="margin-bottom:0">Сотрудники</span>
-                <button class="btn-primary" onclick="openModal('modal-user')">+ Добавить вручную</button>
+                <button class="btn-primary" onclick="openModal('modal-user')"
+                        th:if="${isOwner}">+ Добавить вручную</button>
             </div>
 
             <!-- Панель обнаружения контрибьютеров -->
-            <div class="discovery-panel hidden" id="discovery-panel">
+            <div class="discovery-panel hidden" id="discovery-panel" th:if="${isOwner}">
                 <div class="discovery-header">
                     <div class="discovery-title">
                         <span class="discovery-icon">👥</span>
@@ -146,7 +149,7 @@
                 <div class="discovery-list" id="discovery-list"></div>
             </div>
 
-            <div class="discovery-loading hidden" id="discovery-loading">
+            <div class="discovery-loading hidden" id="discovery-loading" th:if="${isOwner}">
                 <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
                 Ищем участников в синхронизированных данных...
             </div>
@@ -158,7 +161,7 @@
                     <th>Email</th>
                     <th>Статус</th>
                     <th>GitLab алиасы</th>
-                    <th>Действия</th>
+                    <th th:if="${isOwner}">Действия</th>
                 </tr>
                 </thead>
                 <tbody id="users-table-body">
@@ -191,7 +194,7 @@
                             </div>
                         </div>
                     </td>
-                    <td class="actions-cell">
+                    <td class="actions-cell" th:if="${isOwner}">
                         <button class="btn-sm btn-secondary"
                                 onclick="openLinkGitlabModal(this.dataset.id, this.dataset.name)"
                                 th:data-id="${entry.user.id}"
@@ -217,11 +220,12 @@
         <div class="tab-content hidden" id="tab-members">
             <div class="tab-toolbar">
                 <span class="section-title" style="margin-bottom:0">Участники workspace</span>
-                <button class="btn-primary" onclick="generateInviteLink()">+ Пригласить участника</button>
+                <button class="btn-primary" onclick="generateInviteLink()"
+                        th:if="${isOwner}">+ Пригласить участника</button>
             </div>
 
             <!-- Инвайт-ссылка (появляется после генерации) -->
-            <div class="invite-link-box hidden" id="invite-link-box">
+            <div class="invite-link-box hidden" id="invite-link-box" th:if="${isOwner}">
                 <span class="invite-link-label">Ссылка действует 7 дней. Скопируйте и отправьте коллеге:</span>
                 <div class="invite-link-row">
                     <input class="invite-link-input" id="invite-link-input" readonly type="text">
@@ -235,7 +239,7 @@
                     <th>Участник</th>
                     <th>Роль</th>
                     <th>Добавлен</th>
-                    <th>Действия</th>
+                    <th th:if="${isOwner}">Действия</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -266,10 +270,9 @@
                               th:text="${m.isOwner()} ? 'Владелец' : 'Участник'">Участник</span>
                     </td>
                     <td th:text="${m.joinedAt()}">—</td>
-                    <td>
+                    <td th:if="${isOwner}">
                         <button class="btn-danger-sm"
                                 onclick="removeMember([[${m.appUserId()}]])"
-                                th:disabled="${m.isOwner()}"
                                 th:if="${!m.isOwner()}">Удалить</button>
                         <span style="color:var(--text-muted);font-size:12px;" th:if="${m.isOwner()}">—</span>
                     </td>
@@ -286,7 +289,8 @@
         <div class="tab-content hidden" id="tab-teams">
             <div class="tab-toolbar">
                 <span class="section-title" style="margin-bottom:0">Команды</span>
-                <button class="btn-primary" onclick="openTeamModal(null)">+ Создать команду</button>
+                <button class="btn-primary" onclick="openTeamModal(null)"
+                        th:if="${isOwner}">+ Создать команду</button>
             </div>
             <div class="empty-state" id="teams-empty" style="display:none">
                 Разбейте сотрудников по командам, чтобы сравнивать их на вкладке
@@ -314,11 +318,17 @@
                     </div>
                     <button id="digest-toggle-btn"
                             onclick="toggleDigest()"
+                            th:if="${isOwner}"
                             style="flex-shrink:0; padding:7px 16px; border-radius:8px; font-size:13px;
                                    font-weight:600; cursor:pointer; border:1.5px solid var(--border-2);
                                    background:var(--bg-0); color:var(--fg-1); transition:all 0.15s;">
                         Загрузка…
                     </button>
+                    <span id="digest-status-label"
+                          th:unless="${isOwner}"
+                          style="flex-shrink:0; padding:7px 16px; font-size:13px; color:var(--fg-2);">
+                        —
+                    </span>
                 </div>
                 <div id="digest-status-msg" style="margin-top:12px; font-size:12px; color:var(--fg-3); display:none;"></div>
             </div>
@@ -571,6 +581,7 @@
     const ACTIVE_JOB_IDS = /*[[${activeJobIds}]]*/ [];
     let hasProjects = /*[[${hasProjects}]]*/ false;
     const ALL_PROJECTS = JSON.parse(/*[[${allProjectsJson}]]*/ '[]');
+    const IS_OWNER = /*[[${isOwner}]]*/ false;
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
 
@@ -661,8 +672,8 @@
                     </div>
                     <div class="team-card-avatars">${avatars}</div>
                     <div class="team-card-actions">
-                        <button class="btn-sm btn-secondary" onclick="openTeamModal(${team.id})">Редактировать</button>
-                        <button class="btn-sm btn-danger" onclick="deleteTeamConfirm(${team.id}, '${safeName}')">Удалить</button>
+                        ${IS_OWNER ? `<button class="btn-sm btn-secondary" onclick="openTeamModal(${team.id})">Редактировать</button>
+                        <button class="btn-sm btn-danger" onclick="deleteTeamConfirm(${team.id}, '${safeName}')">Удалить</button>` : ''}
                     </div>
                 </div>
             </div>`;

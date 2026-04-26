@@ -66,9 +66,6 @@ public class SettingsController {
 
     @GetMapping
     public String settings(Model model) {
-        if (!permissionService.isOwner()) {
-            return "redirect:/";
-        }
         SettingsPageData data = settingsViewService.buildSettingsPage();
         model.addAttribute("sources", data.sources());
         model.addAttribute("projects", data.projects());
