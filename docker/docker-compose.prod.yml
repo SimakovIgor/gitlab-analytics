@@ -30,10 +30,20 @@ services:
       API_TOKEN: ${API_TOKEN}
       APP_ENCRYPTION_ENABLED: ${APP_ENCRYPTION_ENABLED:-false}
       APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
+      # Jira integration
       JIRA_BASE_URL: ${JIRA_BASE_URL:-}
       JIRA_USERNAME: ${JIRA_USERNAME:-}
       JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
       JIRA_PROJECT_KEY: ${JIRA_PROJECT_KEY:-MI}
+      # AI insights
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Mail / SMTP
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@gitpulse.ru}
+      APP_BASE_URL: ${APP_BASE_URL:-https://gitpulse.ru}
     # Port NOT exposed directly — Nginx proxies to app:8080
     restart: unless-stopped
 
