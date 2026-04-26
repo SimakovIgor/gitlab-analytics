@@ -2,6 +2,7 @@ package io.simakov.analytics;
 
 import io.simakov.analytics.config.AppProperties;
 import io.simakov.analytics.insights.InsightProperties;
+import io.simakov.analytics.insights.ai.AnthropicProperties;
 import io.simakov.analytics.jira.JiraProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableAsync
 @EnableScheduling
-@EnableConfigurationProperties({AppProperties.class, InsightProperties.class, JiraProperties.class})
+@EnableConfigurationProperties({AppProperties.class, InsightProperties.class, JiraProperties.class, AnthropicProperties.class})
 public class GitlabAnalyticsApplication {
 
     public static void main(String[] args) {

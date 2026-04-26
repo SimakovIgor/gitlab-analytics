@@ -133,6 +133,19 @@ app:
       min-deploys-per-day: 0.143
       # Рост DORA Lead Time относительно прошлого периода → LEAD_TIME_REGRESSION (1.5 = вырос на 50%+)
       lead-time-regression-ratio: 1.5
+      # DORA MTTR выше этого значения (часов) → SLOW_RECOVERY
+      max-mttr-hours: 4.0
+
+  anthropic:
+    # Anthropic Claude API key. Empty = AI insights disabled.
+    # Override via ANTHROPIC_API_KEY env var in production.
+    api-key: ${ANTHROPIC_API_KEY:}
+    # Model to use (claude-haiku-4-5-20251001 is the most cost-effective)
+    model: claude-haiku-4-5-20251001
+    # Max output tokens per generation
+    max-tokens: 1500
+    # Cache TTL in hours — regeneration is blocked within this window
+    cache-ttl-hours: 24
 
 management:
   endpoints:

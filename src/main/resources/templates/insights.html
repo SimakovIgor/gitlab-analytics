@@ -89,17 +89,28 @@
                     </div>
                 </div>
             </div>
-            <div class="insight-meta-card insight-meta-card-ai insight-meta-card-disabled">
+            <div th:class="${aiEnabled} ? 'insight-meta-card insight-meta-card-ai' : 'insight-meta-card insight-meta-card-ai insight-meta-card-disabled'">
                 <div class="insight-meta-icon insight-meta-icon-ai">✦</div>
                 <div>
                     <div class="insight-meta-title">
                         AI-рекомендации
-                        <span class="insight-meta-count">· 0 сгенерировано</span>
-                        <span class="badge-soon">Скоро</span>
+                        <span class="insight-meta-count"
+                              th:text="${aiEnabled} ? ('· ' + ${aiCount} + ' сгенерировано') : '· недоступно'">· 0 сгенерировано</span>
+                        <span class="badge-soon" th:unless="${aiEnabled}">Скоро</span>
+                        <span class="ai-generated-at"
+                              th:if="${aiEnabled and aiGeneratedAt != null}"
+                              th:text="'обновлено ' + ${#temporals.format(aiGeneratedAt, 'dd.MM HH:mm')}"></span>
                     </div>
                     <div class="insight-meta-desc">
                         LLM анализирует паттерны (burnout, риски, рост) и формулирует рекомендации текстом.
-                        AI-модуль запускается раз в сутки и использует сырые метрики + дельты, без имён и кода.
+                        AI-модуль кешируется на 24 часа и использует агрегированные метрики без имён и кода.
+                    </div>
+                    <div class="ai-refresh-row" th:if="${aiEnabled and isOwner}">
+                        <button class="btn-ai-refresh" id="btn-ai-refresh"
+                                onclick="refreshAiInsights()" type="button">
+                            ↻ Обновить AI-анализ
+                        </button>
+                        <span class="ai-refresh-hint" id="ai-refresh-hint"></span>
                     </div>
                 </div>
             </div>
@@ -115,7 +126,8 @@
                 </button>
                 <button class="insight-filter-btn" data-source="algo" type="button">Algo</button>
                 <button class="insight-filter-btn insight-filter-src-ai" data-source="ai"
-                        disabled type="button">AI
+                        th:disabled="${!aiEnabled or aiCount == 0}"
+                        type="button">AI
                 </button>
             </div>
 
@@ -155,8 +167,8 @@
         <!-- Список инсайтов -->
         <div class="insight-rows" id="insight-list">
 
-            <!-- Пустое состояние -->
-            <div class="insight-empty" th:if="${#lists.isEmpty(insights)}">
+            <!-- Пустое состояние (нет ни algo ни ai) -->
+            <div class="insight-empty" th:if="${#lists.isEmpty(insights) and #lists.isEmpty(aiInsights)}">
                 <div class="insight-empty-icon">✓</div>
                 <div class="insight-empty-title">Всё в порядке</div>
                 <div class="insight-empty-desc">
@@ -219,12 +231,44 @@
                     </a>
                 </div>
             </th:block>
+
+            <!-- AI insight rows -->
+            <th:block th:each="ai : ${aiInsights}">
+                <div class="insight-row insight-row-ai"
+                     data-source="ai"
+                     th:attr="data-kind=${ai.kind()}"
+                     th:classappend="'insight-row--' + ${ai.kind()}">
+                    <div class="insight-row-icon insight-row-icon-ai"
+                         th:classappend="'insight-row-icon--' + ${ai.kind()}">
+                        <span>✦</span>
+                    </div>
+                    <div class="insight-row-body">
+                        <div class="insight-row-meta">
+                            <span class="insight-row-title" th:text="${ai.title()}"></span>
+                            <span class="insight-row-badge-ai">✦ AI</span>
+                            <span class="insight-row-severity"
+                                  th:classappend="'insight-row-severity--' + ${ai.kind()}">AI</span>
+                        </div>
+                        <div class="insight-row-desc" th:text="${ai.body()}"></div>
+                    </div>
+                </div>
+            </th:block>
+        </div>
+
+        <!-- AI no-cache prompt -->
+        <div class="ai-no-cache-hint"
+             th:if="${aiEnabled and #lists.isEmpty(aiInsights) and isOwner}">
+            ✦ AI-анализ ещё не запускался.
+            <button class="btn-ai-refresh-inline" onclick="refreshAiInsights()" type="button">
+                Запустить сейчас
+            </button>
         </div>
 
         <!-- Footer-пояснение -->
-        <div class="insight-footer-explainer" th:if="${!#lists.isEmpty(insights)}">
+        <div class="insight-footer-explainer"
+             th:if="${!#lists.isEmpty(insights) or !#lists.isEmpty(aiInsights)}">
             Алгоритмические правила пересчитываются при каждом открытии страницы.
-            AI-модуль будет запускаться раз в сутки — скоро.
+            AI-инсайты кешируются на 24 часа; владелец может обновить вручную.
         </div>
 
     </main>
@@ -409,6 +453,52 @@
             applyInsightFilters();
         });
     });
+
+    function refreshAiInsights() {
+        var btn = document.getElementById('btn-ai-refresh');
+        var hint = document.getElementById('ai-refresh-hint');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '↻ Генерация…';
+        }
+        if (hint) {
+            hint.textContent = 'Запрос к Claude, обычно 5–15 секунд…';
+        }
+
+        var urlParams = new URLSearchParams(window.location.search);
+        var params = new URLSearchParams();
+        params.set('period', urlParams.get('period') || 'LAST_30_DAYS');
+        urlParams.getAll('projectIds').forEach(function (id) {
+            params.append('projectIds', id);
+        });
+
+        var csrfToken = document.querySelector('meta[name="_csrf"]')
+            ? document.querySelector('meta[name="_csrf"]').getAttribute('content')
+            : '';
+        var csrfHeader = document.querySelector('meta[name="_csrf_header"]')
+            ? document.querySelector('meta[name="_csrf_header"]').getAttribute('content')
+            : 'X-CSRF-TOKEN';
+
+        fetch('/insights/ai/refresh?' + params.toString(), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', [csrfHeader]: csrfToken}
+        })
+            .then(function (res) {
+                return res.json();
+            })
+            .then(function (data) {
+                window.location.reload();
+            })
+            .catch(function (err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '↻ Обновить AI-анализ';
+                }
+                if (hint) {
+                    hint.textContent = 'Ошибка: ' + err.message;
+                }
+            });
+    }
 </script>
 </body>
 </html>
