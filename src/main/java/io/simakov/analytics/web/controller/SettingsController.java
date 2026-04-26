@@ -84,6 +84,7 @@ public class SettingsController {
         Long workspaceId = WorkspaceContext.get();
         List<MemberDto> members = membersService.listMembers(workspaceId);
         model.addAttribute("members", members);
+        model.addAttribute("memberCount", members.size());
 
         String allProjectsJson = buildProjectsJson(data);
         model.addAttribute("allProjectsJson", allProjectsJson);
@@ -412,6 +413,29 @@ public class SettingsController {
         Long workspaceId = WorkspaceContext.get();
         Workspace workspace = workspaceRepository.findById(workspaceId)
             .orElseThrow(() -> new IllegalStateException("Workspace not found"));
-        return ResponseEntity.ok(Map.of("digestEnabled", workspace.isDigestEnabled()));
+        return ResponseEntity.ok(Map.of(
+            "digestEnabled", workspace.isDigestEnabled(),
+            "digestDay", workspace.getDigestDay().toLowerCase(java.util.Locale.ROOT),
+            "digestHour", workspace.getDigestHour()
+        ));
+    }
+
+    @PostMapping("/digest/schedule")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> updateDigestSchedule(@RequestBody DigestScheduleRequest req) {
+        permissionService.requireOwner();
+        Long workspaceId = WorkspaceContext.get();
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+            .orElseThrow(() -> new IllegalStateException("Workspace not found"));
+        workspace.setDigestDay(req.day().toUpperCase(java.util.Locale.ROOT));
+        workspace.setDigestHour(req.hour());
+        workspaceRepository.save(workspace);
+        return ResponseEntity.ok(Map.of(
+            "digestDay", workspace.getDigestDay().toLowerCase(java.util.Locale.ROOT),
+            "digestHour", workspace.getDigestHour()
+        ));
+    }
+
+    record DigestScheduleRequest(String day, int hour) {
     }
 }

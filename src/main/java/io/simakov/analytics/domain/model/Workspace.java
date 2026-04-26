@@ -58,4 +58,14 @@ public class Workspace {
     @Column(nullable = false)
     @Builder.Default
     private boolean digestEnabled = true;
+
+    /** Day of week for digest delivery, e.g. "MON", "TUE". */
+    @Column(nullable = false, length = 3)
+    @Builder.Default
+    private String digestDay = "MON";
+
+    /** Hour of day (0–23) in Europe/Moscow timezone for digest delivery. */
+    @Column(nullable = false)
+    @Builder.Default
+    private int digestHour = 9;
 }

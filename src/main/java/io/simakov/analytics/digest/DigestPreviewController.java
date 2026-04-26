@@ -48,7 +48,7 @@ public class DigestPreviewController {
     @PostMapping("/dev/send-digest")
     @ResponseBody
     public ResponseEntity<String> sendReal() {
-        weeklyDigestScheduler.sendWeeklyDigests();
+        weeklyDigestScheduler.sendDigests();
         return ResponseEntity.ok("Real digest triggered — check http://localhost:8025");
     }
 

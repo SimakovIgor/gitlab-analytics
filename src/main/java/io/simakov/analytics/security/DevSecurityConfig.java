@@ -16,8 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * Dev-profile override that disables CSRF for the web chain.
- * CSRF protection is not needed in local development — it only causes
- * session-setup friction when using DevAutoLoginFilter.
+ * Regular form login and GitHub OAuth2 are used in development.
  *
  * <p>This config replaces the default {@code webFilterChain} from
  * {@link io.simakov.analytics.config.SecurityConfig} for the "dev" profile.

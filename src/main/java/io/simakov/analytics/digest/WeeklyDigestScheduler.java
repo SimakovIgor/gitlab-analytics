@@ -7,33 +7,47 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
- * Sends weekly team digest every Monday at 09:00 UTC.
+ * Sends weekly team digests on a per-workspace schedule.
+ * Runs every hour (Europe/Moscow) and sends to workspaces whose configured
+ * day + hour matches the current moment.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class WeeklyDigestScheduler {
 
+    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
+
     private final WorkspaceRepository workspaceRepository;
     private final DigestService digestService;
     private final DigestEmailSender digestEmailSender;
 
-    @Scheduled(cron = "0 0 9 * * MON", zone = "UTC")
-    public void sendWeeklyDigests() {
-        List<Workspace> workspaces = workspaceRepository.findAllByDigestEnabled(true);
-        log.info("Weekly digest: sending to {} workspace(s)", workspaces.size());
+    @Scheduled(cron = "0 0 * * * *", zone = "Europe/Moscow")
+    public void sendDigests() {
+        ZonedDateTime now = ZonedDateTime.now(MOSCOW);
+        String day = now.getDayOfWeek().name().substring(0, 3);  // "MON", "TUE", …
+        int hour = now.getHour();
 
-        for (Workspace workspace : workspaces) {
+        List<Workspace> due = workspaceRepository
+            .findAllByDigestEnabledAndDigestDayAndDigestHour(true, day, hour);
+
+        if (due.isEmpty()) {
+            return;
+        }
+
+        log.info("Weekly digest: sending to {} workspace(s) [day={} hour={}]", due.size(), day, hour);
+        for (Workspace workspace : due) {
             try {
                 digestService.build(workspace).ifPresent(digestEmailSender::send);
             } catch (Exception e) {
                 log.error("Digest failed for workspace={}: {}", workspace.getId(), e.getMessage(), e);
             }
         }
-
         log.info("Weekly digest: done");
     }
 }

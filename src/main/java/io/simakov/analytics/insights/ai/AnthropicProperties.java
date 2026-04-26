@@ -12,6 +12,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.anthropic")
 public class AnthropicProperties {
 
+    /** Anthropic API base URL. Overridable in tests. */
+    private String baseUrl = "https://api.anthropic.com/v1/messages";
+
     /** Anthropic API key. Empty = feature disabled. */
     private String apiKey = "";
 
@@ -26,6 +29,14 @@ public class AnthropicProperties {
 
     public boolean isEnabled() {
         return apiKey != null && !apiKey.isBlank();
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     public String getApiKey() {

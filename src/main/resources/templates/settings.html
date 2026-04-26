@@ -7,6 +7,453 @@
     <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
     <title>GitPulse — Настройки</title>
     <link rel="stylesheet" th:href="@{/css/analytics.css}">
+    <style>
+        /* ── Settings layout ─────────────────────────────────── */
+        .s-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .s-nav {
+            width: 220px;
+            flex-shrink: 0;
+            background: var(--bg-1);
+            border-right: 1px solid var(--border-1);
+            padding: 20px 12px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .s-nav-group {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--fg-3);
+            padding: 0 10px 8px;
+        }
+
+        .s-nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            width: 100%;
+            padding: 7px 10px;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--fg-2);
+            font-size: 13px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.1s, color 0.1s;
+            margin-bottom: 1px;
+        }
+
+        .s-nav-btn:hover { background: var(--bg-2); color: var(--fg-1); }
+
+        .s-nav-btn.active {
+            background: var(--bg-2);
+            color: var(--fg-0);
+            font-weight: 600;
+        }
+
+        .s-nav-icon {
+            width: 18px;
+            font-size: 13px;
+            opacity: 0.7;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        .s-nav-label { flex: 1; }
+
+        .soon-badge {
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: var(--bg-3);
+            color: var(--fg-3);
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .s-nav-soon { opacity: 0.6; }
+        .s-nav-soon:hover { background: transparent; cursor: default; }
+
+        /* ── Content area ────────────────────────────────────── */
+        .s-content {
+            flex: 1;
+            padding: 28px 36px;
+            max-width: 920px;
+            overflow-y: auto;
+            min-width: 0;
+        }
+
+        /* ── Section header ──────────────────────────────────── */
+        .s-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-1);
+        }
+
+        .s-header h2 {
+            margin: 0;
+            font-size: 21px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: var(--fg-0);
+        }
+
+        .s-header p {
+            font-size: 13px;
+            color: var(--fg-2);
+            margin: 5px 0 0;
+            line-height: 1.5;
+            max-width: 520px;
+        }
+
+        /* ── Cards ───────────────────────────────────────────── */
+        .s-card {
+            background: var(--bg-1);
+            border: 1px solid var(--border-1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        .s-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 16px;
+        }
+
+        .s-row + .s-row { border-top: 1px solid var(--border-1); }
+
+        .s-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .s-source-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            background: oklch(0.65 0.18 35 / 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .s-row-main { flex: 1; min-width: 0; }
+
+        .s-row-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--fg-0);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .s-row-sub {
+            font-size: 11px;
+            color: var(--fg-3);
+            margin-top: 1px;
+            font-family: var(--font-mono, monospace);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .s-row-meta {
+            font-size: 11px;
+            color: var(--fg-2);
+            text-align: right;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .s-section-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--fg-3);
+            margin: 28px 0 10px;
+        }
+
+        /* ── Ghost button ────────────────────────────────────── */
+        .btn-ghost {
+            padding: 5px 11px;
+            border-radius: 6px;
+            background: var(--bg-2);
+            color: var(--fg-1);
+            font-size: 11.5px;
+            font-weight: 500;
+            border: 1px solid var(--border-1);
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .btn-ghost:hover { background: var(--bg-3); }
+
+        .btn-ghost-danger {
+            padding: 5px 11px;
+            border-radius: 6px;
+            background: var(--bg-2);
+            color: var(--danger, #e53935);
+            font-size: 11.5px;
+            font-weight: 500;
+            border: 1px solid var(--border-1);
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .btn-ghost-danger:hover { background: oklch(0.58 0.18 25 / 0.06); }
+
+        /* ── Invite box ──────────────────────────────────────── */
+        .s-invite-box {
+            background: var(--bg-1);
+            border: 1px solid var(--border-1);
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+        }
+
+        .s-invite-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .s-invite-input {
+            flex: 1;
+            padding: 7px 12px;
+            border-radius: 6px;
+            background: var(--bg-2);
+            border: 1px solid var(--border-1);
+            color: var(--fg-1);
+            font-family: var(--font-mono, monospace);
+            font-size: 12px;
+            outline: none;
+        }
+
+        /* ── Team colors (8 palette) ─────────────────────────── */
+        :root {
+            --c-1: oklch(0.42 0.19 275);
+            --c-2: oklch(0.55 0.13 195);
+            --c-3: oklch(0.58 0.18 25);
+            --c-4: oklch(0.65 0.15 65);
+            --c-5: oklch(0.50 0.20 305);
+            --c-6: oklch(0.50 0.13 155);
+            --c-7: oklch(0.45 0.02 250);
+            --c-8: oklch(0.45 0.07 50);
+        }
+
+        .color-swatch {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            padding: 0;
+            transition: transform 0.1s;
+        }
+
+        .color-swatch:hover { transform: scale(1.15); }
+
+        .color-swatch-selected {
+            border-color: var(--fg-0) !important;
+            outline: 2px solid var(--bg-1);
+            outline-offset: 1px;
+        }
+
+        /* ── Toggle switch ───────────────────────────────────── */
+        .s-toggle {
+            width: 38px;
+            height: 22px;
+            border-radius: 999px;
+            padding: 2px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            background: var(--bg-3);
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+
+        .s-toggle[data-on="true"] { background: var(--accent, oklch(0.42 0.19 275)); }
+
+        .s-toggle-knob {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+            transition: transform 0.15s;
+        }
+
+        .s-toggle[data-on="true"] .s-toggle-knob { transform: translateX(16px); }
+
+        /* ── Notifications ───────────────────────────────────── */
+        .s-notif-card {
+            background: var(--bg-1);
+            border: 1px solid var(--border-1);
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 14px;
+        }
+
+        .s-notif-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .s-pro-badge {
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: oklch(0.42 0.19 275 / 0.1);
+            color: oklch(0.42 0.19 275);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        /* ── "Soon" panel ────────────────────────────────────── */
+        .s-soon-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 32px;
+            text-align: center;
+        }
+
+        .s-soon-icon {
+            font-size: 32px;
+            margin-bottom: 14px;
+            opacity: 0.35;
+        }
+
+        .s-soon-panel h3 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--fg-1);
+        }
+
+        .s-soon-panel p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--fg-3);
+            max-width: 360px;
+            line-height: 1.5;
+        }
+
+        /* ── Alias panel (collapsible) ───────────────────────── */
+        .s-alias-panel {
+            padding: 10px 16px 14px 60px;
+            background: var(--bg-2);
+            border-top: 1px solid var(--border-1);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .s-alias-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11.5px;
+            color: var(--fg-1);
+        }
+
+        .s-alias-code {
+            display: inline-flex;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: var(--bg-1);
+            border: 1px solid var(--border-1);
+            color: var(--fg-0);
+            font-family: var(--font-mono, monospace);
+            font-size: 11px;
+        }
+
+        .s-alias-empty-msg {
+            font-size: 11px;
+            color: var(--fg-3);
+        }
+
+        .s-alias-add-btn {
+            align-self: flex-start;
+            margin-top: 4px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--accent, oklch(0.42 0.19 275));
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px dashed var(--border-2);
+            cursor: pointer;
+        }
+
+        .s-alias-add-btn:hover { background: var(--bg-3); }
+
+        .alias-arrow {
+            font-size: 9px;
+            opacity: 0.6;
+            margin-left: 3px;
+        }
+
+        /* ── User row separators (wrapper divs, not .s-row siblings) */
+        #users-card > div + div { border-top: 1px solid var(--border-1); }
+
+        /* ── Digest day-of-week pills ───────────────────────── */
+        .digest-day-btn {
+            flex: 1;
+            padding: 6px 0;
+            border-radius: 6px;
+            background: var(--bg-2);
+            color: var(--fg-1);
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid var(--border-1);
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+        }
+
+        .digest-day-btn.active {
+            background: var(--accent);
+            color: var(--accent-fg, #fff);
+            border-color: transparent;
+        }
+
+        /* ── sync banners spacing ────────────────────────────── */
+        #sync-banners:not(:empty) { padding: 14px 20px 0; }
+    </style>
 </head>
 <body class="app-layout">
 
@@ -14,333 +461,479 @@
 
 <div class="report-page">
 
-    <!-- ── Боковая панель ──────────────────────────────────── -->
     <th:block th:replace="~{fragments/sidebar :: sidebar-only}"></th:block>
 
-    <main class="report-main settings-main">
+    <main class="report-main" style="padding:0;display:flex;flex-direction:column;overflow:hidden;flex:1;">
 
-        <!-- Карточки синхронизации -->
         <div id="sync-banners"></div>
 
-        <div class="page-title">Настройки</div>
-        <div class="page-subtitle">Управление источниками GitLab, репозиториями и сотрудниками</div>
+        <div class="s-layout">
 
-        <!-- Вкладки -->
-        <div class="settings-tabs">
-            <button class="tab-btn tab-btn-active" onclick="switchTab('sources')">GitLab Sources</button>
-            <button class="tab-btn" onclick="switchTab('projects')">Репозитории</button>
-            <button class="tab-btn" onclick="switchTab('users')">Сотрудники</button>
-            <button class="tab-btn" onclick="switchTab('members')">Участники</button>
-            <button class="tab-btn" onclick="switchTab('teams')">Команды</button>
-            <button class="tab-btn" onclick="switchTab('notifications')">Уведомления</button>
-        </div>
+            <!-- ── Left sub-nav ──────────────────────────────── -->
+            <aside class="s-nav">
+                <div class="s-nav-group">Настройки</div>
 
-        <!-- ── GitLab Sources ─────────────────────────────────────────────────── -->
-        <div class="tab-content" id="tab-sources">
-            <div class="tab-toolbar">
-                <span class="section-title" style="margin-bottom:0">Источники GitLab</span>
-                <button class="btn-primary" onclick="openModal('modal-source')"
-                        th:if="${isOwner}">+ Добавить источник</button>
-            </div>
+                <button class="s-nav-btn" data-tab="members" onclick="switchTab('members')">
+                    <span class="s-nav-icon">👥</span>
+                    <span class="s-nav-label">Участники</span>
+                </button>
+                <button class="s-nav-btn s-nav-soon" data-tab="workspace" onclick="return false;">
+                    <span class="s-nav-icon">⚙</span>
+                    <span class="s-nav-label">Workspace</span>
+                    <span class="soon-badge">soon</span>
+                </button>
+                <button class="s-nav-btn" data-tab="sources" onclick="switchTab('sources')">
+                    <span class="s-nav-icon">🦊</span>
+                    <span class="s-nav-label">Источники GitLab</span>
+                </button>
+                <button class="s-nav-btn" data-tab="people" onclick="switchTab('people')">
+                    <span class="s-nav-icon">◐</span>
+                    <span class="s-nav-label">Сотрудники</span>
+                </button>
+                <button class="s-nav-btn" data-tab="teams" onclick="switchTab('teams')">
+                    <span class="s-nav-icon">◇</span>
+                    <span class="s-nav-label">Команды</span>
+                </button>
+                <button class="s-nav-btn" data-tab="notifications" onclick="switchTab('notifications')">
+                    <span class="s-nav-icon">✉</span>
+                    <span class="s-nav-label">Уведомления</span>
+                </button>
+                <button class="s-nav-btn" data-tab="discovery" onclick="switchTab('discovery')">
+                    <span class="s-nav-icon">⊕</span>
+                    <span class="s-nav-label">Discovery</span>
+                </button>
+                <button class="s-nav-btn s-nav-soon" data-tab="billing" onclick="return false;">
+                    <span class="s-nav-icon">◊</span>
+                    <span class="s-nav-label">Тариф и оплата</span>
+                    <span class="soon-badge">soon</span>
+                </button>
+            </aside>
 
-            <table class="data-table" th:if="${!sources.isEmpty()}">
-                <thead>
-                <tr>
-                    <th>Название</th>
-                    <th>URL</th>
-                    <th>Добавлен</th>
-                    <th th:if="${isOwner}">Действия</th>
-                </tr>
-                </thead>
-                <tbody id="sources-table-body">
-                <tr th:each="source : ${sources}" th:id="'source-row-' + ${source.id}">
-                    <td th:text="${source.name}">—</td>
-                    <td><span class="repo-path" th:text="${source.baseUrl}">—</span></td>
-                    <td th:text="${#strings.substring(source.createdAt.toString(), 0, 10)}">—</td>
-                    <td class="actions-cell" th:if="${isOwner}">
-                        <button class="btn-sm btn-danger"
-                                onclick="deleteSource(this.dataset.id, this.dataset.name)"
-                                th:data-id="${source.id}"
-                                th:data-name="${source.name}">
-                            Удалить
-                        </button>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-            <div class="empty-state" id="sources-empty" th:if="${sources.isEmpty()}">
-                Нет источников GitLab. Добавьте первый.
-            </div>
-        </div>
+            <!-- ── Content ────────────────────────────────────── -->
+            <div class="s-content">
 
-        <!-- ── Репозитории ─────────────────────────────────────────────────────── -->
-        <div class="tab-content hidden" id="tab-projects">
-            <div class="tab-toolbar">
-                <span class="section-title" style="margin-bottom:0">Репозитории</span>
-                <button class="btn-primary" onclick="openModal('modal-project')"
-                        th:if="${isOwner}">+ Добавить репозиторий</button>
-            </div>
-
-            <table class="data-table" id="projects-table" th:if="${!projects.isEmpty()}">
-                <thead>
-                <tr>
-                    <th>Название</th>
-                    <th>Путь</th>
-                    <th>Источник</th>
-                    <th>Статус</th>
-                    <th th:if="${isOwner}">Действия</th>
-                </tr>
-                </thead>
-                <tbody id="projects-table-body">
-                <tr th:each="project : ${projects}" th:id="'project-row-' + ${project.id}">
-                    <td th:text="${project.name}">—</td>
-                    <td><span class="repo-path" th:text="${project.pathWithNamespace}">—</span></td>
-                    <td th:text="${sourceNames.get(project.gitSourceId) ?: '—'}">—</td>
-                    <td>
-                        <span class="badge badge-active" th:if="${project.enabled}">Активен</span>
-                        <span class="badge badge-inactive" th:unless="${project.enabled}">Отключён</span>
-                    </td>
-                    <td class="actions-cell" th:if="${isOwner}">
-                        <button class="btn-sm btn-secondary"
-                                onclick="triggerBackfill(this.dataset.id, this.dataset.name)"
-                                th:data-id="${project.id}"
-                                th:data-name="${project.name}">
-                            Синк
-                        </button>
-                        <button class="btn-sm btn-danger"
-                                onclick="deleteProject(this.dataset.id, this.dataset.name)"
-                                th:data-id="${project.id}"
-                                th:data-name="${project.name}">
-                            Удалить
-                        </button>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-            <div class="empty-state" id="projects-empty" th:if="${projects.isEmpty()}">
-                Нет отслеживаемых репозиториев. Добавьте первый.
-            </div>
-        </div>
-
-        <!-- ── Сотрудники ──────────────────────────────────────────────────────── -->
-        <div class="tab-content hidden" id="tab-users">
-            <div class="tab-toolbar">
-                <span class="section-title" style="margin-bottom:0">Сотрудники</span>
-                <button class="btn-primary" onclick="openModal('modal-user')"
-                        th:if="${isOwner}">+ Добавить вручную</button>
-            </div>
-
-            <!-- Панель обнаружения контрибьютеров -->
-            <div class="discovery-panel hidden" id="discovery-panel" th:if="${isOwner}">
-                <div class="discovery-header">
-                    <div class="discovery-title">
-                        <span class="discovery-icon">👥</span>
-                        Обнаружены участники из синхронизированных репозиториев
-                    </div>
-                    <div class="discovery-actions">
-                        <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(false)">Снять все</button>
-                        <button class="btn-sm btn-secondary" onclick="toggleAllDiscovered(true)">Выбрать всех</button>
-                        <span class="discovery-counter" id="discovery-counter"></span>
-                        <button class="btn-sm btn-primary" disabled id="btn-add-discovered" onclick="addSelectedDiscovered()">
-                            Добавить выбранных
+                <!-- ══════════ Members ══════════════════════════ -->
+                <div class="tab-content hidden" id="tab-members">
+                    <div class="s-header">
+                        <div>
+                            <h2>Участники workspace</h2>
+                            <p>Люди с доступом к этому workspace. Не путайте с «Сотрудниками» — разработчиками из GitLab.</p>
+                        </div>
+                        <button class="btn-primary" onclick="generateInviteLink()" th:if="${isOwner}">
+                            + Пригласить
                         </button>
                     </div>
-                </div>
-                <div class="discovery-list" id="discovery-list"></div>
-            </div>
 
-            <div class="discovery-loading hidden" id="discovery-loading" th:if="${isOwner}">
-                <span class="sync-spinner" style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
-                Ищем участников в синхронизированных данных...
-            </div>
-
-            <table class="data-table" id="users-table" th:if="${!usersWithAliases.isEmpty()}">
-                <thead>
-                <tr>
-                    <th>Имя</th>
-                    <th>Email</th>
-                    <th>Статус</th>
-                    <th>GitLab алиасы</th>
-                    <th th:if="${isOwner}">Действия</th>
-                </tr>
-                </thead>
-                <tbody id="users-table-body">
-                <tr th:each="entry : ${usersWithAliases}" th:id="'user-row-' + ${entry.user.id}">
-                    <td>
-                        <div class="user-cell">
-                            <div class="user-avatar"
-                                 th:text="${#strings.substring(entry.user.displayName, 0, 1)}">?
-                            </div>
-                            <span class="user-name" th:text="${entry.user.displayName}">Имя</span>
+                    <!-- Invite link (shown after generating) -->
+                    <div class="s-invite-box hidden" id="invite-link-box" th:if="${isOwner}">
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <span style="font-size:13px;font-weight:600;color:var(--fg-0);">Ссылка-приглашение</span>
+                            <span style="font-size:11px;color:var(--fg-3);">Действует 7 дней</span>
                         </div>
-                    </td>
-                    <td th:text="${entry.user.email ?: '—'}">—</td>
-                    <td>
-                        <span class="badge badge-active" th:if="${entry.user.enabled}">Активен</span>
-                        <span class="badge badge-inactive" th:unless="${entry.user.enabled}">Отключён</span>
-                    </td>
-                    <td>
-                        <div class="alias-empty" th:if="${entry.aliases.isEmpty()}">нет алиасов</div>
-                        <div th:each="alias : ${entry.aliases}">
-                            <div class="alias-chip" th:if="${alias.username != null}">
-                                <span th:text="'@' + ${alias.username}">@user</span>
-                            </div>
-                            <div class="alias-chip" th:if="${alias.username == null and alias.email != null}">
-                                <span th:text="${alias.email}">email</span>
-                            </div>
-                            <div class="alias-chip alias-chip-placeholder"
-                                 th:if="${alias.username == null and alias.email == null and alias.gitlabUserId != null}">
-                                <span th:text="'GitLab #' + ${alias.gitlabUserId}">GitLab #</span>
-                            </div>
+                        <div class="s-invite-row">
+                            <input class="s-invite-input" id="invite-link-input" readonly type="text">
+                            <button class="btn-ghost" onclick="copyInviteLink()">Скопировать</button>
                         </div>
-                    </td>
-                    <td class="actions-cell" th:if="${isOwner}">
-                        <button class="btn-sm btn-secondary"
-                                onclick="openLinkGitlabModal(this.dataset.id, this.dataset.name)"
-                                th:data-id="${entry.user.id}"
-                                th:data-name="${entry.user.displayName}">
-                            Привязать GitLab
-                        </button>
-                        <button class="btn-sm btn-danger"
-                                onclick="deleteUser(this.dataset.id, this.dataset.name)"
-                                th:data-id="${entry.user.id}"
-                                th:data-name="${entry.user.displayName}">
-                            Удалить
-                        </button>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-            <div class="empty-state" id="users-empty" th:if="${usersWithAliases.isEmpty()}">
-                Нет отслеживаемых сотрудников. Добавьте первого.
-            </div>
-        </div>
+                    </div>
 
-        <!-- ── Участники ────────────────────────────────────────────────────── -->
-        <div class="tab-content hidden" id="tab-members">
-            <div class="tab-toolbar">
-                <span class="section-title" style="margin-bottom:0">Участники workspace</span>
-                <button class="btn-primary" onclick="generateInviteLink()"
-                        th:if="${isOwner}">+ Пригласить участника</button>
-            </div>
-
-            <!-- Инвайт-ссылка (появляется после генерации) -->
-            <div class="invite-link-box hidden" id="invite-link-box" th:if="${isOwner}">
-                <span class="invite-link-label">Ссылка действует 7 дней. Скопируйте и отправьте коллеге:</span>
-                <div class="invite-link-row">
-                    <input class="invite-link-input" id="invite-link-input" readonly type="text">
-                    <button class="btn-secondary" onclick="copyInviteLink()">Скопировать</button>
-                </div>
-            </div>
-
-            <table class="data-table" th:if="${!members.isEmpty()}">
-                <thead>
-                <tr>
-                    <th>Участник</th>
-                    <th>Роль</th>
-                    <th>Добавлен</th>
-                    <th th:if="${isOwner}">Действия</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="m : ${members}">
-                    <td>
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <img class="avatar" style="width:32px;height:32px;border-radius:50%;"
-                                 th:alt="${m.name}"
-                                 th:if="${!#strings.isEmpty(m.avatarUrl)}"
-                                 th:src="${m.avatarUrl}">
-                            <div class="avatar-placeholder"
-                                 style="width:32px;height:32px;font-size:13px;"
-                                 th:style="'background:oklch(0.62 0.14 ' + (${m.appUserId} * 43 % 360) + 'deg);width:32px;height:32px;font-size:13px;'"
-                                 th:text="${#strings.substring(m.name,0,1)}"
-                                 th:unless="${!#strings.isEmpty(m.avatarUrl)}">?
+                    <!-- Members card list -->
+                    <div class="s-card" th:if="${!members.isEmpty()}">
+                        <th:block th:each="m : ${members}">
+                            <div class="s-row">
+                                <div class="s-avatar"
+                                     th:if="${!#strings.isEmpty(m.avatarUrl)}"
+                                     style="background:var(--bg-3);padding:0;overflow:hidden;">
+                                    <img style="width:100%;height:100%;object-fit:cover;"
+                                         th:alt="${m.name}" th:src="${m.avatarUrl}">
+                                </div>
+                                <div class="s-avatar"
+                                     th:style="'background:oklch(0.62 0.14 ' + (${m.appUserId} * 43 % 360) + 'deg)'"
+                                     th:text="${#strings.substring(m.name, 0, 1)}"
+                                     th:unless="${!#strings.isEmpty(m.avatarUrl)}">?</div>
+                                <div class="s-row-main">
+                                    <div class="s-row-title" th:text="${m.name}">Имя</div>
+                                    <div style="font-size:11px;color:var(--fg-3);font-family:var(--font-mono,monospace);"
+                                         th:text="'@' + ${m.username}">@login</div>
+                                </div>
+                                <span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;"
+                                      th:style="${m.isOwner()} ? 'background:oklch(0.42 0.19 275 / 0.1);color:oklch(0.42 0.19 275)' : 'background:var(--bg-2);color:var(--fg-2)'"
+                                      th:text="${m.isOwner()} ? 'Owner' : 'Member'">Member</span>
+                                <div class="s-row-meta" th:text="'с ' + ${m.joinedAt()}">—</div>
+                                <button class="btn-ghost-danger"
+                                        onclick="removeMember([[${m.appUserId()}]])"
+                                        th:if="${isOwner and !m.isOwner()}">Удалить</button>
+                                <span style="width:58px;display:inline-block;" th:if="${m.isOwner()}"></span>
                             </div>
-                            <div>
-                                <div style="font-weight:500;" th:text="${m.name}">Имя</div>
-                                <div style="color:var(--text-muted);font-size:12px;"
-                                     th:text="'@' + ${m.username}">@login
+                        </th:block>
+                    </div>
+                    <div class="empty-state" th:if="${members.isEmpty()}">
+                        Только вы в workspace. Пригласите коллег по ссылке.
+                    </div>
+                </div>
+
+                <!-- ══════════ Workspace (soon) ══════════════════ -->
+                <div class="tab-content hidden" id="tab-workspace">
+                    <div class="s-header">
+                        <div><h2>Workspace</h2></div>
+                    </div>
+                    <div class="s-soon-panel">
+                        <div class="s-soon-icon">⚙</div>
+                        <h3>Скоро</h3>
+                        <p>Настройка имени, slug и часового пояса workspace появится в следующем релизе.</p>
+                    </div>
+                </div>
+
+                <!-- ══════════ Sources + Projects ════════════════ -->
+                <div class="tab-content hidden" id="tab-sources">
+                    <div class="s-header">
+                        <div>
+                            <h2>Источники GitLab</h2>
+                            <p>Подключённые self-hosted и облачные инстансы. Можно подключить несколько.</p>
+                        </div>
+                        <button class="btn-primary" onclick="openModal('modal-source')" th:if="${isOwner}">
+                            + Добавить источник
+                        </button>
+                    </div>
+
+                    <!-- Sources card list -->
+                    <div class="s-card" id="sources-list-card" th:if="${!sources.isEmpty()}">
+                        <th:block th:each="source : ${sources}">
+                            <div class="s-row" th:id="'source-row-' + ${source.id}">
+                                <div class="s-source-icon">🦊</div>
+                                <div class="s-row-main">
+                                    <div class="s-row-title" th:text="${source.name}">—</div>
+                                    <div class="s-row-sub" th:text="${source.baseUrl}">—</div>
+                                </div>
+                                <div class="s-row-meta"
+                                     th:text="'с ' + ${#strings.substring(source.createdAt.toString(), 0, 10)}">—</div>
+                                <button class="btn-ghost-danger"
+                                        onclick="deleteSource(this.dataset.id, this.dataset.name)"
+                                        th:data-id="${source.id}"
+                                        th:data-name="${source.name}"
+                                        th:if="${isOwner}">Удалить</button>
+                            </div>
+                        </th:block>
+                    </div>
+                    <div class="empty-state" id="sources-empty" th:if="${sources.isEmpty()}">
+                        Нет источников GitLab. Добавьте первый.
+                    </div>
+
+                    <!-- Projects sub-section -->
+                    <div class="s-section-label">Репозитории</div>
+
+                    <div id="tab-projects">
+                        <div id="projects-toolbar"
+                             style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                            <span style="font-size:13px;font-weight:600;color:var(--fg-1);">Отслеживаемые репозитории</span>
+                            <button class="btn-primary" onclick="openModal('modal-project')" th:if="${isOwner}">
+                                + Добавить репозиторий
+                            </button>
+                        </div>
+
+                        <table class="data-table" id="projects-table" th:if="${!projects.isEmpty()}">
+                            <thead>
+                            <tr>
+                                <th>Репозиторий</th>
+                                <th>Источник</th>
+                                <th>Статус</th>
+                                <th th:if="${isOwner}">Действия</th>
+                            </tr>
+                            </thead>
+                            <tbody id="projects-table-body">
+                            <tr th:each="project : ${projects}" th:id="'project-row-' + ${project.id}">
+                                <td>
+                                    <div style="font-weight:600;color:var(--fg-0);" th:text="${project.name}">—</div>
+                                    <div class="repo-path" th:text="${project.pathWithNamespace}">—</div>
+                                </td>
+                                <td th:text="${sourceNames.get(project.gitSourceId) ?: '—'}">—</td>
+                                <td>
+                                    <span class="badge badge-active" th:if="${project.enabled}">Активен</span>
+                                    <span class="badge badge-inactive" th:unless="${project.enabled}">Отключён</span>
+                                </td>
+                                <td class="actions-cell" th:if="${isOwner}">
+                                    <button class="btn-sm btn-secondary"
+                                            onclick="triggerBackfill(this.dataset.id, this.dataset.name)"
+                                            th:data-id="${project.id}"
+                                            th:data-name="${project.name}">Синк</button>
+                                    <button class="btn-sm btn-danger"
+                                            onclick="deleteProject(this.dataset.id, this.dataset.name)"
+                                            th:data-id="${project.id}"
+                                            th:data-name="${project.name}">Удалить</button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                        <div class="empty-state" id="projects-empty" th:if="${projects.isEmpty()}">
+                            Нет отслеживаемых репозиториев. Добавьте первый.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══════════ People (Сотрудники) ═══════════════ -->
+                <div class="tab-content hidden" id="tab-people">
+                    <div class="s-header">
+                        <div>
+                            <h2>Сотрудники</h2>
+                            <p>Разработчики команды. Один сотрудник может быть привязан к нескольким GitLab-аккаунтам.</p>
+                        </div>
+                        <button class="btn-primary" onclick="openModal('modal-user')" th:if="${isOwner}">
+                            + Добавить вручную
+                        </button>
+                    </div>
+
+                    <!-- People card list -->
+                    <div class="s-card" id="users-card" th:if="${!usersWithAliases.isEmpty()}">
+                        <th:block th:each="entry : ${usersWithAliases}">
+                            <div th:id="'user-row-' + ${entry.user.id}">
+                                <div class="s-row">
+                                    <div class="s-avatar"
+                                         th:style="'background:oklch(0.62 0.14 ' + (${entry.user.id} * 43 % 360) + 'deg)'"
+                                         th:text="${#strings.substring(entry.user.displayName, 0, 1)}">?</div>
+                                    <div class="s-row-main">
+                                        <div class="s-row-title" th:text="${entry.user.displayName}">Имя</div>
+                                        <div style="font-size:11px;color:var(--fg-3);"
+                                             th:if="${entry.user.email != null}"
+                                             th:text="${entry.user.email}">email</div>
+                                    </div>
+                                    <!-- Alias toggle button -->
+                                    <button class="btn-ghost"
+                                            style="font-size:11px;color:var(--warn,#f59e0b);background:oklch(0.65 0.15 65 / 0.08);display:flex;align-items:center;"
+                                            onclick="toggleAliasPanel(this.dataset.uid)"
+                                            th:data-uid="${entry.user.id}"
+                                            th:if="${entry.aliases.isEmpty()}">
+                                        ⚠ Нет gitlab-алиасов<span class="alias-arrow">▾</span>
+                                    </button>
+                                    <button class="btn-ghost"
+                                            style="font-size:11px;display:flex;align-items:center;"
+                                            onclick="toggleAliasPanel(this.dataset.uid)"
+                                            th:data-uid="${entry.user.id}"
+                                            th:unless="${entry.aliases.isEmpty()}">
+                                        <span th:text="${entry.aliases.size() + (entry.aliases.size() == 1 ? ' алиас' : ' алиаса')}">алиасов</span>
+                                        <span class="alias-arrow">▾</span>
+                                    </button>
+                                    <button class="btn-ghost-danger"
+                                            onclick="deleteUser(this.dataset.id, this.dataset.name)"
+                                            th:data-id="${entry.user.id}"
+                                            th:data-name="${entry.user.displayName}"
+                                            th:if="${isOwner}">Удалить</button>
+                                </div>
+                                <!-- Alias panel (collapsed by default) -->
+                                <div class="s-alias-panel hidden" th:id="'alias-panel-' + ${entry.user.id}">
+                                    <div class="s-alias-empty-msg" th:if="${entry.aliases.isEmpty()}">
+                                        У этого сотрудника пока нет привязанных gitlab-аккаунтов.
+                                        Найдите его на вкладке Discovery.
+                                    </div>
+                                    <th:block th:each="alias : ${entry.aliases}">
+                                        <div class="s-alias-row">
+                                            <code class="s-alias-code" th:if="${alias.username != null}"
+                                                  th:text="'@' + ${alias.username}">@user</code>
+                                            <code class="s-alias-code"
+                                                  th:if="${alias.username == null and alias.email != null}"
+                                                  th:text="${alias.email}">email</code>
+                                            <code class="s-alias-code"
+                                                  th:if="${alias.username == null and alias.email == null and alias.gitlabUserId != null}"
+                                                  th:text="'GitLab #' + ${alias.gitlabUserId}">id</code>
+                                        </div>
+                                    </th:block>
+                                    <button class="s-alias-add-btn" th:if="${isOwner}"
+                                            th:data-uid="${entry.user.id}"
+                                            th:data-uname="${entry.user.displayName}"
+                                            onclick="openLinkGitlabModal(this.dataset.uid, this.dataset.uname)">
+                                        + Привязать gitlab-алиас
+                                    </button>
+                                </div>
+                            </div>
+                        </th:block>
+                    </div>
+                    <div class="empty-state" id="users-empty" th:if="${usersWithAliases.isEmpty()}">
+                        Нет отслеживаемых сотрудников. Добавьте первого.
+                    </div>
+                </div>
+
+                <!-- ══════════ Teams ══════════════════════════════ -->
+                <div class="tab-content hidden" id="tab-teams">
+                    <div class="s-header">
+                        <div>
+                            <h2>Команды</h2>
+                            <p>Группировка сотрудников. Цвет используется в Compare, Flow и других визуализациях.</p>
+                        </div>
+                        <button class="btn-primary" onclick="openTeamModal(null)" th:if="${isOwner}">
+                            + Создать команду
+                        </button>
+                    </div>
+                    <div class="empty-state" id="teams-empty" style="display:none">
+                        Разбейте сотрудников по командам, чтобы сравнивать их на вкладке
+                        <a href="/compare">Сравнение</a>.
+                    </div>
+                    <div id="teams-list"></div>
+                </div>
+
+                <!-- ══════════ Notifications ══════════════════════ -->
+                <div class="tab-content hidden" id="tab-notifications">
+                    <div class="s-header">
+                        <div>
+                            <h2>Уведомления</h2>
+                            <p>Регулярные сводки о здоровье команды на email или в Slack.</p>
+                        </div>
+                    </div>
+
+                    <!-- Email digest -->
+                    <div class="s-notif-card">
+                        <div class="s-notif-row">
+                            <span style="font-size:20px;flex-shrink:0;">✉</span>
+                            <div style="flex:1;">
+                                <div style="font-size:14px;font-weight:600;color:var(--fg-0);">Еженедельный email-дайджест</div>
+                                <div style="font-size:12px;color:var(--fg-2);margin-top:3px;line-height:1.5;">
+                                    Раз в неделю всем участникам workspace уходит сводка: ключевые метрики,
+                                    изменения недели, застрявшие MR, AI-инсайты.
+                                </div>
+                            </div>
+                            <button class="s-toggle" data-on="false" id="digest-toggle-btn"
+                                    onclick="toggleDigest()" th:if="${isOwner}">
+                                <div class="s-toggle-knob"></div>
+                            </button>
+                            <span style="font-size:13px;color:var(--fg-3);" th:unless="${isOwner}">—</span>
+                        </div>
+
+                        <!-- Schedule + preview — shown only when digest is enabled -->
+                        <div id="digest-schedule-section" style="display:none;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;
+                                        margin-top:14px;padding-top:14px;border-top:1px solid var(--border-1);">
+                                <!-- Day picker -->
+                                <div>
+                                    <div style="font-size:11px;color:var(--fg-3);margin-bottom:6px;">День недели</div>
+                                    <div style="display:flex;gap:4px;" id="digest-day-picker">
+                                        <button class="digest-day-btn" data-day="mon" onclick="selectDigestDay('mon')">Пн</button>
+                                        <button class="digest-day-btn" data-day="tue" onclick="selectDigestDay('tue')">Вт</button>
+                                        <button class="digest-day-btn" data-day="wed" onclick="selectDigestDay('wed')">Ср</button>
+                                        <button class="digest-day-btn" data-day="thu" onclick="selectDigestDay('thu')">Чт</button>
+                                        <button class="digest-day-btn" data-day="fri" onclick="selectDigestDay('fri')">Пт</button>
+                                    </div>
+                                </div>
+                                <!-- Time picker -->
+                                <div>
+                                    <div style="font-size:11px;color:var(--fg-3);margin-bottom:6px;">Время отправки</div>
+                                    <select id="digest-time-select" onchange="saveDigestTime(this.value)"
+                                            style="width:100%;padding:7px 10px;border-radius:6px;
+                                                   background:var(--bg-2);border:1px solid var(--border-1);
+                                                   color:var(--fg-1);font-size:12px;">
+                                        <option value="07:00">07:00 (Europe/Moscow)</option>
+                                        <option value="08:00">08:00 (Europe/Moscow)</option>
+                                        <option value="09:00" selected>09:00 (Europe/Moscow)</option>
+                                        <option value="10:00">10:00 (Europe/Moscow)</option>
+                                        <option value="11:00">11:00 (Europe/Moscow)</option>
+                                        <option value="12:00">12:00 (Europe/Moscow)</option>
+                                        <option value="17:00">17:00 (Europe/Moscow)</option>
+                                        <option value="19:00">19:00 (Europe/Moscow)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Preview box -->
+                            <div style="margin-top:14px;padding:12px;border-radius:6px;
+                                        background:var(--bg-2);border:1px dashed var(--border-1);
+                                        font-size:11.5px;color:var(--fg-2);line-height:1.6;">
+                                <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;
+                                            text-transform:uppercase;color:var(--fg-3);margin-bottom:6px;">Превью</div>
+                                <div><strong style="color:var(--fg-0);">Тема:</strong>
+                                    Сводка за неделю — <span th:text="${workspaceName}">Workspace</span></div>
+                                <div id="digest-preview-recipients">
+                                    <strong style="color:var(--fg-0);">Получатели:</strong>
+                                    <span th:text="${memberCount} + ' участник(ов)'">участников</span>
+                                </div>
+                                <div style="margin-top:6px;">
+                                    · MR смерджено: данные за текущую неделю<br/>
+                                    · Медиана TTM: из синхронизированных данных<br/>
+                                    · Застрявшие MR и AI-инсайты команды
                                 </div>
                             </div>
                         </div>
-                    </td>
-                    <td>
-                        <span class="dev-status-badge"
-                              th:classappend="${m.isOwner()} ? 'dev-status-top' : ''"
-                              th:text="${m.isOwner()} ? 'Владелец' : 'Участник'">Участник</span>
-                    </td>
-                    <td th:text="${m.joinedAt()}">—</td>
-                    <td th:if="${isOwner}">
-                        <button class="btn-danger-sm"
-                                onclick="removeMember([[${m.appUserId()}]])"
-                                th:if="${!m.isOwner()}">Удалить</button>
-                        <span style="color:var(--text-muted);font-size:12px;" th:if="${m.isOwner()}">—</span>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+                    </div>
 
-            <div class="empty-state" th:if="${members.isEmpty()}">
-                Только вы в workspace. Пригласите коллег по ссылке.
-            </div>
-        </div>
-
-        <!-- ── Команды ────────────────────────────────────────────────────── -->
-        <div class="tab-content hidden" id="tab-teams">
-            <div class="tab-toolbar">
-                <span class="section-title" style="margin-bottom:0">Команды</span>
-                <button class="btn-primary" onclick="openTeamModal(null)"
-                        th:if="${isOwner}">+ Создать команду</button>
-            </div>
-            <div class="empty-state" id="teams-empty" style="display:none">
-                Разбейте сотрудников по командам, чтобы сравнивать их на вкладке
-                <a href="/compare">Сравнение</a>.
-            </div>
-            <div id="teams-list"></div>
-        </div>
-
-        <!-- ── Уведомления ───────────────────────────────────────────────────── -->
-        <div class="tab-content hidden" id="tab-notifications">
-            <div class="tab-toolbar">
-                <span class="section-title" style="margin-bottom:0">Уведомления</span>
-            </div>
-
-            <div style="background:var(--bg-1); border:1px solid var(--border-1); border-radius:var(--r-lg); padding:24px 28px; max-width:560px;">
-                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
-                    <div>
-                        <div style="font-size:15px; font-weight:600; color:var(--fg-0); margin-bottom:4px;">
-                            Еженедельный email-дайджест
-                        </div>
-                        <div style="font-size:13px; color:var(--fg-2); line-height:1.5; max-width:380px;">
-                            Каждый понедельник в 9:00 UTC отправляем на ваш email краткий отчёт:
-                            MR за неделю, TTM-медиана, топ участников и активные инсайты.
+                    <!-- Slack (Pro, soon) -->
+                    <div class="s-notif-card" style="opacity:0.72;">
+                        <div class="s-notif-row">
+                            <span style="font-size:20px;flex-shrink:0;">💬</span>
+                            <div style="flex:1;">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+                                    <div style="font-size:14px;font-weight:600;color:var(--fg-0);">Slack-уведомления</div>
+                                    <span class="s-pro-badge">Pro</span>
+                                    <span class="soon-badge">soon</span>
+                                </div>
+                                <div style="font-size:12px;color:var(--fg-2);line-height:1.5;">
+                                    Сводки и алерты (застрявшие MR, инциденты DORA) в Slack-канал.
+                                </div>
+                            </div>
+                            <button class="s-toggle" data-on="false" disabled
+                                    style="opacity:0.4;cursor:not-allowed;">
+                                <div class="s-toggle-knob"></div>
+                            </button>
                         </div>
                     </div>
-                    <button id="digest-toggle-btn"
-                            onclick="toggleDigest()"
-                            th:if="${isOwner}"
-                            style="flex-shrink:0; padding:7px 16px; border-radius:8px; font-size:13px;
-                                   font-weight:600; cursor:pointer; border:1.5px solid var(--border-2);
-                                   background:var(--bg-0); color:var(--fg-1); transition:all 0.15s;">
-                        Загрузка…
-                    </button>
-                    <span id="digest-status-label"
-                          th:unless="${isOwner}"
-                          style="flex-shrink:0; padding:7px 16px; font-size:13px; color:var(--fg-2);">
-                        —
-                    </span>
                 </div>
-                <div id="digest-status-msg" style="margin-top:12px; font-size:12px; color:var(--fg-3); display:none;"></div>
-            </div>
-        </div>
 
+                <!-- ══════════ Discovery ══════════════════════════ -->
+                <div class="tab-content hidden" id="tab-discovery">
+                    <div class="s-header">
+                        <div>
+                            <h2>Discovery</h2>
+                            <p>GitLab-аккаунты из синка, ещё не привязанные к сотрудникам. Добавьте их или отметьте как ботов.</p>
+                        </div>
+                    </div>
+
+                    <div class="discovery-loading hidden" id="discovery-loading" th:if="${isOwner}">
+                        <span class="sync-spinner"
+                              style="border-color:rgba(0,0,0,.15);border-top-color:#666"></span>
+                        Ищем участников в синхронизированных данных...
+                    </div>
+
+                    <div th:if="${!hasProjects}" class="empty-state" id="discovery-no-projects">
+                        Добавьте репозитории и запустите синхронизацию — GitPulse обнаружит участников автоматически.
+                    </div>
+
+                    <div class="s-card" id="discovery-panel" th:if="${isOwner and hasProjects}"
+                         style="overflow:visible;">
+                        <div style="display:flex;align-items:center;gap:10px;
+                                    padding:10px 16px;border-bottom:1px solid var(--border-1);">
+                            <span class="discovery-counter" id="discovery-counter"
+                                  style="font-size:12px;color:var(--fg-2);flex:1;">Загрузка...</span>
+                            <button class="btn-ghost" style="font-size:11.5px;padding:4px 10px;"
+                                    onclick="toggleAllDiscovered(false)">Снять все</button>
+                            <button class="btn-ghost" style="font-size:11.5px;padding:4px 10px;"
+                                    onclick="toggleAllDiscovered(true)">Выбрать всех</button>
+                            <button class="btn-ghost" disabled id="btn-add-discovered"
+                                    onclick="addSelectedDiscovered()"
+                                    style="font-size:11.5px;padding:4px 12px;
+                                           background:var(--accent);color:var(--accent-fg,#fff);
+                                           border-color:transparent;font-weight:600;">
+                                Добавить выбранных
+                            </button>
+                        </div>
+                        <div class="discovery-list" id="discovery-list"></div>
+                    </div>
+                </div>
+
+                <!-- ══════════ Billing (soon) ═════════════════════ -->
+                <div class="tab-content hidden" id="tab-billing">
+                    <div class="s-header">
+                        <div><h2>Тариф и оплата</h2></div>
+                    </div>
+                    <div class="s-soon-panel">
+                        <div class="s-soon-icon">◊</div>
+                        <h3>Скоро</h3>
+                        <p>Управление тарифом, местами и платёжными данными появится в следующем релизе.</p>
+                    </div>
+                </div>
+
+            </div><!-- /.s-content -->
+        </div><!-- /.s-layout -->
     </main>
 
 </div><!-- /.report-page -->
 
-<!-- ═══════════════ Модалки ═══════════════ -->
+<!-- ═══════════════ Modals ═══════════════════════════════════ -->
 
-<!-- Создать / редактировать команду -->
+<!-- Create / edit team -->
 <div class="modal-overlay hidden" id="modal-team" onclick="handleOverlayClick(event, 'modal-team')">
     <div class="modal" style="max-width:480px">
         <div class="modal-header">
@@ -352,19 +945,30 @@
                 <label class="form-label">Название</label>
                 <input class="form-input" id="team-name-input" placeholder="Например: KE Backend" type="text"
                        oninput="clearTeamNameError()">
-                <div id="team-name-error" style="display:none;margin-top:4px;font-size:12px;color:var(--danger,#e53935);">
+                <div id="team-name-error"
+                     style="display:none;margin-top:4px;font-size:12px;color:var(--danger,#e53935);">
                     Введите название команды
                 </div>
             </div>
             <div>
                 <label class="form-label">Цвет</label>
-                <div id="team-color-picker" style="display:flex;gap:8px;margin-top:6px">
-                    <button class="color-swatch" data-color-index="1" onclick="selectTeamColor(1)" style="background:var(--c-1)" title="Цвет 1" type="button"></button>
-                    <button class="color-swatch" data-color-index="2" onclick="selectTeamColor(2)" style="background:var(--c-2)" title="Цвет 2" type="button"></button>
-                    <button class="color-swatch" data-color-index="3" onclick="selectTeamColor(3)" style="background:var(--c-3)" title="Цвет 3" type="button"></button>
-                    <button class="color-swatch" data-color-index="4" onclick="selectTeamColor(4)" style="background:var(--c-4)" title="Цвет 4" type="button"></button>
-                    <button class="color-swatch" data-color-index="5" onclick="selectTeamColor(5)" style="background:var(--c-5)" title="Цвет 5" type="button"></button>
-                    <button class="color-swatch" data-color-index="6" onclick="selectTeamColor(6)" style="background:var(--c-6)" title="Цвет 6" type="button"></button>
+                <div id="team-color-picker" style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+                    <button class="color-swatch" data-color-index="1" onclick="selectTeamColor(1)"
+                            style="background:var(--c-1)" title="Indigo" type="button"></button>
+                    <button class="color-swatch" data-color-index="2" onclick="selectTeamColor(2)"
+                            style="background:var(--c-2)" title="Teal" type="button"></button>
+                    <button class="color-swatch" data-color-index="3" onclick="selectTeamColor(3)"
+                            style="background:var(--c-3)" title="Rose" type="button"></button>
+                    <button class="color-swatch" data-color-index="4" onclick="selectTeamColor(4)"
+                            style="background:var(--c-4)" title="Amber" type="button"></button>
+                    <button class="color-swatch" data-color-index="5" onclick="selectTeamColor(5)"
+                            style="background:var(--c-5)" title="Violet" type="button"></button>
+                    <button class="color-swatch" data-color-index="6" onclick="selectTeamColor(6)"
+                            style="background:var(--c-6)" title="Forest" type="button"></button>
+                    <button class="color-swatch" data-color-index="7" onclick="selectTeamColor(7)"
+                            style="background:var(--c-7)" title="Slate" type="button"></button>
+                    <button class="color-swatch" data-color-index="8" onclick="selectTeamColor(8)"
+                            style="background:var(--c-8)" title="Cocoa" type="button"></button>
                 </div>
             </div>
             <div>
@@ -387,7 +991,7 @@
     </div>
 </div>
 
-<!-- Добавить источник -->
+<!-- Add source -->
 <div class="modal-overlay hidden" id="modal-source" onclick="handleOverlayClick(event, 'modal-source')">
     <div class="modal">
         <div class="modal-header">
@@ -412,7 +1016,7 @@
     </div>
 </div>
 
-<!-- Добавить репозиторий -->
+<!-- Add project -->
 <div class="modal-overlay hidden" id="modal-project" onclick="handleOverlayClick(event, 'modal-project')">
     <div class="modal">
         <div class="modal-header">
@@ -423,12 +1027,12 @@
             <div class="modal-error hidden" id="project-error"></div>
             <div class="form-group">
                 <label class="form-label">GitLab Source</label>
-                <select class="form-select" id="project-source-id" onchange="clearProjectSearch(); scheduleTokenValidate()">
+                <select class="form-select" id="project-source-id"
+                        onchange="clearProjectSearch(); scheduleTokenValidate()">
                     <option value="">— выберите источник —</option>
                     <option th:each="source : ${sources}"
                             th:text="${source.name}"
-                            th:value="${source.id}">Source
-                    </option>
+                            th:value="${source.id}">Source</option>
                 </select>
             </div>
             <div class="form-group">
@@ -461,12 +1065,14 @@
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeModal('modal-project')">Отмена</button>
-            <button class="btn-primary" disabled id="btn-add-project" onclick="addProject()">Добавить и синхронизировать</button>
+            <button class="btn-primary" disabled id="btn-add-project" onclick="addProject()">
+                Добавить и синхронизировать
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Привязать GitLab-аккаунт -->
+<!-- Link GitLab account -->
 <div class="modal-overlay hidden" id="modal-link-gitlab" onclick="handleOverlayClick(event, 'modal-link-gitlab')">
     <div class="modal">
         <div class="modal-header">
@@ -481,13 +1087,15 @@
                     <select class="form-input form-input-sm" id="link-source-id">
                         <option th:each="source : ${sources}"
                                 th:text="${source.name}"
-                                th:value="${source.id}">Источник
-                        </option>
+                                th:value="${source.id}">Источник</option>
                     </select>
                     <div class="search-input-wrap" style="flex:1">
                         <span class="search-input-icon">
-                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21"
-                                                                                                                                                                    y2="16.65"/></svg>
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2"
+                                 viewBox="0 0 24 24" width="14">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" x2="16.65" y1="21" y2="16.65"/>
+                            </svg>
                         </span>
                         <input autocomplete="off" class="form-input search-input-with-icon" id="link-gl-search"
                                oninput="debounceLinkSearch(this.value)"
@@ -507,7 +1115,9 @@
                            placeholder="например: 1933" style="max-width:160px" type="number">
                     <span class="form-hint" id="link-direct-label" style="align-self:center"></span>
                 </div>
-                <div class="form-hint">Используйте для привязки placeholder-аккаунтов, которые не находятся через поиск</div>
+                <div class="form-hint">
+                    Используйте для привязки placeholder-аккаунтов, которые не находятся через поиск
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -517,7 +1127,7 @@
     </div>
 </div>
 
-<!-- Добавить сотрудника -->
+<!-- Add user -->
 <div class="modal-overlay hidden" id="modal-user" onclick="handleOverlayClick(event, 'modal-user')">
     <div class="modal">
         <div class="modal-header">
@@ -526,21 +1136,21 @@
         </div>
         <div class="modal-body">
             <div class="modal-error hidden" id="user-error"></div>
-
-            <!-- Поиск по GitLab (только если добавлены проекты) -->
             <div class="form-group" th:if="${hasProjects}">
                 <label class="form-label">Найти в GitLab</label>
                 <div class="form-group-row">
                     <select class="form-input form-input-sm" id="user-search-source">
                         <option th:each="source : ${sources}"
                                 th:text="${source.name}"
-                                th:value="${source.id}">Источник
-                        </option>
+                                th:value="${source.id}">Источник</option>
                     </select>
                     <div class="search-input-wrap" style="flex:1">
                         <span class="search-input-icon">
-                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21"
-                                                                                                                                                                    y2="16.65"/></svg>
+                            <svg fill="none" height="14" stroke="currentColor" stroke-width="2"
+                                 viewBox="0 0 24 24" width="14">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" x2="16.65" y1="21" y2="16.65"/>
+                            </svg>
                         </span>
                         <input autocomplete="off" class="form-input search-input-with-icon" id="user-gl-search"
                                oninput="debounceUserSearch(this.value)"
@@ -551,7 +1161,6 @@
                 <div class="search-results hidden" id="user-search-results"></div>
                 <div class="form-hint">Выберите — имя и email (публичный) подтянутся автоматически</div>
             </div>
-
             <div class="form-group">
                 <label class="form-label">Имя <span class="form-required">*</span></label>
                 <input class="form-input" id="user-name" placeholder="Иван Иванов" type="text">
@@ -585,7 +1194,7 @@
 
     let activeSyncRunning = /*[[${!activeJobIds.isEmpty()}]]*/ false;
 
-    // ── Утилиты ──────────────────────────────────────────────────────────────
+    // ── Utilities ────────────────────────────────────────────
 
     async function api(method, url, body) {
         const headers = {'Content-Type': 'application/json'};
@@ -603,21 +1212,28 @@
         return data;
     }
 
-    // ── Вкладки ───────────────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // ── Tab switching ─────────────────────────────────────────
 
     const TAB_STORAGE_KEY = 'settings_active_tab';
 
     function switchTab(name) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('tab-btn-active'));
-        document.getElementById('tab-' + name).classList.remove('hidden');
-        const buttons = document.querySelectorAll('.tab-btn');
-        const map = {sources: 0, projects: 1, users: 2, members: 3, teams: 4, notifications: 5};
-        if (map[name] !== undefined) {
-            buttons[map[name]].classList.add('tab-btn-active');
+        document.querySelectorAll('.s-nav-btn').forEach(el => el.classList.remove('active'));
+        const content = document.getElementById('tab-' + name);
+        if (content) {
+            content.classList.remove('hidden');
+        }
+        const btn = document.querySelector('.s-nav-btn[data-tab="' + name + '"]');
+        if (btn) {
+            btn.classList.add('active');
         }
         sessionStorage.setItem(TAB_STORAGE_KEY, name);
-        if (name === 'users') {
+        if (name === 'discovery') {
             loadDiscoveredContributors();
         }
         if (name === 'teams') {
@@ -630,13 +1246,13 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         const saved = sessionStorage.getItem(TAB_STORAGE_KEY);
-        const validTabs = ['sources', 'projects', 'users', 'members', 'teams', 'notifications'];
+        const validTabs = ['members', 'sources', 'people', 'teams', 'notifications', 'discovery'];
         const defaultTab = validTabs.includes(saved) ? saved : 'sources';
         switchTab(defaultTab);
         ACTIVE_JOB_IDS.forEach(jobId => restoreSyncCard(jobId));
     });
 
-    // ── Команды ───────────────────────────────────────────────────────────────
+    // ── Teams ─────────────────────────────────────────────────
 
     let teamsData = [];
     let editingTeamId = null;
@@ -660,21 +1276,32 @@
         list.innerHTML = teams.map(team => {
             const extra = team.memberCount > 5 ? team.memberCount - 5 : 0;
             const avatars = team.members.slice(0, 5).map(m =>
-                `<div class="avatar-placeholder team-member-avatar" data-tooltip="${m.displayName}" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:oklch(0.62 0.14 ${m.id * 43 % 360}deg);">${m.displayName.charAt(0)}</div>`
-            ).join('') + (extra > 0 ? `<div class="avatar-placeholder" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:var(--bg-3);color:var(--fg-3);">+${extra}</div>` : '');
+                `<div class="avatar-placeholder team-member-avatar"
+                      data-tooltip="${escHtml(m.displayName)}"
+                      style="width:26px;height:26px;font-size:10px;flex-shrink:0;
+                             background:oklch(0.62 0.14 ${m.id * 43 % 360}deg);">
+                  ${escHtml(m.displayName.charAt(0))}
+                 </div>`
+            ).join('') + (extra > 0
+                ? `<div class="avatar-placeholder"
+                        style="width:26px;height:26px;font-size:10px;flex-shrink:0;
+                               background:var(--bg-3);color:var(--fg-3);">+${extra}</div>`
+                : '');
             const safeName = team.name.replace(/'/g, "\\'");
-            return `<div class="team-card" id="team-card-${team.id}">
-                <div class="team-card-header">
-                    <div class="team-color-dot" style="background:var(--c-${team.colorIndex})"></div>
-                    <div class="team-card-info">
-                        <span class="team-card-name">${team.name}</span>
-                        <span class="team-card-count">${team.memberCount} сотр.</span>
+            return `<div class="s-card" id="team-card-${team.id}" style="margin-bottom:10px;">
+                <div class="s-row" style="gap:14px;">
+                    <div style="width:6px;align-self:stretch;background:var(--c-${team.colorIndex});
+                                border-radius:3px;flex-shrink:0;"></div>
+                    <div class="s-row-main">
+                        <div class="s-row-title">${escHtml(team.name)}</div>
+                        <div style="font-size:11px;color:var(--fg-3);">${team.memberCount} разработчиков</div>
                     </div>
-                    <div class="team-card-avatars">${avatars}</div>
-                    <div class="team-card-actions">
-                        ${IS_OWNER ? `<button class="btn-sm btn-secondary" onclick="openTeamModal(${team.id})">Редактировать</button>
-                        <button class="btn-sm btn-danger" onclick="deleteTeamConfirm(${team.id}, '${safeName}')">Удалить</button>` : ''}
-                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;">${avatars}</div>
+                    ${IS_OWNER ? `
+                    <button class="btn-ghost" style="font-size:11px;"
+                            onclick="openTeamModal(${team.id})">Редактировать</button>
+                    <button class="btn-ghost-danger" style="font-size:11px;"
+                            onclick="deleteTeamConfirm(${team.id}, '${safeName}')">Удалить</button>` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -682,15 +1309,13 @@
 
     async function openTeamModal(teamId) {
         editingTeamId = teamId;
-        document.getElementById('team-modal-title').textContent = teamId ? 'Редактировать команду' : 'Создать команду';
-
+        document.getElementById('team-modal-title').textContent =
+            teamId ? 'Редактировать команду' : 'Создать команду';
         const team = teamId ? teamsData.find(t => t.id === teamId) : null;
         document.getElementById('team-name-input').value = team ? team.name : '';
         clearTeamNameError();
-
         selectedTeamColor = team ? team.colorIndex : 1;
         renderTeamColorPicker();
-
         if (allTrackedUsersCache.length === 0) {
             allTrackedUsersCache = await api('GET', '/settings/users/tracked');
         }
@@ -701,31 +1326,29 @@
                 t.members.forEach(m => { userTeamMap[m.id] = t.name; });
             }
         });
-
         document.getElementById('team-members-list').innerHTML = allTrackedUsersCache.map(u => {
             const otherTeam = userTeamMap[u.id];
             const isCurrentMember = teamMemberIds.has(u.id);
             const disabled = otherTeam ? 'disabled' : '';
-            const itemClass = otherTeam ? 'member-checklist-item member-checklist-item-taken' : 'member-checklist-item';
+            const itemClass = otherTeam
+                ? 'member-checklist-item member-checklist-item-taken'
+                : 'member-checklist-item';
             const tag = otherTeam
-                ? `<span class="member-team-tag member-team-tag-locked" title="Уже в другой команде">${otherTeam}</span>`
+                ? `<span class="member-team-tag member-team-tag-locked"
+                         title="Уже в другой команде">${escHtml(otherTeam)}</span>`
                 : '';
             return `<label class="${itemClass}">
                 <input type="checkbox" value="${u.id}" ${isCurrentMember ? 'checked' : ''} ${disabled}>
-                <span class="member-name">${u.displayName}</span>
-                ${tag}
+                <span class="member-name">${escHtml(u.displayName)}</span>${tag}
             </label>`;
         }).join('');
-
-        // Repos checklist
         const teamProjectIds = new Set(team && team.projectIds ? team.projectIds : []);
         document.getElementById('team-projects-list').innerHTML = ALL_PROJECTS.length === 0
             ? '<div style="font-size:12px;color:var(--fg-3);padding:4px 0;">Нет добавленных репозиториев</div>'
             : ALL_PROJECTS.map(p => `<label class="member-checklist-item">
                 <input type="checkbox" value="${p.id}" ${teamProjectIds.has(p.id) ? 'checked' : ''}>
-                <span class="member-name">${p.name}</span>
+                <span class="member-name">${escHtml(p.name)}</span>
             </label>`).join('');
-
         document.getElementById('modal-team').classList.remove('hidden');
     }
 
@@ -760,17 +1383,14 @@
         const memberIds = Array.from(
             document.querySelectorAll('#team-members-list input[type=checkbox]:checked')
         ).map(el => parseInt(el.value));
-
         const projectIds = Array.from(
             document.querySelectorAll('#team-projects-list input[type=checkbox]:checked')
         ).map(el => parseInt(el.value));
-
         try {
             const payload = {name, colorIndex: selectedTeamColor, memberIds, projectIds};
             const result = editingTeamId
                 ? await api('PUT', '/settings/teams/' + editingTeamId, payload)
                 : await api('POST', '/settings/teams', payload);
-
             if (editingTeamId) {
                 teamsData = teamsData.map(t => t.id === editingTeamId ? result : t);
             } else {
@@ -797,7 +1417,7 @@
         }
     }
 
-    // ── Участники ─────────────────────────────────────────────────────────────
+    // ── Members ───────────────────────────────────────────────
 
     async function generateInviteLink() {
         try {
@@ -828,11 +1448,9 @@
         }
     }
 
-    // ── Модалки ───────────────────────────────────────────────────────────────
+    // ── Modals ────────────────────────────────────────────────
 
-    function openModal(id) {
-        document.getElementById(id).classList.remove('hidden');
-    }
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 
     function closeModal(id) {
         document.getElementById(id).classList.add('hidden');
@@ -845,19 +1463,17 @@
 
     function showError(errorId, msg) {
         const el = document.getElementById(errorId);
+        if (!el) return;
         el.textContent = msg;
         el.classList.remove('hidden');
     }
 
     function clearModalError(errorId) {
         const el = document.getElementById(errorId);
-        if (el) {
-            el.textContent = '';
-            el.classList.add('hidden');
-        }
+        if (el) { el.textContent = ''; el.classList.add('hidden'); }
     }
 
-    // ── Unified sync cards ────────────────────────────────────────────────────
+    // ── Sync cards ────────────────────────────────────────────
 
     function buildSyncCardHtml(jobId, repoName, badgeLabel, phaseDesc) {
         return '<div class="sync-card-row">'
@@ -886,35 +1502,29 @@
 
     function showSyncBanner(jobId, name) {
         const container = document.getElementById('sync-banners');
-        if (!container) {
-            return;
-        }
+        if (!container) return;
         const id = 'sync-card-' + jobId;
-        if (document.getElementById(id)) {
-            return;
-        }
+        if (document.getElementById(id)) return;
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-card sync-card-running';
-        div.innerHTML = buildSyncCardHtml(jobId, name || '...', '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2', '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        div.innerHTML = buildSyncCardHtml(jobId, name || '...', '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2',
+            '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, Date.now());
     }
 
     function restoreSyncCard(jobId) {
         const container = document.getElementById('sync-banners');
-        if (!container) {
-            return;
-        }
+        if (!container) return;
         const id = 'sync-card-' + jobId;
-        if (document.getElementById(id)) {
-            return;
-        }
+        if (document.getElementById(id)) return;
         const div = document.createElement('div');
         div.id = id;
         div.className = 'sync-card sync-card-running';
         div.dataset.needsRepoName = '1';
-        div.innerHTML = buildSyncCardHtml(jobId, '...', '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2', '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
+        div.innerHTML = buildSyncCardHtml(jobId, '...', '\u0424\u0430\u0437\u0430 1 \u0438\u0437 2',
+            '\u0437\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c merge requests');
         container.prepend(div);
         startCardTimers(jobId, id, null);
     }
@@ -923,35 +1533,23 @@
         let serverStartMs = localStartMs;
         const durationEl = document.getElementById('sync-duration-' + jobId);
         const durationTimer = setInterval(() => {
-            if (!serverStartMs) {
-                return;
-            }
+            if (!serverStartMs) return;
             const sec = Math.floor((Date.now() - serverStartMs) / 1000);
-            if (durationEl) {
-                durationEl.textContent = formatSec(sec);
-            }
+            if (durationEl) durationEl.textContent = formatSec(sec);
         }, 1000);
         pollSyncJob(jobId, cardId, durationTimer, (startedAt) => {
-            if (!serverStartMs) {
-                serverStartMs = new Date(startedAt).getTime();
-            }
+            if (!serverStartMs) serverStartMs = new Date(startedAt).getTime();
         });
     }
 
     function formatSec(sec) {
-        if (sec < 60) {
-            return sec + ' с';
-        }
+        if (sec < 60) return sec + ' с';
         return Math.floor(sec / 60) + ' м ' + (sec % 60) + ' с';
     }
 
     function formatEta(sec) {
-        if (sec < 10) {
-            return 'почти готово';
-        }
-        if (sec < 60) {
-            return '~' + sec + ' с';
-        }
+        if (sec < 10) return 'почти готово';
+        if (sec < 60) return '~' + sec + ' с';
         return '~' + Math.round(sec / 60) + ' мин';
     }
 
@@ -966,34 +1564,22 @@
                 fillEl().classList.remove('sync-progress-fill--indeterminate');
                 fillEl().style.width = pct + '%';
             }
-            if (labelEl()) {
-                labelEl().textContent = label;
-            }
-            if (rowFillEl()) {
-                rowFillEl().style.width = pct + '%';
-            }
-            if (rowLabelEl()) {
-                rowLabelEl().textContent = label;
-            }
+            if (labelEl()) labelEl().textContent = label;
+            if (rowFillEl()) rowFillEl().style.width = pct + '%';
+            if (rowLabelEl()) rowLabelEl().textContent = label;
         }
 
         const interval = setInterval(async () => {
             try {
                 const job = await api('GET', '/settings/sync/' + jobId);
-                if (onStartedAt && job.startedAt) {
-                    onStartedAt(job.startedAt);
-                }
+                if (onStartedAt && job.startedAt) onStartedAt(job.startedAt);
                 const cardEl = document.getElementById(cardId);
                 if (cardEl && cardEl.dataset.needsRepoName) {
                     delete cardEl.dataset.needsRepoName;
                     const nameEl = cardEl.querySelector('.sync-card-title strong');
-                    if (nameEl && job.projectName) {
-                        nameEl.textContent = job.projectName;
-                    }
+                    if (nameEl && job.projectName) nameEl.textContent = job.projectName;
                     const phaseLabelEl = document.getElementById('sync-phase-label-' + jobId);
-                    if (phaseLabelEl) {
-                        phaseLabelEl.textContent = settingsPhaseLabel(job.phase);
-                    }
+                    if (phaseLabelEl) phaseLabelEl.textContent = settingsPhaseLabel(job.phase);
                     if (job.phase === 'ENRICH') {
                         document.getElementById('sync-counters-' + jobId)?.classList.remove('hidden');
                     }
@@ -1003,15 +1589,9 @@
                     const c = document.getElementById('sync-commits-' + jobId);
                     const r = document.getElementById('sync-reviews-' + jobId);
                     const cm = document.getElementById('sync-comments-' + jobId);
-                    if (c) {
-                        c.textContent = Math.round(job.processedMrs * 2.8).toLocaleString('ru');
-                    }
-                    if (r) {
-                        r.textContent = Math.round(job.processedMrs * 0.6).toLocaleString('ru');
-                    }
-                    if (cm) {
-                        cm.textContent = Math.round(job.processedMrs * 1.4).toLocaleString('ru');
-                    }
+                    if (c) c.textContent = Math.round(job.processedMrs * 2.8).toLocaleString('ru');
+                    if (r) r.textContent = Math.round(job.processedMrs * 0.6).toLocaleString('ru');
+                    if (cm) cm.textContent = Math.round(job.processedMrs * 1.4).toLocaleString('ru');
                 }
                 if (job.status === 'STARTED' && job.totalMrs > 0) {
                     const pct = Math.round(job.processedMrs / job.totalMrs * 100);
@@ -1019,7 +1599,8 @@
                     const etaEl = document.getElementById('sync-eta-' + jobId);
                     if (etaEl && job.processedMrs > 0 && job.processedMrs < job.totalMrs && job.startedAt) {
                         const elapsedSec = Math.max(1, (Date.now() - new Date(job.startedAt).getTime()) / 1000);
-                        const etaSec = Math.round((job.totalMrs - job.processedMrs) / (job.processedMrs / elapsedSec));
+                        const etaSec = Math.round(
+                            (job.totalMrs - job.processedMrs) / (job.processedMrs / elapsedSec));
                         etaEl.textContent = formatEta(etaSec);
                     }
                 }
@@ -1039,7 +1620,7 @@
                     updateSyncCard(cardId, job);
                 }
             } catch (e) {
-                // продолжаем поллинг при сетевой ошибке
+                // continue polling on network error
             }
         }, 3000);
     }
@@ -1055,9 +1636,7 @@
 
     function updateSyncCard(cardId, job) {
         const el = document.getElementById(cardId);
-        if (!el) {
-            return;
-        }
+        if (!el) return;
         const isOk = job.status === 'COMPLETED';
         const label = settingsPhaseLabel(job.phase);
         if (isOk) {
@@ -1065,17 +1644,15 @@
             const detail = job.totalMrs > 0 ? job.totalMrs + ' MR' : '\u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043e';
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span class="sync-card-done-icon">&#10003;</span>'
-                + '<span>' + escHtml(label) + ' \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430 &middot; ' + escHtml(detail) + '</span>'
-                + '</div>';
-            if (!reloadScheduled) {
-                setTimeout(() => el.remove(), 5000);
-            }
+                + '<span>' + escHtml(label) + ' \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430 &middot; '
+                + escHtml(detail) + '</span></div>';
+            if (!reloadScheduled) setTimeout(() => el.remove(), 5000);
         } else {
             el.className = 'sync-card sync-card-error';
             el.innerHTML = '<div class="sync-card-done-row">'
                 + '<span>&#10005;</span>'
-                + '<span>' + escHtml(label) + ' \xb7 \u043e\u0448\u0438\u0431\u043a\u0430: ' + escHtml(job.errorMessage || '') + '</span>'
-                + '</div>';
+                + '<span>' + escHtml(label) + ' \xb7 \u043e\u0448\u0438\u0431\u043a\u0430: '
+                + escHtml(job.errorMessage || '') + '</span></div>';
         }
     }
 
@@ -1088,20 +1665,12 @@
         }
     }
 
-    function escHtml(str) {
-        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-
-    // ── GitLab Sources ────────────────────────────────────────────────────────
+    // ── Sources ───────────────────────────────────────────────
 
     async function createSource() {
         const name = document.getElementById('source-name').value.trim();
         const url = document.getElementById('source-url').value.trim();
-        if (!name || !url) {
-            showError('source-error', 'Заполните все поля');
-            return;
-        }
+        if (!name || !url) { showError('source-error', 'Заполните все поля'); return; }
         try {
             const source = await api('POST', '/settings/sources', {name, baseUrl: url});
             closeModal('modal-source');
@@ -1115,26 +1684,26 @@
 
     function addSourceRow(source) {
         document.getElementById('sources-empty')?.remove();
-        let tbody = document.getElementById('sources-table-body');
-        if (!tbody) {
-            const table = document.createElement('table');
-            table.className = 'data-table';
-            table.innerHTML = `<thead><tr>
-            <th>Название</th><th>URL</th><th>Добавлен</th><th>Действия</th>
-        </tr></thead><tbody id="sources-table-body"></tbody>`;
-            document.getElementById('tab-sources').querySelector('.tab-toolbar').after(table);
-            tbody = document.getElementById('sources-table-body');
+        let card = document.getElementById('sources-list-card');
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 's-card';
+            card.id = 'sources-list-card';
+            document.getElementById('tab-sources').querySelector('.s-header').after(card);
         }
-        const tr = document.createElement('tr');
-        tr.id = 'source-row-' + source.id;
-        tr.innerHTML = `
-        <td>${escHtml(source.name)}</td>
-        <td><span class="repo-path">${escHtml(source.baseUrl)}</span></td>
-        <td>${new Date().toISOString().slice(0, 10)}</td>
-        <td class="actions-cell">
-            <button class="btn-sm btn-danger" onclick="deleteSource(${source.id}, '${escHtml(source.name)}')">Удалить</button>
-        </td>`;
-        tbody.appendChild(tr);
+        const row = document.createElement('div');
+        row.className = 's-row';
+        row.id = 'source-row-' + source.id;
+        row.innerHTML = `
+            <div class="s-source-icon">🦊</div>
+            <div class="s-row-main">
+                <div class="s-row-title">${escHtml(source.name)}</div>
+                <div class="s-row-sub">${escHtml(source.baseUrl)}</div>
+            </div>
+            <div class="s-row-meta">${new Date().toISOString().slice(0, 10)}</div>
+            <button class="btn-ghost-danger" style="font-size:11px;"
+                    onclick="deleteSource(${source.id}, '${escHtml(source.name)}')">Удалить</button>`;
+        card.appendChild(row);
         const sel = document.getElementById('project-source-id');
         const opt = document.createElement('option');
         opt.value = source.id;
@@ -1143,7 +1712,9 @@
     }
 
     async function deleteSource(id, name) {
-        if (!confirm('Удалить источник «' + name + '»? Все связанные репозитории и данные будут удалены.')) return;
+        if (!confirm('Удалить источник «' + name + '»? Все связанные репозитории и данные будут удалены.')) {
+            return;
+        }
         try {
             await api('DELETE', '/settings/sources/' + id);
             document.getElementById('source-row-' + id)?.remove();
@@ -1153,7 +1724,7 @@
         }
     }
 
-    // ── Репозитории ────────────────────────────────────────────────────────────
+    // ── Projects ──────────────────────────────────────────────
 
     let selectedProject = null;
     let searchDebounceTimer = null;
@@ -1174,33 +1745,20 @@
         const hintEl = inputEl?.closest('.form-group')?.querySelector('.token-hint');
         if (!token) {
             tokenIsValid = false;
-            if (statusEl) {
-                statusEl.className = 'token-validate-status';
-                statusEl.textContent = '';
-            }
-            if (inputEl) {
-                inputEl.classList.remove('token-ok', 'token-error');
-            }
-            if (hintEl) {
-                hintEl.style.display = '';
-            }
+            if (statusEl) { statusEl.className = 'token-validate-status'; statusEl.textContent = ''; }
+            if (inputEl) inputEl.classList.remove('token-ok', 'token-error');
+            if (hintEl) hintEl.style.display = '';
             updateAddProjectBtn();
             return;
         }
-        if (statusEl) {
-            statusEl.className = 'token-validate-status tv-loading';
-            statusEl.textContent = 'Проверяем токен...';
-        }
+        if (statusEl) { statusEl.className = 'token-validate-status tv-loading'; statusEl.textContent = 'Проверяем токен...'; }
         tokenValidateTimer = setTimeout(() => validateToken(token, statusEl, inputEl, hintEl), 600);
     }
 
     async function validateToken(token, statusEl, inputEl, hintEl) {
         const sourceId = document.getElementById('project-source-id').value;
         if (!sourceId) {
-            if (statusEl) {
-                statusEl.className = 'token-validate-status tv-loading';
-                statusEl.textContent = 'Сначала выберите GitLab Source';
-            }
+            if (statusEl) { statusEl.className = 'token-validate-status tv-loading'; statusEl.textContent = 'Сначала выберите GitLab Source'; }
             return;
         }
         try {
@@ -1208,37 +1766,18 @@
                 '/settings/sources/' + sourceId + '/token/validate?token=' + encodeURIComponent(token));
             if (result.valid) {
                 tokenIsValid = true;
-                if (statusEl) {
-                    statusEl.className = 'token-validate-status tv-ok';
-                    statusEl.textContent = '✓ Токен действителен · используется только для чтения';
-                }
-                if (inputEl) {
-                    inputEl.classList.remove('token-error');
-                    inputEl.classList.add('token-ok');
-                }
-                if (hintEl) {
-                    hintEl.style.display = 'none';
-                }
+                if (statusEl) { statusEl.className = 'token-validate-status tv-ok'; statusEl.textContent = '✓ Токен действителен · используется только для чтения'; }
+                if (inputEl) { inputEl.classList.remove('token-error'); inputEl.classList.add('token-ok'); }
+                if (hintEl) hintEl.style.display = 'none';
             } else {
                 tokenIsValid = false;
-                if (statusEl) {
-                    statusEl.className = 'token-validate-status tv-error';
-                    statusEl.textContent = '✕ ' + (result.error || 'Токен недействителен');
-                }
-                if (inputEl) {
-                    inputEl.classList.remove('token-ok');
-                    inputEl.classList.add('token-error');
-                }
-                if (hintEl) {
-                    hintEl.style.display = '';
-                }
+                if (statusEl) { statusEl.className = 'token-validate-status tv-error'; statusEl.textContent = '✕ ' + (result.error || 'Токен недействителен'); }
+                if (inputEl) { inputEl.classList.remove('token-ok'); inputEl.classList.add('token-error'); }
+                if (hintEl) hintEl.style.display = '';
             }
         } catch (e) {
             tokenIsValid = false;
-            if (statusEl) {
-                statusEl.className = 'token-validate-status tv-error';
-                statusEl.textContent = '✕ Не удалось проверить токен';
-            }
+            if (statusEl) { statusEl.className = 'token-validate-status tv-error'; statusEl.textContent = '✕ Не удалось проверить токен'; }
         }
         updateAddProjectBtn();
     }
@@ -1265,14 +1804,8 @@
     async function searchProjects(q) {
         const sourceId = document.getElementById('project-source-id').value;
         const token = document.getElementById('project-token').value.trim();
-        if (!sourceId) {
-            showError('project-error', 'Сначала выберите GitLab Source');
-            return;
-        }
-        if (!token) {
-            showError('project-error', 'Введите Project Access Token');
-            return;
-        }
+        if (!sourceId) { showError('project-error', 'Сначала выберите GitLab Source'); return; }
+        if (!token) { showError('project-error', 'Введите Project Access Token'); return; }
         clearModalError('project-error');
         const resultsEl = document.getElementById('project-search-results');
         resultsEl.innerHTML = '<div class="search-loading">Поиск...</div>';
@@ -1281,15 +1814,13 @@
             const projects = await api('GET',
                 '/settings/sources/' + sourceId + '/projects/search?q=' + encodeURIComponent(q)
                 + '&token=' + encodeURIComponent(token));
-            if (!projects.length) {
-                resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
-                return;
-            }
+            if (!projects.length) { resultsEl.innerHTML = '<div class="search-empty">Ничего не найдено</div>'; return; }
             resultsEl.innerHTML = projects.slice(0, 20).map(p => `
-            <div class="search-item" onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
-                <div class="search-item-name">${escHtml(p.name)}</div>
-                <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
-            </div>`).join('');
+                <div class="search-item"
+                     onclick="selectProject(${p.id}, '${escHtml(p.name)}', '${escHtml(p.path_with_namespace)}')">
+                    <div class="search-item-name">${escHtml(p.name)}</div>
+                    <div class="search-item-path">${escHtml(p.path_with_namespace)}</div>
+                </div>`).join('');
         } catch (e) {
             resultsEl.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
         }
@@ -1307,15 +1838,9 @@
     async function addProject() {
         if (!selectedProject) return;
         const sourceId = document.getElementById('project-source-id').value;
-        if (!sourceId) {
-            showError('project-error', 'Выберите GitLab Source');
-            return;
-        }
+        if (!sourceId) { showError('project-error', 'Выберите GitLab Source'); return; }
         const token = document.getElementById('project-token').value.trim();
-        if (!token) {
-            showError('project-error', 'Введите Project Access Token');
-            return;
-        }
+        if (!token) { showError('project-error', 'Введите Project Access Token'); return; }
         const btn = document.getElementById('btn-add-project');
         btn.disabled = true;
         btn.textContent = 'Синхронизируем...';
@@ -1331,7 +1856,7 @@
             addProjectRow(result);
             showSyncBanner(result.jobId, selectedProject.name);
             prependJobRow(result.jobId);
-            switchTab('projects');
+            switchTab('sources');
             clearProjectSearch();
             document.getElementById('project-token').value = '';
             hasProjects = true;
@@ -1351,22 +1876,26 @@
             table.className = 'data-table';
             table.id = 'projects-table';
             table.innerHTML = `<thead><tr>
-            <th>Название</th><th>Путь</th><th>Источник</th><th>Статус</th><th>Действия</th>
-        </tr></thead><tbody id="projects-table-body"></tbody>`;
-            document.getElementById('tab-projects').querySelector('.tab-toolbar').after(table);
+                <th>Репозиторий</th><th>Источник</th><th>Статус</th><th>Действия</th>
+            </tr></thead><tbody id="projects-table-body"></tbody>`;
+            document.getElementById('projects-toolbar').after(table);
         }
         const tb = document.getElementById('projects-table-body');
         const tr = document.createElement('tr');
         tr.id = 'project-row-' + project.id;
         tr.innerHTML = `
-        <td>${escHtml(project.name)}</td>
-        <td><span class="repo-path">${escHtml(project.pathWithNamespace)}</span></td>
-        <td>—</td>
-        <td><span class="badge badge-active">Активен</span></td>
-        <td class="actions-cell">
-            <button class="btn-sm btn-secondary" onclick="triggerBackfill(${project.id}, '${escHtml(project.name)}')">Синк</button>
-            <button class="btn-sm btn-danger" onclick="deleteProject(${project.id}, '${escHtml(project.name)}')">Удалить</button>
-        </td>`;
+            <td>
+                <div style="font-weight:600;color:var(--fg-0);">${escHtml(project.name)}</div>
+                <div class="repo-path">${escHtml(project.pathWithNamespace)}</div>
+            </td>
+            <td>—</td>
+            <td><span class="badge badge-active">Активен</span></td>
+            <td class="actions-cell">
+                <button class="btn-sm btn-secondary"
+                        onclick="triggerBackfill(${project.id}, '${escHtml(project.name)}')">Синк</button>
+                <button class="btn-sm btn-danger"
+                        onclick="deleteProject(${project.id}, '${escHtml(project.name)}')">Удалить</button>
+            </td>`;
         tb.appendChild(tr);
     }
 
@@ -1390,7 +1919,7 @@
         }
     }
 
-    // ── Обнаружение контрибьютеров ────────────────────────────────────────────
+    // ── Discovery ─────────────────────────────────────────────
 
     let discoveryLoaded = false;
 
@@ -1399,25 +1928,25 @@
         if (activeSyncRunning) return;
         if (!hasProjects) return;
         const loading = document.getElementById('discovery-loading');
-        const panel = document.getElementById('discovery-panel');
-        loading.classList.remove('hidden');
+        if (loading) loading.classList.remove('hidden');
         try {
             const contributors = await api('GET', '/settings/users/discovered');
             discoveryLoaded = true;
-            loading.classList.add('hidden');
+            if (loading) loading.classList.add('hidden');
             const untracked = contributors.filter(c => !c.alreadyTracked);
-            if (untracked.length === 0) return;
+            if (untracked.length === 0 && !contributors.some(c => c.alreadyTracked)) return;
             renderDiscoveryList(contributors);
-            panel.classList.remove('hidden');
+            const panel = document.getElementById('discovery-panel');
+            if (panel) panel.classList.remove('hidden');
         } catch (e) {
-            loading.classList.add('hidden');
+            if (loading) loading.classList.add('hidden');
             console.error('Ошибка загрузки контрибьютеров:', e);
         }
     }
 
     function renderDiscoveryList(contributors) {
         const list = document.getElementById('discovery-list');
-        // Sort: tracked first, then humans, then bots at bottom
+        if (!list) return;
         const sorted = contributors.slice().sort((a, b) => {
             if (a.alreadyTracked !== b.alreadyTracked) return a.alreadyTracked ? -1 : 1;
             if (a.suspectedBot !== b.suspectedBot) return a.suspectedBot ? 1 : -1;
@@ -1425,7 +1954,8 @@
         });
         list.innerHTML = sorted.map(c => {
             const letter = (c.primaryName || c.email)[0].toUpperCase();
-            const repos = (c.repoNames || []).map(r => `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
+            const repos = (c.repoNames || []).map(r =>
+                `<span class="discovery-repo-tag">${escHtml(r)}</span>`).join('');
             const altNames = (c.allNames || []).length
                 ? `<span class="discovery-alt-names" title="${escHtml(c.allNames.join(', '))}">+${c.allNames.length} имя</span>`
                 : '';
@@ -1435,32 +1965,34 @@
                      ↔ +${c.mergedEmails.length} email</span>`
                 : '';
             if (c.alreadyTracked) {
-                return `
-            <div class="discovery-row discovery-row-tracked">
-                <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-                <div class="discovery-info">
-                    <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}
-                    <span class="discovery-email">${escHtml(c.email)}</span>
-                    <div class="discovery-meta">${repos}<span class="discovery-commits">${c.commitCount} коммитов</span></div>
-                </div>
-                <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
-            </div>`;
+                return `<div class="discovery-row discovery-row-tracked">
+                    <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+                    <div class="discovery-info">
+                        <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}
+                        <span class="discovery-email">${escHtml(c.email)}</span>
+                        <div class="discovery-meta">${repos}
+                            <span class="discovery-commits">${c.commitCount} коммитов</span></div>
+                    </div>
+                    <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+                </div>`;
             }
             const mergedData = c.mergedEmails && c.mergedEmails.length > 0
                 ? `data-merged='${JSON.stringify(c.mergedEmails)}'` : '';
             const isBot = c.suspectedBot;
-            return `
-        <label class="discovery-row discovery-row-selectable${isBot ? ' discovery-row-bot' : ''}">
-            <input type="checkbox" class="discovery-check" value="${escHtml(c.email)}"
-                   data-name="${escHtml(c.primaryName)}" ${mergedData}
-                   onchange="updateAddBtn()" ${isBot ? '' : 'checked'}>
-            <div class="user-avatar discovery-avatar${isBot ? ' discovery-avatar-bot' : ''}">${escHtml(letter)}</div>
-            <div class="discovery-info">
-                <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}${isBot ? '<span class="badge badge-bot">BOT?</span>' : ''}
-                <span class="discovery-email">${escHtml(c.email)}</span>
-                <div class="discovery-meta">${repos}<span class="discovery-commits">${c.mrCount > 0 ? c.mrCount + ' MR' : c.commitCount + ' коммитов'}</span></div>
-            </div>
-        </label>`;
+            return `<label class="discovery-row discovery-row-selectable${isBot ? ' discovery-row-bot' : ''}">
+                <input type="checkbox" class="discovery-check" value="${escHtml(c.email)}"
+                       data-name="${escHtml(c.primaryName)}" ${mergedData}
+                       onchange="updateAddBtn()" ${isBot ? '' : 'checked'}>
+                <div class="user-avatar discovery-avatar${isBot ? ' discovery-avatar-bot' : ''}">${escHtml(letter)}</div>
+                <div class="discovery-info">
+                    <span class="discovery-name">${escHtml(c.primaryName)}</span>${altNames}${merged}
+                    ${isBot ? '<span class="badge badge-bot">BOT?</span>' : ''}
+                    <span class="discovery-email">${escHtml(c.email)}</span>
+                    <div class="discovery-meta">${repos}
+                        <span class="discovery-commits">${c.mrCount > 0 ? c.mrCount + ' MR' : c.commitCount + ' коммитов'}</span>
+                    </div>
+                </div>
+            </label>`;
         }).join('');
         updateAddBtn();
     }
@@ -1469,10 +2001,12 @@
         const all = document.querySelectorAll('.discovery-check');
         const checked = document.querySelectorAll('.discovery-check:checked');
         const btn = document.getElementById('btn-add-discovered');
-        btn.disabled = checked.length === 0;
-        btn.textContent = checked.length > 0
-            ? `Добавить выбранных (${checked.length})`
-            : 'Добавить выбранных';
+        if (btn) {
+            btn.disabled = checked.length === 0;
+            btn.textContent = checked.length > 0
+                ? `Добавить выбранных (${checked.length})`
+                : 'Добавить выбранных';
+        }
         const counter = document.getElementById('discovery-counter');
         if (counter) counter.textContent = `Выбрано: ${checked.length} / ${all.length}`;
     }
@@ -1498,24 +2032,23 @@
                 if (!row) return;
                 const letter = (cb.dataset.name || cb.value)[0].toUpperCase();
                 row.outerHTML = `
-            <div class="discovery-row discovery-row-tracked">
-                <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
-                <div class="discovery-info">
-                    <span class="discovery-name">${escHtml(cb.dataset.name)}</span>
-                    <span class="discovery-email">${escHtml(cb.value)}</span>
-                </div>
-                <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
-            </div>`;
+                    <div class="discovery-row discovery-row-tracked">
+                        <div class="user-avatar discovery-avatar">${escHtml(letter)}</div>
+                        <div class="discovery-info">
+                            <span class="discovery-name">${escHtml(cb.dataset.name)}</span>
+                            <span class="discovery-email">${escHtml(cb.value)}</span>
+                        </div>
+                        <span class="badge badge-active" style="flex-shrink:0">Отслеживается</span>
+                    </div>`;
             });
             updateAddBtn();
-            api('POST', '/settings/snapshots/backfill').catch(() => {
-            });
+            api('POST', '/settings/snapshots/backfill').catch(() => {});
         } catch (e) {
             alert('Ошибка добавления: ' + e.message);
         }
     }
 
-    // ── Сотрудники: поиск в GitLab ────────────────────────────────────────────
+    // ── People: GitLab user search ────────────────────────────
 
     let userSearchTimer = null;
 
@@ -1541,15 +2074,16 @@
                 return;
             }
             results.innerHTML = users.slice(0, 10).map(u => `
-            <div class="search-result-item" onclick="selectGitLabUser(${JSON.stringify(u).replace(/"/g, '&quot;')})">
-                <img src="${escHtml(u.avatar_url || '')}" class="search-result-avatar" onerror="this.style.display='none'">
-                <div class="search-result-info">
-                    <div class="search-result-name">${escHtml(u.name)}</div>
-                    <div class="search-result-sub">@${escHtml(u.username)}${u.public_email ? ' · ' + escHtml(u.public_email) : ''}</div>
-                </div>
-                ${u.public_email ? '<span class="search-result-email-badge">email ✓</span>' : ''}
-            </div>
-        `).join('');
+                <div class="search-result-item"
+                     onclick="selectGitLabUser(${JSON.stringify(u).replace(/"/g, '&quot;')})">
+                    <img src="${escHtml(u.avatar_url || '')}" class="search-result-avatar"
+                         onerror="this.style.display='none'">
+                    <div class="search-result-info">
+                        <div class="search-result-name">${escHtml(u.name)}</div>
+                        <div class="search-result-sub">@${escHtml(u.username)}${u.public_email ? ' · ' + escHtml(u.public_email) : ''}</div>
+                    </div>
+                    ${u.public_email ? '<span class="search-result-email-badge">email ✓</span>' : ''}
+                </div>`).join('');
         } catch (e) {
             results.innerHTML = '<div class="search-empty">Ошибка поиска: ' + escHtml(e.message) + '</div>';
         }
@@ -1562,19 +2096,33 @@
         document.getElementById('user-gl-search').value = '';
         if (user.public_email) {
             const hint = document.querySelector('.user-email-hint');
-            if (hint) hint.innerHTML = '✓ Email подтянут из публичного профиля GitLab. Убедитесь, что он совпадает с email в git-коммитах.';
+            if (hint) {
+                hint.innerHTML = '✓ Email подтянут из публичного профиля GitLab. Убедитесь, что он совпадает с email в git-коммитах.';
+            }
         }
     }
 
-    // ── Сотрудники ────────────────────────────────────────────────────────────
+    // ── Alias panel toggle ────────────────────────────────────
+
+    function toggleAliasPanel(userId) {
+        const panel = document.getElementById('alias-panel-' + userId);
+        if (!panel) return;
+        const isOpen = !panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', isOpen);
+        // flip arrow on the toggle button
+        const row = document.getElementById('user-row-' + userId);
+        if (row) {
+            const arrow = row.querySelector('.alias-arrow');
+            if (arrow) arrow.textContent = isOpen ? '▾' : '▴';
+        }
+    }
+
+    // ── People: CRUD ──────────────────────────────────────────
 
     async function createUser() {
         const name = document.getElementById('user-name').value.trim();
         const email = document.getElementById('user-email').value.trim();
-        if (!name) {
-            showError('user-error', 'Введите имя сотрудника');
-            return;
-        }
+        if (!name) { showError('user-error', 'Введите имя сотрудника'); return; }
         try {
             const user = await api('POST', '/settings/users', {displayName: name, email: email || null});
             closeModal('modal-user');
@@ -1582,7 +2130,6 @@
             document.getElementById('user-name').value = '';
             document.getElementById('user-email').value = '';
             discoveryLoaded = false;
-            loadDiscoveredContributors();
         } catch (e) {
             showError('user-error', e.message);
         }
@@ -1590,25 +2137,41 @@
 
     function addUserRow(user) {
         document.getElementById('users-empty')?.remove();
-        const tbody = document.getElementById('users-table-body');
-        if (!tbody) return;
+        let card = document.getElementById('users-card');
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 's-card';
+            card.id = 'users-card';
+            const header = document.getElementById('tab-people')?.querySelector('.s-header');
+            if (header) header.after(card);
+        }
         const firstLetter = (user.displayName || '?')[0];
-        const tr = document.createElement('tr');
-        tr.id = 'user-row-' + user.id;
-        tr.innerHTML = `
-        <td>
-            <div class="user-cell">
-                <div class="user-avatar">${escHtml(firstLetter)}</div>
-                <span class="user-name">${escHtml(user.displayName)}</span>
+        const hue = (user.id * 43) % 360;
+        const wrapper = document.createElement('div');
+        wrapper.id = 'user-row-' + user.id;
+        wrapper.innerHTML = `
+        <div class="s-row">
+            <div class="s-avatar" style="background:oklch(0.62 0.14 ${hue}deg);">${escHtml(firstLetter)}</div>
+            <div class="s-row-main">
+                <div class="s-row-title">${escHtml(user.displayName)}</div>
+                <div style="font-size:11px;color:var(--fg-3);">${escHtml(user.email || '—')}</div>
             </div>
-        </td>
-        <td>${escHtml(user.email || '—')}</td>
-        <td><span class="badge badge-active">Активен</span></td>
-        <td><div class="alias-empty">нет алиасов</div></td>
-        <td class="actions-cell">
-            <button class="btn-sm btn-danger" onclick="deleteUser(${user.id}, '${escHtml(user.displayName)}')">Удалить</button>
-        </td>`;
-        tbody.appendChild(tr);
+            <button class="btn-ghost"
+                    style="font-size:11px;color:var(--warn,#f59e0b);background:oklch(0.65 0.15 65/0.08);display:flex;align-items:center;"
+                    onclick="toggleAliasPanel(${user.id})">
+                ⚠ Нет gitlab-алиасов<span class="alias-arrow">▾</span>
+            </button>
+            <button class="btn-ghost-danger" style="font-size:11px;"
+                    onclick="deleteUser(${user.id}, '${escHtml(user.displayName)}')">Удалить</button>
+        </div>
+        <div class="s-alias-panel hidden" id="alias-panel-${user.id}">
+            <div class="s-alias-empty-msg">У этого сотрудника пока нет привязанных gitlab-аккаунтов. Найдите его на вкладке Discovery.</div>
+            <button class="s-alias-add-btn"
+                    onclick="openLinkGitlabModal(${user.id}, '${escHtml(user.displayName)}')">
+                + Привязать gitlab-алиас
+            </button>
+        </div>`;
+        card.appendChild(wrapper);
     }
 
     async function deleteUser(id, name) {
@@ -1621,7 +2184,7 @@
         }
     }
 
-    // ── Привязка GitLab-аккаунта ──────────────────────────────────────────────
+    // ── Link GitLab account ───────────────────────────────────
 
     let linkTargetUserId = null;
     let linkSelectedUser = null;
@@ -1664,13 +2227,15 @@
                 return;
             }
             results.innerHTML = users.slice(0, 10).map(u => `
-            <div class="search-result-item" onclick="selectLinkUser(${JSON.stringify(u).replace(/"/g, '&quot;')})">
-                <img src="${escHtml(u.avatar_url || '')}" class="search-result-avatar" onerror="this.style.display='none'">
-                <div class="search-result-info">
-                    <div class="search-result-name">${escHtml(u.name)}</div>
-                    <div class="search-result-sub">@${escHtml(u.username)}${u.public_email ? ' · ' + escHtml(u.public_email) : ''}</div>
-                </div>
-            </div>`).join('');
+                <div class="search-result-item"
+                     onclick="selectLinkUser(${JSON.stringify(u).replace(/"/g, '&quot;')})">
+                    <img src="${escHtml(u.avatar_url || '')}" class="search-result-avatar"
+                         onerror="this.style.display='none'">
+                    <div class="search-result-info">
+                        <div class="search-result-name">${escHtml(u.name)}</div>
+                        <div class="search-result-sub">@${escHtml(u.username)}${u.public_email ? ' · ' + escHtml(u.public_email) : ''}</div>
+                    </div>
+                </div>`).join('');
         } catch (e) {
             results.innerHTML = '<div class="search-empty">Ошибка: ' + escHtml(e.message) + '</div>';
         }
@@ -1728,94 +2293,137 @@
                 username: linkSelectedUser.username
             });
             closeModal('modal-link-gitlab');
-            const aliasCell = document.querySelector('#user-row-' + linkTargetUserId + ' td:nth-child(4)');
-            if (aliasCell) {
-                const emptyDiv = aliasCell.querySelector('.alias-empty');
-                if (emptyDiv) emptyDiv.remove();
-                const chip = document.createElement('div');
-                chip.className = 'alias-chip';
-                chip.innerHTML = '<span>@' + escHtml(linkSelectedUser.username) + '</span>';
-                aliasCell.appendChild(chip);
+            // Update alias button and panel in people tab
+            const userRow = document.getElementById('user-row-' + linkTargetUserId);
+            if (userRow) {
+                // Update toggle button: switch from "no aliases" style to count style
+                const toggleBtn = userRow.querySelector('.s-row .btn-ghost');
+                if (toggleBtn) {
+                    toggleBtn.style.color = '';
+                    toggleBtn.style.background = '';
+                    const currentCount = userRow.querySelectorAll('.s-alias-row').length + 1;
+                    const label = currentCount === 1 ? '1 алиас' : currentCount + ' алиаса';
+                    toggleBtn.innerHTML = `<span>${label}</span><span class="alias-arrow">▾</span>`;
+                }
+                // Add alias row to panel
+                const panel = document.getElementById('alias-panel-' + linkTargetUserId);
+                if (panel) {
+                    // Remove empty-state message if present
+                    panel.querySelector('.s-alias-empty-msg')?.remove();
+                    // Insert alias row before the "add" button
+                    const addBtn = panel.querySelector('.s-alias-add-btn');
+                    const aliasRow = document.createElement('div');
+                    aliasRow.className = 's-alias-row';
+                    aliasRow.innerHTML = `<code class="s-alias-code">@${escHtml(linkSelectedUser.username)}</code>`;
+                    if (addBtn) {
+                        panel.insertBefore(aliasRow, addBtn);
+                    } else {
+                        panel.appendChild(aliasRow);
+                    }
+                    // Show panel
+                    panel.classList.remove('hidden');
+                    if (toggleBtn) {
+                        const arrow = toggleBtn.querySelector('.alias-arrow');
+                        if (arrow) arrow.textContent = '▴';
+                    }
+                }
             }
-            api('POST', '/settings/snapshots/backfill').catch(() => {
-            });
+            api('POST', '/settings/snapshots/backfill').catch(() => {});
         } catch (e) {
             showError('link-gitlab-error', e.message);
         }
     }
 
-    // ── Digest ────────────────────────────────────────────────────────────────
+    // ── Digest ────────────────────────────────────────────────
 
     async function loadDigestStatus() {
         try {
             const res = await api('GET', '/settings/digest/status');
-            renderDigestBtn(res.digestEnabled);
+            renderDigestToggle(res.digestEnabled);
+            applyDigestSchedule(res.digestDay || 'mon', res.digestHour != null ? res.digestHour : 9);
         } catch (e) {
-            document.getElementById('digest-toggle-btn').textContent = 'Ошибка';
+            const btn = document.getElementById('digest-toggle-btn');
+            if (btn) btn.setAttribute('data-on', 'false');
         }
     }
 
-    function renderDigestBtn(enabled) {
+    function renderDigestToggle(enabled) {
         const btn = document.getElementById('digest-toggle-btn');
-        if (enabled) {
-            btn.textContent = 'Включён ✓';
-            btn.style.background = 'var(--good-bg)';
-            btn.style.color = 'var(--good)';
-            btn.style.borderColor = 'var(--good)';
-        } else {
-            btn.textContent = 'Отключён';
-            btn.style.background = 'var(--bg-0)';
-            btn.style.color = 'var(--fg-3)';
-            btn.style.borderColor = 'var(--border-2)';
+        if (!btn) return;
+        btn.setAttribute('data-on', String(enabled));
+        const section = document.getElementById('digest-schedule-section');
+        if (section) section.style.display = enabled ? '' : 'none';
+    }
+
+    function applyDigestSchedule(day, hour) {
+        document.querySelectorAll('.digest-day-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.day === day);
+        });
+        const sel = document.getElementById('digest-time-select');
+        if (sel) {
+            const pad = String(hour).padStart(2, '0');
+            sel.value = pad + ':00';
         }
     }
 
     async function toggleDigest() {
         try {
             const res = await api('POST', '/settings/digest/toggle');
-            renderDigestBtn(res.digestEnabled);
-            const msg = document.getElementById('digest-status-msg');
-            msg.textContent = res.digestEnabled
-                ? 'Дайджест включён. Следующий выпуск — ближайший понедельник в 9:00 UTC.'
-                : 'Дайджест отключён.';
-            msg.style.display = 'block';
-            setTimeout(() => { msg.style.display = 'none'; }, 4000);
+            renderDigestToggle(res.digestEnabled);
         } catch (e) {
             alert('Не удалось изменить настройку');
         }
+    }
+
+    async function selectDigestDay(day) {
+        applyDigestSchedule(day, currentDigestHour());
+        const hour = currentDigestHour();
+        try {
+            await api('POST', '/settings/digest/schedule', { day, hour });
+        } catch (e) {
+            console.error('Не удалось сохранить день дайджеста', e);
+        }
+    }
+
+    async function saveDigestTime(time) {
+        const hour = parseInt(time.split(':')[0], 10);
+        const day = currentDigestDay();
+        try {
+            await api('POST', '/settings/digest/schedule', { day, hour });
+        } catch (e) {
+            console.error('Не удалось сохранить время дайджеста', e);
+        }
+    }
+
+    function currentDigestDay() {
+        const active = document.querySelector('.digest-day-btn.active');
+        return active ? active.dataset.day : 'mon';
+    }
+
+    function currentDigestHour() {
+        const sel = document.getElementById('digest-time-select');
+        return sel ? parseInt(sel.value.split(':')[0], 10) : 9;
     }
 
     /*]]>*/
 </script>
 
 <script>
-    /* Sidebar action shims — делегируют в функции страницы настроек */
+    /* Sidebar shims — delegate to settings page functions */
     function sidebarSync(id, name) {
-        if (!confirm('Синхронизировать репозиторий «' + name + '»?')) {
-            return;
-        }
+        if (!confirm('Синхронизировать репозиторий «' + name + '»?')) return;
         api('POST', '/settings/projects/' + id + '/backfill')
-            .then(function (job) {
-                const banner = document.createElement('div');
-                banner.className = 'alert alert-info';
-                banner.textContent = 'Синхронизация запущена (job ' + job.jobId + ')';
-                document.querySelector('.report-main')?.prepend(banner);
-                setTimeout(() => banner.remove(), 4000);
-            })
-            .catch(function (e) {
-                alert('Ошибка: ' + e.message);
-            });
+            .then(function (job) { showSyncBanner(job.jobId, name); })
+            .catch(function (e) { alert('Ошибка: ' + e.message); });
     }
 
-    function sidebarDeleteProject(id, name) {
-        deleteProject(id, name);
-    }
+    function sidebarDeleteProject(id, name) { deleteProject(id, name); }
+    function sidebarDeleteUser(id, name) { deleteUser(id, name); }
+    function applyFilters() { /* no-op on settings page */ }
 
-    function sidebarDeleteUser(id, name) {
-        deleteUser(id, name);
-    }
-
-    function applyFilters() { /* no-op: inactive filter не применяется на странице настроек */
+    /* prependJobRow shim — no-op if not defined elsewhere */
+    if (typeof prependJobRow === 'undefined') {
+        window.prependJobRow = function () {};
     }
 </script>
 

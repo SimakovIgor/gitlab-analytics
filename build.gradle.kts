@@ -79,6 +79,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-launcher")
     testImplementation("org.apache.httpcomponents.client5:httpclient5")
     testImplementation("com.icegreen:greenmail:2.1.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
 }

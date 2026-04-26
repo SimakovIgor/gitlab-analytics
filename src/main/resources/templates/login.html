@@ -1,651 +1,439 @@
 <!DOCTYPE html>
-<html data-variant="B" lang="ru" xmlns:th="http://www.thymeleaf.org">
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GitPulse — вход</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/css/analytics.css}">
-    <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GitPulse — войти</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap"
+      rel="stylesheet">
+<style>
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0a0a0a;
+    --ink-2: #18181b;
+    --line: #e7e5e4;
+    --line-2: #d6d3d1;
+    --paper: #fafaf9;
+    --paper-2: #f5f5f4;
+    --muted: #78716c;
+    --muted-2: #57534e;
+    --accent: oklch(0.55 0.20 270);
+    --accent-2: oklch(0.70 0.18 270);
+    --good: oklch(0.55 0.16 150);
+  }
+  html, body { height: 100%; font-family: 'Geist', -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: var(--ink); }
+  a { color: inherit; text-decoration: none; }
+  .mono { font-family: 'Geist Mono', ui-monospace, monospace; font-feature-settings: "zero","ss01"; }
 
-        html, body {
-            height: 100%;
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
+  .root { display: flex; min-height: 100vh; }
 
-        .lp-root {
-            display: flex;
-            min-height: 100vh;
-        }
+  /* ─ LEFT: dark hero ───────────────────────────────────────────── */
+  .hero {
+    flex: 0 0 56%;
+    background: var(--ink);
+    color: rgba(255,255,255,0.95);
+    padding: 36px 48px 36px 56px;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 90% 70% at 30% 30%, #000 30%, transparent 90%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: ''; position: absolute; top: -100px; right: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, oklch(0.55 0.20 270 / 0.30) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero > * { position: relative; z-index: 1; }
 
-        /* ── Left hero panel ─────────────────────────────────────────── */
-        .lp-hero {
-            flex: 0 0 58%;
-            background: linear-gradient(155deg, oklch(0.14 0.09 278) 0%, oklch(0.21 0.13 272) 100%);
-            display: flex;
-            flex-direction: column;
-            padding: 40px 52px;
-            position: relative;
-            overflow: hidden;
-        }
+  .logo { display: flex; align-items: center; gap: 9px; }
+  .logo-mark { width: 22px; height: 22px; }
+  .logo-text { display: flex; flex-direction: column; line-height: 1; }
+  .logo-name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; color: rgba(255,255,255,0.95); }
+  .logo-sub  { font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.10em; text-transform: uppercase; }
 
-        /* subtle noise texture */
-        .lp-hero::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-            pointer-events: none;
-        }
+  .hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 480px; }
 
-        /* glow orb */
-        .lp-hero::after {
-            content: '';
-            position: absolute;
-            top: -120px;
-            right: -80px;
-            width: 400px;
-            height: 400px;
-            border-radius: 50%;
-            background: radial-gradient(circle, oklch(0.42 0.19 275 / 0.20) 0%, transparent 70%);
-            pointer-events: none;
-        }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 12px 5px 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 22px;
+    align-self: flex-start;
+  }
+  .eyebrow-pill {
+    background: var(--accent); color: #fff;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+  }
 
-        .lp-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 1;
-        }
+  h1 {
+    font-size: 44px; line-height: 1.06; letter-spacing: -0.03em;
+    font-weight: 600; color: #fff;
+    margin-bottom: 14px;
+    text-wrap: balance;
+  }
+  h1 em {
+    font-style: normal;
+    background: linear-gradient(180deg, var(--accent-2) 0%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sub {
+    font-size: 15px; line-height: 1.6;
+    color: rgba(255,255,255,0.50);
+    margin-bottom: 36px; max-width: 420px;
+  }
 
-        .lp-logo-wordmark {
-            display: flex;
-            flex-direction: column;
-            line-height: 1;
-        }
+  /* ─ Mini metrics card ──────────────────────────────────────────── */
+  .preview {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 18px 20px;
+    backdrop-filter: blur(6px);
+    max-width: 460px;
+  }
+  .preview-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .preview-title { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85); }
+  .preview-pill {
+    font-size: 10px; padding: 3px 8px; border-radius: 999px;
+    background: oklch(0.55 0.16 150 / 0.18); color: oklch(0.85 0.16 150);
+    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .preview-pill::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor;
+    animation: dot-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes dot-pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
 
-        .lp-logo-name {
-            font-weight: 700;
-            font-size: 14px;
-            letter-spacing: -0.01em;
-            color: rgba(255, 255, 255, 0.95);
-        }
+  .metrics {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .metric-val {
+    font-family: 'Geist Mono', monospace;
+    font-size: 20px; font-weight: 500;
+    color: rgba(255,255,255,0.95);
+    letter-spacing: -0.02em; line-height: 1; margin-bottom: 4px;
+  }
+  .metric-val sup { font-size: 11px; font-weight: 400; color: rgba(255,255,255,0.40); margin-left: 1px; vertical-align: baseline; }
+  .metric-val.good { color: oklch(0.85 0.18 150); }
+  .metric-label { font-size: 10px; color: rgba(255,255,255,0.40); }
 
-        .lp-logo-sub {
-            font-size: 9px;
-            color: rgba(255, 255, 255, 0.35);
-            margin-top: 2px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
+  .chart-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .chart-title {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.35);
+    font-weight: 600; margin-bottom: 6px;
+    display: flex; justify-content: space-between;
+  }
+  .chart-title span { color: oklch(0.85 0.18 150); text-transform: none; letter-spacing: 0; font-weight: 600; }
 
-        .lp-hero-body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            z-index: 1;
-            padding-top: 20px;
-        }
+  .hero-foot { display: flex; align-items: center; gap: 14px; }
+  .hero-foot-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    font-size: 11px; font-weight: 500;
+    color: oklch(0.85 0.18 150);
+    letter-spacing: 0.02em;
+  }
+  .hero-foot-note { font-size: 11px; color: rgba(255,255,255,0.30); }
 
-        .lp-eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 11px;
-            font-weight: 600;
-            color: oklch(0.80 0.12 125);
-            margin-bottom: 20px;
-            letter-spacing: 0.04em;
-        }
+  /* ─ RIGHT: auth ───────────────────────────────────────────────── */
+  .auth {
+    flex: 1;
+    background: #fff;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 48px 40px;
+    position: relative;
+  }
+  .auth-card { width: 100%; max-width: 360px; }
+  .auth-logo { display: flex; align-items: center; gap: 9px; margin-bottom: 36px; }
+  .auth-h { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .auth-sub { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 28px; }
 
-        .lp-eyebrow-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: oklch(0.80 0.12 125);
-            box-shadow: 0 0 0 3px oklch(0.80 0.12 125 / 0.2);
-            animation: lp-pulse 2.4s ease-in-out infinite;
-        }
+  /* ─ Alerts ────────────────────────────────────────────────────── */
+  .alert {
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: flex; gap: 10px; align-items: flex-start;
+    line-height: 1.45;
+  }
+  .alert-error { background: oklch(0.60 0.20 25 / 0.08); border: 1px solid oklch(0.60 0.20 25 / 0.20); color: oklch(0.45 0.20 25); }
+  .alert-warn  { background: oklch(0.70 0.16 70 / 0.10); border: 1px solid oklch(0.70 0.16 70 / 0.25); color: oklch(0.45 0.16 70); }
+  .alert-ok    { background: oklch(0.55 0.16 150 / 0.10); border: 1px solid oklch(0.55 0.16 150 / 0.25); color: oklch(0.40 0.16 150); }
+  .alert a { color: inherit; font-weight: 500; text-decoration: underline; }
 
-        @keyframes lp-pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.4;
-            }
-        }
+  /* ─ Form ──────────────────────────────────────────────────────── */
+  .field { margin-bottom: 14px; }
+  .label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .label { font-size: 12px; font-weight: 500; color: var(--muted-2); }
+  .label-link { font-size: 11px; color: var(--accent); }
+  .label-link:hover { text-decoration: underline; }
+  .input-wrap { position: relative; }
+  .input {
+    width: 100%; padding: 11px 14px; padding-right: 38px;
+    border: 1.5px solid var(--line); border-radius: 8px;
+    font-size: 14px; font-family: inherit; color: var(--ink);
+    background: var(--paper);
+    outline: none;
+    transition: border-color .15s, background .15s;
+  }
+  .input:focus { border-color: var(--accent); background: #fff; }
+  .input::placeholder { color: #c5c0b4; }
+  .input-icon-btn {
+    position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; color: var(--muted); cursor: pointer; border-radius: 6px;
+  }
+  .input-icon-btn:hover { background: var(--paper-2); color: var(--ink); }
 
-        .lp-headline {
-            font-size: 44px;
-            font-weight: 700;
-            line-height: 1.14;
-            color: rgba(255, 255, 255, 0.97);
-            margin-bottom: 16px;
-            letter-spacing: -0.03em;
-        }
+  .remember-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 18px;
+    font-size: 13px; color: var(--muted-2);
+    cursor: pointer; user-select: none;
+  }
+  .remember-row input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 
-        .lp-headline em {
-            font-style: normal;
-            color: oklch(0.86 0.22 125);
-        }
+  .btn-primary {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px;
+    background: var(--ink); color: #fff;
+    border: none; border-radius: 8px;
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    transition: background .15s, transform .1s, box-shadow .15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+  }
+  .btn-primary:hover { background: var(--ink-2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
 
-        .lp-subtext {
-            font-size: 15px;
-            color: rgba(255, 255, 255, 0.48);
-            line-height: 1.6;
-            max-width: 400px;
-            margin-bottom: 44px;
-        }
+  .auth-foot {
+    margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted);
+  }
+  .auth-foot a { color: var(--accent); font-weight: 500; }
+  .auth-foot a:hover { text-decoration: underline; }
 
-        /* ── Metric cards ─────────────────────────────────────────────── */
-        .lp-metrics {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            max-width: 400px;
-            margin-bottom: 16px;
-        }
+  .auth-meta {
+    position: absolute; bottom: 20px; left: 0; right: 0;
+    display: flex; justify-content: space-between;
+    padding: 0 40px;
+    font-size: 11px; color: #b5b09c;
+  }
+  .auth-meta a { color: #b5b09c; }
+  .auth-meta a:hover { color: var(--ink); }
 
-        .lp-metric {
-            background: rgba(255, 255, 255, 0.055);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 14px 16px;
-            backdrop-filter: blur(4px);
-        }
-
-        .lp-metric-value {
-            font-family: 'JetBrains Mono', ui-monospace, monospace;
-            font-size: 28px;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.95);
-            letter-spacing: -0.02em;
-            line-height: 1;
-            margin-bottom: 5px;
-        }
-
-        .lp-metric-value sup {
-            font-size: 13px;
-            font-weight: 400;
-            color: rgba(255, 255, 255, 0.38);
-            margin-left: 2px;
-            vertical-align: baseline;
-        }
-
-        .lp-metric-label {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.36);
-        }
-
-        .lp-metric--good .lp-metric-value {
-            color: oklch(0.82 0.18 125);
-        }
-
-        /* ── Chart preview ────────────────────────────────────────────── */
-        .lp-chart-card {
-            background: rgba(255, 255, 255, 0.055);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 14px 16px 10px;
-            max-width: 400px;
-        }
-
-        .lp-chart-title {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            color: rgba(255, 255, 255, 0.32);
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        /* ── Footer ───────────────────────────────────────────────────── */
-        .lp-hero-footer {
-            z-index: 1;
-            padding-top: 32px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .lp-beta-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            font-size: 11px;
-            font-weight: 600;
-            color: oklch(0.80 0.12 125);
-            letter-spacing: 0.04em;
-        }
-
-        .lp-hero-note {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.26);
-        }
-
-        /* ── Right auth panel ─────────────────────────────────────────── */
-        .lp-auth {
-            flex: 1;
-            background: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 48px 40px;
-            position: relative;
-        }
-
-        .lp-auth-card {
-            width: 100%;
-            max-width: 340px;
-        }
-
-        .lp-auth-logo {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            margin-bottom: 40px;
-        }
-
-        .lp-auth-logo-text {
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            color: #16150f;
-        }
-
-        .lp-auth-heading {
-            font-size: 22px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            color: #16150f;
-            margin-bottom: 6px;
-        }
-
-        .lp-auth-sub {
-            font-size: 13px;
-            color: #8a8573;
-            line-height: 1.5;
-            margin-bottom: 36px;
-        }
-
-        /* ── Features ─────────────────────────────────────────────────── */
-        .lp-features {
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 32px;
-        }
-
-        .lp-feature {
-            display: flex;
-            align-items: flex-start;
-            gap: 9px;
-            font-size: 13px;
-            color: #5a5648;
-            line-height: 1.4;
-        }
-
-        .lp-feature-icon {
-            width: 18px;
-            height: 18px;
-            border-radius: 5px;
-            background: oklch(0.42 0.19 275 / 0.09);
-            color: oklch(0.42 0.19 275);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            margin-top: 1px;
-        }
-
-        /* ── Error ────────────────────────────────────────────────────── */
-        .lp-error {
-            margin-bottom: 16px;
-            padding: 10px 14px;
-            background: oklch(0.55 0.22 28 / 0.08);
-            border: 1px solid oklch(0.55 0.22 28 / 0.2);
-            border-radius: 8px;
-            font-size: 13px;
-            color: oklch(0.55 0.22 28);
-        }
-
-        /* ── Form inputs ──────────────────────────────────────────────── */
-        .lp-field {
-            margin-bottom: 14px;
-        }
-
-        .lp-label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: #5a5648;
-            margin-bottom: 5px;
-            letter-spacing: 0.01em;
-        }
-
-        .lp-input {
-            width: 100%;
-            padding: 11px 14px;
-            border: 1.5px solid #e8e3d9;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: 'Inter', sans-serif;
-            color: #16150f;
-            background: #fafaf8;
-            outline: none;
-            transition: border-color 0.15s;
-            box-sizing: border-box;
-        }
-
-        .lp-input:focus {
-            border-color: oklch(0.42 0.19 275);
-            background: #fff;
-        }
-
-        .lp-input::placeholder {
-            color: #c5c0b4;
-        }
-
-        /* ── Primary button ───────────────────────────────────────────── */
-        .lp-btn-primary {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 13px 20px;
-            background: oklch(0.42 0.19 275);
-            color: #ffffff;
-            border: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            letter-spacing: -0.01em;
-            transition: filter 0.15s, transform 0.1s;
-            box-shadow: 0 1px 2px oklch(0.42 0.19 275 / 0.25),
-            0 4px 12px oklch(0.42 0.19 275 / 0.18);
-            margin-bottom: 14px;
-        }
-
-        .lp-btn-primary:hover {
-            filter: brightness(1.1);
-            transform: translateY(-1px);
-        }
-
-        .lp-btn-primary:active {
-            filter: brightness(0.96);
-            transform: translateY(0);
-        }
-
-        /* ── Divider ──────────────────────────────────────────────────── */
-        .lp-divider {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 16px 0;
-            font-size: 11px;
-            color: #c5c0b4;
-        }
-
-        .lp-divider::before, .lp-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #e8e3d9;
-        }
-
-        /* ── GitHub button ────────────────────────────────────────────── */
-        .lp-btn-github {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            padding: 11px 20px;
-            background: #fff;
-            color: #16150f;
-            border: 1.5px solid #e8e3d9;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 500;
-            font-family: 'Inter', sans-serif;
-            text-decoration: none;
-            cursor: pointer;
-            transition: border-color 0.15s, background 0.15s;
-        }
-
-        .lp-btn-github:hover {
-            border-color: #b5b09c;
-            background: #fafaf8;
-        }
-
-        .lp-auth-hint {
-            margin-top: 14px;
-            font-size: 11px;
-            color: #b5b09c;
-            text-align: center;
-            line-height: 1.5;
-        }
-
-        .lp-auth-footer {
-            position: absolute;
-            bottom: 24px;
-            font-size: 11px;
-            color: #b5b09c;
-        }
-
-        /* ── Responsive ───────────────────────────────────────────────── */
-        @media (max-width: 820px) {
-            .lp-root {
-                flex-direction: column;
-            }
-
-            .lp-hero {
-                flex: none;
-                padding: 32px 28px;
-            }
-
-            .lp-headline {
-                font-size: 30px;
-            }
-
-            .lp-metrics {
-                grid-template-columns: repeat(4, 1fr);
-                max-width: none;
-            }
-
-            .lp-chart-card {
-                display: none;
-            }
-
-            .lp-auth {
-                padding: 40px 28px;
-            }
-        }
-
-        @media (max-width: 560px) {
-            .lp-metrics {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-    </style>
+  /* ─ Responsive ───────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .root { flex-direction: column; }
+    .hero { flex: 0 0 auto; padding: 32px 28px; }
+    h1 { font-size: 32px; }
+    .preview { max-width: 100%; }
+    .metrics { grid-template-columns: 1fr 1fr; }
+    .auth { padding: 40px 28px; }
+    .auth-meta { position: static; padding: 28px 28px 0; }
+  }
+</style>
 </head>
 <body>
 
-<div class="lp-root">
+<div class="root">
 
-    <!-- ══ LEFT HERO ══════════════════════════════════════════════════ -->
-    <div class="lp-hero">
-
-        <div class="lp-logo">
-            <svg fill="none" height="26" viewBox="0 0 22 22" width="26">
-                <defs>
-                    <linearGradient id="lg-hero" x1="0" x2="1" y1="0" y2="1">
-                        <stop offset="0" stop-color="oklch(0.86 0.22 125)"/>
-                        <stop offset="1" stop-color="oklch(0.65 0.18 125)"/>
-                    </linearGradient>
-                </defs>
-                <path d="M11 1 L21 8 L17 21 L5 21 L1 8 Z" fill="url(#lg-hero)"/>
-                <path d="M11 1 L17 21 L11 14 L5 21 Z" fill="rgba(0,0,0,0.18)"/>
+    <!-- ─ LEFT HERO ─ -->
+    <div class="hero">
+        <a class="logo" th:href="@{/}">
+            <svg class="logo-mark" viewBox="0 0 22 22" fill="none">
+                <path d="M11 1.5 L20 7.5 L17 20.5 L5 20.5 L2 7.5 Z" fill="oklch(0.70 0.18 270)"/>
+                <path d="M11 1.5 L17 20.5 L11 14 L5 20.5 Z" fill="rgba(0,0,0,0.18)"/>
             </svg>
-            <div class="lp-logo-wordmark">
-                <span class="lp-logo-name">gitpulse</span>
-                <span class="lp-logo-sub">analytics</span>
+            <div class="logo-text">
+                <span class="logo-name">GitPulse</span>
+                <span class="logo-sub">analytics</span>
             </div>
-        </div>
+        </a>
 
-        <div class="lp-hero-body">
-
-            <div class="lp-eyebrow">
-                <span class="lp-eyebrow-dot"></span>
-                Public beta · Бесплатно
+        <div class="hero-body">
+            <div class="eyebrow">
+                <span class="eyebrow-pill">beta</span>
+                <span>Public beta · бесплатно</span>
             </div>
-
-            <h1 class="lp-headline">
+            <h1>
                 Инженерная аналитика<br>
-                для <em>dev</em> команд
+                для <em>dev-команд</em>
             </h1>
-
-            <p class="lp-subtext">
-                Lead Time, код-ревью, DORA-метрики и инсайты —<br>
-                в одном месте. GitLab, GitHub, Bitbucket.
+            <p class="sub">
+                Lead Time, code review, DORA-метрики и алгоритмические инсайты — в одном месте, без настройки
+                дашбордов.
             </p>
 
-            <div class="lp-metrics">
-                <div class="lp-metric">
-                    <div class="lp-metric-value">4.2<sup>ч</sup></div>
-                    <div class="lp-metric-label">Медиана Lead Time</div>
+            <div class="preview">
+                <div class="preview-head">
+                    <div class="preview-title">Backend Core · ноябрь 2025</div>
+                    <span class="preview-pill">live</span>
                 </div>
-                <div class="lp-metric">
-                    <div class="lp-metric-value">47<sup>шт</sup></div>
-                    <div class="lp-metric-label">MR за неделю</div>
+                <div class="metrics">
+                    <div>
+                        <div class="metric-val">1.8<sup>д</sup></div>
+                        <div class="metric-label">Lead Time</div>
+                    </div>
+                    <div>
+                        <div class="metric-val">142</div>
+                        <div class="metric-label">MR / мес</div>
+                    </div>
+                    <div>
+                        <div class="metric-val">3.2</div>
+                        <div class="metric-label">Review depth</div>
+                    </div>
+                    <div>
+                        <div class="metric-val good">Elite</div>
+                        <div class="metric-label">DORA</div>
+                    </div>
                 </div>
-                <div class="lp-metric">
-                    <div class="lp-metric-value">3.1<sup>комм</sup></div>
-                    <div class="lp-metric-label">Ревью глубина</div>
-                </div>
-                <div class="lp-metric lp-metric--good">
-                    <div class="lp-metric-value">Elite</div>
-                    <div class="lp-metric-label">DORA рейтинг</div>
+                <div class="chart-card">
+                    <div class="chart-title">
+                        <span>Lead Time · 12 недель</span>
+                        <span>↓ 23%</span>
+                    </div>
+                    <svg viewBox="0 0 360 56" preserveAspectRatio="none" style="width:100%;height:56px;display:block">
+                        <defs>
+                            <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="oklch(0.70 0.18 270)" stop-opacity="0.30"/>
+                                <stop offset="100%" stop-color="oklch(0.70 0.18 270)" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        <line x1="0" y1="14" x2="360" y2="14" stroke="rgba(255,255,255,0.04)"/>
+                        <line x1="0" y1="28" x2="360" y2="28" stroke="rgba(255,255,255,0.04)"/>
+                        <line x1="0" y1="42" x2="360" y2="42" stroke="rgba(255,255,255,0.04)"/>
+                        <path d="M0,42 L40,38 L80,32 L120,34 L160,28 L200,24 L240,18 L280,16 L320,12 L360,10 L360,56 L0,56 Z"
+                              fill="url(#lg)"/>
+                        <path d="M0,42 L40,38 L80,32 L120,34 L160,28 L200,24 L240,18 L280,16 L320,12 L360,10"
+                              stroke="oklch(0.75 0.18 270)" stroke-width="2" fill="none" stroke-linecap="round"
+                              stroke-linejoin="round"/>
+                        <circle cx="360" cy="10" r="3" fill="oklch(0.75 0.18 270)">
+                            <animate attributeName="r" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>
                 </div>
             </div>
-
-            <div class="lp-chart-card">
-                <div class="lp-chart-title">Lead Time · по неделям</div>
-                <svg preserveAspectRatio="none" viewBox="0 0 360 64" width="100%">
-                    <line stroke="rgba(255,255,255,0.05)" stroke-width="1" x1="0" x2="360" y1="16" y2="16"/>
-                    <line stroke="rgba(255,255,255,0.05)" stroke-width="1" x1="0" x2="360" y1="32" y2="32"/>
-                    <line stroke="rgba(255,255,255,0.05)" stroke-width="1" x1="0" x2="360" y1="48" y2="48"/>
-                    <path d="M0,44 L40,38 L80,30 L120,34 L160,22 L200,28 L240,18 L280,14 L320,10 L360,12 L360,64 L0,64 Z"
-                          fill="oklch(0.86 0.22 125 / 0.12)"/>
-                    <path d="M0,56 L40,52 L80,48 L120,50 L160,42 L200,46 L240,38 L280,34 L320,28 L360,30"
-                          fill="none" stroke="rgba(255,255,255,0.18)" stroke-dasharray="4 3" stroke-width="1.5"/>
-                    <path d="M0,44 L40,38 L80,30 L120,34 L160,22 L200,28 L240,18 L280,14 L320,10 L360,12"
-                          fill="none" stroke="oklch(0.86 0.22 125)" stroke-linecap="round"
-                          stroke-linejoin="round" stroke-width="2.2"/>
-                    <circle cx="360" cy="12" fill="oklch(0.86 0.22 125)" r="3"/>
-                </svg>
-            </div>
-
         </div>
 
-        <div class="lp-hero-footer">
-            <span class="lp-beta-badge">✦ Весь функционал бесплатно</span>
-            <span class="lp-hero-note">Без кредитной карты</span>
+        <div class="hero-foot">
+            <span class="hero-foot-pill">✦ Весь функционал бесплатно</span>
+            <span class="hero-foot-note">Без кредитной карты</span>
         </div>
-
     </div>
 
-    <!-- ══ RIGHT AUTH ═════════════════════════════════════════════════ -->
-    <div class="lp-auth">
-        <div class="lp-auth-card">
-
-            <div class="lp-auth-logo">
-                <svg fill="none" height="22" viewBox="0 0 22 22" width="22">
-                    <defs>
-                        <linearGradient id="lg-auth" x1="0" x2="1" y1="0" y2="1">
-                            <stop offset="0" stop-color="oklch(0.42 0.19 275)"/>
-                            <stop offset="1" stop-color="oklch(0.58 0.15 275)"/>
-                        </linearGradient>
-                    </defs>
-                    <path d="M11 1 L21 8 L17 21 L5 21 L1 8 Z" fill="url(#lg-auth)"/>
-                    <path d="M11 1 L17 21 L11 14 L5 21 Z" fill="rgba(0,0,0,0.12)"/>
+    <!-- ─ RIGHT AUTH ─ -->
+    <div class="auth">
+        <div class="auth-card">
+            <a class="logo auth-logo" th:href="@{/}">
+                <svg class="logo-mark" viewBox="0 0 22 22" fill="none">
+                    <path d="M11 1.5 L20 7.5 L17 20.5 L5 20.5 L2 7.5 Z" fill="oklch(0.55 0.20 270)"/>
+                    <path d="M11 1.5 L17 20.5 L11 14 L5 20.5 Z" fill="rgba(0,0,0,0.18)"/>
                 </svg>
-                <span class="lp-auth-logo-text">GitPulse</span>
-            </div>
+                <span style="font-size:15px;font-weight:700;letter-spacing:-0.01em">GitPulse</span>
+            </a>
 
-            <h2 class="lp-auth-heading">Добро пожаловать</h2>
-            <p class="lp-auth-sub">Войдите в аналитику своей команды.</p>
+            <h2 class="auth-h">Добро пожаловать</h2>
+            <p class="auth-sub">Войдите в аналитику своей команды.</p>
 
-            <div class="lp-error" th:if="${param.error}">
+            <div class="alert alert-error" th:if="${param.error}">
                 Неверный email или пароль.
             </div>
-            <div class="lp-error" th:if="${param.disabled}"
-                 style="background:oklch(0.95 0.05 60 / 0.5);border-color:oklch(0.75 0.12 60 / 0.4);color:oklch(0.45 0.12 60)">
+            <div class="alert alert-warn" th:if="${param.disabled}">
                 Email не подтверждён. Проверьте почту или
-                <a href="/register" style="color:oklch(0.42 0.19 275);font-weight:500;">зарегистрируйтесь снова</a>.
+                <a th:href="@{/register}">зарегистрируйтесь снова</a>.
             </div>
-            <div class="lp-error" th:if="${param.tokenExpired}"
-                 style="background:oklch(0.95 0.05 60 / 0.5);border-color:oklch(0.75 0.12 60 / 0.4);color:oklch(0.45 0.12 60)">
+            <div class="alert alert-warn" th:if="${param.tokenExpired}">
                 Ссылка устарела. Запросите новую через «Забыли пароль?».
             </div>
-
-            <div style="margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;
-                        border-radius:8px;font-size:13px;color:#15803d;"
-                 th:if="${param.verified}">Email подтверждён — войдите в аккаунт.
+            <div class="alert alert-ok" th:if="${param.verified}">
+                Email подтверждён — войдите в аккаунт.
             </div>
-            <div style="margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;
-                        border-radius:8px;font-size:13px;color:#15803d;"
-                 th:if="${param.passwordReset}">Пароль успешно изменён. Войдите с новым паролем.
+            <div class="alert alert-ok" th:if="${param.passwordReset}">
+                Пароль изменён. Войдите с новым.
             </div>
-            <div style="margin-bottom:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;
-                        border-radius:8px;font-size:13px;color:#15803d;"
-                 th:if="${param.logout}">Вы вышли из системы.
+            <div class="alert alert-ok" th:if="${param.logout}">
+                Вы вышли из системы.
             </div>
 
-            <!-- Email + password form -->
-            <form action="/login" method="post" th:action="@{/login}">
+            <form action="#" method="post" th:action="@{/login}">
                 <input th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}" type="hidden"/>
-                <div class="lp-field">
-                    <label class="lp-label" for="email">Email</label>
-                    <input autocomplete="email" class="lp-input" id="email"
-                           name="email" placeholder="you@company.com" required type="email"/>
+
+                <div class="field">
+                    <div class="label-row">
+                        <label class="label" for="email">Email</label>
+                    </div>
+                    <div class="input-wrap">
+                        <input class="input" id="email" name="email" type="email"
+                               autocomplete="email" placeholder="you@company.com" required>
+                    </div>
                 </div>
-                <div class="lp-field">
-                    <label class="lp-label" for="password">Пароль</label>
-                    <input autocomplete="current-password" class="lp-input" id="password"
-                           name="password" placeholder="••••••••" required type="password"/>
+
+                <div class="field">
+                    <div class="label-row">
+                        <label class="label" for="password">Пароль</label>
+                        <a class="label-link" th:href="@{/forgot-password}">Забыли пароль?</a>
+                    </div>
+                    <div class="input-wrap">
+                        <input class="input" id="password" name="password" type="password"
+                               autocomplete="current-password" placeholder="••••••••" required>
+                        <button type="button" class="input-icon-btn" aria-label="Показать пароль"
+                                onclick="(function(b){var i=b.previousElementSibling;i.type=i.type==='password'?'text':'password';})(this)">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor"
+                                      stroke-width="1.4"/>
+                                <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.4"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-                <button class="lp-btn-primary" type="submit">Войти</button>
+
+                <label class="remember-row">
+                    <input type="checkbox" name="remember-me" value="true">
+                    Запомнить меня
+                </label>
+
+                <button class="btn-primary" type="submit">Войти</button>
             </form>
 
-            <p style="font-size:12px;color:#8a8573;text-align:center;margin:0 0 8px;">
-                <a href="/forgot-password" style="color:#8a8573;text-decoration:none;">Забыли пароль?</a>
-            </p>
-            <p style="font-size:12px;color:#8a8573;text-align:center;margin-bottom:0;">
-                Нет аккаунта?
-                <a href="/register" style="color:oklch(0.42 0.19 275);font-weight:500;text-decoration:none;">Зарегистрироваться</a>
-            </p>
-
+            <p class="auth-foot">Нет аккаунта? <a th:href="@{/register}">Зарегистрироваться</a></p>
         </div>
 
-        <div class="lp-auth-footer">© 2026 GitPulse</div>
+        <div class="auth-meta">
+            <span>© 2026 GitPulse</span>
+            <span><a href="#">Privacy</a> · <a href="#">Условия</a></span>
+        </div>
     </div>
 
 </div>

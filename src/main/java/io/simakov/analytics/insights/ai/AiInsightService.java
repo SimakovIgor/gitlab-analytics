@@ -144,7 +144,7 @@ public class AiInsightService {
             List<TrackedUser> users = trackedUserRepository.findAllByWorkspaceId(workspaceId);
             List<Long> userIds = users.stream().map(TrackedUser::getId).toList();
 
-            List<Long> projectIdsToUse = resolvedProjectIds.isEmpty()
+            List<Long> projectIdsToUse = (resolvedProjectIds == null || resolvedProjectIds.isEmpty())
                 ? trackedProjectRepository.findAllByWorkspaceId(workspaceId).stream()
                   .map(TrackedProject::getId).toList()
                 : resolvedProjectIds;

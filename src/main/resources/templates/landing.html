@@ -1,1306 +1,1408 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <title>GitPulse — инженерная аналитика для GitLab-команд</title>
-    <meta name="description"
-          content="DORA-метрики, code review insights и командная эффективность из ваших GitLab-проектов. Подключение за 5 минут.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
-          rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/css/analytics.css}">
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html { scroll-behavior: smooth; }
-
-        body {
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
-            background: #f6f4ef;
-            color: #16150f;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* ── Navbar ──────────────────────────────────────────────────── */
-        .nav {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(246, 244, 239, 0.88);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid #e7e3d8;
-            padding: 0 40px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            color: #16150f;
-        }
-
-        .nav-logo-mark {
-            width: 32px;
-            height: 32px;
-        }
-
-        .nav-logo-text {
-            font-size: 17px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 32px;
-            list-style: none;
-        }
-
-        .nav-links a {
-            font-size: 14px;
-            font-weight: 500;
-            color: #5a5648;
-            text-decoration: none;
-            transition: color 0.15s;
-        }
-
-        .nav-links a:hover { color: #16150f; }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .btn-ghost {
-            font-size: 14px;
-            font-weight: 500;
-            color: #5a5648;
-            background: none;
-            border: none;
-            cursor: pointer;
-            text-decoration: none;
-            padding: 6px 14px;
-            border-radius: 8px;
-            transition: background 0.15s, color 0.15s;
-        }
-
-        .btn-ghost:hover { background: #e8e4da; color: #16150f; }
-
-        .btn-primary {
-            font-size: 14px;
-            font-weight: 600;
-            color: #fff;
-            background: oklch(0.42 0.19 275);
-            border: none;
-            cursor: pointer;
-            text-decoration: none;
-            padding: 8px 18px;
-            border-radius: 8px;
-            transition: background 0.15s, transform 0.1s;
-            white-space: nowrap;
-        }
-
-        .btn-primary:hover { background: oklch(0.38 0.19 275); transform: translateY(-1px); }
-
-        /* ── Hero ────────────────────────────────────────────────────── */
-        .hero {
-            background: linear-gradient(155deg, oklch(0.14 0.09 278) 0%, oklch(0.21 0.13 272) 100%);
-            min-height: 680px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-            pointer-events: none;
-        }
-
-        .hero::after {
-            content: '';
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            border-radius: 50%;
-            background: radial-gradient(circle, oklch(0.55 0.22 275 / 0.18) 0%, transparent 70%);
-            top: -100px;
-            right: 20%;
-            pointer-events: none;
-        }
-
-        .hero-left {
-            padding: 80px 52px 80px 80px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 28px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: oklch(0.55 0.22 275 / 0.18);
-            border: 1px solid oklch(0.55 0.22 275 / 0.3);
-            border-radius: 999px;
-            padding: 5px 14px;
-            font-size: 12px;
-            font-weight: 600;
-            color: oklch(0.82 0.12 275);
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            width: fit-content;
-        }
-
-        .hero-badge-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: oklch(0.75 0.18 150);
-            box-shadow: 0 0 6px oklch(0.75 0.18 150 / 0.6);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .hero-title {
-            font-size: 52px;
-            font-weight: 800;
-            line-height: 1.08;
-            letter-spacing: -1.5px;
-            color: #fff;
-        }
-
-        .hero-title em {
-            font-style: normal;
-            background: linear-gradient(135deg, oklch(0.78 0.15 275), oklch(0.85 0.12 200));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-sub {
-            font-size: 18px;
-            font-weight: 400;
-            line-height: 1.6;
-            color: oklch(0.82 0.04 275);
-            max-width: 480px;
-        }
-
-        .hero-cta {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
-
-        .btn-hero-primary {
-            font-size: 15px;
-            font-weight: 600;
-            color: #fff;
-            background: oklch(0.42 0.19 275);
-            border: none;
-            cursor: pointer;
-            text-decoration: none;
-            padding: 13px 26px;
-            border-radius: 10px;
-            transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-            box-shadow: 0 4px 24px oklch(0.42 0.19 275 / 0.4);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-hero-primary:hover {
-            background: oklch(0.38 0.19 275);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px oklch(0.42 0.19 275 / 0.5);
-        }
-
-        .btn-hero-ghost {
-            font-size: 15px;
-            font-weight: 500;
-            color: oklch(0.82 0.08 275);
-            background: oklch(1 0 0 / 0.06);
-            border: 1px solid oklch(1 0 0 / 0.15);
-            cursor: pointer;
-            text-decoration: none;
-            padding: 12px 22px;
-            border-radius: 10px;
-            transition: background 0.15s, border-color 0.15s;
-        }
-
-        .btn-hero-ghost:hover {
-            background: oklch(1 0 0 / 0.1);
-            border-color: oklch(1 0 0 / 0.25);
-        }
-
-        .hero-trust {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .hero-trust-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
-            color: oklch(0.72 0.05 275);
-        }
-
-        .hero-trust-item svg { flex-shrink: 0; }
-
-        /* ── Hero right: dashboard mockup ────────────────────────────── */
-        .hero-right {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 40px 40px 0;
-            position: relative;
-            z-index: 1;
-        }
-
-        .mockup-window {
-            background: #f6f4ef;
-            border-radius: 14px;
-            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.08);
-            width: 100%;
-            max-width: 520px;
-            overflow: hidden;
-        }
-
-        .mockup-titlebar {
-            background: #e8e4da;
-            padding: 11px 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border-bottom: 1px solid #d8d3c5;
-        }
-
-        .mockup-dot { width: 12px; height: 12px; border-radius: 50%; }
-
-        .mockup-body { padding: 16px; }
-
-        .mockup-kpi-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .mockup-kpi {
-            background: #fff;
-            border: 1px solid #e7e3d8;
-            border-radius: 8px;
-            padding: 10px 12px;
-        }
-
-        .mockup-kpi-label { font-size: 10px; color: #8a8573; font-weight: 500; margin-bottom: 4px; }
-        .mockup-kpi-value { font-size: 18px; font-weight: 700; color: #16150f; letter-spacing: -0.5px; }
-        .mockup-kpi-delta { font-size: 10px; font-weight: 600; margin-top: 2px; }
-        .mockup-kpi-delta.good { color: oklch(0.52 0.16 150); }
-        .mockup-kpi-delta.bad { color: oklch(0.55 0.22 28); }
-
-        .mockup-chart-area {
-            background: #fff;
-            border: 1px solid #e7e3d8;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-
-        .mockup-chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .mockup-chart-title { font-size: 11px; font-weight: 600; color: #2e2c22; }
-
-        .mockup-chart-svg { width: 100%; height: 64px; }
-
-        .mockup-table { background: #fff; border: 1px solid #e7e3d8; border-radius: 8px; overflow: hidden; }
-
-        .mockup-tr {
-            display: grid;
-            grid-template-columns: 1fr 60px 60px 60px;
-            padding: 7px 12px;
-            border-bottom: 1px solid #f1eee7;
-            align-items: center;
-        }
-
-        .mockup-tr:last-child { border-bottom: none; }
-
-        .mockup-tr-head { background: #f6f4ef; }
-
-        .mockup-th { font-size: 9px; font-weight: 600; color: #8a8573; text-transform: uppercase; letter-spacing: 0.5px; }
-
-        .mockup-user { display: flex; align-items: center; gap: 7px; }
-        .mockup-avatar { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
-        .mockup-name { font-size: 11px; font-weight: 500; color: #2e2c22; }
-        .mockup-td { font-size: 11px; color: #5a5648; font-variant-numeric: tabular-nums; }
-        .mockup-badge {
-            display: inline-block;
-            font-size: 9px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .mockup-badge.elite { background: oklch(0.52 0.16 150 / 0.12); color: oklch(0.42 0.16 150); }
-        .mockup-badge.high { background: oklch(0.42 0.19 275 / 0.10); color: oklch(0.35 0.19 275); }
-
-        .mockup-insight {
-            background: oklch(0.52 0.16 150 / 0.08);
-            border: 1px solid oklch(0.52 0.16 150 / 0.2);
-            border-radius: 6px;
-            padding: 7px 10px;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 10px;
-            color: oklch(0.38 0.16 150);
-            font-weight: 500;
-        }
-
-        /* ── Stats strip ─────────────────────────────────────────────── */
-        .stats-strip {
-            background: #fff;
-            border-bottom: 1px solid #e7e3d8;
-            padding: 28px 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0;
-        }
-
-        .stat-item {
-            flex: 1;
-            text-align: center;
-            padding: 0 40px;
-            border-right: 1px solid #e7e3d8;
-        }
-
-        .stat-item:last-child { border-right: none; }
-
-        .stat-value {
-            font-size: 36px;
-            font-weight: 800;
-            color: #16150f;
-            letter-spacing: -1px;
-            line-height: 1;
-            margin-bottom: 6px;
-        }
-
-        .stat-label { font-size: 14px; color: #8a8573; font-weight: 400; }
-
-        /* ── Section ──────────────────────────────────────────────────── */
-        .section { padding: 88px 80px; }
-
-        .section-alt { background: #fff; }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 56px;
-        }
-
-        .section-eyebrow {
-            display: inline-block;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: oklch(0.42 0.19 275);
-            margin-bottom: 12px;
-        }
-
-        .section-title {
-            font-size: 40px;
-            font-weight: 800;
-            letter-spacing: -1px;
-            line-height: 1.1;
-            color: #16150f;
-            margin-bottom: 14px;
-        }
-
-        .section-sub {
-            font-size: 17px;
-            color: #5a5648;
-            line-height: 1.6;
-            max-width: 560px;
-            margin: 0 auto;
-        }
-
-        /* ── Features grid ───────────────────────────────────────────── */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-        }
-
-        .feature-card {
-            background: #fff;
-            border: 1px solid #e7e3d8;
-            border-radius: 14px;
-            padding: 28px 28px 24px;
-            transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
-        }
-
-        .feature-card:hover {
-            box-shadow: 0 8px 32px rgba(22, 21, 15, 0.08);
-            transform: translateY(-2px);
-            border-color: #d0cbbe;
-        }
-
-        .feature-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 11px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-            font-size: 20px;
-        }
-
-        .feature-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #16150f;
-            margin-bottom: 8px;
-        }
-
-        .feature-desc {
-            font-size: 14px;
-            color: #5a5648;
-            line-height: 1.6;
-        }
-
-        /* ── DORA showcase ───────────────────────────────────────────── */
-        .dora-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-        }
-
-        .dora-card {
-            background: #f6f4ef;
-            border: 1px solid #e7e3d8;
-            border-radius: 12px;
-            padding: 24px 20px;
-            text-align: center;
-        }
-
-        .dora-badge {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 999px;
-            margin-bottom: 12px;
-        }
-
-        .dora-badge.elite { background: oklch(0.52 0.16 150 / 0.12); color: oklch(0.38 0.16 150); }
-        .dora-badge.high  { background: oklch(0.42 0.19 275 / 0.10); color: oklch(0.32 0.19 275); }
-
-        .dora-metric-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: #2e2c22;
-            margin-bottom: 8px;
-        }
-
-        .dora-metric-value {
-            font-size: 28px;
-            font-weight: 800;
-            color: #16150f;
-            letter-spacing: -0.5px;
-            line-height: 1;
-            margin-bottom: 4px;
-        }
-
-        .dora-metric-sub { font-size: 12px; color: #8a8573; }
-
-        /* ── Pricing ─────────────────────────────────────────────────── */
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            max-width: 960px;
-            margin: 0 auto;
-        }
-
-        .pricing-card {
-            background: #fff;
-            border: 1px solid #e7e3d8;
-            border-radius: 16px;
-            padding: 32px 28px;
-            position: relative;
-            transition: box-shadow 0.2s, transform 0.2s;
-        }
-
-        .pricing-card:hover { box-shadow: 0 8px 32px rgba(22, 21, 15, 0.08); transform: translateY(-2px); }
-
-        .pricing-card.featured {
-            border-color: oklch(0.42 0.19 275);
-            background: oklch(0.42 0.19 275);
-            color: #fff;
-        }
-
-        .pricing-popular {
-            position: absolute;
-            top: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: oklch(0.75 0.18 150);
-            color: #fff;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 4px 14px;
-            border-radius: 999px;
-            white-space: nowrap;
-        }
-
-        .pricing-plan {
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 12px;
-        }
-
-        .pricing-card.featured .pricing-plan { color: oklch(0.82 0.1 275); }
-        .pricing-card:not(.featured) .pricing-plan { color: oklch(0.42 0.19 275); }
-
-        .pricing-price {
-            font-size: 40px;
-            font-weight: 800;
-            letter-spacing: -1px;
-            line-height: 1;
-            margin-bottom: 4px;
-        }
-
-        .pricing-card.featured .pricing-price { color: #fff; }
-        .pricing-card:not(.featured) .pricing-price { color: #16150f; }
-
-        .pricing-period {
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
-
-        .pricing-card.featured .pricing-period { color: oklch(0.82 0.1 275); }
-        .pricing-card:not(.featured) .pricing-period { color: #8a8573; }
-
-        .pricing-divider {
-            height: 1px;
-            margin-bottom: 20px;
-        }
-
-        .pricing-card.featured .pricing-divider { background: oklch(1 0 0 / 0.15); }
-        .pricing-card:not(.featured) .pricing-divider { background: #e7e3d8; }
-
-        .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
-
-        .pricing-feature {
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            font-size: 14px;
-        }
-
-        .pricing-card.featured .pricing-feature { color: oklch(0.93 0.04 275); }
-        .pricing-card:not(.featured) .pricing-feature { color: #2e2c22; }
-
-        .pricing-check { flex-shrink: 0; }
-
-        .btn-pricing {
-            width: 100%;
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-            text-decoration: none;
-            display: block;
-            transition: background 0.15s, transform 0.1s;
-        }
-
-        .btn-pricing:hover { transform: translateY(-1px); }
-
-        .btn-pricing-featured {
-            background: #fff;
-            color: oklch(0.42 0.19 275);
-        }
-
-        .btn-pricing-featured:hover { background: oklch(0.97 0.01 275); }
-
-        .btn-pricing-outline {
-            background: transparent;
-            color: #16150f;
-            border: 1.5px solid #e7e3d8;
-        }
-
-        .btn-pricing-outline:hover { background: #f6f4ef; border-color: #d0cbbe; }
-
-        /* ── CTA banner ──────────────────────────────────────────────── */
-        .cta-section {
-            background: linear-gradient(135deg, oklch(0.14 0.09 278) 0%, oklch(0.21 0.13 272) 100%);
-            padding: 88px 80px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-section::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-            pointer-events: none;
-        }
-
-        .cta-content { position: relative; z-index: 1; }
-
-        .cta-title {
-            font-size: 44px;
-            font-weight: 800;
-            color: #fff;
-            letter-spacing: -1px;
-            margin-bottom: 16px;
-        }
-
-        .cta-sub {
-            font-size: 18px;
-            color: oklch(0.78 0.06 275);
-            margin-bottom: 36px;
-        }
-
-        .cta-actions {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-        }
-
-        /* ── Footer ──────────────────────────────────────────────────── */
-        .footer {
-            background: #16150f;
-            padding: 48px 80px 32px;
-        }
-
-        .footer-top {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 40px;
-            padding-bottom: 36px;
-            border-bottom: 1px solid #2e2c22;
-            margin-bottom: 28px;
-        }
-
-        .footer-logo-area {}
-
-        .footer-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            color: #fff;
-            margin-bottom: 10px;
-        }
-
-        .footer-logo-text { font-size: 16px; font-weight: 700; }
-
-        .footer-tagline { font-size: 13px; color: #5a5648; max-width: 240px; line-height: 1.5; }
-
-        .footer-links { display: flex; gap: 48px; }
-
-        .footer-col-title { font-size: 12px; font-weight: 700; color: #8a8573; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-
-        .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-
-        .footer-col ul a { font-size: 14px; color: #5a5648; text-decoration: none; transition: color 0.15s; }
-
-        .footer-col ul a:hover { color: #fff; }
-
-        .footer-bottom {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .footer-copy { font-size: 13px; color: #5a5648; }
-
-        /* ── Responsive ──────────────────────────────────────────────── */
-        @media (max-width: 1024px) {
-            .hero { grid-template-columns: 1fr; }
-            .hero-right { display: none; }
-            .hero-left { padding: 64px 40px; }
-            .hero-title { font-size: 40px; }
-            .features-grid { grid-template-columns: repeat(2, 1fr); }
-            .dora-grid { grid-template-columns: repeat(2, 1fr); }
-            .section { padding: 64px 40px; }
-            .stats-strip { padding: 24px 40px; gap: 0; }
-        }
-
-        @media (max-width: 768px) {
-            .nav { padding: 0 20px; }
-            .nav-links { display: none; }
-            .hero-left { padding: 48px 24px; }
-            .hero-title { font-size: 32px; }
-            .hero-cta { flex-direction: column; align-items: flex-start; }
-            .features-grid { grid-template-columns: 1fr; }
-            .dora-grid { grid-template-columns: 1fr 1fr; }
-            .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
-            .section { padding: 48px 24px; }
-            .section-title { font-size: 30px; }
-            .stats-strip { flex-direction: column; gap: 20px; padding: 32px 24px; }
-            .stat-item { border-right: none; border-bottom: 1px solid #e7e3d8; padding: 0 0 20px; }
-            .stat-item:last-child { border-bottom: none; padding-bottom: 0; }
-            .cta-section { padding: 56px 24px; }
-            .cta-title { font-size: 30px; }
-            .cta-actions { flex-direction: column; }
-            .footer { padding: 40px 24px 24px; }
-            .footer-top { flex-direction: column; }
-            .footer-links { flex-direction: column; gap: 28px; }
-            .footer-bottom { flex-direction: column; gap: 10px; text-align: center; }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GitPulse — инженерная аналитика</title>
+<meta name="description"
+      content="DORA-метрики, code review insights и командная эффективность из ваших GitLab-проектов. Подключение за 5 минут.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap"
+      rel="stylesheet">
+<style>
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink:        #0a0a0a;
+    --ink-2:      #18181b;
+    --ink-3:      #27272a;
+    --line:       #e7e5e4;
+    --line-2:     #d6d3d1;
+    --paper:      #fafaf9;
+    --paper-2:    #f5f5f4;
+    --muted:      #78716c;
+    --muted-2:   #57534e;
+    --accent:    oklch(0.55 0.20 270);
+    --accent-2:  oklch(0.70 0.18 270);
+    --accent-soft: oklch(0.55 0.20 270 / 0.10);
+    --good:      oklch(0.55 0.16 150);
+    --warn:      oklch(0.70 0.16 70);
+    --bad:       oklch(0.60 0.20 25);
+    --radius-sm: 8px;
+    --radius:    12px;
+    --radius-lg: 16px;
+  }
+  html, body { font-family: 'Geist', -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: var(--ink); background: #fff; }
+  body { font-feature-settings: "ss01","ss02","cv11"; }
+  a { color: inherit; text-decoration: none; }
+  ul { list-style: none; }
+  .mono { font-family: 'Geist Mono', ui-monospace, monospace; font-feature-settings: "zero","ss01"; }
+
+  /* ─ Top nav (sticky, glass) ──────────────────────────────────────── */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: saturate(180%) blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: -0.02em; font-size: 15px; }
+  .logo-mark { width: 22px; height: 22px; }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a { font-size: 13px; color: var(--muted-2); font-weight: 500; transition: color .15s; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid transparent;
+    font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+    transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
+  }
+  .btn-ghost { color: var(--muted-2); }
+  .btn-ghost:hover { color: var(--ink); background: var(--paper); }
+  .btn-outline { border-color: var(--line-2); color: var(--ink); }
+  .btn-outline:hover { background: var(--paper); border-color: var(--ink-3); }
+  .btn-primary { background: var(--ink); color: #fff; }
+  .btn-primary:hover { background: var(--ink-2); transform: translateY(-1px); }
+  .btn-lg { padding: 11px 18px; font-size: 14px; }
+
+  /* ─ Hero (dark) ──────────────────────────────────────────────────── */
+  .hero {
+    position: relative;
+    background: var(--ink);
+    color: #fafaf9;
+    padding: 88px 32px 0;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 100% 70% at 50% 0%, #000 40%, transparent 80%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: ''; position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+    width: 900px; height: 600px;
+    background: radial-gradient(ellipse at center, oklch(0.55 0.20 270 / 0.30) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero-inner { position: relative; max-width: 1200px; margin: 0 auto; text-align: center; padding-bottom: 0; }
+
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 12px 5px 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 999px;
+    font-size: 12px; font-weight: 500;
+    color: rgba(250,250,249,0.85);
+    margin-bottom: 28px;
+  }
+  .hero-eyebrow-pill {
+    background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px;
+  }
+
+  h1.hero-title {
+    font-size: clamp(40px, 6.5vw, 76px);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+    font-weight: 600;
+    color: #fff;
+    max-width: 880px; margin: 0 auto 20px;
+    text-wrap: balance;
+  }
+  h1.hero-title em {
+    font-style: normal;
+    background: linear-gradient(180deg, var(--accent-2) 0%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: 18px; line-height: 1.55;
+    color: rgba(250,250,249,0.55);
+    max-width: 560px; margin: 0 auto 36px;
+    text-wrap: pretty;
+  }
+  .hero-cta { display: inline-flex; gap: 10px; }
+  .hero-cta .btn-primary { background: #fff; color: var(--ink); }
+  .hero-cta .btn-primary:hover { background: var(--paper); }
+  .hero-cta .btn-ghost { color: rgba(250,250,249,0.85); }
+  .hero-cta .btn-ghost:hover { color: #fff; background: rgba(255,255,255,0.06); }
+
+  .hero-trust {
+    margin-top: 22px;
+    display: inline-flex; gap: 18px; align-items: center;
+    font-size: 12px; color: rgba(250,250,249,0.40);
+  }
+  .hero-trust svg { color: oklch(0.75 0.16 150); flex-shrink: 0; }
+
+  /* ─ Hero product shot ────────────────────────────────────────────── */
+  .hero-shot-wrap {
+    position: relative; max-width: 1180px; margin: 80px auto 0;
+    padding: 0 12px;
+  }
+  .hero-shot {
+    position: relative;
+    border-radius: 14px;
+    background: #18181b;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow:
+      0 50px 120px -20px rgba(120, 80, 250, 0.18),
+      0 30px 60px -15px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .hero-shot::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 35%;
+    background: linear-gradient(180deg, transparent 0%, var(--ink) 95%);
+    pointer-events: none;
+  }
+  .shot-title {
+    height: 38px; display: flex; align-items: center; gap: 8px;
+    padding: 0 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: #0f0f10;
+  }
+  .shot-dot { width: 11px; height: 11px; border-radius: 50%; }
+  .shot-url {
+    margin-left: 10px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.30);
+  }
+  .shot-body { padding: 0; min-height: 540px; background: #0d0d0e; }
+
+  /* product-shot interior */
+  .ps-grid { display: grid; grid-template-columns: 220px 1fr; min-height: 540px; }
+  .ps-side {
+    background: #0a0a0b;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    padding: 14px 10px;
+  }
+  .ps-side-logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px 16px; font-size: 13px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
+  .ps-side-section { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.30); padding: 12px 8px 6px; font-weight: 600; }
+  .ps-nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; font-size: 12px; color: rgba(255,255,255,0.55); cursor: default; }
+  .ps-nav-item.active { background: rgba(255,255,255,0.06); color: #fff; }
+  .ps-nav-item .ps-nav-dot { width: 6px; height: 6px; border-radius: 2px; background: currentColor; opacity: 0.5; }
+  .ps-nav-item.active .ps-nav-dot { opacity: 1; background: var(--accent-2); }
+
+  .ps-main { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
+  .ps-topbar { display: flex; justify-content: space-between; align-items: center; }
+  .ps-h1 { font-size: 18px; font-weight: 600; color: #fafaf9; letter-spacing: -0.01em; }
+  .ps-h1-sub { font-size: 12px; color: rgba(255,255,255,0.40); margin-top: 2px; }
+  .ps-pill {
+    font-size: 10px; padding: 3px 8px; border-radius: 999px;
+    background: rgba(120,200,140,0.12); color: oklch(0.85 0.18 150);
+    font-weight: 600; border: 1px solid rgba(120,200,140,0.18);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .ps-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .ps-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .ps-kpi {
+    background: #131315;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .ps-kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.40); margin-bottom: 8px; font-weight: 500; }
+  .ps-kpi-val { font-family: 'Geist Mono', monospace; font-size: 22px; font-weight: 500; color: #fff; letter-spacing: -0.02em; line-height: 1; }
+  .ps-kpi-delta { font-size: 11px; margin-top: 5px; display: flex; align-items: center; gap: 4px; font-weight: 500; }
+  .ps-kpi-delta.good { color: oklch(0.80 0.18 150); }
+  .ps-kpi-delta.bad { color: oklch(0.72 0.20 25); }
+
+  .ps-chart-card {
+    background: #131315;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .ps-chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .ps-chart-title { font-size: 12px; font-weight: 600; color: #fafaf9; }
+  .ps-chart-legend { display: flex; gap: 14px; font-size: 11px; color: rgba(255,255,255,0.50); }
+  .ps-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .ps-chart-legend i { width: 8px; height: 2px; border-radius: 1px; background: currentColor; display: inline-block; }
+
+  .ps-insight-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ps-insight {
+    background: #131315; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; padding: 12px 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .ps-insight-icon { width: 28px; height: 28px; border-radius: 7px; background: rgba(255,180,80,0.10); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ps-insight-icon.violet { background: oklch(0.55 0.20 270 / 0.18); }
+  .ps-insight-title { font-size: 12px; font-weight: 600; color: #fafaf9; margin-bottom: 3px; }
+  .ps-insight-desc { font-size: 11px; color: rgba(255,255,255,0.45); line-height: 1.45; }
+
+  /* ─ Generic section ──────────────────────────────────────────────── */
+  .section { padding: 120px 32px; max-width: 1200px; margin: 0 auto; }
+  .section-narrow { max-width: 900px; }
+  .eyebrow {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.10em;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  h2.section-title {
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 600; letter-spacing: -0.03em; line-height: 1.05;
+    color: var(--ink);
+    text-wrap: balance;
+    margin-bottom: 16px;
+  }
+  .section-sub {
+    font-size: 18px; line-height: 1.55;
+    color: var(--muted-2);
+    max-width: 600px;
+    text-wrap: pretty;
+  }
+  .section-head-center { text-align: center; }
+  .section-head-center .section-sub { margin: 0 auto; }
+
+  /* ─ Story rows (alternating image/text) ──────────────────────────── */
+  .story-row {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 64px;
+    align-items: center;
+    padding: 80px 0;
+    border-top: 1px solid var(--line);
+  }
+  .story-row.reverse { grid-template-columns: 1.4fr 1fr; }
+  .story-row.reverse .story-text { order: 2; }
+  .story-row.reverse .story-shot { order: 1; }
+  .story-row:first-child { border-top: none; padding-top: 0; }
+
+  .story-text h3 {
+    font-size: 32px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+    margin-bottom: 14px; color: var(--ink);
+  }
+  .story-text .story-eyebrow {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .story-text p {
+    font-size: 16px; line-height: 1.6; color: var(--muted-2);
+    margin-bottom: 16px;
+  }
+  .story-bullets { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+  .story-bullet { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; color: var(--ink); }
+  .story-bullet svg { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+
+  /* mini product shot used in stories */
+  .story-shot {
+    position: relative;
+    border-radius: var(--radius);
+    background: #fff;
+    border: 1px solid var(--line);
+    box-shadow:
+      0 1px 0 0 rgba(255,255,255,1) inset,
+      0 30px 60px -25px rgba(0,0,0,0.18),
+      0 12px 30px -10px rgba(0,0,0,0.08);
+    overflow: hidden;
+    aspect-ratio: 16/11;
+  }
+  .story-shot-bar {
+    height: 28px; background: var(--paper-2);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  }
+  .story-shot-bar i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); display: inline-block; }
+  .story-shot-bar span { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--muted); margin-left: 8px; }
+  .story-shot-body { padding: 18px 20px; height: calc(100% - 28px); display: flex; flex-direction: column; gap: 12px; }
+
+  /* shot variants */
+  .shot-overview { background: #fff; }
+  .shot-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--paper-2); font-size: 12px; }
+  .shot-row-left { display: flex; align-items: center; gap: 10px; }
+  .shot-avatar { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+  .shot-row-name { font-weight: 500; color: var(--ink); }
+  .shot-row-team { font-size: 10px; color: var(--muted); margin-left: 6px; padding: 2px 6px; border-radius: 4px; }
+  .shot-row-stat { font-family: 'Geist Mono', monospace; color: var(--muted-2); font-size: 11px; min-width: 36px; text-align: right; }
+  .shot-tag { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .shot-tag.elite { background: oklch(0.55 0.16 150 / 0.12); color: oklch(0.42 0.16 150); }
+  .shot-tag.high  { background: oklch(0.55 0.20 270 / 0.10); color: oklch(0.45 0.20 270); }
+
+  /* DORA shot */
+  .shot-dora-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
+  .shot-dora-cell { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+  .shot-dora-name { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .shot-dora-val { font-family: 'Geist Mono', monospace; font-size: 18px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); line-height: 1; margin-bottom: 4px; }
+  .shot-dora-bar { height: 4px; background: var(--paper-2); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+  .shot-dora-bar i { display: block; height: 100%; background: oklch(0.55 0.16 150); }
+
+  /* Insights shot */
+  .shot-insight-card { display: flex; gap: 10px; padding: 10px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; align-items: flex-start; }
+  .shot-insight-icon { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .shot-insight-title { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+  .shot-insight-desc { font-size: 11px; color: var(--muted-2); line-height: 1.4; }
+
+  /* Flow shot */
+  .shot-flow-stages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .shot-flow-stage { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px 6px; text-align: center; }
+  .shot-flow-stage-name { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; margin-bottom: 5px; }
+  .shot-flow-stage-val { font-family: 'Geist Mono', monospace; font-size: 14px; font-weight: 500; color: var(--ink); }
+
+  /* ─ How it works (3 steps) ──────────────────────────────────────── */
+  .steps-section { background: var(--paper); padding: 120px 32px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .steps-inner { max-width: 1200px; margin: 0 auto; }
+  .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+  .step-card {
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px;
+    position: relative;
+  }
+  .step-num {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px; color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .step-title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 8px; color: var(--ink); }
+  .step-desc { font-size: 14px; line-height: 1.55; color: var(--muted-2); }
+  .step-meta { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--paper-2); font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+  /* ─ DORA showcase ────────────────────────────────────────────── */
+  .dora-block {
+    background: var(--ink);
+    color: #fafaf9;
+    border-radius: 20px;
+    padding: 64px 56px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .dora-block-left h2 { color: #fff; font-size: 40px; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 16px; line-height: 1.1; }
+  .dora-block-left p { color: rgba(250,250,249,0.55); font-size: 16px; line-height: 1.6; }
+  .dora-block-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .dora-cell {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .dora-cell-name { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.50); font-weight: 500; margin-bottom: 12px; }
+  .dora-cell-val { font-family: 'Geist Mono', monospace; font-size: 28px; font-weight: 500; letter-spacing: -0.02em; color: #fff; margin-bottom: 4px; line-height: 1; }
+  .dora-cell-sub { font-size: 12px; color: rgba(255,255,255,0.40); margin-bottom: 10px; }
+  .dora-cell-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  .dora-cell-bar i { display: block; height: 100%; background: var(--accent-2); }
+
+  /* ─ Security strip ──────────────────────────────────────────────── */
+  .security-section { padding: 80px 32px; max-width: 1200px; margin: 0 auto; }
+  .security-grid { display: grid; grid-template-columns: 1.2fr 2fr; gap: 56px; align-items: start; }
+  .security-features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sec-card {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px;
+    background: #fff;
+  }
+  .sec-card-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--paper); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; color: var(--ink); }
+  .sec-card-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 5px; }
+  .sec-card-desc { font-size: 13px; line-height: 1.5; color: var(--muted-2); }
+
+  /* ─ Pricing ─────────────────────────────────────────────────────── */
+  .pricing-section { padding: 120px 32px; background: var(--paper); border-top: 1px solid var(--line); }
+  .pricing-inner { max-width: 1200px; margin: 0 auto; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 1080px; margin: 56px auto 0; }
+  .price-card {
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 32px 28px;
+    position: relative;
+    display: flex; flex-direction: column;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+  }
+  .price-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
+  .price-card.featured { background: var(--ink); color: #fafaf9; border-color: var(--ink); }
+  .price-card.featured:hover { box-shadow: 0 18px 36px rgba(50,30,120,0.20); }
+  .price-popular {
+    position: absolute; top: -11px; left: 24px;
+    background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .price-name { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+  .price-card.featured .price-name { color: #fafaf9; }
+  .price-amount { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
+  .price-amount .num { font-family: 'Geist Mono', monospace; font-size: 44px; font-weight: 500; letter-spacing: -0.03em; color: var(--ink); line-height: 1; }
+  .price-card.featured .price-amount .num { color: #fff; }
+  .price-amount .cur { font-size: 18px; font-weight: 500; color: var(--muted); }
+  .price-card.featured .price-amount .cur { color: rgba(255,255,255,0.50); }
+  .price-period { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+  .price-card.featured .price-period { color: rgba(255,255,255,0.50); }
+  .price-divider { height: 1px; background: var(--line); margin-bottom: 22px; }
+  .price-card.featured .price-divider { background: rgba(255,255,255,0.10); }
+  .price-features { display: flex; flex-direction: column; gap: 11px; flex: 1; margin-bottom: 24px; }
+  .price-feature { display: flex; gap: 9px; font-size: 13px; line-height: 1.4; color: var(--ink); align-items: flex-start; }
+  .price-card.featured .price-feature { color: rgba(255,255,255,0.85); }
+  .price-feature svg { color: var(--good); flex-shrink: 0; margin-top: 2px; }
+  .price-card.featured .price-feature svg { color: oklch(0.78 0.16 150); }
+  .price-cta {
+    width: 100%; padding: 11px; border-radius: var(--radius-sm); font-weight: 500; font-size: 14px;
+    border: 1px solid var(--line-2); background: #fff; color: var(--ink); cursor: pointer; text-align: center;
+    transition: background .15s, border-color .15s;
+    display: block;
+  }
+  .price-cta:hover { background: var(--paper); border-color: var(--ink-3); }
+  .price-card.featured .price-cta { background: #fff; color: var(--ink); border-color: #fff; }
+  .price-card.featured .price-cta:hover { background: var(--paper); }
+
+  .pricing-note {
+    margin-top: 28px; text-align: center;
+    font-size: 13px; color: var(--muted-2);
+  }
+
+  /* ─ FAQ ─────────────────────────────────────────────────────────── */
+  .faq-section { padding: 120px 32px; max-width: 800px; margin: 0 auto; }
+  .faq { border-top: 1px solid var(--line); }
+  .faq-item { border-bottom: 1px solid var(--line); padding: 22px 0; }
+  .faq-q { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+  .faq-q .mono { color: var(--accent); font-size: 12px; margin-top: 4px; flex-shrink: 0; }
+  .faq-a { font-size: 14px; line-height: 1.6; color: var(--muted-2); padding-left: 28px; }
+
+  /* ─ Final CTA ───────────────────────────────────────────────────── */
+  .final-cta {
+    background: var(--ink); color: #fff;
+    padding: 96px 32px;
+    text-align: center;
+    border-top: 1px solid var(--ink-3);
+    position: relative; overflow: hidden;
+  }
+  .final-cta::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 50% 100%, oklch(0.55 0.20 270 / 0.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .final-cta-inner { position: relative; max-width: 720px; margin: 0 auto; }
+  .final-cta h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 600; letter-spacing: -0.03em; margin-bottom: 14px; line-height: 1.1; color: #fff; }
+  .final-cta p { font-size: 17px; color: rgba(255,255,255,0.55); margin-bottom: 32px; }
+
+  /* ─ Footer ──────────────────────────────────────────────────────── */
+  .footer { background: var(--ink); color: rgba(255,255,255,0.50); padding: 56px 32px 28px; border-top: 1px solid var(--ink-3); }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: flex; justify-content: space-between; gap: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--ink-3); }
+  .footer-brand { max-width: 280px; }
+  .footer-brand .logo { color: #fff; margin-bottom: 12px; }
+  .footer-tag { font-size: 13px; line-height: 1.5; }
+  .footer-cols { display: flex; gap: 56px; }
+  .footer-col-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.40); margin-bottom: 12px; }
+  .footer-col ul { display: flex; flex-direction: column; gap: 8px; }
+  .footer-col a { font-size: 13px; color: rgba(255,255,255,0.65); transition: color .15s; }
+  .footer-col a:hover { color: #fff; }
+  .footer-bottom { padding-top: 24px; display: flex; justify-content: space-between; font-size: 12px; }
+
+  /* ─ Responsive ──────────────────────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .nav-links { display: none; }
+    .story-row, .story-row.reverse { grid-template-columns: 1fr; gap: 32px; padding: 60px 0; }
+    .story-row.reverse .story-text, .story-row.reverse .story-shot { order: unset; }
+    .dora-block { grid-template-columns: 1fr; padding: 48px 32px; gap: 32px; }
+    .security-grid { grid-template-columns: 1fr; gap: 24px; }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 420px; }
+    .steps-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .hero { padding: 56px 20px 0; }
+    .section, .steps-section, .security-section, .pricing-section, .faq-section, .final-cta { padding-left: 20px; padding-right: 20px; }
+    .ps-grid { grid-template-columns: 1fr; }
+    .ps-side { display: none; }
+    .ps-kpi-row { grid-template-columns: 1fr 1fr; }
+    .ps-insight-row { grid-template-columns: 1fr; }
+    .security-features { grid-template-columns: 1fr; }
+    .footer-top { flex-direction: column; }
+    .footer-cols { flex-wrap: wrap; gap: 28px; }
+  }
+</style>
 </head>
 <body>
 
-<!-- ── Navbar ──────────────────────────────────────────────────────────── -->
+<!-- ─ NAV ─────────────────────────────────────────────────────────── -->
 <nav class="nav">
-    <a class="nav-logo" href="/">
-        <svg class="nav-logo-mark" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polygon points="16,2 30,9 30,23 16,30 2,23 2,9" fill="oklch(0.42 0.19 275)" opacity="0.15"/>
-            <polygon points="16,4 28,10.5 28,22.5 16,29 4,22.5 4,10.5" fill="none" stroke="oklch(0.42 0.19 275)" stroke-width="1.5"/>
-            <polyline points="8,20 13,13 18,17 24,9" stroke="oklch(0.42 0.19 275)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <circle cx="24" cy="9" r="2.5" fill="oklch(0.42 0.19 275)"/>
+    <a class="logo" th:href="@{/}">
+        <svg class="logo-mark" viewBox="0 0 22 22" fill="none">
+            <path d="M11 1.5 L20 7.5 L17 20.5 L5 20.5 L2 7.5 Z" fill="oklch(0.55 0.20 270)"/>
+            <path d="M11 1.5 L17 20.5 L11 14 L5 20.5 Z" fill="rgba(0,0,0,0.18)"/>
         </svg>
-        <span class="nav-logo-text">GitPulse</span>
+        <span>GitPulse</span>
     </a>
-
     <ul class="nav-links">
-        <li><a href="#features">Возможности</a></li>
+        <li><a href="#product">Продукт</a></li>
+        <li><a href="#how">Как работает</a></li>
         <li><a href="#dora">DORA</a></li>
+        <li><a href="#security">Безопасность</a></li>
         <li><a href="#pricing">Тарифы</a></li>
     </ul>
-
     <div class="nav-actions">
-        <a class="btn-ghost" href="/login">Войти</a>
-        <a class="btn-primary" href="/register">Начать бесплатно →</a>
+        <a class="btn btn-ghost" th:href="@{/login}">Войти</a>
+        <a class="btn btn-primary" th:href="@{/register}">Начать бесплатно</a>
     </div>
 </nav>
 
-<!-- ── Hero ────────────────────────────────────────────────────────────── -->
+<!-- ─ HERO ────────────────────────────────────────────────────────── -->
 <section class="hero">
-    <div class="hero-left">
-        <div class="hero-badge">
-            <span class="hero-badge-dot"></span>
-            Инженерная аналитика
+    <div class="hero-inner">
+        <div class="hero-eyebrow">
+            <span class="hero-eyebrow-pill">beta</span>
+            <span>Public beta · функционал бесплатно</span>
         </div>
-
         <h1 class="hero-title">
-            Данные о команде.<br>
-            <em>Не догадки — цифры.</em>
+            Узнайте, где<br>
+            команда <em>тратит время</em>
         </h1>
-
         <p class="hero-sub">
-            DORA-метрики, code review insights и производительность разработчиков —
-            из ваших GitLab-проектов за 5 минут.
+            GitPulse читает ваши GitLab-репозитории и показывает, какой MR висит без ревью, кто перегружен и где
+            доставка теряет дни — не догадки, конкретные ситуации.
         </p>
-
         <div class="hero-cta">
-            <a class="btn-hero-primary" href="/register">
-                Начать бесплатно
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <a class="btn btn-primary btn-lg" th:href="@{/register}">
+                Подключить GitLab
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                          stroke-linejoin="round"/>
                 </svg>
             </a>
-            <a class="btn-hero-ghost" href="/login">Войти в аккаунт</a>
+            <a class="btn btn-ghost btn-lg" href="#product">Посмотреть как выглядит</a>
         </div>
-
         <div class="hero-trust">
-            <div class="hero-trust-item">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="7" cy="7" r="6" stroke="oklch(0.75 0.18 150)" stroke-width="1.5"/>
-                    <path d="M4.5 7l2 2 3-3" stroke="oklch(0.75 0.18 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                Бесплатно до 5 разработчиков
-            </div>
-            <div class="hero-trust-item">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="7" cy="7" r="6" stroke="oklch(0.75 0.18 150)" stroke-width="1.5"/>
-                    <path d="M4.5 7l2 2 3-3" stroke="oklch(0.75 0.18 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <span>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                          stroke-linejoin="round"/>
                 </svg>
                 Без кредитной карты
-            </div>
-            <div class="hero-trust-item">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="7" cy="7" r="6" stroke="oklch(0.75 0.18 150)" stroke-width="1.5"/>
-                    <path d="M4.5 7l2 2 3-3" stroke="oklch(0.75 0.18 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </span>
+            <span>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                          stroke-linejoin="round"/>
                 </svg>
-                Подключение за 5 минут
-            </div>
+                Read-only токены
+            </span>
+            <span>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/>
+                    <path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                          stroke-linejoin="round"/>
+                </svg>
+                Self-hosted available
+            </span>
         </div>
     </div>
 
-    <div class="hero-right">
-        <div class="mockup-window">
-            <div class="mockup-titlebar">
-                <div class="mockup-dot" style="background:#ff5f57;"></div>
-                <div class="mockup-dot" style="background:#febc2e;"></div>
-                <div class="mockup-dot" style="background:#28c840;"></div>
-                <div style="margin-left:8px;font-size:11px;color:#8a8573;font-family:'JetBrains Mono',monospace;">
-                    gitpulse.ru / overview
-                </div>
+    <!-- Big product shot under hero -->
+    <div class="hero-shot-wrap" id="product">
+        <div class="hero-shot">
+            <div class="shot-title">
+                <span class="shot-dot" style="background:#ff5f57"></span>
+                <span class="shot-dot" style="background:#febc2e"></span>
+                <span class="shot-dot" style="background:#28c840"></span>
+                <span class="shot-url">app.gitpulse.ru / overview</span>
             </div>
-            <div class="mockup-body">
-                <div class="mockup-kpi-row">
-                    <div class="mockup-kpi">
-                        <div class="mockup-kpi-label">TTM медиана</div>
-                        <div class="mockup-kpi-value">18ч</div>
-                        <div class="mockup-kpi-delta good">↓ 23%</div>
-                    </div>
-                    <div class="mockup-kpi">
-                        <div class="mockup-kpi-label">MR смержено</div>
-                        <div class="mockup-kpi-value">142</div>
-                        <div class="mockup-kpi-delta good">↑ 11%</div>
-                    </div>
-                    <div class="mockup-kpi">
-                        <div class="mockup-kpi-label">Review depth</div>
-                        <div class="mockup-kpi-value">3.2</div>
-                        <div class="mockup-kpi-delta bad">↓ 8%</div>
-                    </div>
-                    <div class="mockup-kpi">
-                        <div class="mockup-kpi-label">Lead Time</div>
-                        <div class="mockup-kpi-value">2.1д</div>
-                        <div class="mockup-kpi-delta good">↓ 15%</div>
-                    </div>
-                </div>
-
-                <div class="mockup-chart-area">
-                    <div class="mockup-chart-header">
-                        <span class="mockup-chart-title">Динамика TTM · последние 12 нед</span>
-                        <span style="font-size:10px;color:oklch(0.52 0.16 150);font-weight:600;">● улучшение</span>
-                    </div>
-                    <svg class="mockup-chart-svg" viewBox="0 0 460 64" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="oklch(0.42 0.19 275)" stop-opacity="0.15"/>
-                                <stop offset="100%" stop-color="oklch(0.42 0.19 275)" stop-opacity="0"/>
-                            </linearGradient>
-                        </defs>
-                        <path d="M0,50 L38,48 L77,44 L115,46 L153,40 L191,38 L230,35 L268,32 L306,28 L344,25 L383,20 L421,16 L460,12"
-                              fill="none" stroke="oklch(0.42 0.19 275)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M0,50 L38,48 L77,44 L115,46 L153,40 L191,38 L230,35 L268,32 L306,28 L344,25 L383,20 L421,16 L460,12 L460,64 L0,64 Z"
-                              fill="url(#chartGrad)"/>
-                    </svg>
-                </div>
-
-                <div class="mockup-table">
-                    <div class="mockup-tr mockup-tr-head">
-                        <div class="mockup-th">Разработчик</div>
-                        <div class="mockup-th">MR</div>
-                        <div class="mockup-th">TTM</div>
-                        <div class="mockup-th">DORA</div>
-                    </div>
-                    <div class="mockup-tr">
-                        <div class="mockup-user">
-                            <div class="mockup-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);"></div>
-                            <span class="mockup-name">A. Ivanov</span>
+            <div class="shot-body">
+                <div class="ps-grid">
+                    <!-- side -->
+                    <aside class="ps-side">
+                        <div class="ps-side-logo">
+                            <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
+                                <path d="M11 1.5 L20 7.5 L17 20.5 L5 20.5 L2 7.5 Z" fill="oklch(0.70 0.18 270)"/>
+                            </svg>
+                            <span>GitPulse</span>
                         </div>
-                        <div class="mockup-td">28</div>
-                        <div class="mockup-td">14ч</div>
-                        <div class="mockup-td"><span class="mockup-badge elite">Elite</span></div>
-                    </div>
-                    <div class="mockup-tr">
-                        <div class="mockup-user">
-                            <div class="mockup-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444);"></div>
-                            <span class="mockup-name">M. Petrov</span>
+                        <div class="ps-side-section">Аналитика</div>
+                        <div class="ps-nav-item active"><span class="ps-nav-dot"></span>Обзор</div>
+                        <div class="ps-nav-item"><span class="ps-nav-dot"></span>Инсайты</div>
+                        <div class="ps-nav-item"><span class="ps-nav-dot"></span>Сравнить</div>
+                        <div class="ps-nav-item"><span class="ps-nav-dot"></span>Flow</div>
+                        <div class="ps-side-section">Команда</div>
+                        <div class="ps-nav-item"><span class="ps-nav-dot"></span>Сотрудники</div>
+                        <div class="ps-nav-item"><span class="ps-nav-dot"></span>Репозитории</div>
+                        <div class="ps-side-section">Workspace</div>
+                        <div class="ps-nav-item"><span class="ps-nav-dot"></span>Настройки</div>
+                    </aside>
+                    <!-- main -->
+                    <main class="ps-main">
+                        <div class="ps-topbar">
+                            <div>
+                                <div class="ps-h1">Backend Core · ноябрь 2025</div>
+                                <div class="ps-h1-sub">12 разработчиков · 4 репозитория</div>
+                            </div>
+                            <span class="ps-pill">Sync 2 мин назад</span>
                         </div>
-                        <div class="mockup-td">21</div>
-                        <div class="mockup-td">22ч</div>
-                        <div class="mockup-td"><span class="mockup-badge high">High</span></div>
-                    </div>
-                    <div class="mockup-tr">
-                        <div class="mockup-user">
-                            <div class="mockup-avatar" style="background:linear-gradient(135deg,#10b981,#3b82f6);"></div>
-                            <span class="mockup-name">K. Sidorova</span>
+                        <div class="ps-kpi-row">
+                            <div class="ps-kpi">
+                                <div class="ps-kpi-label">Lead Time</div>
+                                <div class="ps-kpi-val">1.8д</div>
+                                <div class="ps-kpi-delta good">↓ 23% к окт</div>
+                            </div>
+                            <div class="ps-kpi">
+                                <div class="ps-kpi-label">MR смержено</div>
+                                <div class="ps-kpi-val">142</div>
+                                <div class="ps-kpi-delta good">↑ 11%</div>
+                            </div>
+                            <div class="ps-kpi">
+                                <div class="ps-kpi-label">Review depth</div>
+                                <div class="ps-kpi-val">3.2</div>
+                                <div class="ps-kpi-delta bad">↓ 8%</div>
+                            </div>
+                            <div class="ps-kpi">
+                                <div class="ps-kpi-label">Stuck MR</div>
+                                <div class="ps-kpi-val">3</div>
+                                <div class="ps-kpi-delta bad">+2 за нед</div>
+                            </div>
                         </div>
-                        <div class="mockup-td">19</div>
-                        <div class="mockup-td">19ч</div>
-                        <div class="mockup-td"><span class="mockup-badge elite">Elite</span></div>
-                    </div>
-                </div>
-
-                <div class="mockup-insight">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <circle cx="7" cy="7" r="6" fill="oklch(0.52 0.16 150 / 0.2)" stroke="oklch(0.52 0.16 150)" stroke-width="1.2"/>
-                        <path d="M7 4.5v3.5M7 9.5v0.5" stroke="oklch(0.38 0.16 150)" stroke-width="1.2" stroke-linecap="round"/>
-                    </svg>
-                    3 открытых MR без движения более 48 часов
+                        <div class="ps-chart-card">
+                            <div class="ps-chart-head">
+                                <span class="ps-chart-title">Динамика TTM · 12 недель</span>
+                                <span class="ps-chart-legend">
+                                    <span><i style="background:oklch(0.70 0.18 270)"></i>текущий</span>
+                                    <span><i style="background:rgba(255,255,255,0.30)"></i>median</span>
+                                </span>
+                            </div>
+                            <svg viewBox="0 0 600 90" preserveAspectRatio="none"
+                                 style="width:100%;height:90px;display:block">
+                                <defs>
+                                    <linearGradient id="chartG" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="oklch(0.70 0.18 270)" stop-opacity="0.30"/>
+                                        <stop offset="100%" stop-color="oklch(0.70 0.18 270)" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <line x1="0" y1="22" x2="600" y2="22" stroke="rgba(255,255,255,0.05)"/>
+                                <line x1="0" y1="45" x2="600" y2="45" stroke="rgba(255,255,255,0.05)"/>
+                                <line x1="0" y1="68" x2="600" y2="68" stroke="rgba(255,255,255,0.05)"/>
+                                <path d="M0,55 L50,52 L100,50 L150,52 L200,48 L250,50 L300,46 L350,44 L400,42 L450,40 L500,40 L550,38 L600,40"
+                                      stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-dasharray="4 4"
+                                      fill="none"/>
+                                <path d="M0,70 L50,66 L100,60 L150,62 L200,52 L250,50 L300,42 L350,38 L400,32 L450,28 L500,22 L550,18 L600,16 L600,90 L0,90 Z"
+                                      fill="url(#chartG)"/>
+                                <path d="M0,70 L50,66 L100,60 L150,62 L200,52 L250,50 L300,42 L350,38 L400,32 L450,28 L500,22 L550,18 L600,16"
+                                      stroke="oklch(0.75 0.18 270)" stroke-width="2" fill="none"
+                                      stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="600" cy="16" r="3.5" fill="oklch(0.75 0.18 270)"/>
+                            </svg>
+                        </div>
+                        <div class="ps-insight-row">
+                            <div class="ps-insight">
+                                <div class="ps-insight-icon">
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <path d="M7 1L13 12H1L7 1Z" stroke="oklch(0.75 0.18 70)" stroke-width="1.5"
+                                              stroke-linejoin="round"/>
+                                        <path d="M7 6v3M7 10.5v.5" stroke="oklch(0.75 0.18 70)" stroke-width="1.5"
+                                              stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="ps-insight-title">3 MR висят больше 48 часов</div>
+                                    <div class="ps-insight-desc">Storage refactor (M.Petrov, 71ч), Auth update
+                                        (A.Ivanov, 58ч)…
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ps-insight">
+                                <div class="ps-insight-icon violet">
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <circle cx="7" cy="7" r="5" stroke="oklch(0.75 0.18 270)" stroke-width="1.5"/>
+                                        <path d="M7 4v3l2 2" stroke="oklch(0.75 0.18 270)" stroke-width="1.5"
+                                              stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="ps-insight-title">K.Sidorova ревьюит 47% MR</div>
+                                    <div class="ps-insight-desc">Дисбаланс ревью — стоит распределить нагрузку</div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- ── Stats strip ──────────────────────────────────────────────────────── -->
-<div class="stats-strip">
-    <div class="stat-item">
-        <div class="stat-value">14</div>
-        <div class="stat-label">алгоритмических инсайтов</div>
-    </div>
-    <div class="stat-item">
-        <div class="stat-value">28</div>
-        <div class="stat-label">метрик разработки</div>
-    </div>
-    <div class="stat-item">
-        <div class="stat-value">4</div>
-        <div class="stat-label">DORA-метрики</div>
-    </div>
-    <div class="stat-item">
-        <div class="stat-value">5мин</div>
-        <div class="stat-label">до первых данных</div>
-    </div>
-</div>
-
-<!-- ── Features ─────────────────────────────────────────────────────────── -->
-<section class="section" id="features">
-    <div class="section-header">
-        <span class="section-eyebrow">Возможности</span>
-        <h2 class="section-title">Всё что нужно инженерной команде</h2>
-        <p class="section-sub">Один инструмент вместо таблиц, BI-систем и ручных отчётов</p>
+<!-- ─ STORY ROWS ──────────────────────────────────────────────────── -->
+<section class="section">
+    <div class="section-head-center" style="margin-bottom: 24px;">
+        <span class="eyebrow">Что внутри</span>
+        <h2 class="section-title">Не таблица KPI. Конкретные ответы.</h2>
+        <p class="section-sub">Каждый экран отвечает на вопрос менеджера или тимлида. Без воды.</p>
     </div>
 
-    <div class="features-grid">
-        <div class="feature-card">
-            <div class="feature-icon" style="background:oklch(0.42 0.19 275 / 0.1);">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <rect x="2" y="2" width="8" height="8" rx="2" fill="oklch(0.42 0.19 275)" opacity="0.3"/>
-                    <rect x="12" y="2" width="8" height="8" rx="2" fill="oklch(0.42 0.19 275)"/>
-                    <rect x="2" y="12" width="8" height="8" rx="2" fill="oklch(0.42 0.19 275)"/>
-                    <rect x="12" y="12" width="8" height="8" rx="2" fill="oklch(0.42 0.19 275)" opacity="0.3"/>
-                </svg>
-            </div>
-            <div class="feature-title">Обзор команды</div>
-            <div class="feature-desc">Таблица разработчиков с 28 метриками: TTM, MR count, review depth, rework ratio и другие. Drill-down по каждому участнику.</div>
-        </div>
-
-        <div class="feature-card">
-            <div class="feature-icon" style="background:oklch(0.52 0.16 150 / 0.1);">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <path d="M4 16l4-5 4 3 6-8" stroke="oklch(0.52 0.16 150)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <circle cx="4" cy="16" r="2" fill="oklch(0.52 0.16 150)"/>
-                    <circle cx="18" cy="6" r="2" fill="oklch(0.52 0.16 150)"/>
-                </svg>
-            </div>
-            <div class="feature-title">DORA-метрики</div>
-            <div class="feature-desc">Lead Time for Changes, Deployment Frequency, Change Failure Rate и MTTR. Автоматически из GitLab и Jira.</div>
-        </div>
-
-        <div class="feature-card">
-            <div class="feature-icon" style="background:oklch(0.65 0.15 65 / 0.1);">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <circle cx="11" cy="11" r="8" stroke="oklch(0.65 0.15 65)" stroke-width="1.5"/>
-                    <path d="M11 7v4l3 3" stroke="oklch(0.65 0.15 65)" stroke-width="1.5" stroke-linecap="round"/>
-                    <circle cx="11" cy="3" r="1.5" fill="oklch(0.65 0.15 65)"/>
-                </svg>
-            </div>
-            <div class="feature-title">14 алго-инсайтов</div>
-            <div class="feature-desc">Stuck MR, review imbalance, large MR habit, delivery drop, rework ratio — автоматически обнаруживаем проблемы до того как они становятся критичными.</div>
-        </div>
-
-        <div class="feature-card">
-            <div class="feature-icon" style="background:oklch(0.50 0.13 245 / 0.1);">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <path d="M3 11h16M3 6l5 5-5 5" stroke="oklch(0.50 0.13 245)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-            <div class="feature-title">Flow-анализ</div>
-            <div class="feature-desc">Value curve, stuck MRs, матрица ревью и баланс нагрузки. Видите где застревает работа и кто перегружен.</div>
-        </div>
-
-        <div class="feature-card">
-            <div class="feature-icon" style="background:oklch(0.55 0.18 330 / 0.1);">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <circle cx="11" cy="8" r="4" stroke="oklch(0.55 0.18 330)" stroke-width="1.5"/>
-                    <path d="M4 19c0-3.87 3.13-7 7-7h0c3.87 0 7 3.13 7 7" stroke="oklch(0.55 0.18 330)" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-            </div>
-            <div class="feature-title">Dev Profile</div>
-            <div class="feature-desc">Личная страница разработчика: KPI, спарклайны активности, список MR. Прозрачность без слежки.</div>
-        </div>
-
-        <div class="feature-card">
-            <div class="feature-icon" style="background:oklch(0.60 0.12 200 / 0.1);">
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                    <polygon points="11,3 19,7.5 19,14.5 11,19 3,14.5 3,7.5" stroke="oklch(0.60 0.12 200)" stroke-width="1.5" fill="none"/>
-                    <polygon points="11,7 16,9.8 16,13.2 11,16 6,13.2 6,9.8" fill="oklch(0.60 0.12 200)" opacity="0.2"/>
-                </svg>
-            </div>
-            <div class="feature-title">Сравнение команд</div>
-            <div class="feature-desc">Radar chart по 5 осям, исторический health score trend и Industry Benchmark против DORA-стандартов.</div>
-        </div>
-    </div>
-</section>
-
-<!-- ── DORA section ──────────────────────────────────────────────────────── -->
-<section class="section section-alt" id="dora">
-    <div class="section-header">
-        <span class="section-eyebrow">DORA Metrics</span>
-        <h2 class="section-title">Стандарт Google для инженерного совершенства</h2>
-        <p class="section-sub">Четыре ключевые метрики которые предсказывают эффективность доставки и стабильность системы</p>
-    </div>
-
-    <div class="dora-grid">
-        <div class="dora-card">
-            <div class="dora-badge elite">Elite</div>
-            <div class="dora-metric-name">Lead Time for Changes</div>
-            <div class="dora-metric-value">1.8д</div>
-            <div class="dora-metric-sub">от commit до продакшна</div>
-        </div>
-        <div class="dora-card">
-            <div class="dora-badge high">High</div>
-            <div class="dora-metric-name">Deployment Frequency</div>
-            <div class="dora-metric-value">4.2/нед</div>
-            <div class="dora-metric-sub">деплоев в неделю</div>
-        </div>
-        <div class="dora-card">
-            <div class="dora-badge elite">Elite</div>
-            <div class="dora-metric-name">Change Failure Rate</div>
-            <div class="dora-metric-value">3.1%</div>
-            <div class="dora-metric-sub">инцидентов на деплой</div>
-        </div>
-        <div class="dora-card">
-            <div class="dora-badge high">High</div>
-            <div class="dora-metric-name">Mean Time to Restore</div>
-            <div class="dora-metric-value">2.4ч</div>
-            <div class="dora-metric-sub">среднее время восстановления</div>
-        </div>
-    </div>
-</section>
-
-<!-- ── Pricing ───────────────────────────────────────────────────────────── -->
-<section class="section" id="pricing">
-    <div class="section-header">
-        <span class="section-eyebrow">Тарифы</span>
-        <h2 class="section-title">Просто и честно</h2>
-        <p class="section-sub">Платите за отслеживаемых разработчиков, а не за пользователей платформы</p>
-    </div>
-
-    <div class="pricing-grid">
-        <!-- Free -->
-        <div class="pricing-card">
-            <div class="pricing-plan">Free</div>
-            <div class="pricing-price">$0</div>
-            <div class="pricing-period">навсегда бесплатно</div>
-            <div class="pricing-divider"></div>
-            <ul class="pricing-features">
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Row 1: Overview -->
+    <div class="story-row">
+        <div class="story-text">
+            <div class="story-eyebrow">Обзор команды</div>
+            <h3>Кто как работает — на одной странице</h3>
+            <p>Таблица из 28 метрик: Time-to-Merge, MR в неделю, глубина ревью, rework ratio, ночные коммиты.
+                Сортировка, фильтры по командам, drill-down в профиль каждого.</p>
+            <ul class="story-bullets">
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    1 репозиторий
+                    Группировка по командам и репозиториям
                 </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    До 5 разработчиков
+                    Сравнение с предыдущим периодом
                 </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    История 30 дней
-                </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Overview + Insights
+                    Drill-down в профиль разработчика
                 </li>
             </ul>
-            <a class="btn-pricing btn-pricing-outline" href="/register">Начать бесплатно</a>
         </div>
+        <div class="story-shot shot-overview">
+            <div class="story-shot-bar"><i></i><i></i><i></i><span>overview · ноябрь</span></div>
+            <div class="story-shot-body" style="padding:12px 0">
+                <div class="shot-row"
+                     style="border-top:1px solid var(--paper-2);padding-top:10px">
+                    <div class="shot-row-left">
+                        <div class="shot-avatar"
+                             style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"></div>
+                        <span class="shot-row-name">A. Ivanov</span>
+                        <span class="shot-row-team"
+                              style="background:oklch(0.55 0.20 270 / 0.10);color:oklch(0.45 0.20 270)">Backend</span>
+                    </div>
+                    <div style="display:flex;gap:24px;align-items:center">
+                        <span class="shot-row-stat">28</span>
+                        <span class="shot-row-stat">14ч</span>
+                        <span class="shot-tag elite">Elite</span>
+                    </div>
+                </div>
+                <div class="shot-row">
+                    <div class="shot-row-left">
+                        <div class="shot-avatar"
+                             style="background:linear-gradient(135deg,#f59e0b,#ef4444)"></div>
+                        <span class="shot-row-name">M. Petrov</span>
+                        <span class="shot-row-team"
+                              style="background:oklch(0.55 0.20 270 / 0.10);color:oklch(0.45 0.20 270)">Backend</span>
+                    </div>
+                    <div style="display:flex;gap:24px;align-items:center">
+                        <span class="shot-row-stat">21</span>
+                        <span class="shot-row-stat">22ч</span>
+                        <span class="shot-tag high">High</span>
+                    </div>
+                </div>
+                <div class="shot-row">
+                    <div class="shot-row-left">
+                        <div class="shot-avatar"
+                             style="background:linear-gradient(135deg,#10b981,#3b82f6)"></div>
+                        <span class="shot-row-name">K. Sidorova</span>
+                        <span class="shot-row-team"
+                              style="background:oklch(0.55 0.16 150 / 0.10);color:oklch(0.42 0.16 150)">Platform</span>
+                    </div>
+                    <div style="display:flex;gap:24px;align-items:center">
+                        <span class="shot-row-stat">19</span>
+                        <span class="shot-row-stat">19ч</span>
+                        <span class="shot-tag elite">Elite</span>
+                    </div>
+                </div>
+                <div class="shot-row" style="border-bottom:none">
+                    <div class="shot-row-left">
+                        <div class="shot-avatar"
+                             style="background:linear-gradient(135deg,#ec4899,#f43f5e)"></div>
+                        <span class="shot-row-name">L. Kuznetsov</span>
+                        <span class="shot-row-team"
+                              style="background:oklch(0.65 0.15 65 / 0.12);color:oklch(0.45 0.15 65)">Frontend</span>
+                    </div>
+                    <div style="display:flex;gap:24px;align-items:center">
+                        <span class="shot-row-stat">15</span>
+                        <span class="shot-row-stat">31ч</span>
+                        <span class="shot-tag high">High</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <!-- Team (featured) -->
-        <div class="pricing-card featured">
-            <div class="pricing-popular">Популярный</div>
-            <div class="pricing-plan">Team</div>
-            <div class="pricing-price">$15</div>
-            <div class="pricing-period">за разработчика / месяц</div>
-            <div class="pricing-divider"></div>
-            <ul class="pricing-features">
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="rgba(255,255,255,0.2)"/>
-                        <path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Row 2: Insights -->
+    <div class="story-row reverse">
+        <div class="story-text">
+            <div class="story-eyebrow">Алгоритмические инсайты</div>
+            <h3>Сами замечаем то, что вы могли бы упустить</h3>
+            <p>14 алгоритмов прогоняются после каждого синка. Видим зависшие MR, дисбаланс ревью, привычку
+                открывать слишком большие изменения, проседание скорости доставки.</p>
+            <ul class="story-bullets">
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    Неограниченные репозитории
+                    Stuck MR · Review imbalance · Large MR habit
                 </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="rgba(255,255,255,0.2)"/>
-                        <path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    История 360 дней
+                    Delivery drop · Rework ratio · Off-hours commits
                 </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="rgba(255,255,255,0.2)"/>
-                        <path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    Flow, Team, Dev Profile
-                </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="rgba(255,255,255,0.2)"/>
-                        <path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Lead Time (DORA)
-                </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="rgba(255,255,255,0.2)"/>
-                        <path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Email поддержка
+                    Конкретные действия — кому ping в Slack
                 </li>
             </ul>
-            <a class="btn-pricing btn-pricing-featured" href="/register">Попробовать бесплатно</a>
         </div>
+        <div class="story-shot">
+            <div class="story-shot-bar"><i></i><i></i><i></i><span>insights · 7 активных</span></div>
+            <div class="story-shot-body">
+                <div class="shot-insight-card">
+                    <div class="shot-insight-icon" style="background:oklch(0.70 0.20 25 / 0.12)">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M7 1L13 12H1L7 1Z" stroke="oklch(0.55 0.20 25)" stroke-width="1.5"
+                                  stroke-linejoin="round"/>
+                            <path d="M7 6v3M7 10.5v.5" stroke="oklch(0.55 0.20 25)" stroke-width="1.5"
+                                  stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="shot-insight-title">3 MR висят больше 48 часов</div>
+                        <div class="shot-insight-desc">Storage refactor (71ч), Auth update (58ч), API v2 (52ч). Ping в
+                            Slack →
+                        </div>
+                    </div>
+                </div>
+                <div class="shot-insight-card">
+                    <div class="shot-insight-icon" style="background:oklch(0.55 0.20 270 / 0.12)">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <circle cx="7" cy="7" r="5" stroke="oklch(0.45 0.20 270)" stroke-width="1.5"/>
+                            <path d="M4 7h6M7 4v6" stroke="oklch(0.45 0.20 270)" stroke-width="1.5"
+                                  stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="shot-insight-title">Дисбаланс ревью</div>
+                        <div class="shot-insight-desc">K.Sidorova делает 47% всех ревью. Нагрузка распределена
+                            неравномерно.
+                        </div>
+                    </div>
+                </div>
+                <div class="shot-insight-card">
+                    <div class="shot-insight-icon" style="background:oklch(0.65 0.15 65 / 0.12)">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <rect x="2" y="4" width="10" height="6" rx="1" stroke="oklch(0.55 0.15 65)"
+                                  stroke-width="1.5"/>
+                            <path d="M5 7h4" stroke="oklch(0.55 0.15 65)" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="shot-insight-title">Большие MR у M.Petrov</div>
+                        <div class="shot-insight-desc">Среднее: 480 строк. Рекомендация — дробить на 2-3 PR.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <!-- Pro -->
-        <div class="pricing-card">
-            <div class="pricing-plan">Pro</div>
-            <div class="pricing-price">$25</div>
-            <div class="pricing-period">за разработчика / месяц</div>
-            <div class="pricing-divider"></div>
-            <ul class="pricing-features">
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Row 3: Flow -->
+    <div class="story-row">
+        <div class="story-text">
+            <div class="story-eyebrow">Flow / Bottlenecks</div>
+            <h3>Где работа теряется по дороге</h3>
+            <p>Value curve по этапам — open → first review → approved → merged → deployed. Сразу видно где MR
+                залипает: в ожидании ревью, в рерайтах или в очереди на деплой.</p>
+            <ul class="story-bullets">
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    Всё из Team
+                    Value curve по этапам жизни MR
                 </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    4 DORA-метрики полностью
+                    Матрица ревью «кто кого»
                 </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <li class="story-bullet">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                              stroke-linejoin="round"/>
                     </svg>
-                    AI-инсайты
-                </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Сравнение команд
-                </li>
-                <li class="pricing-feature">
-                    <svg class="pricing-check" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="8" cy="8" r="7" fill="oklch(0.52 0.16 150 / 0.15)"/>
-                        <path d="M5 8l2 2 4-4" stroke="oklch(0.52 0.16 150)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Slack-уведомления + CSV
+                    Список застрявших MR с возрастом
                 </li>
             </ul>
-            <a class="btn-pricing btn-pricing-outline" href="/register">Начать с Pro</a>
+        </div>
+        <div class="story-shot">
+            <div class="story-shot-bar"><i></i><i></i><i></i><span>flow · value curve</span></div>
+            <div class="story-shot-body">
+                <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">
+                    Среднее время в этапе
+                </div>
+                <div class="shot-flow-stages">
+                    <div class="shot-flow-stage">
+                        <div class="shot-flow-stage-name">Open</div>
+                        <div class="shot-flow-stage-val">2ч</div>
+                    </div>
+                    <div class="shot-flow-stage"
+                         style="background:oklch(0.70 0.20 25 / 0.10);border-color:oklch(0.70 0.20 25 / 0.30)">
+                        <div class="shot-flow-stage-name" style="color:oklch(0.55 0.20 25)">First review</div>
+                        <div class="shot-flow-stage-val" style="color:oklch(0.45 0.20 25)">28ч</div>
+                    </div>
+                    <div class="shot-flow-stage">
+                        <div class="shot-flow-stage-name">Approved</div>
+                        <div class="shot-flow-stage-val">4ч</div>
+                    </div>
+                    <div class="shot-flow-stage">
+                        <div class="shot-flow-stage-name">Merged</div>
+                        <div class="shot-flow-stage-val">1ч</div>
+                    </div>
+                    <div class="shot-flow-stage">
+                        <div class="shot-flow-stage-name">Deployed</div>
+                        <div class="shot-flow-stage-val">3ч</div>
+                    </div>
+                </div>
+                <svg viewBox="0 0 400 80" preserveAspectRatio="none" style="width:100%;height:80px">
+                    <defs>
+                        <linearGradient id="flowG" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="oklch(0.55 0.20 270)" stop-opacity="0.20"/>
+                            <stop offset="100%" stop-color="oklch(0.55 0.20 270)" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M0,70 L80,50 L160,15 L240,30 L320,32 L400,40 L400,80 L0,80 Z" fill="url(#flowG)"/>
+                    <path d="M0,70 L80,50 L160,15 L240,30 L320,32 L400,40" stroke="oklch(0.55 0.20 270)"
+                          stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="160" cy="15" r="4" fill="oklch(0.70 0.20 25)"/>
+                </svg>
+                <div style="font-size:11px;color:oklch(0.50 0.20 25);background:oklch(0.70 0.20 25 / 0.08);padding:8px 10px;border-radius:6px;border-left:3px solid oklch(0.70 0.20 25)">
+                    <strong>Bottleneck:</strong> 28ч до первого ревью — здесь теряется день
+                </div>
+            </div>
         </div>
     </div>
 </section>
 
-<!-- ── CTA ───────────────────────────────────────────────────────────────── -->
-<section class="cta-section">
-    <div class="cta-content">
-        <h2 class="cta-title">Готовы видеть свою команду чётче?</h2>
-        <p class="cta-sub">Подключите GitLab — первые данные появятся через 5 минут</p>
-        <div class="cta-actions">
-            <a class="btn-hero-primary" href="/register">
-                Начать бесплатно
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+<!-- ─ HOW IT WORKS ───────────────────────────────────────────────── -->
+<section class="steps-section" id="how">
+    <div class="steps-inner">
+        <div class="section-head-center">
+            <span class="eyebrow">Как это работает</span>
+            <h2 class="section-title">От токена до первого инсайта — за пять минут</h2>
+            <p class="section-sub" style="text-align:center;margin:0 auto">Вы не настраиваете дашборды. Вы получаете
+                готовые ответы, как только синк закончился.</p>
+        </div>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-num mono">01 / token</div>
+                <div class="step-title">Подключите GitLab</div>
+                <div class="step-desc">Read-only personal access token с правом <span class="mono">read_api</span>.
+                    Self-hosted и cloud — оба варианта работают.
+                </div>
+                <div class="step-meta">⌁ <span class="mono">~30 сек</span></div>
+            </div>
+            <div class="step-card">
+                <div class="step-num mono">02 / sync</div>
+                <div class="step-title">Выберите репозитории</div>
+                <div class="step-desc">Помечаете нужные проекты — мы тянем историю MR, commits, deploys и issues.
+                    Синк идёт в фоне, прогресс виден.
+                </div>
+                <div class="step-meta">⌁ <span class="mono">3–5 мин</span></div>
+            </div>
+            <div class="step-card">
+                <div class="step-num mono">03 / insights</div>
+                <div class="step-title">Получите ответы</div>
+                <div class="step-desc">Сразу видите: где bottleneck, у кого перегруз, какие MR застряли. Без
+                    настройки дашбордов и формул.
+                </div>
+                <div class="step-meta">⌁ <span class="mono">сразу</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ─ DORA ────────────────────────────────────────────────────────── -->
+<section style="padding: 120px 32px; background: #fff;" id="dora">
+    <div class="dora-block">
+        <div class="dora-block-left">
+            <span class="eyebrow" style="color:var(--accent-2)">DORA Metrics</span>
+            <h2>Стандарт Google для инженерных команд</h2>
+            <p>Lead Time, Deployment Frequency, Change Failure Rate, MTTR — четыре метрики, которые предсказывают,
+                как ваша команда доставляет ценность. Гибкая настройка источников: deploys из GitLab, инциденты из
+                Jira.</p>
+            <a th:href="@{#pricing}" class="btn btn-outline"
+               style="margin-top:24px;border-color:rgba(255,255,255,0.20);color:#fff;background:rgba(255,255,255,0.04)">
+                Узнать как настроить
             </a>
-            <a class="btn-hero-ghost" href="/login">Уже есть аккаунт</a>
+        </div>
+        <div class="dora-block-grid">
+            <div class="dora-cell">
+                <div class="dora-cell-name">Lead Time</div>
+                <div class="dora-cell-val">1.8д</div>
+                <div class="dora-cell-sub">commit → production</div>
+                <div class="dora-cell-bar"><i style="width:78%"></i></div>
+            </div>
+            <div class="dora-cell">
+                <div class="dora-cell-name">Deploy frequency</div>
+                <div class="dora-cell-val">4.2<span
+                        style="font-size:14px;color:rgba(255,255,255,0.50);margin-left:4px">/нед</span></div>
+                <div class="dora-cell-sub">по main-веткам</div>
+                <div class="dora-cell-bar"><i style="width:62%;background:oklch(0.75 0.16 70)"></i></div>
+            </div>
+            <div class="dora-cell">
+                <div class="dora-cell-name">Failure rate</div>
+                <div class="dora-cell-val">3.1<span
+                        style="font-size:14px;color:rgba(255,255,255,0.50);margin-left:4px">%</span></div>
+                <div class="dora-cell-sub">incidents / deploy</div>
+                <div class="dora-cell-bar"><i style="width:84%;background:oklch(0.75 0.18 150)"></i></div>
+            </div>
+            <div class="dora-cell">
+                <div class="dora-cell-name">MTTR</div>
+                <div class="dora-cell-val">2.4<span
+                        style="font-size:14px;color:rgba(255,255,255,0.50);margin-left:4px">ч</span></div>
+                <div class="dora-cell-sub">среднее восстановление</div>
+                <div class="dora-cell-bar"><i style="width:70%;background:oklch(0.75 0.16 70)"></i></div>
+            </div>
         </div>
     </div>
 </section>
 
-<!-- ── Footer ────────────────────────────────────────────────────────────── -->
+<!-- ─ SECURITY ────────────────────────────────────────────────────── -->
+<section class="security-section" id="security">
+    <div class="security-grid">
+        <div>
+            <span class="eyebrow">Безопасность</span>
+            <h2 class="section-title" style="font-size:32px">Ваш код — у вас. Мы видим только метаданные.</h2>
+            <p class="section-sub" style="font-size:15px">Никаких diff'ов и содержимого файлов. Только заголовки MR,
+                авторы, ревью-реакции и таймстемпы.</p>
+        </div>
+        <div class="security-features">
+            <div class="sec-card">
+                <div class="sec-card-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="3" y="7" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M6 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <div class="sec-card-title">Read-only токены</div>
+                <div class="sec-card-desc">Только <span class="mono">read_api</span>. Мы технически не можем
+                    что-то изменить в репозитории.
+                </div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-card-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M9 1L16 4v5c0 4-3 7-7 8-4-1-7-4-7-8V4l7-3z" stroke="currentColor" stroke-width="1.5"
+                              stroke-linejoin="round"/>
+                        <path d="M6 9l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                              stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="sec-card-title">AES-256 шифрование</div>
+                <div class="sec-card-desc">Токены хранятся зашифрованными. Никогда не отдаются через API.</div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-card-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="2" y="2" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M5 9h8M5 6h8M5 12h5" stroke="currentColor" stroke-width="1.5"
+                              stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="sec-card-title">Audit log</div>
+                <div class="sec-card-desc">Каждое действие в workspace логируется — видно кто, когда и что менял.
+                </div>
+            </div>
+            <div class="sec-card">
+                <div class="sec-card-icon">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M2 4l7-3 7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V4z" stroke="currentColor" stroke-width="1.5"
+                              stroke-linejoin="round"/>
+                        <circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <div class="sec-card-title">Self-hosted</div>
+                <div class="sec-card-desc">Docker-контейнер для on-premise. Данные не выходят из вашего контура.
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ─ PRICING ────────────────────────────────────────────────────── -->
+<section class="pricing-section" id="pricing">
+    <div class="pricing-inner">
+        <div class="section-head-center">
+            <span class="eyebrow">Тарифы</span>
+            <h2 class="section-title">Просто и предсказуемо</h2>
+            <p class="section-sub" style="text-align:center;margin:0 auto">Платите за
+                <span class="mono"
+                      style="color:var(--ink);background:#fff;padding:1px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">tracked dev</span>
+                — это разработчик, по которому мы собираем метрики. Не seat в платформе.</p>
+        </div>
+
+        <div class="pricing-grid">
+            <div class="price-card">
+                <div class="price-name">Free</div>
+                <div class="price-amount"><span class="num">0</span><span class="cur">₽</span></div>
+                <div class="price-period">навсегда</div>
+                <div class="price-divider"></div>
+                <div class="price-features">
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        1 репозиторий
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        До 5 разработчиков
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        История 30 дней
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Overview + базовые инсайты
+                    </div>
+                </div>
+                <a class="price-cta" th:href="@{/register}">Начать бесплатно</a>
+            </div>
+
+            <div class="price-card featured">
+                <span class="price-popular">Популярный</span>
+                <div class="price-name">Team</div>
+                <div class="price-amount"><span class="num">990</span><span class="cur">₽ / dev / мес</span></div>
+                <div class="price-period">или $11 при оплате USD</div>
+                <div class="price-divider"></div>
+                <div class="price-features">
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Неограниченные репозитории
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        История 360 дней
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Flow · Compare · Dev Profile
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        DORA: Lead Time + Deploys
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Email-дайджест
+                    </div>
+                </div>
+                <a class="price-cta" th:href="@{/register}">Попробовать 14 дней</a>
+            </div>
+
+            <div class="price-card">
+                <div class="price-name">Pro</div>
+                <div class="price-amount"><span class="num">1990</span><span class="cur">₽ / dev / мес</span></div>
+                <div class="price-period">или $22 при оплате USD</div>
+                <div class="price-divider"></div>
+                <div class="price-features">
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Всё из Team
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Полные DORA-метрики
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        AI-инсайты + рекомендации
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Сравнение команд + бенчмарки
+                    </div>
+                    <div class="price-feature">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 7l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        Slack · CSV · Webhook
+                    </div>
+                </div>
+                <a class="price-cta" th:href="@{/register}">Начать с Pro</a>
+            </div>
+        </div>
+
+        <p class="pricing-note">
+            Tracked dev — это разработчик, по которому мы собираем метрики. Менеджеры и наблюдатели бесплатны.
+            Команда из <span class="mono">8</span> разработчиков на Team = <span class="mono">7 920 ₽ / мес</span>.
+        </p>
+    </div>
+</section>
+
+<!-- ─ FAQ ────────────────────────────────────────────────────────── -->
+<section class="faq-section">
+    <div class="section-head-center">
+        <span class="eyebrow">FAQ</span>
+        <h2 class="section-title" style="font-size:36px">Частые вопросы</h2>
+    </div>
+    <div class="faq" style="margin-top:32px">
+        <div class="faq-item">
+            <div class="faq-q"><span class="mono">01</span><span>Что значит «tracked dev»?</span></div>
+            <div class="faq-a">Разработчик, по которому мы собираем метрики из GitLab — то есть автор хотя бы
+                одного MR/коммита за период. Менеджеры, тимлиды и наблюдатели в платформе платно не считаются.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q"><span class="mono">02</span><span>Какие данные читает GitPulse?</span></div>
+            <div class="faq-a">Только метаданные через GitLab API: список проектов, MR, авторов, ревьюеров, метки
+                времени, комментарии-метки. Содержимое файлов и diff'ы мы не запрашиваем и не храним.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q"><span class="mono">03</span><span>Можно подключить self-hosted GitLab?</span></div>
+            <div class="faq-a">Да. В настройках источников указываете URL вашего GitLab + токен. Поддерживаются
+                и cloud (gitlab.com), и любые self-hosted инстансы.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q"><span class="mono">04</span><span>Как часто обновляются данные?</span></div>
+            <div class="faq-a">Каждые 30 минут на Team и Pro. На Free — раз в сутки. Можно запустить ручной sync
+                в любой момент.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q"><span class="mono">05</span><span>А GitHub когда?</span></div>
+            <div class="faq-a">В работе. Если нужен GitHub — оставьте заявку на регистрацию, пришлём, как только
+                будет готов.
+            </div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q"><span class="mono">06</span><span>Можно отменить подписку?</span></div>
+            <div class="faq-a">В любой момент через настройки. Доступ остаётся до конца оплаченного периода.
+                Никаких звонков и форм отказа.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ─ FINAL CTA ──────────────────────────────────────────────────── -->
+<section class="final-cta">
+    <div class="final-cta-inner">
+        <h2>Подключите GitLab за пять минут</h2>
+        <p>Public beta — весь функционал бесплатно, без кредитной карты. Начните, когда вам удобно.</p>
+        <a class="btn btn-primary btn-lg" th:href="@{/register}"
+           style="background:#fff;color:var(--ink)">
+            Создать workspace
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                      stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </div>
+</section>
+
+<!-- ─ FOOTER ─────────────────────────────────────────────────────── -->
 <footer class="footer">
-    <div class="footer-top">
-        <div class="footer-logo-area">
-            <a class="footer-logo" href="/">
-                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <polygon points="16,4 28,10.5 28,22.5 16,29 4,22.5 4,10.5" fill="none" stroke="oklch(0.62 0.14 275)" stroke-width="1.5"/>
-                    <polyline points="8,20 13,13 18,17 24,9" stroke="oklch(0.62 0.14 275)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                    <circle cx="24" cy="9" r="2.5" fill="oklch(0.62 0.14 275)"/>
-                </svg>
-                <span class="footer-logo-text">GitPulse</span>
-            </a>
-            <p class="footer-tagline">Инженерная аналитика для GitLab-команд</p>
-        </div>
-
-        <div class="footer-links">
-            <div class="footer-col">
-                <div class="footer-col-title">Продукт</div>
-                <ul>
-                    <li><a href="#features">Возможности</a></li>
-                    <li><a href="#dora">DORA-метрики</a></li>
-                    <li><a href="#pricing">Тарифы</a></li>
-                </ul>
+    <div class="footer-inner">
+        <div class="footer-top">
+            <div class="footer-brand">
+                <a class="logo" th:href="@{/}">
+                    <svg class="logo-mark" viewBox="0 0 22 22" fill="none">
+                        <path d="M11 1.5 L20 7.5 L17 20.5 L5 20.5 L2 7.5 Z" fill="oklch(0.70 0.18 270)"/>
+                        <path d="M11 1.5 L17 20.5 L11 14 L5 20.5 Z" fill="rgba(0,0,0,0.30)"/>
+                    </svg>
+                    <span>GitPulse</span>
+                </a>
+                <p class="footer-tag">Инженерная аналитика для команд на GitLab.</p>
             </div>
-            <div class="footer-col">
-                <div class="footer-col-title">Аккаунт</div>
-                <ul>
-                    <li><a href="/register">Регистрация</a></li>
-                    <li><a href="/login">Войти</a></li>
-                </ul>
+            <div class="footer-cols">
+                <div class="footer-col">
+                    <div class="footer-col-title">Продукт</div>
+                    <ul>
+                        <li><a href="#product">Возможности</a></li>
+                        <li><a href="#dora">DORA</a></li>
+                        <li><a href="#security">Безопасность</a></li>
+                        <li><a href="#pricing">Тарифы</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <div class="footer-col-title">Аккаунт</div>
+                    <ul>
+                        <li><a th:href="@{/register}">Регистрация</a></li>
+                        <li><a th:href="@{/login}">Войти</a></li>
+                        <li><a href="mailto:hi@gitpulse.ru">Поддержка</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <div class="footer-col-title">Документы</div>
+                    <ul>
+                        <li><a href="#security">Privacy</a></li>
+                        <li><a href="#security">Условия</a></li>
+                        <li><a href="#security">Security</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
-    </div>
-
-    <div class="footer-bottom">
-        <div class="footer-copy">© 2026 GitPulse. Все права защищены.</div>
+        <div class="footer-bottom">
+            <span>© 2026 GitPulse</span>
+            <span class="mono">v0.9 · public beta</span>
+        </div>
     </div>
 </footer>
 

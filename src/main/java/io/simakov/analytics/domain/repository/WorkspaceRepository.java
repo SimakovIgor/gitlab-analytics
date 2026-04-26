@@ -15,4 +15,6 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, Long> {
     boolean existsBySlug(String slug);
 
     List<Workspace> findAllByDigestEnabled(boolean digestEnabled);
+
+    List<Workspace> findAllByDigestEnabledAndDigestDayAndDigestHour(boolean digestEnabled, String digestDay, int digestHour);
 }

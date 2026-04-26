@@ -5,6 +5,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
 import java.util.List;
@@ -19,7 +20,6 @@ import java.util.Map;
 @Component
 public class AnthropicClient {
 
-    private static final String ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
     private static final String ANTHROPIC_VERSION = "2023-06-01";
     private static final Duration TIMEOUT = Duration.ofSeconds(60);
 
@@ -29,7 +29,7 @@ public class AnthropicClient {
     public AnthropicClient(WebClient.Builder builder, AnthropicProperties props) {
         this.props = props;
         this.webClient = builder
-            .baseUrl(ANTHROPIC_API_URL)
+            .baseUrl(props.getBaseUrl())
             .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
             .build();
     }
@@ -51,34 +51,44 @@ public class AnthropicClient {
             )
         );
 
-        Map<String, Object> response = webClient.post()
-            .header("x-api-key", props.getApiKey())
-            .header("anthropic-version", ANTHROPIC_VERSION)
-            .bodyValue(requestBody)
-            .retrieve()
-            .bodyToMono(Map.class)
-            .timeout(TIMEOUT)
-            .block();
+        log.debug("Anthropic request: model={} max_tokens={}", props.getModel(), props.getMaxTokens());
 
-        if (response == null) {
-            throw new IllegalStateException("Null response from Anthropic API");
+        Map<String, Object> raw = callApi(requestBody);
+        return parseResponse((List<Map<String, Object>>) raw.get("content"),
+            (Map<String, Object>) raw.get("usage"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> callApi(Map<String, Object> requestBody) {
+        try {
+            Map<String, Object> response = webClient.post()
+                .header("x-api-key", props.getApiKey())
+                .header("anthropic-version", ANTHROPIC_VERSION)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .timeout(TIMEOUT)
+                .block();
+            if (response == null) {
+                throw new IllegalStateException("Null response from Anthropic API");
+            }
+            return response;
+        } catch (WebClientResponseException e) {
+            log.error("Anthropic API error {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw e;
         }
+    }
 
-        List<Map<String, Object>> content = (List<Map<String, Object>>) response.get("content");
+    private AnthropicResponse parseResponse(List<Map<String, Object>> content,
+                                            Map<String, Object> usage) {
         if (content == null || content.isEmpty()) {
             throw new IllegalStateException("Empty content in Anthropic response");
         }
-
         String text = (String) content.get(0).get("text");
-
-        Map<String, Object> usage = (Map<String, Object>) response.get("usage");
         int inputTokens = usage != null ? ((Number) usage.getOrDefault("input_tokens", 0)).intValue() : 0;
         int outputTokens = usage != null ? ((Number) usage.getOrDefault("output_tokens", 0)).intValue() : 0;
         int totalTokens = inputTokens + outputTokens;
-
-        log.info("Anthropic API call: {} input + {} output = {} tokens",
-            inputTokens, outputTokens, totalTokens);
-
+        log.info("Anthropic API call: {} input + {} output = {} tokens", inputTokens, outputTokens, totalTokens);
         return new AnthropicResponse(text, totalTokens);
     }
 
