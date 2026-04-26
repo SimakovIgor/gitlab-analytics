@@ -152,6 +152,8 @@ APP_ENV=(
 [[ -n "${JIRA_USERNAME:-}" ]]  && APP_ENV+=(JIRA_USERNAME="$JIRA_USERNAME")
 [[ -n "${JIRA_API_TOKEN:-}" ]] && APP_ENV+=(JIRA_API_TOKEN="$JIRA_API_TOKEN")
 [[ -n "${JIRA_PROJECT_KEY:-}" ]] && APP_ENV+=(JIRA_PROJECT_KEY="$JIRA_PROJECT_KEY")
+# Anthropic (опционально — AI insights на /insights)
+[[ -n "${ANTHROPIC_API_KEY:-}" ]] && APP_ENV+=(ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
 # Email (опционально — Mailhog или реальный SMTP)
 [[ -n "${SPRING_MAIL_HOST:-}" ]] && APP_ENV+=(SPRING_MAIL_HOST="$SPRING_MAIL_HOST")
 [[ -n "${SPRING_MAIL_PORT:-}" ]] && APP_ENV+=(SPRING_MAIL_PORT="$SPRING_MAIL_PORT")

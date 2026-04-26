@@ -28,7 +28,8 @@ public class ForgotPasswordController {
     private final PasswordEncoder passwordEncoder;
 
     @GetMapping("/forgot-password")
-    public String forgotPasswordForm() {
+    public String forgotPasswordForm(Model model) {
+        model.addAttribute("sent", false);
         return "forgot-password";
     }
 
