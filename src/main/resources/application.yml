@@ -2,6 +2,11 @@ spring:
   application:
     name: gitlab-analytics
 
+  session:
+    # Extend session TTL to survive long ENRICH syncs (448 MR ≈ 60+ min).
+    # Spring Boot default is 30 min — too short when the browser tab is backgrounded.
+    timeout: 8h
+
   # spring.mail.* is intentionally absent from yml.
   # Set SPRING_MAIL_HOST env var to enable email sending.
   # When absent, JavaMailSender is not auto-created and EmailService silently skips sending.

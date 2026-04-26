@@ -38,6 +38,13 @@
         if (resp.status === 204) {
             return null;
         }
+        // Session expired: Spring Security redirects to /login (302 → 200 HTML).
+        // fetch follows the redirect, so resp.ok === true but Content-Type is text/html.
+        const ct = resp.headers.get('Content-Type') || '';
+        if (ct.includes('text/html')) {
+            window.location.href = '/login';
+            throw new Error('SESSION_EXPIRED');
+        }
         const data = await resp.json().catch(() => ({message: resp.statusText}));
         if (!resp.ok) {
             throw new Error(data.message || 'Ошибка ' + resp.status);
@@ -393,7 +400,11 @@
                     updateSyncCard(cardId, job);
                 }
             } catch (e) {
-                // продолжаем поллинг при сетевой ошибке
+                if (e.message === 'SESSION_EXPIRED') {
+                    clearInterval(interval);
+                    clearInterval(durationTimer);
+                }
+                // продолжаем поллинг при временной сетевой ошибке
             }
         }, 3000);
     }
