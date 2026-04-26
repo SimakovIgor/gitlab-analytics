@@ -89,6 +89,25 @@ class RegisterControllerTest extends BaseIT {
     }
 
     @Test
+    void registerWhenSmtpFailsReturnsErrorAndDoesNotSaveUser() throws Exception {
+        greenMail.stop();
+        try {
+            mockMvc.perform(post("/register")
+                    .param("name", "SMTP Fail User")
+                    .param("email", "smtpfail@example.com")
+                    .param("password", "password123")
+                    .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeExists("error"));
+
+            assertThat(appUserRepository.findByEmail("smtpfail@example.com")).isEmpty();
+        } finally {
+            greenMail.start();
+        }
+    }
+
+    @Test
     void registerWithDuplicateEmailReturnsErrorOnRegisterPage() throws Exception {
         appUserRepository.save(AppUser.builder()
             .name("Existing User")

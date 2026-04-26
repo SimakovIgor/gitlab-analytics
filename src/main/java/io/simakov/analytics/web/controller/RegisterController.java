@@ -10,6 +10,7 @@ import io.simakov.analytics.workspace.InviteService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,6 +27,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class RegisterController {
@@ -76,16 +78,23 @@ public class RegisterController {
             ? (String) session.getAttribute(JoinController.SESSION_PENDING_INVITE)
             : null;
 
-        if (emailService.isEnabled()) {
-            return registerWithVerification(name, normalizedEmail, password, pendingInvite);
+        try {
+            if (emailService.isEnabled()) {
+                return registerWithVerification(name, normalizedEmail, password, pendingInvite);
+            }
+            return registerAndAutoLogin(name, normalizedEmail, password, request, pendingInvite);
+        } catch (EmailDeliveryException e) {
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("name", name);
+            model.addAttribute("email", email);
+            return "register";
         }
-        return registerAndAutoLogin(name, normalizedEmail, password, request, pendingInvite);
     }
 
     private String registerWithVerification(String name, String normalizedEmail, String password,
                                              String pendingInvite) {
         String token = UUID.randomUUID().toString().replace("-", "");
-        appUserRepository.save(AppUser.builder()
+        AppUser saved = appUserRepository.save(AppUser.builder()
             .name(name.trim())
             .email(normalizedEmail)
             .passwordHash(passwordEncoder.encode(password))
@@ -94,8 +103,15 @@ public class RegisterController {
             .emailVerificationExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS))
             .lastLoginAt(Instant.now())
             .build());
-        // Embed pending invite into verification link so it survives across browser tabs/sessions
-        emailService.sendVerificationEmail(normalizedEmail, token, pendingInvite);
+        try {
+            // Embed pending invite into verification link so it survives across browser tabs/sessions
+            emailService.sendVerificationEmail(normalizedEmail, token, pendingInvite);
+        } catch (Exception e) {
+            log.error("Failed to send verification email to {}: {}", normalizedEmail, e.getMessage());
+            appUserRepository.delete(saved);
+            throw new EmailDeliveryException("Не удалось отправить письмо на " + normalizedEmail
+                + ". Проверьте адрес и попробуйте снова.");
+        }
         return "redirect:/verify-email-sent";
     }
 
@@ -134,5 +150,11 @@ public class RegisterController {
         }
 
         return "redirect:/onboarding";
+    }
+
+    static class EmailDeliveryException extends RuntimeException {
+        EmailDeliveryException(String message) {
+            super(message);
+        }
     }
 }
