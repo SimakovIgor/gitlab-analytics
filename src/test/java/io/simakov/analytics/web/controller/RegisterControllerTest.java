@@ -111,6 +111,62 @@ class RegisterControllerTest extends BaseIT {
     }
 
     @Test
+    void registerWithUnverifiedEmailAndValidToken_showsCheckEmailMessage() throws Exception {
+        appUserRepository.save(AppUser.builder()
+            .name("Pending User")
+            .email("pending@example.com")
+            .passwordHash(passwordEncoder.encode("somepass"))
+            .emailVerified(false)
+            .emailVerificationToken("valid-token-abc")
+            .emailVerificationExpiresAt(Instant.now().plusSeconds(3600))
+            .lastLoginAt(Instant.now())
+            .build());
+
+        mockMvc.perform(post("/register")
+                .param("name", "Pending User")
+                .param("email", "pending@example.com")
+                .param("password", "anotherpass")
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(view().name("register"))
+            .andExpect(model().attributeExists("error"));
+
+        // Existing unverified user must not be deleted or duplicated
+        assertThat(appUserRepository.findByEmail("pending@example.com")).isPresent();
+        assertThat(appUserRepository.findAll().stream()
+            .filter(u -> "pending@example.com".equals(u.getEmail()))
+            .count()).isEqualTo(1);
+    }
+
+    @Test
+    void registerWithUnverifiedEmailAndExpiredToken_deletesStaleUserAndCreatesNew() throws Exception {
+        appUserRepository.save(AppUser.builder()
+            .name("Expired User")
+            .email("expired@example.com")
+            .passwordHash(passwordEncoder.encode("oldpass"))
+            .emailVerified(false)
+            .emailVerificationToken("expired-token-xyz")
+            .emailVerificationExpiresAt(Instant.now().minusSeconds(1))
+            .lastLoginAt(Instant.now())
+            .build());
+
+        mockMvc.perform(post("/register")
+                .param("name", "Fresh User")
+                .param("email", "expired@example.com")
+                .param("password", "newpass123")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/verify-email-sent"));
+
+        // Stale record replaced by new one with fresh token
+        Optional<AppUser> newUser = appUserRepository.findByEmail("expired@example.com");
+        assertThat(newUser).isPresent();
+        assertThat(newUser.get().getName()).isEqualTo("Fresh User");
+        assertThat(newUser.get().getEmailVerificationToken()).isNotEqualTo("expired-token-xyz");
+        assertThat(newUser.get().getEmailVerificationExpiresAt()).isAfter(Instant.now());
+    }
+
+    @Test
     void loginWithValidCredentialsRedirectsToOnboarding() throws Exception {
         String email = "login-test@example.com";
         String password = "loginpass123";
