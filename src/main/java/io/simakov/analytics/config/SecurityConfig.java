@@ -23,7 +23,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -89,7 +89,7 @@ public class SecurityConfig {
         return http
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                .csrfTokenRequestHandler(new XorCsrfTokenRequestAttributeHandler())
             )
             .authenticationProvider(daoAuthenticationProvider())
             .authorizeHttpRequests(auth -> auth
@@ -109,6 +109,7 @@ public class SecurityConfig {
                     "/reset-password",
                     "/css/**",
                     "/js/**",
+                    "/favicon.svg",
                     "/error"
                 ).permitAll()
                 .anyRequest().authenticated()
