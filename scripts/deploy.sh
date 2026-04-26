@@ -115,6 +115,15 @@ info "Запускаем сервисы на сервере..."
 ssh "${SERVER_USER}@${SERVER_IP}" bash <<ENDSSH
 set -e
 cd ${REMOTE_DIR}
+
+# Remove stopped/zombie containers that block recreation by name.
+# Certbot in particular tends to get stuck after its renewal sleep cycle.
+for name in gitlab-analytics-certbot; do
+  if docker ps -a --format '{{.Names}}' | grep -q "^\${name}\$"; then
+    docker rm -f "\${name}" > /dev/null 2>&1 && echo "Removed stale container: \${name}" || true
+  fi
+done
+
 ${COMPOSE_CMD} up -d --build --remove-orphans
 
 echo "Ожидаем запуска приложения..."
