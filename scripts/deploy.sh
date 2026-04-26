@@ -116,13 +116,13 @@ ssh "${SERVER_USER}@${SERVER_IP}" bash <<ENDSSH
 set -e
 cd ${REMOTE_DIR}
 
-# Remove stopped/zombie containers that block recreation by name.
-# Certbot in particular tends to get stuck after its renewal sleep cycle.
-for name in gitlab-analytics-certbot; do
-  if docker ps -a --format '{{.Names}}' | grep -q "^\${name}\$"; then
-    docker rm -f "\${name}" > /dev/null 2>&1 && echo "Removed stale container: \${name}" || true
-  fi
-done
+# Force-remove any containers whose names contain "gitlab-analytics"
+# (including stale ones with old project-name prefixes like fd688e5552be_gitlab-analytics-*).
+# This prevents "container name already in use" conflicts on recreation.
+echo "Stopping any existing gitlab-analytics containers..."
+docker ps -a --format '{{.Names}}' \
+  | grep 'gitlab-analytics' \
+  | xargs -r docker rm -f 2>/dev/null || true
 
 ${COMPOSE_CMD} up -d --build --remove-orphans
 
