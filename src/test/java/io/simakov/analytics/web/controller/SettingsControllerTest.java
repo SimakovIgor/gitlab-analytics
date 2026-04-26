@@ -720,4 +720,87 @@ class SettingsControllerTest extends BaseIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.digestEnabled").value(false));
     }
+
+    // ── Contributor discovery ─────────────────────────────────────────────────
+
+    @Test
+    void getDiscoveredContributorsReturns200() throws Exception {
+        mockMvc.perform(get("/settings/users/discovered")
+                .session(webSession)
+                .with(ownerPrincipal()))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void getTrackedUsersReturns200() throws Exception {
+        mockMvc.perform(get("/settings/users/tracked")
+                .session(webSession)
+                .with(ownerPrincipal()))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void searchUsersReturnsResultsFromGitLab() throws Exception {
+        when(gitLabApiClient.searchUsers(anyString(), anyString(), anyString()))
+            .thenReturn(List.of(
+                new io.simakov.analytics.gitlab.dto.GitLabUserSearchDto(1L, "alice", "Alice", null, null)
+            ));
+
+        trackedProjectRepository.save(TrackedProject.builder()
+            .workspaceId(testWorkspaceId)
+            .gitSourceId(savedSource.getId())
+            .gitlabProjectId(55L)
+            .pathWithNamespace("org/repo-search")
+            .name("repo-search")
+            .tokenEncrypted("tok")
+            .enabled(true)
+            .build());
+
+        mockMvc.perform(get("/settings/sources/" + savedSource.getId() + "/users/search")
+                .param("q", "alice")
+                .session(webSession)
+                .with(ownerPrincipal()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].username").value("alice"));
+    }
+
+    // ── Snapshot backfill ─────────────────────────────────────────────────────
+
+    @Test
+    void snapshotBackfillAsyncReturns202() throws Exception {
+        mockMvc.perform(post("/settings/snapshots/backfill")
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
+            .andExpect(status().isAccepted());
+    }
+
+    @Test
+    void snapshotBackfillSyncReturns200WithCount() throws Exception {
+        mockMvc.perform(post("/settings/snapshots/backfill/sync")
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.snapshotsCreated").isNumber());
+    }
+
+    // ── Sync progress page ───────────────────────────────────────────────────
+
+    @Test
+    void syncProgressPageReturns200() throws Exception {
+        mockMvc.perform(get("/settings/sync/progress/12345")
+                .session(webSession)
+                .with(ownerPrincipal()))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void retrySyncReturns404ForUnknownJob() throws Exception {
+        mockMvc.perform(post("/settings/sync/99999/retry")
+                .session(webSession)
+                .with(ownerPrincipal())
+                .with(csrf()))
+            .andExpect(status().isNotFound());
+    }
 }

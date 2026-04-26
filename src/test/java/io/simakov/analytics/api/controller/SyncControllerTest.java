@@ -383,6 +383,28 @@ class SyncControllerTest extends BaseIT {
             .build());
     }
 
+    @Test
+    void triggerReleaseSyncReturns202() {
+        ResponseEntity<Void> resp = restTemplate.exchange(
+            "http://localhost:" + port + "/api/v1/sync/releases",
+            HttpMethod.POST,
+            new HttpEntity<>(null, authHeaders()),
+            Void.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    }
+
+    @Test
+    void getLatestReleaseJobReturns404WhenNoJobExists() {
+        ResponseEntity<Void> resp = restTemplate.exchange(
+            "http://localhost:" + port + "/api/v1/sync/jobs/latest-release",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders()),
+            Void.class);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
     private TrackedProject createTrackedProject() {
         GitSource source = gitSourceRepository.save(GitSource.builder()
             .workspaceId(testWorkspaceId)

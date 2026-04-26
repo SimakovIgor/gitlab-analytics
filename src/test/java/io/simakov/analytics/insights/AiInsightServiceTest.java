@@ -186,10 +186,16 @@ class AiInsightServiceTest extends BaseIT {
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
+    @SuppressWarnings("checkstyle:IllegalCatch")
     private void saveCache(Long workspaceId, String period, String hash,
                            List<AiInsightDto> insights,
-                           Instant generatedAt) throws Exception {
-        String json = objectMapper.writeValueAsString(insights);
+                           Instant generatedAt) {
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(insights);
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot serialize insights", e);
+        }
         cacheRepository.save(AiInsightRecord.builder()
             .workspaceId(workspaceId)
             .period(period)

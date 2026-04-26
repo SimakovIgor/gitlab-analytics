@@ -52,6 +52,20 @@ public class AiInsightService {
     private final DoraService doraService;
     private final ObjectMapper objectMapper;
 
+    private static String computeHash(List<Long> projectIds) {
+        if (projectIds == null || projectIds.isEmpty()) {
+            return "all";
+        }
+        String joined = projectIds.stream().sorted().map(Object::toString).reduce("", (a, b) -> a + "," + b);
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(joined.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(bytes).substring(0, 16);
+        } catch (NoSuchAlgorithmException e) {
+            return joined.substring(0, Math.min(joined.length(), 64));
+        }
+    }
+
     /**
      * Returns cached AI insights for the given parameters.
      * Does NOT trigger generation — call only if within TTL.
@@ -59,7 +73,9 @@ public class AiInsightService {
      * Cache reads work even when the API key is not currently configured.
      */
     @Transactional(readOnly = true)
-    public List<AiInsightDto> getCached(Long workspaceId, String period, List<Long> projectIds) {
+    public List<AiInsightDto> getCached(Long workspaceId,
+                                        String period,
+                                        List<Long> projectIds) {
         String hash = computeHash(projectIds);
         Optional<AiInsightRecord> cached = cacheRepository
             .findByWorkspaceIdAndPeriodAndProjectIdsHash(workspaceId, period, hash);
@@ -89,6 +105,8 @@ public class AiInsightService {
             .orElse(null);
     }
 
+    // ── private helpers ──────────────────────────────────────────────────────
+
     /**
      * Forces regeneration: deletes the cache entry, calls the API, saves and returns the result.
      * Requires the caller to pass the already-computed {@code algoInsights} so generation
@@ -112,8 +130,6 @@ public class AiInsightService {
         return generate(workspaceId, period, projectIds, hash, algoInsights);
     }
 
-    // ── private helpers ──────────────────────────────────────────────────────
-
     @SuppressWarnings("checkstyle:IllegalCatch")
     private List<AiInsightDto> generate(Long workspaceId,
                                         String period,
@@ -130,7 +146,7 @@ public class AiInsightService {
 
             List<Long> projectIdsToUse = resolvedProjectIds.isEmpty()
                 ? trackedProjectRepository.findAllByWorkspaceId(workspaceId).stream()
-                .map(TrackedProject::getId).toList()
+                  .map(TrackedProject::getId).toList()
                 : resolvedProjectIds;
 
             Map<Long, UserMetrics> currentMetrics =
@@ -141,9 +157,15 @@ public class AiInsightService {
             Double mttrHours = doraService.computeMttrHours(projectIdsToUse, dateFrom);
 
             Map<String, Double> doraContext = Map.of(
-                "leadTimeDays", leadTimeDays != null ? leadTimeDays : -1.0,
-                "deploysPerDay", deploysPerDay != null ? deploysPerDay : -1.0,
-                "mttrHours", mttrHours != null ? mttrHours : -1.0
+                "leadTimeDays", leadTimeDays != null
+                    ? leadTimeDays
+                    : -1.0,
+                "deploysPerDay", deploysPerDay != null
+                    ? deploysPerDay
+                    : -1.0,
+                "mttrHours", mttrHours != null
+                    ? mttrHours
+                    : -1.0
             );
 
             String periodLabel = days + " days";
@@ -178,25 +200,11 @@ public class AiInsightService {
 
     private List<AiInsightDto> deserialize(String json) {
         try {
-            return objectMapper.readValue(json, new TypeReference<List<AiInsightDto>>() {
+            return objectMapper.readValue(json, new TypeReference<>() {
             });
         } catch (Exception e) {
             log.warn("Failed to deserialize cached AI insights: {}", e.getMessage());
             return List.of();
-        }
-    }
-
-    private static String computeHash(List<Long> projectIds) {
-        if (projectIds == null || projectIds.isEmpty()) {
-            return "all";
-        }
-        String joined = projectIds.stream().sorted().map(Object::toString).reduce("", (a, b) -> a + "," + b);
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = digest.digest(joined.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(bytes).substring(0, 16);
-        } catch (NoSuchAlgorithmException e) {
-            return joined.substring(0, Math.min(joined.length(), 64));
         }
     }
 }

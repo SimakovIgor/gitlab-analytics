@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AiInsightControllerTest extends BaseIT {
 
     @Autowired
-    private AiInsightCacheRepository cacheRepository;
+    private AiInsightCacheRepository aiInsightCacheRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -186,7 +186,7 @@ class AiInsightControllerTest extends BaseIT {
                 .with(csrf()))
             .andExpect(status().isOk());
 
-        assertThat(cacheRepository.findAll()).isEmpty();
+        assertThat(aiInsightCacheRepository.findAll()).isEmpty();
     }
 
     @Test
@@ -214,16 +214,24 @@ class AiInsightControllerTest extends BaseIT {
             .andExpect(jsonPath("$.count").value(0));
 
         // With disabled AI: no cache entry created
-        assertThat(cacheRepository.findAll()).isEmpty();
+        assertThat(aiInsightCacheRepository.findAll()).isEmpty();
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private void saveCache(Long workspaceId, String period, String hash,
+    @SuppressWarnings("checkstyle:IllegalCatch")
+    private void saveCache(Long workspaceId,
+                           String period,
+                           String hash,
                            List<AiInsightDto> insights,
-                           Instant generatedAt) throws Exception {
-        String json = objectMapper.writeValueAsString(insights);
-        cacheRepository.save(AiInsightRecord.builder()
+                           Instant generatedAt) {
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(insights);
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot serialize insights", e);
+        }
+        aiInsightCacheRepository.save(AiInsightRecord.builder()
             .workspaceId(workspaceId)
             .period(period)
             .projectIdsHash(hash)

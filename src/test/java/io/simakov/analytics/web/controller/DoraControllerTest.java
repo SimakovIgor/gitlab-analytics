@@ -316,6 +316,21 @@ class DoraControllerTest extends BaseIT {
     }
 
     @Test
+    void doraSyncReleasesReturns200() throws Exception {
+        MvcResult result = mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .post("/dora/sync/releases")
+                    .session(webSession)
+                    .with(user("owner@test.com").roles("USER"))
+                    .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        // Returns JSON array (may be empty if no projects with release tokens)
+        assertThat(result.getResponse().getContentAsString()).startsWith("[");
+    }
+
+    @Test
     void doraPageSyncIncidentsEndpointTriggersSync() throws Exception {
         MvcResult result = mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders

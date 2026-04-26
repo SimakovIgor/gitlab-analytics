@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
 
@@ -97,7 +96,8 @@ class ForgotPasswordControllerTest extends BaseIT {
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private void createVerifiedUser(String email, String password) {
+    private void createVerifiedUser(String email,
+                                    String password) {
         appUserRepository.save(AppUser.builder()
             .email(email)
             .name("Test User")

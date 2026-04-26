@@ -78,40 +78,42 @@ public class AiInsightGenerationService {
         String triggeredSection = triggeredRules.isEmpty()
             ? "None"
             : triggeredRules.stream()
-                .map(r -> "- " + r.rule().code() + ": " + r.title())
-                .collect(Collectors.joining("\n"));
+              .map(r -> "- " + r.rule().code() + ": " + r.title())
+              .collect(Collectors.joining("\n"));
 
         Double leadTime = doraContext.get("leadTimeDays");
         Double deploysPerDay = doraContext.get("deploysPerDay");
         Double mttr = doraContext.get("mttrHours");
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("You are an engineering analytics assistant for a software development team.\n");
-        sb.append("Analyze the following team metrics and provide 3–5 actionable insights in RUSSIAN.\n\n");
-        sb.append("Team metrics (period: ").append(periodLabel).append("):\n");
-        sb.append("- Team size: ").append(teamSize).append(" developers\n");
-        sb.append("- Merged MRs: ").append(totalMrs)
-            .append(" (avg per dev: ").append(teamSize > 0 ? String.format("%.1f", (double) totalMrs / teamSize) : "0").append(")\n");
-        sb.append("- Median Time to Merge: ").append(String.format("%.1f", medianTtmHours)).append("h\n");
-        sb.append("- Avg MR size: ").append(String.format("%.0f", avgMrSize)).append(" lines\n");
-        sb.append("- Avg review comments per MR: ").append(String.format("%.1f", avgReviewComments)).append("\n");
-        sb.append("- DORA Lead Time for Changes: ")
-            .append(leadTime != null ? String.format("%.1f days", leadTime) : "N/A").append("\n");
-        sb.append("- DORA Deploy Frequency: ")
-            .append(deploysPerDay != null ? String.format("%.2f deploys/day", deploysPerDay) : "N/A").append("\n");
-        sb.append("- DORA MTTR: ")
-            .append(mttr != null ? String.format("%.1f hours", mttr) : "N/A").append("\n\n");
-        sb.append("Algorithmic rules already triggered (do NOT duplicate these):\n");
-        sb.append(triggeredSection).append("\n\n");
-        sb.append("Provide strategic, non-obvious insights about risks, patterns, or improvement opportunities.\n");
-        sb.append("Each insight must be actionable — suggest a concrete step.\n");
-        sb.append("Respond with ONLY a JSON array, no other text:\n");
-        sb.append("[\n");
-        sb.append("  {\"kind\": \"warn|bad|good|info\", \"title\": \"short title (max 80 chars)\", \"body\": \"1-2 sentences\"},\n");
-        sb.append("  ...\n");
-        sb.append("]");
+        String avgPerDev = teamSize > 0 ? String.format("%.1f", (double) totalMrs / teamSize) : "0";
+        String leadTimeStr = leadTime != null ? String.format("%.1f days", leadTime) : "N/A";
+        String deploysStr = deploysPerDay != null ? String.format("%.2f deploys/day", deploysPerDay) : "N/A";
+        String mttrStr = mttr != null ? String.format("%.1f hours", mttr) : "N/A";
 
-        return sb.toString();
+        return String.format(
+            "You are an engineering analytics assistant for a software development team.%n"
+                + "Analyze the following team metrics and provide 3–5 actionable insights in RUSSIAN.%n%n"
+                + "Team metrics (period: %s):%n"
+                + "- Team size: %d developers%n"
+                + "- Merged MRs: %d (avg per dev: %s)%n"
+                + "- Median Time to Merge: %.1fh%n"
+                + "- Avg MR size: %.0f lines%n"
+                + "- Avg review comments per MR: %.1f%n"
+                + "- DORA Lead Time for Changes: %s%n"
+                + "- DORA Deploy Frequency: %s%n"
+                + "- DORA MTTR: %s%n%n"
+                + "Algorithmic rules already triggered (do NOT duplicate these):%n"
+                + "%s%n%n"
+                + "Provide strategic, non-obvious insights about risks, patterns, or improvement opportunities.%n"
+                + "Each insight must be actionable — suggest a concrete step.%n"
+                + "Respond with ONLY a JSON array, no other text:%n"
+                + "[%n"
+                + "  {\"kind\": \"warn|bad|good|info\", \"title\": \"short title (max 80 chars)\", \"body\": \"1-2 sentences\"},%n"
+                + "  ...%n"
+                + "]",
+            periodLabel, teamSize, totalMrs, avgPerDev,
+            medianTtmHours, avgMrSize, avgReviewComments,
+            leadTimeStr, deploysStr, mttrStr, triggeredSection);
     }
 
     @SuppressWarnings("checkstyle:IllegalCatch")
@@ -127,7 +129,7 @@ public class AiInsightGenerationService {
                 }
             }
             List<AiInsightDto> parsed = objectMapper.readValue(
-                cleaned, new TypeReference<List<AiInsightDto>>() {
+                cleaned, new TypeReference<>() {
                 });
             log.info("Parsed {} AI insights", parsed.size());
             return parsed;
