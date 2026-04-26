@@ -4,27 +4,59 @@ import io.simakov.analytics.digest.DigestData.ContributorRow;
 import io.simakov.analytics.digest.DigestData.InsightRow;
 import io.simakov.analytics.digest.DigestData.ServiceRow;
 import io.simakov.analytics.digest.DigestData.TeamSection;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.List;
 
 /**
- * Dev-only endpoint to preview the digest email template in the browser.
- * Available at GET /dev/digest-preview
+ * Dev-only endpoints to preview and test the digest email.
+ * GET  /dev/digest-preview         — renders template in browser
+ * POST /dev/send-digest-preview    — sends mock email via configured SMTP (Mailhog)
+ * POST /dev/send-digest            — triggers real digest for all enabled workspaces
  */
 @Controller
 @Profile("dev")
+@RequiredArgsConstructor
 public class DigestPreviewController {
+
+    private final DigestEmailSender digestEmailSender;
+    private final WeeklyDigestScheduler weeklyDigestScheduler;
 
     @GetMapping("/dev/digest-preview")
     public String preview(Model model) {
-        DigestData data = new DigestData(
+        model.addAttribute("d", buildMockData("igor@example.com"));
+        return "email/digest";
+    }
+
+    @PostMapping("/dev/send-digest-preview")
+    @ResponseBody
+    public ResponseEntity<String> sendPreview(
+            @RequestParam(defaultValue = "test@example.com") String to) {
+        digestEmailSender.send(buildMockData(to));
+        return ResponseEntity.ok("Mock digest sent to " + to + " — check http://localhost:8025");
+    }
+
+    /** Triggers the real weekly digest for all workspaces with digest_enabled=true. */
+    @PostMapping("/dev/send-digest")
+    @ResponseBody
+    public ResponseEntity<String> sendReal() {
+        weeklyDigestScheduler.sendWeeklyDigests();
+        return ResponseEntity.ok("Real digest triggered — check http://localhost:8025");
+    }
+
+    private DigestData buildMockData(String recipientEmail) {
+        return new DigestData(
             "Uzum Backend",
             "Игорь Симаков",
-            "igor@example.com",
+            recipientEmail,
             "19 — 25 апр 2026",
             "http://localhost:8080",
             47,
@@ -85,7 +117,5 @@ public class DigestPreviewController {
                 new InsightRow("GOOD", "Deploy Frequency соответствует уровню Elite по DORA")
             )
         );
-        model.addAttribute("d", data);
-        return "email/digest";
     }
 }
