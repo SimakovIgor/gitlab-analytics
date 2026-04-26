@@ -1,6 +1,6 @@
 -- AI insight cache — one row per workspace+period+project-set combination.
 -- TTL checked in application code (generated_at + 24h).
-CREATE TABLE ai_insight_cache (
+CREATE TABLE IF NOT EXISTS ai_insight_cache (
     id              BIGSERIAL PRIMARY KEY,
     workspace_id    BIGINT        NOT NULL,
     -- Period key, e.g. "LAST_30_DAYS"
