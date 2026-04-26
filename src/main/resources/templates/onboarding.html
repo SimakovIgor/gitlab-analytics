@@ -2,6 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta name="_csrf" th:content="${_csrf?.token}"/>
     <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
@@ -225,7 +226,7 @@
             </div>
             <input class="ob-text-input ob-mono" id="project-token"
                    oninput="ob_onTokenChange(this.value)" placeholder="glpat-••••••••••••••••"
-                   type="password">
+                   type="password" autocomplete="off">
             <div class="ob-token-status" id="ob-token-status">
                 Scope <code style="font-family:var(--font-mono);color:var(--fg-1)">read_api</code>
                 + <code style="font-family:var(--font-mono);color:var(--fg-1)">read_repository</code>

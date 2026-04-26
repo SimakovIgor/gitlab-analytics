@@ -2,6 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta name="_csrf" th:content="${_csrf?.token}"/>
     <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
@@ -1039,7 +1040,7 @@
                 <label class="form-label">Project Access Token</label>
                 <input class="form-input" id="project-token"
                        oninput="clearProjectSearch(); scheduleTokenValidate()"
-                       placeholder="glpat-..." type="password">
+                       placeholder="glpat-..." type="password" autocomplete="off">
                 <div class="token-validate-status" id="token-validate-status"></div>
                 <div class="form-hint token-hint">
                     <span>Где взять: GitLab → Репозиторий → Settings → Access Tokens</span>
