@@ -44,6 +44,11 @@ app:
   # Override via APP_BASE_URL env var in production.
   base-url: ${APP_BASE_URL:http://localhost:8080}
 
+  features:
+    # Показывать вкладку "Сервисы" (/dora) — Uzum-specific реализация на GitLab Tags + Jira.
+    # По умолчанию скрыта. Включить через DORA_SERVICES_ENABLED=true для конкретного инстанса.
+    dora-legacy-enabled: ${DORA_SERVICES_ENABLED:true}
+
   mail:
     from: ${SMTP_FROM:noreply@gitpulse.ru}
 

@@ -2,6 +2,9 @@ package io.simakov.analytics.web.controller;
 
 import io.simakov.analytics.BaseIT;
 import io.simakov.analytics.domain.model.AppUser;
+import io.simakov.analytics.domain.model.DoraDeployEvent;
+import io.simakov.analytics.domain.model.DoraIncidentEvent;
+import io.simakov.analytics.domain.model.DoraServiceMapping;
 import io.simakov.analytics.domain.model.GitSource;
 import io.simakov.analytics.domain.model.JiraIncident;
 import io.simakov.analytics.domain.model.MergeRequest;
@@ -10,12 +13,19 @@ import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.Workspace;
 import io.simakov.analytics.domain.model.enums.MrState;
 import io.simakov.analytics.domain.repository.AppUserRepository;
+import io.simakov.analytics.domain.repository.DoraDeployEventRepository;
+import io.simakov.analytics.domain.repository.DoraIncidentEventRepository;
+import io.simakov.analytics.domain.repository.DoraServiceMappingRepository;
+import io.simakov.analytics.domain.repository.DoraServiceRepository;
 import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.ReleaseTagRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
 import io.simakov.analytics.domain.repository.WorkspaceRepository;
+import io.simakov.analytics.dora.model.DeploySource;
+import io.simakov.analytics.dora.model.DeployStatus;
+import io.simakov.analytics.dora.model.IncidentSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +57,16 @@ class DoraControllerTest extends BaseIT {
     private ReleaseTagRepository releaseTagRepository;
     @Autowired
     private JiraIncidentRepository jiraIncidentRepository;
+    @Autowired
+    private DoraServiceRepository doraServiceRepository;
+    @Autowired
+    private DoraServiceMappingRepository doraServiceMappingRepository;
+    @Autowired
+    private DoraDeployEventRepository doraDeployEventRepository;
+    @Autowired
+    private DoraIncidentEventRepository doraIncidentEventRepository;
     private Long projectId;
+    private Long doraServiceId;
 
     @BeforeEach
     void setUp() {
@@ -66,6 +85,19 @@ class DoraControllerTest extends BaseIT {
             .build());
 
         projectId = project.getId();
+
+        io.simakov.analytics.domain.model.DoraService svc =
+            doraServiceRepository.save(io.simakov.analytics.domain.model.DoraService.builder()
+                .workspaceId(testWorkspaceId)
+                .name("repo")
+                .build());
+        doraServiceId = svc.getId();
+
+        doraServiceMappingRepository.save(DoraServiceMapping.builder()
+            .doraServiceId(doraServiceId)
+            .sourceType("GITLAB")
+            .sourceKey(String.valueOf(projectId))
+            .build());
     }
 
     @Test
@@ -372,7 +404,20 @@ class DoraControllerTest extends BaseIT {
         tag.setTagName(tagName);
         tag.setTagCreatedAt(prodDeployedAt);
         tag.setProdDeployedAt(prodDeployedAt);
-        return releaseTagRepository.save(tag);
+        ReleaseTag saved = releaseTagRepository.save(tag);
+
+        // Mirror to new DORA event store so CFR card shows correct data
+        doraDeployEventRepository.save(DoraDeployEvent.builder()
+            .workspaceId(testWorkspaceId)
+            .doraServiceId(doraServiceId)
+            .environment("production")
+            .deployedAt(prodDeployedAt)
+            .status(DeployStatus.SUCCESS)
+            .source(DeploySource.GITLAB_TAGS)
+            .version(tagName)
+            .idempotencyKey("test-deploy-" + tagName + "-" + prodDeployedAt.toEpochMilli())
+            .build());
+        return saved;
     }
 
     private void saveIncident(String jiraKey,
@@ -384,6 +429,16 @@ class DoraControllerTest extends BaseIT {
             .summary("Incident " + jiraKey)
             .createdAt(createdAt)
             .componentName("repo")
+            .build());
+
+        // Mirror to new DORA event store so CFR card shows correct data
+        doraIncidentEventRepository.save(DoraIncidentEvent.builder()
+            .workspaceId(testWorkspaceId)
+            .doraServiceId(doraServiceId)
+            .startedAt(createdAt)
+            .source(IncidentSource.JIRA)
+            .idempotencyKey("test-incident-" + jiraKey)
+            .externalId(jiraKey)
             .build());
     }
 }

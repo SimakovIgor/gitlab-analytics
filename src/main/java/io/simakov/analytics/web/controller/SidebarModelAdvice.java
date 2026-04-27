@@ -7,6 +7,7 @@ import io.simakov.analytics.security.AppUserPrincipal;
 import io.simakov.analytics.security.WorkspaceContext;
 import io.simakov.analytics.workspace.TeamService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -20,6 +21,14 @@ public class SidebarModelAdvice {
 
     private final TeamService teamService;
     private final WorkspaceMemberRepository memberRepository;
+
+    @Value("${app.features.dora-legacy-enabled:false}")
+    private boolean doraLegacyEnabled;
+
+    @ModelAttribute("doraLegacyEnabled")
+    public boolean doraLegacyEnabled() {
+        return doraLegacyEnabled;
+    }
 
     @ModelAttribute("teamCount")
     public int teamCount() {

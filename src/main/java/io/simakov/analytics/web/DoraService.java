@@ -2,19 +2,23 @@ package io.simakov.analytics.web;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.simakov.analytics.domain.model.DoraServiceMapping;
 import io.simakov.analytics.domain.model.MergeRequest;
 import io.simakov.analytics.domain.model.ReleaseTag;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.MrState;
 import io.simakov.analytics.domain.repository.DeployFrequencyWeekProjection;
+import io.simakov.analytics.domain.repository.DoraDeployEventRepository;
+import io.simakov.analytics.domain.repository.DoraIncidentEventRepository;
+import io.simakov.analytics.domain.repository.DoraServiceMappingRepository;
 import io.simakov.analytics.domain.repository.IncidentWeekProjection;
-import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.MttrIncidentProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeSummaryProjection;
 import io.simakov.analytics.domain.repository.RealLeadTimeWeekProjection;
 import io.simakov.analytics.domain.repository.ReleaseTagRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.dora.model.DataQualityState;
 import io.simakov.analytics.dora.model.DoraMetric;
 import io.simakov.analytics.dora.model.DoraRating;
 import io.simakov.analytics.security.WorkspaceContext;
@@ -49,7 +53,9 @@ public class DoraService {
     private final MergeRequestRepository mergeRequestRepository;
     private final ReleaseTagRepository releaseTagRepository;
     private final TrackedProjectRepository trackedProjectRepository;
-    private final JiraIncidentRepository jiraIncidentRepository;
+    private final DoraDeployEventRepository doraDeployEventRepository;
+    private final DoraIncidentEventRepository doraIncidentEventRepository;
+    private final DoraServiceMappingRepository doraServiceMappingRepository;
     private final ObjectMapper objectMapper;
 
     private static double round(Number value) {
@@ -105,15 +111,20 @@ public class DoraService {
 
     /**
      * Deployment Frequency: prod deploys per day over the given period.
+     * Reads from the universal dora_deploy_event table (adapter-written).
      * Ключи: totalDeploys, deploysPerDay, displayValue, displayUnit, deployFreqRating, chartJson.
      */
     @Transactional(readOnly = true)
     public Map<String, Object> buildDeployFrequencyData(List<Long> projectIds,
                                                         int days) {
+        Long workspaceId = WorkspaceContext.get();
         List<Long> resolvedIds = resolveProjectIds(projectIds);
+        List<Long> serviceIds = resolveDoraServiceIds(resolvedIds);
         Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
 
-        long totalDeploys = releaseTagRepository.countProdDeploysInPeriod(resolvedIds, dateFrom);
+        long totalDeploys = serviceIds.isEmpty()
+            ? 0L
+            : doraDeployEventRepository.countSuccessfulDeploys(workspaceId, serviceIds, dateFrom);
         double deploysPerDay = days > 0
             ? (double) totalDeploys / days
             : 0.0;
@@ -123,28 +134,45 @@ public class DoraService {
                 ? null
                 : deploysPerDay);
 
+        DataQualityState dqState;
+        if (serviceIds.isEmpty()) {
+            dqState = DataQualityState.MAPPING_REQUIRED;
+        } else if (totalDeploys == 0) {
+            dqState = DataQualityState.NO_EVENTS;
+        } else {
+            dqState = DataQualityState.CONFIGURED_OK;
+        }
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalDeploys", totalDeploys);
         result.put("deploysPerDay", round(deploysPerDay));
         result.put("displayValue", formatDeployFrequency(deploysPerDay));
         result.put("displayUnit", formatDeployFrequencyUnit(deploysPerDay));
         result.put("deployFreqRating", rating);
-        result.put("chartJson", buildDeployFrequencyChartJson(resolvedIds, dateFrom));
+        result.put("dataQualityState", dqState);
+        result.put("chartJson", buildDeployFrequencyChartJson(workspaceId, serviceIds, dateFrom));
         return result;
     }
 
     /**
      * Change Failure Rate: incidents / deployments * 100 over the given period.
+     * Reads from the universal dora_deploy_event and dora_incident_event tables.
      * Ключи: totalIncidents, totalDeploys, cfrPercent, cfrRating, chartJson.
      */
     @Transactional(readOnly = true)
     public Map<String, Object> buildChangeFailureRateData(List<Long> projectIds,
                                                           int days) {
+        Long workspaceId = WorkspaceContext.get();
         List<Long> resolvedIds = resolveProjectIds(projectIds);
+        List<Long> serviceIds = resolveDoraServiceIds(resolvedIds);
         Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
 
-        long totalIncidents = jiraIncidentRepository.countIncidentsInPeriod(resolvedIds, dateFrom);
-        long totalDeploys = releaseTagRepository.countProdDeploysInPeriod(resolvedIds, dateFrom);
+        long totalIncidents = serviceIds.isEmpty()
+            ? 0L
+            : doraIncidentEventRepository.countIncidents(workspaceId, serviceIds, dateFrom);
+        long totalDeploys = serviceIds.isEmpty()
+            ? 0L
+            : doraDeployEventRepository.countSuccessfulDeploys(workspaceId, serviceIds, dateFrom);
 
         Double cfrPercent = totalDeploys > 0
             ? round(totalIncidents * 100.0 / totalDeploys)
@@ -152,21 +180,36 @@ public class DoraService {
 
         DoraRating rating = DoraMetric.CHANGE_FAILURE_RATE.computeRating(cfrPercent);
 
+        DataQualityState dqState;
+        if (serviceIds.isEmpty()) {
+            dqState = DataQualityState.MAPPING_REQUIRED;
+        } else if (totalDeploys == 0) {
+            dqState = DataQualityState.NO_EVENTS;
+        } else if (totalIncidents == 0) {
+            dqState = DataQualityState.PARTIAL_DATA;
+        } else {
+            dqState = DataQualityState.CONFIGURED_OK;
+        }
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalIncidents", totalIncidents);
         result.put("totalDeploys", totalDeploys);
         result.put("cfrPercent", cfrPercent);
         result.put("cfrRating", rating);
-        result.put("chartJson", buildCfrChartJson(resolvedIds, dateFrom));
+        result.put("dataQualityState", dqState);
+        result.put("chartJson", buildCfrChartJson(workspaceId, serviceIds, dateFrom));
         return result;
     }
 
-    private String buildCfrChartJson(List<Long> projectIds,
+    private String buildCfrChartJson(Long workspaceId,
+                                     List<Long> serviceIds,
                                      Instant dateFrom) {
-        List<DeployFrequencyWeekProjection> deployWeeks =
-            releaseTagRepository.countProdDeploysByWeek(projectIds, dateFrom);
-        List<IncidentWeekProjection> incidentWeeks =
-            jiraIncidentRepository.countIncidentsByWeek(projectIds, dateFrom);
+        List<DeployFrequencyWeekProjection> deployWeeks = serviceIds.isEmpty()
+            ? List.of()
+            : doraDeployEventRepository.countDeploysByWeek(workspaceId, serviceIds, dateFrom);
+        List<IncidentWeekProjection> incidentWeeks = serviceIds.isEmpty()
+            ? List.of()
+            : doraIncidentEventRepository.countIncidentsByWeek(workspaceId, serviceIds, dateFrom);
 
         Map<String, Long> deploysByWeek = new LinkedHashMap<>();
         for (DeployFrequencyWeekProjection row : deployWeeks) {
@@ -219,34 +262,53 @@ public class DoraService {
 
     /**
      * MTTR (Mean Time To Recovery): average hours from impact start to impact end.
+     * Reads from the universal dora_incident_event table (adapter-written).
      * Ключи: mttrHours, totalIncidents, mttrRating, chartJson.
      */
     @Transactional(readOnly = true)
     public Map<String, Object> buildMttrData(List<Long> projectIds,
                                              int days) {
+        Long workspaceId = WorkspaceContext.get();
         List<Long> resolvedIds = resolveProjectIds(projectIds);
+        List<Long> serviceIds = resolveDoraServiceIds(resolvedIds);
         Instant dateFrom = DateTimeUtils.now().minus(days, ChronoUnit.DAYS);
 
-        Double avgHours = jiraIncidentRepository.findAvgMttrHours(resolvedIds, dateFrom);
-        long totalIncidents = jiraIncidentRepository.countIncidentsWithImpact(resolvedIds, dateFrom);
+        Double avgHours = serviceIds.isEmpty()
+            ? null
+            : doraIncidentEventRepository.findAvgMttrHours(workspaceId, serviceIds, dateFrom);
+        long totalIncidents = serviceIds.isEmpty()
+            ? 0L
+            : doraIncidentEventRepository.countResolvedIncidents(workspaceId, serviceIds, dateFrom);
 
         Double mttrHours = avgHours != null
             ? round(avgHours)
             : null;
         DoraRating rating = DoraMetric.MTTR.computeRating(mttrHours);
 
+        DataQualityState dqState;
+        if (serviceIds.isEmpty()) {
+            dqState = DataQualityState.MAPPING_REQUIRED;
+        } else if (totalIncidents == 0) {
+            dqState = DataQualityState.NO_EVENTS;
+        } else {
+            dqState = DataQualityState.CONFIGURED_OK;
+        }
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("mttrHours", mttrHours);
         result.put("totalIncidents", totalIncidents);
         result.put("mttrRating", rating);
-        result.put("chartJson", buildMttrChartJson(resolvedIds, dateFrom));
+        result.put("dataQualityState", dqState);
+        result.put("chartJson", buildMttrChartJson(workspaceId, serviceIds, dateFrom));
         return result;
     }
 
-    private String buildMttrChartJson(List<Long> projectIds,
+    private String buildMttrChartJson(Long workspaceId,
+                                      List<Long> serviceIds,
                                       Instant dateFrom) {
-        List<MttrIncidentProjection> incidents =
-            jiraIncidentRepository.findMttrIncidents(projectIds, dateFrom);
+        List<MttrIncidentProjection> incidents = serviceIds.isEmpty()
+            ? List.of()
+            : doraIncidentEventRepository.findMttrIncidents(workspaceId, serviceIds, dateFrom);
 
         List<String> labels = new ArrayList<>();
         List<String> jiraKeys = new ArrayList<>();
@@ -291,10 +353,12 @@ public class DoraService {
         return "/ месяц";
     }
 
-    private String buildDeployFrequencyChartJson(List<Long> projectIds,
+    private String buildDeployFrequencyChartJson(Long workspaceId,
+                                                 List<Long> serviceIds,
                                                  Instant dateFrom) {
-        List<DeployFrequencyWeekProjection> weekly =
-            releaseTagRepository.countProdDeploysByWeek(projectIds, dateFrom);
+        List<DeployFrequencyWeekProjection> weekly = serviceIds.isEmpty()
+            ? List.of()
+            : doraDeployEventRepository.countDeploysByWeek(workspaceId, serviceIds, dateFrom);
 
         List<String> labels = new ArrayList<>();
         List<Long> counts = new ArrayList<>();
@@ -428,6 +492,25 @@ public class DoraService {
         return tag.getTagCreatedAt();
     }
 
+    /**
+     * Resolves DORA service IDs for the given tracked project IDs by looking up GITLAB source mappings.
+     * Returns an empty list if no mappings exist yet (e.g. sync hasn't run after migration).
+     */
+    private List<Long> resolveDoraServiceIds(List<Long> trackedProjectIds) {
+        if (trackedProjectIds.isEmpty()) {
+            return List.of();
+        }
+        List<String> sourceKeys = trackedProjectIds.stream()
+            .map(String::valueOf)
+            .toList();
+        return doraServiceMappingRepository
+            .findAllBySourceTypeAndSourceKeyIn("GITLAB", sourceKeys)
+            .stream()
+            .map(DoraServiceMapping::getDoraServiceId)
+            .distinct()
+            .toList();
+    }
+
     private List<Long> resolveProjectIds(List<Long> requested) {
         if (requested != null) {
             return requested;
@@ -499,6 +582,7 @@ public class DoraService {
 
     /**
      * Returns DORA Deploy Frequency (deploys/day) for the period [dateFrom, dateTo).
+     * Reads from the universal dora_deploy_event table.
      * Returns null if no deploys found.
      */
     @Transactional(readOnly = true)
@@ -506,8 +590,14 @@ public class DoraService {
                                        Instant dateFrom,
                                        Instant dateTo,
                                        int days) {
+        Long workspaceId = WorkspaceContext.get();
         List<Long> resolvedIds = resolveProjectIds(projectIds);
-        long total = releaseTagRepository.countProdDeploysInPeriodBetween(resolvedIds, dateFrom, dateTo);
+        List<Long> serviceIds = resolveDoraServiceIds(resolvedIds);
+        if (serviceIds.isEmpty()) {
+            return null;
+        }
+        long total = doraDeployEventRepository
+            .countSuccessfulDeploysBetween(workspaceId, serviceIds, dateFrom, dateTo);
         if (total == 0) {
             return null;
         }
@@ -515,14 +605,20 @@ public class DoraService {
     }
 
     /**
-     * Returns average MTTR (hours) for incidents with valid impact times in [dateFrom, dateTo).
+     * Returns average MTTR (hours) for resolved incidents in the period starting at dateFrom.
+     * Reads from the universal dora_incident_event table.
      * Returns null if no data available.
      */
     @Transactional(readOnly = true)
     public Double computeMttrHours(List<Long> projectIds,
                                     Instant dateFrom) {
+        Long workspaceId = WorkspaceContext.get();
         List<Long> resolvedIds = resolveProjectIds(projectIds);
-        Double avgHours = jiraIncidentRepository.findAvgMttrHours(resolvedIds, dateFrom);
+        List<Long> serviceIds = resolveDoraServiceIds(resolvedIds);
+        if (serviceIds.isEmpty()) {
+            return null;
+        }
+        Double avgHours = doraIncidentEventRepository.findAvgMttrHours(workspaceId, serviceIds, dateFrom);
         if (avgHours == null) {
             return null;
         }
@@ -551,33 +647,40 @@ public class DoraService {
         return rows;
     }
 
+    @SuppressWarnings("PMD.NPathComplexity")
     private ServiceHealthRow buildSingleProjectHealth(TrackedProject project,
                                                        List<Long> pid,
                                                        int days,
                                                        Instant dateFrom,
                                                        Instant prevFrom) {
-        // MR count
+        Long workspaceId = WorkspaceContext.get();
+        List<Long> serviceIds = resolveDoraServiceIds(pid);
+
+        // MR count + Lead Time (stays on MR table — prod_deployed_at is in release_tag)
         List<RealLeadTimeSummaryProjection> ltRows =
             mergeRequestRepository.findRealLeadTimeSummary(pid, dateFrom);
         int mrCount = ltRows.isEmpty() || ltRows.getFirst().getMrCount() == null
             ? 0
             : ltRows.getFirst().getMrCount().intValue();
 
-        // Lead Time median (days)
         Double medianDays = ltRows.isEmpty() || ltRows.getFirst().getMedianDays() == null
             ? null
             : round(ltRows.getFirst().getMedianDays());
         DoraRating ltRating = DoraMetric.LEAD_TIME_FOR_CHANGES.computeRating(medianDays);
 
-        // Deploy Frequency
-        long totalDeploys = releaseTagRepository.countProdDeploysInPeriod(pid, dateFrom);
+        // Deploy Frequency — from universal dora_deploy_event table
+        long totalDeploys = serviceIds.isEmpty()
+            ? 0L
+            : doraDeployEventRepository.countSuccessfulDeploys(workspaceId, serviceIds, dateFrom);
         double deploysPerDay = days > 0 ? (double) totalDeploys / days : 0;
         double deploysPerWeek = round(deploysPerDay * 7);
         DoraRating dfRating = DoraMetric.DEPLOYMENT_FREQUENCY.computeRating(
             totalDeploys == 0 ? null : deploysPerDay);
 
-        // CFR
-        long incidents = jiraIncidentRepository.countIncidentsInPeriod(pid, dateFrom);
+        // CFR — from universal dora_incident_event table
+        long incidents = serviceIds.isEmpty()
+            ? 0L
+            : doraIncidentEventRepository.countIncidents(workspaceId, serviceIds, dateFrom);
         Double cfrPercent = totalDeploys > 0
             ? round(incidents * 100.0 / totalDeploys)
             : null;
@@ -587,10 +690,10 @@ public class DoraService {
         int healthScore = computeHealthScore(ltRating, dfRating, cfrRating, mrCount, days);
 
         // Trend: compare with previous period
-        String trend = computeTrend(pid, days, healthScore, dateFrom, prevFrom);
+        String trend = computeTrend(pid, serviceIds, days, healthScore, dateFrom, prevFrom);
 
         // Trend sparkline: weekly health scores over the period
-        List<Integer> trendData = computeWeeklyTrend(pid, days);
+        List<Integer> trendData = computeWeeklyTrend(pid, serviceIds, days);
 
         return new ServiceHealthRow(
             project.getId(),
@@ -647,11 +750,12 @@ public class DoraService {
     }
 
     private String computeTrend(List<Long> pid,
+                                 List<Long> serviceIds,
                                  int days,
                                  int currentScore,
                                  Instant dateFrom,
                                  Instant prevFrom) {
-        int prevScore = computePeriodHealthScore(pid, days, prevFrom, dateFrom);
+        int prevScore = computePeriodHealthScore(pid, serviceIds, days, prevFrom, dateFrom);
         int diff = currentScore - prevScore;
         if (diff > 3) {
             return "up";
@@ -662,22 +766,30 @@ public class DoraService {
         return "flat";
     }
 
+    @SuppressWarnings("PMD.NPathComplexity")
     private int computePeriodHealthScore(List<Long> pid,
+                                          List<Long> serviceIds,
                                           int days,
                                           Instant from,
                                           Instant to) {
+        Long workspaceId = WorkspaceContext.get();
+
         List<RealLeadTimeSummaryProjection> ltRows =
             mergeRequestRepository.findRealLeadTimeSummaryBetween(pid, from, to);
         Double median = ltRows.isEmpty() ? null : ltRows.getFirst().getMedianDays();
         DoraRating ltR = DoraMetric.LEAD_TIME_FOR_CHANGES.computeRating(
             median != null ? round(median) : null);
 
-        long deploys = releaseTagRepository.countProdDeploysInPeriodBetween(pid, from, to);
+        long deploys = serviceIds.isEmpty()
+            ? 0L
+            : doraDeployEventRepository.countSuccessfulDeploysBetween(workspaceId, serviceIds, from, to);
         double dpd = days > 0 ? (double) deploys / days : 0;
         DoraRating dfR = DoraMetric.DEPLOYMENT_FREQUENCY.computeRating(
             deploys == 0 ? null : dpd);
 
-        long inc = jiraIncidentRepository.countIncidentsInPeriodBetween(pid, from, to);
+        long inc = serviceIds.isEmpty()
+            ? 0L
+            : doraIncidentEventRepository.countIncidentsBetween(workspaceId, serviceIds, from, to);
         Double cfr = deploys > 0 ? round(inc * 100.0 / deploys) : null;
         DoraRating cfrR = DoraMetric.CHANGE_FAILURE_RATE.computeRating(cfr);
 
@@ -686,7 +798,7 @@ public class DoraService {
         return computeHealthScore(ltR, dfR, cfrR, mrs, days);
     }
 
-    private List<Integer> computeWeeklyTrend(List<Long> pid, int days) {
+    private List<Integer> computeWeeklyTrend(List<Long> pid, List<Long> serviceIds, int days) {
         Instant now = DateTimeUtils.now();
         int weekCount = Math.max(days / 7, 2);
         int windowDays = 7;
@@ -694,7 +806,7 @@ public class DoraService {
         for (int i = weekCount - 1; i >= 0; i--) {
             Instant to = now.minus((long) i * 7, ChronoUnit.DAYS);
             Instant from = to.minus(windowDays, ChronoUnit.DAYS);
-            scores.add(computePeriodHealthScore(pid, windowDays, from, to));
+            scores.add(computePeriodHealthScore(pid, serviceIds, windowDays, from, to));
         }
         return scores;
     }

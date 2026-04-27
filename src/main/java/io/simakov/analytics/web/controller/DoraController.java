@@ -3,6 +3,7 @@ package io.simakov.analytics.web.controller;
 import io.simakov.analytics.domain.model.SyncJob;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.model.enums.PeriodType;
+import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.dora.model.DoraMetric;
 import io.simakov.analytics.dora.model.DoraRating;
 import io.simakov.analytics.jira.JiraIncidentSyncService;
@@ -39,6 +40,7 @@ public class DoraController {
     private final SettingsService settingsService;
     private final SyncOrchestrator syncOrchestrator;
     private final JiraIncidentSyncService jiraIncidentSyncService;
+    private final JiraIncidentRepository jiraIncidentRepository;
     private final JiraProperties jiraProperties;
 
     @GetMapping("/dora")
@@ -99,8 +101,9 @@ public class DoraController {
         boolean hasReleases = !releases.isEmpty();
         boolean hasJiraConfig = jiraProperties.baseUrl() != null
             && !jiraProperties.baseUrl().isBlank();
-        long totalIncidents = ((Number) cfr.getOrDefault("totalIncidents", 0L)).longValue();
-        boolean hasIncidents = totalIncidents > 0;
+        // Check workspace-wide (not period-filtered) — step 2 turns green once Jira is synced,
+        // regardless of whether the current period contains any incidents.
+        boolean hasIncidents = jiraIncidentRepository.existsByWorkspaceId(workspaceId);
         model.addAttribute("hasReleases", hasReleases);
         model.addAttribute("hasJiraConfig", hasJiraConfig);
         model.addAttribute("hasIncidents", hasIncidents);
@@ -150,6 +153,9 @@ public class DoraController {
         model.addAttribute("mttrRatingDesc",
             DoraMetric.MTTR.ratingDescription(mttrRating));
         model.addAttribute("mttrChartJson", mttr.get("chartJson"));
+        model.addAttribute("deployFreqDqState", deployFreq.get("dataQualityState"));
+        model.addAttribute("cfrDqState", cfr.get("dataQualityState"));
+        model.addAttribute("mttrDqState", mttr.get("dataQualityState"));
     }
 
     @PostMapping("/dora/sync/releases")

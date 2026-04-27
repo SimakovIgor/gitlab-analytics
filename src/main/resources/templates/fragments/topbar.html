@@ -40,7 +40,8 @@
         <a href="/flow"
            th:class="${activePage == 'flow'} ? 'nav-link nav-link-active' : 'nav-link'">Flow</a>
         <a href="/dora"
-           th:class="${activePage == 'dora'} ? 'nav-link nav-link-active' : 'nav-link'">Сервисы</a>
+           th:class="${activePage == 'dora'} ? 'nav-link nav-link-active' : 'nav-link'"
+           th:if="${doraLegacyEnabled}">Сервисы</a>
         <a href="/compare"
            th:class="${activePage == 'compare'} ? 'nav-link nav-link-active' : 'nav-link'">Сравнение</a>
         <a href="/sync"

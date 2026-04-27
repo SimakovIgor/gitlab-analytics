@@ -151,6 +151,10 @@ public abstract class BaseIT {
         jdbcTemplate.execute("TRUNCATE TABLE merge_request CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE jira_incident CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE release_tag CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE dora_incident_event CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE dora_deploy_event CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE dora_service_mapping CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE dora_service CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE sync_job CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE metric_snapshot CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE tracked_user_alias CASCADE");

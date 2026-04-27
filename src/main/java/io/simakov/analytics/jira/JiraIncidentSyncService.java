@@ -4,6 +4,7 @@ import io.simakov.analytics.domain.model.JiraIncident;
 import io.simakov.analytics.domain.model.TrackedProject;
 import io.simakov.analytics.domain.repository.JiraIncidentRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.dora.DoraEventService;
 import io.simakov.analytics.jira.dto.JiraIssueDto;
 import io.simakov.analytics.security.WorkspaceContext;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class JiraIncidentSyncService {
     private final JiraApiClient jiraApiClient;
     private final JiraIncidentRepository jiraIncidentRepository;
     private final TrackedProjectRepository trackedProjectRepository;
+    private final DoraEventService doraEventService;
 
     private static String truncate(String value,
                                    int maxLen) {
@@ -147,5 +149,15 @@ public class JiraIncidentSyncService {
             ? issue.fields().impactEndedAt().toInstant()
             : null);
         jiraIncidentRepository.save(entity);
+
+        // Mirror to universal DORA event store.
+        // Use impact times (startedAt/resolvedAt) — these are what MTTR is calculated from.
+        doraEventService.upsertIncidentFromJira(
+            workspaceId,
+            project.getId(),
+            project.getName(),
+            issue.key(),
+            entity.getImpactStartedAt(),
+            entity.getImpactEndedAt());
     }
 }

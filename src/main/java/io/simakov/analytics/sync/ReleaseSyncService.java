@@ -9,6 +9,7 @@ import io.simakov.analytics.domain.repository.GitSourceRepository;
 import io.simakov.analytics.domain.repository.MergeRequestRepository;
 import io.simakov.analytics.domain.repository.ReleaseTagRepository;
 import io.simakov.analytics.domain.repository.TrackedProjectRepository;
+import io.simakov.analytics.dora.DoraEventService;
 import io.simakov.analytics.encryption.EncryptionService;
 import io.simakov.analytics.gitlab.client.GitLabApiClient;
 import io.simakov.analytics.gitlab.dto.GitLabPipelineDto;
@@ -50,6 +51,7 @@ public class ReleaseSyncService {
 
     private final GitLabApiClient gitLabApiClient;
     private final EncryptionService encryptionService;
+    private final DoraEventService doraEventService;
 
     private final TrackedProjectRepository trackedProjectRepository;
     private final GitSourceRepository gitSourceRepository;
@@ -102,7 +104,7 @@ public class ReleaseSyncService {
 
         // Upsert each release tag
         for (GitLabReleaseDto dto : releases) {
-            upsertReleaseTag(dto, trackedProjectId, baseUrl, token, gitlabProjectId);
+            upsertReleaseTag(dto, project, baseUrl, token, gitlabProjectId);
         }
 
         // Remove stale tags that no longer exist in GitLab (e.g. left over from a
@@ -142,10 +144,11 @@ public class ReleaseSyncService {
     }
 
     private void upsertReleaseTag(GitLabReleaseDto dto,
-                                  Long trackedProjectId,
+                                  TrackedProject project,
                                   String baseUrl,
                                   String token,
                                   Long gitlabProjectId) {
+        Long trackedProjectId = project.getId();
         Optional<ReleaseTag> existing = releaseTagRepository
             .findByTrackedProjectIdAndTagName(trackedProjectId, dto.tagName());
 
@@ -166,6 +169,16 @@ public class ReleaseSyncService {
         }
 
         releaseTagRepository.save(tag);
+
+        // Mirror to universal DORA event store if this tag has a known prod deployment.
+        if (tag.getProdDeployedAt() != null) {
+            doraEventService.upsertDeployFromGitLab(
+                project.getWorkspaceId(),
+                trackedProjectId,
+                project.getName(),
+                dto.tagName(),
+                tag.getProdDeployedAt());
+        }
     }
 
     private void resolveProdDeployment(ReleaseTag tag,

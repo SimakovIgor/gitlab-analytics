@@ -79,6 +79,7 @@ info "Очищаем базу данных..."
 docker compose -f "$ROOT_DIR/docker/docker-compose.yml" exec -T postgres \
   psql -U analytics -d gitlab_analytics -c "
 DROP TABLE IF EXISTS
+  dora_incident_event, dora_deploy_event, dora_service_mapping, dora_service,
   merge_request_approval, merge_request_note, merge_request_discussion,
   merge_request_commit, merge_request, release_tag, tracked_user_alias, metric_snapshot,
   ai_insight_cache, password_reset_token, workspace_invite,

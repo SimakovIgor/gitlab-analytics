@@ -195,7 +195,9 @@
                     <span th:text="${deploysPerDay + ' / день'}">0 / день</span>
                 </div>
                 <div class="dora-big-secondary" th:if="${totalDeploys == 0}">
-                    <span style="font-size:12px;color:var(--fg-3)">Нет данных — обновите релизы в секции ниже</span>
+                    <span class="dq-badge"
+                          th:classappend="${deployFreqDqState?.name() == 'MAPPING_REQUIRED'} ? 'dq-badge-warn' : 'dq-badge-muted'"
+                          th:text="${deployFreqDqState?.name() == 'MAPPING_REQUIRED'} ? 'Синк не выполнен' : 'Нет событий за период'">—</span>
                 </div>
                 <div class="dora-big-desc">Деплои в продакшн, в среднем</div>
             </div>
@@ -223,7 +225,9 @@
                     <span th:text="${cfrTotalDeploys + ' деплоев'}">0 деплоев</span>
                 </div>
                 <div class="dora-big-secondary" th:if="${cfrPercent == null}">
-                    <span style="font-size:12px;color:var(--fg-3)">Нет данных — нужны деплои и синк инцидентов из Jira</span>
+                    <span class="dq-badge"
+                          th:classappend="${cfrDqState?.name() == 'MAPPING_REQUIRED'} ? 'dq-badge-warn' : (${cfrDqState?.name() == 'PARTIAL_DATA'} ? 'dq-badge-info' : 'dq-badge-muted')"
+                          th:text="${cfrDqState?.name() == 'MAPPING_REQUIRED'} ? 'Синк не выполнен' : (${cfrDqState?.name() == 'PARTIAL_DATA'} ? 'Нет инцидентов — синкните Jira' : 'Нет деплоев за период')">—</span>
                 </div>
                 <div class="dora-big-desc">Деплоев, вызвавших инциденты</div>
             </div>
@@ -249,7 +253,9 @@
                     <span th:text="${mttrTotalIncidents + ' инцидентов с данными импакта'}">0 инцидентов</span>
                 </div>
                 <div class="dora-big-secondary" th:if="${mttrHours == null}">
-                    <span style="font-size:12px;color:var(--fg-3)">Нет данных — нужны инциденты с Start/End of Impact</span>
+                    <span class="dq-badge"
+                          th:classappend="${mttrDqState?.name() == 'MAPPING_REQUIRED'} ? 'dq-badge-warn' : 'dq-badge-muted'"
+                          th:text="${mttrDqState?.name() == 'MAPPING_REQUIRED'} ? 'Синк не выполнен' : 'Нет инцидентов за период'">—</span>
                 </div>
                 <div class="dora-big-desc">Среднее время восстановления</div>
             </div>

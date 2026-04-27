@@ -14,18 +14,8 @@ public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long
                                                             Long trackedProjectId);
 
     /**
-     * Count incidents for the given projects created within the period.
-     */
-    @Query("""
-        SELECT COUNT(ji) FROM JiraIncident ji
-        WHERE ji.trackedProjectId IN :projectIds
-          AND ji.createdAt >= :dateFrom
-        """)
-    long countIncidentsInPeriod(List<Long> projectIds,
-                                Instant dateFrom);
-
-    /**
      * Count incidents within a bounded interval [dateFrom, dateTo).
+     * Used by CompareService for period comparison.
      */
     @Query("""
         SELECT COUNT(ji) FROM JiraIncident ji
@@ -37,75 +27,6 @@ public interface JiraIncidentRepository extends JpaRepository<JiraIncident, Long
                                        Instant dateFrom,
                                        Instant dateTo);
 
-    /**
-     * Weekly incident counts for the CFR chart.
-     */
-    @Query(value = """
-        SELECT TO_CHAR(DATE_TRUNC('week', ji.created_at), 'IYYY-"W"IW') AS weekLabel,
-               COUNT(*)                                                   AS incidentCount
-        FROM jira_incident ji
-        WHERE ji.tracked_project_id IN :projectIds
-          AND ji.created_at >= :dateFrom
-        GROUP BY DATE_TRUNC('week', ji.created_at)
-        ORDER BY DATE_TRUNC('week', ji.created_at)
-        """,
-           nativeQuery = true)
-    List<IncidentWeekProjection> countIncidentsByWeek(List<Long> projectIds,
-                                                      Instant dateFrom);
-
-    List<JiraIncident> findAllByWorkspaceId(Long workspaceId);
-
-    /**
-     * Average recovery time (hours) for incidents with valid impact start/end in period.
-     * Only includes incidents where impact_ended_at > impact_started_at.
-     */
-    @Query(value = """
-        SELECT AVG(EXTRACT(EPOCH FROM (ji.impact_ended_at - ji.impact_started_at)) / 3600.0) AS avgHours
-        FROM jira_incident ji
-        WHERE ji.tracked_project_id IN :projectIds
-          AND ji.impact_started_at IS NOT NULL
-          AND ji.impact_ended_at IS NOT NULL
-          AND ji.impact_ended_at > ji.impact_started_at
-          AND ji.impact_started_at >= :dateFrom
-        """,
-           nativeQuery = true)
-    Double findAvgMttrHours(List<Long> projectIds,
-                            Instant dateFrom);
-
-    /**
-     * Count of incidents with valid impact times in period.
-     */
-    @Query(value = """
-        SELECT COUNT(*)
-        FROM jira_incident ji
-        WHERE ji.tracked_project_id IN :projectIds
-          AND ji.impact_started_at IS NOT NULL
-          AND ji.impact_ended_at IS NOT NULL
-          AND ji.impact_ended_at > ji.impact_started_at
-          AND ji.impact_started_at >= :dateFrom
-        """,
-           nativeQuery = true)
-    long countIncidentsWithImpact(List<Long> projectIds,
-                                  Instant dateFrom);
-
-    /**
-     * Individual incidents with recovery duration for the MTTR bar chart.
-     * Each row is one incident, ordered by impact start time.
-     */
-    @Query(value = """
-        SELECT TO_CHAR(DATE_TRUNC('week', ji.impact_started_at), 'IYYY-"W"IW') AS weekLabel,
-               ji.jira_key AS jiraKey,
-               ji.impact_started_at AS impactStartedAt,
-               EXTRACT(EPOCH FROM (ji.impact_ended_at - ji.impact_started_at)) / 3600.0 AS durationHours
-        FROM jira_incident ji
-        WHERE ji.tracked_project_id IN :projectIds
-          AND ji.impact_started_at IS NOT NULL
-          AND ji.impact_ended_at IS NOT NULL
-          AND ji.impact_ended_at > ji.impact_started_at
-          AND ji.impact_started_at >= :dateFrom
-        ORDER BY ji.impact_started_at
-        """,
-           nativeQuery = true)
-    List<MttrIncidentProjection> findMttrIncidents(List<Long> projectIds,
-                                                    Instant dateFrom);
+    /** Whether any Jira incidents have been synced for this workspace (period-independent). */
+    boolean existsByWorkspaceId(Long workspaceId);
 }
